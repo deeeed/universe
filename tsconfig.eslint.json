@@ -1,0 +1,5 @@
+
+{
+  "extends": "./tsconfig",
+  "include": ["./src", "./*.js", "./storybook", "./rollup.config.js", ".eslintrc.js"],
+}

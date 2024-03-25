@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { MD3Theme, TextInput, useTheme } from 'react-native-paper';
-import { Button } from '../button/Button';
-import { SelectButtons, SelectOption } from '../select-buttons/select-buttons';
+import React, { useCallback, useMemo, useState } from "react"
+import { StyleSheet, View } from "react-native"
+import { MD3Theme, TextInput, useTheme } from "react-native-paper"
+import { Button } from "../button/Button"
+import { SelectButtons, SelectOption } from "../select-buttons/select-buttons"
 
-type InputType = 'text' | 'textarea' | 'number' | 'radio' | 'select-button';
+type InputType = "text" | "textarea" | "number" | "radio" | "select-button";
 
 export type DynamicType = string | number | SelectOption[] | SelectOption;
 
@@ -25,9 +25,9 @@ export interface DynInputProps {
 const getStyles = (theme: MD3Theme) => {
   return StyleSheet.create({
     container: {
-      display: 'flex',
+      display: "flex",
       flex: 1,
-      flexDirection: 'column',
+      flexDirection: "column",
       flexGrow: 1,
       backgroundColor: theme.colors.surface,
     },
@@ -35,15 +35,15 @@ const getStyles = (theme: MD3Theme) => {
       borderTopWidth: 2,
       borderTopColor: theme.colors.outline,
       marginBottom: 20,
-      display: 'flex',
-      flexDirection: 'row',
-      justifyContent: 'space-around',
+      display: "flex",
+      flexDirection: "row",
+      justifyContent: "space-around",
       padding: 10,
     },
     finishButton: {},
     cancelButton: {},
-  });
-};
+  })
+}
 
 export const DynInput = ({
   data,
@@ -58,25 +58,25 @@ export const DynInput = ({
   onCancel,
   onFinish,
 }: DynInputProps) => {
-  const theme = useTheme();
-  const styles = useMemo(() => getStyles(theme), [theme]);
-  const [temp, setTemp] = useState(data);
+  const theme = useTheme()
+  const styles = useMemo(() => getStyles(theme), [theme])
+  const [temp, setTemp] = useState(data)
 
   const handleChange = useCallback(
     (value: DynamicType) => {
-      let formatedValue = value;
+      let formatedValue = value
 
       if (Array.isArray(value) && value.length > 0 && !multiSelect) {
-        formatedValue = value[0] as SelectOption;
+        formatedValue = value[0] as SelectOption
       }
 
-      setTemp(value);
+      setTemp(value)
       if (!showFooter) {
-        onFinish?.(formatedValue);
+        onFinish?.(formatedValue)
       }
     },
     [multiSelect, onFinish, showFooter]
-  );
+  )
 
   const renderNumber = () => {
     return (
@@ -87,8 +87,8 @@ export const DynInput = ({
           onChangeText={handleChange}
         />
       </View>
-    );
-  };
+    )
+  }
 
   const renderText = () => {
     return (
@@ -101,24 +101,24 @@ export const DynInput = ({
           onChangeText={handleChange}
         />
       </View>
-    );
-  };
+    )
+  }
 
   const handleCancel = useCallback(() => {
-    setTemp(data); // restore initial value
-    onCancel?.();
-  }, [data, onCancel]);
+    setTemp(data) // restore initial value
+    onCancel?.()
+  }, [data, onCancel])
 
   const handleFinish = useCallback(() => {
-    console.log(`calling onFinish DynInput ==> temp`, temp);
-    onFinish?.(temp);
-  }, [onFinish, temp]);
+    console.log("calling onFinish DynInput ==> temp", temp)
+    onFinish?.(temp)
+  }, [onFinish, temp])
 
   return (
     <View style={styles.container}>
-      {inputType === 'text' && renderText()}
-      {inputType === 'number' && renderNumber()}
-      {inputType === 'select-button' && (
+      {inputType === "text" && renderText()}
+      {inputType === "number" && renderNumber()}
+      {inputType === "select-button" && (
         <SelectButtons
           // Prevent passing references to the original data
           options={JSON.parse(JSON.stringify(temp)) as SelectOption[]}
@@ -133,14 +133,14 @@ export const DynInput = ({
         <View style={styles.footer}>
           <Button
             style={styles.cancelButton}
-            testID={'dyn-input-cancel'}
+            testID={"dyn-input-cancel"}
             onPress={handleCancel}
           >
             Cancel
           </Button>
           <Button
             style={styles.finishButton}
-            testID={'dyn-input-finish'}
+            testID={"dyn-input-finish"}
             mode="contained"
             onPress={handleFinish}
           >
@@ -149,5 +149,5 @@ export const DynInput = ({
         </View>
       )}
     </View>
-  );
-};
+  )
+}

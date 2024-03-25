@@ -1,62 +1,62 @@
-import type { Meta } from '@storybook/react';
-import React from 'react';
-import { ItemPicker, ItemPickerProps } from './item-picker';
+import type { Meta } from "@storybook/react"
+import React from "react"
+import { ItemPicker, ItemPickerProps } from "./item-picker"
 
 const options = [
   {
-    label: 'Daily Sentences',
-    value: '1',
+    label: "Daily Sentences",
+    value: "1",
     selected: true,
   },
   {
-    label: 'Custom Cards',
-    value: '2',
+    label: "Custom Cards",
+    value: "2",
   },
   {
-    label: 'Greetings',
-    value: '3',
+    label: "Greetings",
+    value: "3",
   },
   {
-    label: 'Dinings & Food',
-    value: '4',
+    label: "Dinings & Food",
+    value: "4",
   },
   {
-    label: 'Shopping',
+    label: "Shopping",
     selected: true,
-    value: '5',
+    value: "5",
   },
   {
-    label: 'Direction & Transportation',
-    value: '6',
+    label: "Direction & Transportation",
+    value: "6",
   },
   {
-    label: 'Accommodation',
-    value: '7',
+    label: "Accommodation",
+    value: "7",
   },
-];
+]
 
 const CategoryPickerMeta: Meta<ItemPickerProps> = {
   component: ItemPicker,
   argTypes: {},
   args: {
-    label: 'Category',
+    label: "Category",
     options,
     multi: true,
     onFinish(selected) {
-      console.log('selected', selected);
+      console.log("selected", selected)
     },
   },
-};
+}
 
-export default CategoryPickerMeta;
+export default CategoryPickerMeta
 
-export const Primary = (args: ItemPickerProps) => <ItemPicker {...args} />;
+export const Primary = (args: ItemPickerProps) => <ItemPicker {...args} />
 
 export const AllSelected = (args: ItemPickerProps) => (
   <ItemPicker
     {...args}
     options={options.map((opt) => {
-      return { ...opt, selected: true };
+      return { ...opt, selected: true }
     })}
   />
-);
+)

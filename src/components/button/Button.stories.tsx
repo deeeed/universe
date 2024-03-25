@@ -1,26 +1,26 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { Button } from './Button';
+import type { Meta, StoryObj } from "@storybook/react"
+import { Button } from "./Button"
 
 const ButtonMeta: Meta<typeof Button> = {
   component: Button,
   argTypes: {
-    onPress: { action: 'pressed the button' },
+    onPress: { action: "pressed the button" },
   },
   args: {
-    children: 'Hello world',
+    children: "Hello world",
   },
-};
+}
 
-export default ButtonMeta;
+export default ButtonMeta
 type Story = StoryObj<typeof Button>;
 
 export const Basic: Story = {
-  name: 'Test Basic',
-};
+  name: "Test Basic",
+}
 
 export const AnotherExample: Story = {
-  name: 'Contained',
+  name: "Contained",
   args: {
-    mode: 'contained',
+    mode: "contained",
   },
-};
+}

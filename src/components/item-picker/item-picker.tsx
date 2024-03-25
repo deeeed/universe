@@ -1,17 +1,17 @@
-import { AppTheme, SelectOption, useBottomModal, useTheme } from '@siteed/design-system';
-import { AntDesign } from '@expo/vector-icons';
-import React, { useCallback, useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Chip, Text } from 'react-native-paper';
+import { AppTheme, SelectOption, useBottomModal, useTheme } from "@siteed/design-system"
+import { AntDesign } from "@expo/vector-icons"
+import React, { useCallback, useMemo } from "react"
+import { Pressable, ScrollView, StyleSheet, View } from "react-native"
+import { Chip, Text } from "react-native-paper"
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
       backgroundColor: theme.colors.surface,
-      display: 'flex',
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
+      display: "flex",
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
     },
     leftSide: {
       flexGrow: 1,
@@ -31,8 +31,8 @@ const getStyles = (theme: AppTheme) => {
     },
     title: {},
     emptyText: {},
-  });
-};
+  })
+}
 
 export interface ItemPickerProps {
   options: SelectOption[];
@@ -46,9 +46,9 @@ export const ItemPicker = ({
   multi = false,
   label,
 }: ItemPickerProps) => {
-  const theme = useTheme();
-  const styles = useMemo(() => getStyles(theme), [theme]);
-  const { editProp } = useBottomModal();
+  const theme = useTheme()
+  const styles = useMemo(() => getStyles(theme), [theme])
+  const { editProp } = useBottomModal()
 
   const handlePick = useCallback(async () => {
     // pick new categories between allCategories
@@ -59,10 +59,10 @@ export const ItemPicker = ({
       min: 0,
       max: Infinity,
       showSearch: false,
-      inputType: 'select-button',
-    })) as SelectOption[];
-    onFinish?.(newSelection);
-  }, [editProp, onFinish, multi, options]);
+      inputType: "select-button",
+    })) as SelectOption[]
+    onFinish?.(newSelection)
+  }, [editProp, onFinish, multi, options])
 
   return (
     <View style={styles.container}>
@@ -84,11 +84,11 @@ export const ItemPicker = ({
             {options.map((category, index) => {
               if (category.selected === true) {
                 return (
-                  <Chip key={`cid${index}`} compact={true} mode={'flat'}>
+                  <Chip key={`cid${index}`} compact={true} mode={"flat"}>
                     {category.label}
                   </Chip>
-                );
-              } else return undefined;
+                )
+              } else return undefined
             })}
           </ScrollView>
         )}
@@ -101,5 +101,5 @@ export const ItemPicker = ({
         <AntDesign name="right" size={24} />
       </Pressable>
     </View>
-  );
-};
+  )
+}

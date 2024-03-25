@@ -1,9 +1,9 @@
-import React, { FunctionComponent, ReactNode } from 'react';
-import { PaperProvider } from 'react-native-paper';
+import React, { FunctionComponent, ReactNode } from "react"
+import { PaperProvider } from "react-native-paper"
 import {
   ThemeActions,
   ThemePreferences,
-} from '../hooks/use-app-preferences-setup';
+} from "../hooks/use-app-preferences-setup"
 
 interface ThemeProviderProps {
   children: ReactNode;
@@ -11,8 +11,8 @@ interface ThemeProviderProps {
 }
 
 export const PreferencesContext = React.createContext<
-  ThemeProviderProps['preferences'] | null
->(null);
+  ThemeProviderProps["preferences"] | null
+>(null)
 
 export const ThemeProvider: FunctionComponent<ThemeProviderProps> = ({
   children,
@@ -27,21 +27,21 @@ export const ThemeProvider: FunctionComponent<ThemeProviderProps> = ({
         {children}
       </PreferencesContext.Provider>
     </PaperProvider>
-  );
-};
+  )
+}
 
 export const useThemePreferences = () => {
-  const context = React.useContext(PreferencesContext);
+  const context = React.useContext(PreferencesContext)
   if (!context) {
-    throw new Error('useThemePreferences must be used within a ThemeProvider');
+    throw new Error("useThemePreferences must be used within a ThemeProvider")
   }
-  return context;
-};
+  return context
+}
 
 export const useTheme = () => {
-  const context = React.useContext(PreferencesContext);
+  const context = React.useContext(PreferencesContext)
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    throw new Error("useTheme must be used within a ThemeProvider")
   }
-  return context.theme;
-};
+  return context.theme
+}

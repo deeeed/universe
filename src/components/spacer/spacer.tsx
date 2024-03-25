@@ -1,5 +1,5 @@
-import React from 'react';
-import { View } from 'react-native';
+import React from "react"
+import { View } from "react-native"
 
 type SpacerProps = {
   horizontal?: number;
@@ -8,6 +8,6 @@ type SpacerProps = {
 
 const Spacer = ({ horizontal, vertical }: SpacerProps) => (
   <View style={{ paddingHorizontal: horizontal, paddingVertical: vertical }} />
-);
+)
 
-export { Spacer };
+export { Spacer }

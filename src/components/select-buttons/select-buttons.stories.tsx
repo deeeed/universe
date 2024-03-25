@@ -1,11 +1,11 @@
-import type { Meta } from '@storybook/react';
-import React from 'react';
-import { randomSelectValues } from '../../_mocks/mock_data';
+import type { Meta } from "@storybook/react"
+import React from "react"
+import { randomSelectValues } from "../../_mocks/mock_data"
 import {
   SelectButtons,
   SelectButtonsProps,
   SelectOption,
-} from './select-buttons';
+} from "./select-buttons"
 
 const SelectButtonsMeta: Meta<SelectButtonsProps> = {
   component: SelectButtons,
@@ -18,18 +18,18 @@ const SelectButtonsMeta: Meta<SelectButtonsProps> = {
       randomSelectValues[3],
     ] as SelectOption[],
   },
-};
+}
 
-export default SelectButtonsMeta;
+export default SelectButtonsMeta
 
 export const Default = (args: SelectButtonsProps) => (
   <SelectButtons {...args} />
-);
-Default.storyName = 'Default Settings';
+)
+Default.storyName = "Default Settings"
 
 export const Multi = (args: SelectButtonsProps) => (
   <SelectButtons {...args} multiSelect={true} min={1} max={2} />
-);
+)
 
 export const MultiLong = (args: SelectButtonsProps) => (
   <SelectButtons
@@ -39,4 +39,4 @@ export const MultiLong = (args: SelectButtonsProps) => (
     min={1}
     max={5}
   />
-);
+)

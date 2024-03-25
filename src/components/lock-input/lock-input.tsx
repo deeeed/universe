@@ -1,5 +1,5 @@
-import React from 'react';
-import { TextInput } from 'react-native-paper';
+import React from "react"
+import { TextInput } from "react-native-paper"
 
 export interface LockInputProps {
   locked: boolean;
@@ -16,10 +16,10 @@ export const LockInput = ({ locked, label, text, onPress }: LockInputProps) => {
       disabled={locked}
       right={
         <TextInput.Icon
-          icon={locked ? 'lock' : 'lock-open-variant-outline'}
+          icon={locked ? "lock" : "lock-open-variant-outline"}
           onPress={onPress}
         />
       }
     />
-  );
-};
+  )
+}

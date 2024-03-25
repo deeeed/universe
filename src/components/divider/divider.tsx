@@ -1,14 +1,14 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React from "react"
+import { View, StyleSheet } from "react-native"
 
-const Divider = () => <View style={styles.container} />;
+const Divider = () => <View style={styles.container} />
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
+    width: "100%",
     height: StyleSheet.hairlineWidth,
     // backgroundColor: Colors.background,
   },
-});
+})
 
-export { Divider };
+export { Divider }

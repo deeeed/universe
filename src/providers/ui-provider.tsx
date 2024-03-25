@@ -1,12 +1,12 @@
-import React from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import React from "react"
+import { GestureHandlerRootView } from "react-native-gesture-handler"
 import {
   ThemeActions,
   ThemePreferences,
-} from '../hooks/use-app-preferences-setup';
-import { CustomBottomSheetModal } from './custom-bottomsheet-provider';
-import { LanguageProvider } from './language-provider';
-import { ThemeProvider } from './theme-provider';
+} from "../hooks/use-app-preferences-setup"
+import { CustomBottomSheetModal } from "./custom-bottomsheet-provider"
+import { LanguageProvider } from "./language-provider"
+import { ThemeProvider } from "./theme-provider"
 
 export const UIProvider = ({
   locale,
@@ -25,5 +25,5 @@ export const UIProvider = ({
         </GestureHandlerRootView>
       </ThemeProvider>
     </LanguageProvider>
-  );
-};
+  )
+}
