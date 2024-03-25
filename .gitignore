@@ -11,3 +11,6 @@
 
 #!.yarn/cache
 .pnp.*
+
+*storybook.log
+node_modules
