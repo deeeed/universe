@@ -11,6 +11,6 @@
 
 #!.yarn/cache
 .pnp.*
-
+**/dist
 *storybook.log
 node_modules

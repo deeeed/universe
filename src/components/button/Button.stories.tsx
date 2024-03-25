@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react-native';
+import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from './Button';
 
 const ButtonMeta: Meta<typeof Button> = {
