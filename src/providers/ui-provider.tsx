@@ -83,7 +83,7 @@ const UIProviderWithLanguage = ({
   // Create default preferences if none are provided
   const [activePreferences, setActivePreferences] = React.useState<ThemePreferences & ThemeActions>()
   const {i18n} = useTranslation()
-  const { theme, configuredFontTheme, setDarkMode, setThemeVersion } = useAppThemeSetup({ customDarkTheme: defaultDarkTheme, customLightTheme:defaultLightTheme })
+  const { theme, setDarkMode, setThemeVersion } = useAppThemeSetup({ customDarkTheme: defaultDarkTheme, customLightTheme:defaultLightTheme })
   const defaultPreferences = useAppPreferencesSetup({
     theme: theme,
     setDarkMode,
