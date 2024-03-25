@@ -15,7 +15,7 @@ const packageJson = require('./package.json');
  */
 const config = [
   {
-    external: ['react', 'react-dom', 'react-native', 'react-native-qrcode-svg'],
+    external: [],
     input: 'src/index.ts',
     output: [
       {
@@ -47,8 +47,9 @@ const config = [
       nodeResolve({
         browser: true,
       }),
-      commonjs(),
-      typescript({ tsconfig: './tsconfig.json', allowJs: true }),
+      commonjs({
+      }),
+      typescript({ tsconfig: './tsconfig.build.json', allowJs: true }),
       json(),
       terser(),
     ],
