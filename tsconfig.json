@@ -3,6 +3,9 @@
   "compilerOptions": {
     "outDir": "./dist/",
     "baseUrl": "./",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "paths": {
       "@siteed/design-system": [
         "./src/index"
