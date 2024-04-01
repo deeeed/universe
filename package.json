@@ -5,6 +5,7 @@
     "packages/*",
     "examples/*"
   ],
+  "nohoist": ["**/react-native", "**/react-native/**"],
   "devDependencies": {
     "typescript": "^5.4.3"
   }
