@@ -11,7 +11,7 @@ import {
 } from "react-native"
 import { Button, HelperText, MD3Theme, Searchbar } from "react-native-paper"
 import { useScreenWidth } from "../../hooks/use-screen-width"
-import { useTheme } from "src/providers/theme-provider"
+import { useTheme } from "../../providers/theme-provider"
 import { BREAKPOINTS } from "../select-buttons/select-buttons"
 
 const getStyles = (theme: MD3Theme) => {

@@ -9,7 +9,7 @@ import {
 import { Button, HelperText, MD3Theme, Searchbar } from "react-native-paper"
 import { useScreenWidth } from "../../hooks/use-screen-width"
 import { FlatList } from "react-native-gesture-handler"
-import { useTheme } from "src/providers/theme-provider"
+import { useTheme } from "../../providers/theme-provider"
 
 const getStyles = (theme: MD3Theme) => {
   return StyleSheet.create({
