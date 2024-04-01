@@ -67,6 +67,8 @@ export const useAppThemeSetup = ({
       : undefined,
   }
 
+  console.log("theme", theme)
+
   return {
     theme,
     configuredFontTheme,

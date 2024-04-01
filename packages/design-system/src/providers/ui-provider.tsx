@@ -103,12 +103,13 @@ const UIProviderWithLanguage = ({
     }
   }, [preferences])
 
-  if(!activePreferences) {
-    return <ActivityIndicator />
-  }
+  console.debug("UIProvider: activePreferences: ", activePreferences)
+  // if(!activePreferences) {
+  //   return <ActivityIndicator />
+  // }
 
   return (
-    <ThemeProvider preferences={activePreferences}>
+    <ThemeProvider preferences={activePreferences ?? defaultPreferences}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ToastProvider>
           <ConfirmProvider>
