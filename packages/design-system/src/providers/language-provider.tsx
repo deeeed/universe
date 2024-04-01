@@ -1,9 +1,10 @@
 import { getLocales } from "expo-localization"
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import { I18nextProvider, initReactI18next } from "react-i18next"
 
 import { useLoggerActions } from "@siteed/react-native-logger"
-import i18n from "i18next"
+import i18n, { TFunction } from "i18next"
+import { ActivityIndicator } from "react-native-paper"
 
 const resources = {
   fr: {
@@ -89,16 +90,40 @@ const resources = {
   },
 }
 
+
+// Define a function to initialize i18n that returns a Promise
+const initI18n = (): Promise<TFunction<"translation", undefined>> => {
+  return i18n
+    .use(initReactI18next)
+    .init({
+      resources,
+      fallbackLng: "en",
+      lng: getLocales()[0]?.languageTag ?? "en",
+      debug: true,
+      interpolation: {
+        escapeValue: false, // Not needed for React as it escapes by default
+      },
+    })
+}
+
+// Define the type for the props of LanguageProvider
+interface LanguageProviderProps {
+  children: React.ReactNode;
+  locale?: string;
+}
+
+
 export const LanguageProvider = ({
   locale,
   children,
-}: {
-  children: React.ReactNode;
-  locale?: string;
-}) => {
+}: LanguageProviderProps) => {
   const { logger } = useLoggerActions("useI18nSetup")
+  const [isReady, setReady] = useState(i18n.isInitialized)
+
+  console.log(`debug language-provider locale=${locale}`)
 
   useEffect(() => {
+    console.debug(`debug language-provider useEffect locale=${locale}`)
     if (!i18n.isInitialized) {
       const lng = locale ?? getLocales()[0]?.languageTag
       logger.info(
@@ -106,21 +131,10 @@ export const LanguageProvider = ({
           getLocales()[0]?.languageTag
         } locale=${locale}`
       )
-      i18n
-        .use(initReactI18next)
-        .init({
-          fallbackLng: "en",
-          debug: true,
-          resources,
-          // saveMissingTo: 'all',
-          lng,
-          defaultNS: "translations",
-          interpolation: {
-            escapeValue: false, // not needed for react as it escapes by default
-          },
-        })
-        .then((t) => {
-          logger.log("i18n initialized", t("hello"))
+      initI18n()
+        .then(() => {
+          logger.info("i18n initialized")
+          setReady(true)
         })
         .catch((error) => {
           logger.error("Failed to initialize i18n:", error)
@@ -130,5 +144,13 @@ export const LanguageProvider = ({
     }
   }, [logger, locale])
 
-  return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+
+  if (!isReady) {
+    return <ActivityIndicator />
+  }
+
+
+  return <I18nextProvider i18n={i18n}>
+    {children}
+  </I18nextProvider>
 }
