@@ -4,10 +4,10 @@
   "author": "Arthur Breton <abreton@siteed.net> (https://github.com/deeeed)",
   "license": "MIT",
   "repository": "https://github.com/deeeed/design-system",
-  "main": "dist/esm/index.js",
+  "main": "dist/index.js",
   "module": "dist/esm/index.js",
   "source": "src/index",
-  "types": "dist/esm/index.d.ts",
+  "types": "dist/index.d.ts",
   "sideEffects": false,
   "files": [
     "dist",
@@ -17,7 +17,7 @@
   "scripts": {
     "clean": "rimraf ./dist",
     "build:rollup": "yarn clean && rollup -c --bundleConfigAsCjs",
-    "build": "yarn build:rollup",
+    "build": "yarn build:tsc",
     "build:tsc": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --cache \"src/**/*.{js,ts,tsx}\"",
