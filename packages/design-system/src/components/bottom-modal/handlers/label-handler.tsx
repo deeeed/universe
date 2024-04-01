@@ -1,4 +1,5 @@
-import { AppTheme, useTheme } from "@siteed/design-system"
+import { useTheme } from "../../../providers/theme-provider"
+import { AppTheme } from "../../../hooks/use-app-theme-setup"
 import {
   BottomSheetHandle,
   BottomSheetHandleProps,

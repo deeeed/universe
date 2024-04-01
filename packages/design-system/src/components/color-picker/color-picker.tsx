@@ -1,7 +1,11 @@
-import { AppTheme, SelectOption, useBottomModal, useTheme } from "@siteed/design-system"
+
 import React, { useEffect, useMemo } from "react"
 import { Pressable, StyleSheet, View } from "react-native"
 import { Text } from "react-native-paper"
+import { AppTheme } from "src/hooks/use-app-theme-setup"
+import { useBottomModal } from "src/providers/custom-bottomsheet-provider"
+import { useTheme } from "src/providers/theme-provider"
+import { SelectOption } from "../select-buttons/select-buttons"
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({

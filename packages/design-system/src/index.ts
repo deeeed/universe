@@ -18,8 +18,8 @@ export * from "./components/spacer/spacer"
 export * from "./hooks/use-screen-width"
 
 export const boon = () => {
-    console.log(`boom`);
-    return "boom";
+  console.log("boom")
+  return "boom"
 }
 
 // export * from "./providers/custom-bottomsheet-provider"

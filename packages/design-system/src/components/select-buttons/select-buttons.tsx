@@ -1,4 +1,3 @@
-import { Button, useTheme } from "@siteed/design-system"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
   NativeSyntheticEvent,
@@ -7,9 +6,10 @@ import {
   TextInputKeyPressEventData,
   View,
 } from "react-native"
-import { HelperText, MD3Theme, Searchbar } from "react-native-paper"
+import { Button, HelperText, MD3Theme, Searchbar } from "react-native-paper"
 import { useScreenWidth } from "../../hooks/use-screen-width"
 import { FlatList } from "react-native-gesture-handler"
+import { useTheme } from "src/providers/theme-provider"
 
 const getStyles = (theme: MD3Theme) => {
   return StyleSheet.create({

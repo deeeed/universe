@@ -1,15 +1,12 @@
-import {
-  AppTheme,
-  ColorPicker,
-  LabelSwitch,
-  useTheme,
-  useThemePreferences,
-} from "@siteed/design-system"
 import React, { useMemo } from "react"
-import { StyleSheet, View } from "react-native"
-import { colorOptions } from "../../_mocks/mock_data"
-import { SegmentedButtons } from "react-native-paper"
 import { useTranslation } from "react-i18next"
+import { StyleSheet, View } from "react-native"
+import { SegmentedButtons } from "react-native-paper"
+import { colorOptions } from "../../_mocks/mock_data"
+import { AppTheme } from "src/hooks/use-app-theme-setup"
+import { useTheme, useThemePreferences } from "src/providers/theme-provider"
+import { LabelSwitch } from "../label-switch/label-switch"
+import { ColorPicker } from "../color-picker/color-picker"
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
@@ -46,7 +43,7 @@ export const ThemeConfig = ({ flexDirection }: ThemeConfigProps) => {
         label={"Primary"}
         color={theme.colors.primary}
         colorOptions={colors}
-        onChange={(newColor) => {
+        onChange={(newColor: string) => {
           console.log(newColor)
           setThemeColor({ name: "primary", value: newColor })
         }}
@@ -55,7 +52,7 @@ export const ThemeConfig = ({ flexDirection }: ThemeConfigProps) => {
         label={"Secondary"}
         color={theme.colors.secondary}
         colorOptions={colors}
-        onChange={(newColor) => {
+        onChange={(newColor: string) => {
           console.log(newColor)
           setThemeColor({ name: "secondary", value: newColor })
         }}
@@ -64,7 +61,7 @@ export const ThemeConfig = ({ flexDirection }: ThemeConfigProps) => {
         label={"Tertiary"}
         color={theme.colors.tertiary}
         colorOptions={colors}
-        onChange={(newColor) => {
+        onChange={(newColor: string) => {
           console.log(newColor)
           setThemeColor({ name: "tertiary", value: newColor })
         }}

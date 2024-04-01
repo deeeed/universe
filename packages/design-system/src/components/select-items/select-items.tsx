@@ -1,4 +1,3 @@
-import { BREAKPOINTS, Button, useTheme } from "@siteed/design-system"
 import { useLoggerActions } from "@siteed/react-native-logger"
 import React, { useCallback, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -10,8 +9,10 @@ import {
   TextInputKeyPressEventData,
   View,
 } from "react-native"
-import { HelperText, MD3Theme, Searchbar } from "react-native-paper"
+import { Button, HelperText, MD3Theme, Searchbar } from "react-native-paper"
 import { useScreenWidth } from "../../hooks/use-screen-width"
+import { useTheme } from "src/providers/theme-provider"
+import { BREAKPOINTS } from "../select-buttons/select-buttons"
 
 const getStyles = (theme: MD3Theme) => {
   return StyleSheet.create({

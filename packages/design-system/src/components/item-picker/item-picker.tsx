@@ -1,8 +1,11 @@
-import { AppTheme, SelectOption, useBottomModal, useTheme } from "@siteed/design-system"
 import { AntDesign } from "@expo/vector-icons"
 import React, { useCallback, useMemo } from "react"
 import { Pressable, ScrollView, StyleSheet, View } from "react-native"
 import { Chip, Text } from "react-native-paper"
+import { AppTheme } from "src/hooks/use-app-theme-setup"
+import { SelectOption } from "../select-buttons/select-buttons"
+import { useTheme } from "src/providers/theme-provider"
+import { useBottomModal } from "src/providers/custom-bottomsheet-provider"
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
