@@ -1,8 +1,11 @@
 {
-  "name": "@siteed/mobile",
-  "packageManager": "yarn@4.1.1",
   "private": true,
+  "name": "@siteed/mobile-framework",
   "workspaces": [
-    "packages/*"
-  ]
+    "packages/*",
+    "examples/*"
+  ],
+  "devDependencies": {
+    "typescript": "^5.4.3"
+  }
 }
