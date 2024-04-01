@@ -95,6 +95,7 @@ const UIProviderWithLanguage = ({
   })
 
   useEffect(() => {
+    console.log(`UIProvider: preferences: ${JSON.stringify(preferences)}`)
     if (!preferences) {
       setActivePreferences(preferences)
     } else {
@@ -125,6 +126,11 @@ export const UIProvider = ({
   preferences,
   children,
 }: UIProviderProps) => {
+
+  useEffect(() => {
+    console.log("UIProvider: locale", locale)
+  }, [locale])
+
   return (
     <SafeAreaProvider>
       {/* Wrap with LanguageProvider to have useTranslation available */}
