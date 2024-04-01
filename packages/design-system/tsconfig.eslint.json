@@ -1,5 +1,17 @@
-
 {
   "extends": "./tsconfig",
-  "include": ["./src", "./*.js", "./storybook", "./rollup.config.js", ".eslintrc.js"],
+  "compilerOptions": {
+    // ensure that nobody can accidentally use this config for a build
+    "noEmit": true,
+  },
+  "include": [
+    "./src",
+    "./*.js",
+    "./*.mjs",
+    ".eslintrc.js",
+    "./storybook",
+    "./rollup.config.js",
+    "release-it.js"
+  ],
+  "exclude": ["dist/**", "node_modules"]
 }

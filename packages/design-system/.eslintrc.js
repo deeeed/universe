@@ -2,7 +2,6 @@
  * @type {import('eslint').Linter.Config}
  */
 module.exports = {
-  root: true,
   env: {
     "browser": true,
     "es2021": true
@@ -29,11 +28,21 @@ module.exports = {
   parserOptions: {
     ecmaVersion: "latest",
     sourceType: "module",
+    tsconfigRootDir: __dirname,
     project: "./tsconfig.eslint.json"
+  },
+  settings: {
+    react: {
+      version: "detect"
+    }
   },
   plugins: [
     "@typescript-eslint",
     "react"
+  ],
+  ignorePatterns: [
+    "release-it.js",
+    "dist/"
   ],
   rules: {
     indent: [

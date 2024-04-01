@@ -94,6 +94,7 @@
     "bundle-size": "^1.1.5",
     "commitlint": "^19.2.1",
     "eslint": "^8.57.0",
+    "eslint-plugin-jest": "^27.9.0",
     "eslint-plugin-react": "^7.34.1",
     "expo": "^50.0.14",
     "expo-clipboard": "^5.0.1",
@@ -125,7 +126,8 @@
     "size-limit": "^11.1.2",
     "storybook": "^8.0.4",
     "tty-browserify": "^0.0.1",
-    "typescript": "^5.4.3"
+    "typescript": "^5.4.3",
+    "typescript-eslint": "^7.4.0"
   },
   "publishConfig": {
     "access": "public",
