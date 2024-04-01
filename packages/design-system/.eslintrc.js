@@ -42,6 +42,7 @@ module.exports = {
   ],
   ignorePatterns: [
     "release-it.js",
+    "!.storybook/",
     "dist/"
   ],
   rules: {

@@ -9,7 +9,8 @@
     "./*.js",
     "./*.mjs",
     ".eslintrc.js",
-    "./storybook",
+    ".storybook/main.ts",
+    ".storybook/preview.tsx",
     "./rollup.config.js",
     "release-it.js"
   ],

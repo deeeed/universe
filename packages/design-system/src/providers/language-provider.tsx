@@ -92,13 +92,13 @@ const resources = {
 
 
 // Define a function to initialize i18n that returns a Promise
-const initI18n = (): Promise<TFunction<"translation", undefined>> => {
+const initI18n = (lng?: string): Promise<TFunction> => {
   return i18n
     .use(initReactI18next)
     .init({
       resources,
       fallbackLng: "en",
-      lng: getLocales()[0]?.languageTag ?? "en",
+      lng: lng ?? "en",
       debug: true,
       interpolation: {
         escapeValue: false, // Not needed for React as it escapes by default
@@ -131,7 +131,7 @@ export const LanguageProvider = ({
           getLocales()[0]?.languageTag
         } locale=${locale}`
       )
-      initI18n()
+      initI18n(lng)
         .then(() => {
           logger.info("i18n initialized")
           setReady(true)
@@ -141,10 +141,12 @@ export const LanguageProvider = ({
         })
     } else {
       logger.log("i18n already initialized")
+      setReady(true)
     }
   }, [logger, locale])
 
 
+  console.log(`debug language-provider isReady=${isReady}`)
   if (!isReady) {
     return <ActivityIndicator />
   }
