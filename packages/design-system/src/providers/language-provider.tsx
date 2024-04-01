@@ -120,10 +120,7 @@ export const LanguageProvider = ({
   const { logger } = useLoggerActions("useI18nSetup")
   const [isReady, setReady] = useState(i18n.isInitialized)
 
-  console.log(`debug language-provider locale=${locale}`)
-
   useEffect(() => {
-    console.debug(`debug language-provider useEffect locale=${locale}`)
     if (!i18n.isInitialized) {
       const lng = locale ?? getLocales()[0]?.languageTag
       logger.info(
@@ -145,8 +142,6 @@ export const LanguageProvider = ({
     }
   }, [logger, locale])
 
-
-  console.log(`debug language-provider isReady=${isReady}`)
   if (!isReady) {
     return <ActivityIndicator />
   }

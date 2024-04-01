@@ -50,7 +50,6 @@ export const useAppPreferencesSetup = ({
 
   useEffect(() => {
     const onLanguage = (lng: string) => {
-      logger.debug(`language changed to ${lng}`)
       savePreferences?.({
         darkMode: dynamicTheme.dark,
         rippleEffectEnabled,
@@ -59,7 +58,6 @@ export const useAppPreferencesSetup = ({
     }
 
     if (!listener && i18nInstance.isInitialized) {
-      logger.debug("setting up i18n listener")
       i18nInstance.on("languageChanged", onLanguage)
       setListener(true)
     }

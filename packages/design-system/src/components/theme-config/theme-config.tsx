@@ -29,14 +29,14 @@ const colors = colorOptions.map((colorOption) => colorOption.value)
 export const ThemeConfig = ({ flexDirection }: ThemeConfigProps) => {
   const theme = useTheme()
   const styles = useMemo(() => getStyles(theme), [theme])
-  const { toggleDarkMode, setThemeColor } = useThemePreferences()
+  const { toggleDarkMode, setThemeColor, darkMode } = useThemePreferences()
   const { i18n } = useTranslation()
 
   return (
     <View style={[styles.container, { flexDirection }]}>
       <LabelSwitch
         label={"DarkMode"}
-        value={theme.dark}
+        value={darkMode}
         onValueChange={toggleDarkMode}
       />
       <ColorPicker

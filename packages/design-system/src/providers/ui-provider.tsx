@@ -4,6 +4,7 @@ import React, { useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import {
+  ActivityIndicator,
   MD3Colors,
   MD3DarkTheme,
   MD3LightTheme
@@ -94,42 +95,33 @@ const UIProviderWithLanguage = ({
   })
 
   useEffect(() => {
-    console.log(`UIProvider: preferences: ${JSON.stringify(preferences)}`)
-    if (!preferences) {
+    if (preferences) {
       setActivePreferences(preferences)
     } else {
       setActivePreferences(defaultPreferences)
     }
   }, [preferences])
 
-  console.debug("UIProvider: activePreferences: ", activePreferences)
-  // if(!activePreferences) {
-  //   return <ActivityIndicator />
-  // }
+  if(!activePreferences) {
+    return <ActivityIndicator />
+  }
 
   return (
-    <ThemeProvider preferences={activePreferences ?? defaultPreferences}>
+    <ThemeProvider preferences={preferences ? activePreferences : defaultPreferences}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <ToastProvider>
-          <ConfirmProvider>
-            <CustomBottomSheetModal>{children}</CustomBottomSheetModal>
-          </ConfirmProvider>
-        </ToastProvider>
+        <ConfirmProvider>
+          <CustomBottomSheetModal>{children}</CustomBottomSheetModal>
+        </ConfirmProvider>
       </GestureHandlerRootView>
     </ThemeProvider>
   )
 }
 
-// LanguageWrapper
 export const UIProvider = ({
   locale,
   preferences,
   children,
 }: UIProviderProps) => {
-
-  useEffect(() => {
-    console.log("UIProvider: locale", locale)
-  }, [locale])
 
   return (
     <SafeAreaProvider>

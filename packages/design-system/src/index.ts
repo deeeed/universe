@@ -17,11 +17,6 @@ export * from "./hooks/use-app-preferences-setup"
 export * from "./hooks/use-app-theme-setup"
 export * from "./hooks/use-screen-width"
 
-export const boon = () => {
-  console.log("boom")
-  return "boom"
-}
-
 export * from "./providers/custom-bottomsheet-provider"
 export * from "./providers/language-provider"
 export * from "./providers/theme-provider"

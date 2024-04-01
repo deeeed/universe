@@ -2925,7 +2925,7 @@
     "@sinonjs/commons" "^3.0.0"
 
 "@siteed/design-system@^0.3.3", "@siteed/design-system@file:/Users/arthurbreton/Projects/@siteed/mobile-framework/packages/design-system":
-  version "0.3.13"
+  version "0.3.14"
   resolved "file:packages/design-system"
   dependencies:
     "@pchmn/expo-material3-theme" "^1.3.2"
