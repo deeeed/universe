@@ -1,8 +1,9 @@
+import { ConfirmProvider } from "@siteed/react-native-confirm"
+import { ToastProvider } from "@siteed/react-native-toaster"
 import React, { useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import {
-  ActivityIndicator,
   MD3Colors,
   MD3DarkTheme,
   MD3LightTheme
@@ -17,8 +18,6 @@ import { AppTheme, useAppThemeSetup } from "../hooks/use-app-theme-setup"
 import { CustomBottomSheetModal } from "./custom-bottomsheet-provider"
 import { LanguageProvider } from "./language-provider"
 import { ThemeProvider } from "./theme-provider"
-import { ToastProvider } from "@siteed/react-native-toaster"
-import { ConfirmProvider } from "@siteed/react-native-confirm"
 
 const defaultLightTheme: AppTheme = {
   ...MD3LightTheme,
