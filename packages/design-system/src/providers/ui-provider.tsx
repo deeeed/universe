@@ -1,5 +1,4 @@
 import { ConfirmProvider } from "@siteed/react-native-confirm"
-import { ToastProvider } from "@siteed/react-native-toaster"
 import React, { useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
