@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native"
 import { HelperText, MD3Theme, Searchbar } from "react-native-paper"
-import useScreenWidth from "../../hooks/use-screen-width"
+import { useScreenWidth } from "../../hooks/use-screen-width"
 import { FlatList } from "react-native-gesture-handler"
 
 const getStyles = (theme: MD3Theme) => {

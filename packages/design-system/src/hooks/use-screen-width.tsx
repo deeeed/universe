@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Dimensions } from "react-native"
 
-const useScreenWidth = () => {
+export const useScreenWidth = () => {
   const [screenWidth, setScreenWidth] = useState(
     Dimensions.get("window").width
   )
@@ -24,5 +24,3 @@ const useScreenWidth = () => {
 
   return screenWidth
 }
-
-export default useScreenWidth

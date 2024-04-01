@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native"
 import { HelperText, MD3Theme, Searchbar } from "react-native-paper"
-import useScreenWidth from "../../hooks/use-screen-width"
+import { useScreenWidth } from "../../hooks/use-screen-width"
 
 const getStyles = (theme: MD3Theme) => {
   return StyleSheet.create({
