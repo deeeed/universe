@@ -26,7 +26,7 @@
     "size": "bundle-size && size-limit",
     "storybook": "storybook dev -p 6060",
     "build-storybook": "storybook build",
-    "release": "release-it"
+    "release": "yarn build && release-it"
   },
   "dependencies": {
     "@pchmn/expo-material3-theme": "^1.3.2",
