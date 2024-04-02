@@ -1,30 +1,31 @@
-import { Slot } from 'expo-router';
-import { Text, View } from 'react-native';
-import { UIProvider } from '@siteed/design-system'
-import { LoggerProvider, useLoggerActions } from '@siteed/react-native-logger';
-import { useEffect } from 'react';
-import { useScreenWidth } from '@siteed/design-system';
+import { UIProvider, useScreenWidth } from "@siteed/design-system";
+import { LoggerProvider, useLoggerActions } from "@siteed/react-native-logger";
+import { Slot } from "expo-router";
+import { useEffect } from "react";
+import { Text, View } from "react-native";
 
 const WithLogger = ({ children }: { children: React.ReactNode }) => {
-    const { logger } = useLoggerActions('GoodApp')
-    const width = useScreenWidth()
+  const { logger } = useLoggerActions("GoodApp");
+  const width = useScreenWidth();
 
-    useEffect(() => {
-        logger.info('App started')
-    }, [logger])
+  useEffect(() => {
+    logger.info("App started");
+  }, [logger]);
 
-    return (
+  return (
     <View>
-        <Text>Width: {width}</Text>
-        {children}
-        </View>
-    )
-}
+      <Text>Width: {width}</Text>
+      {children}
+    </View>
+  );
+};
 
 export default function HomeLayout() {
-  return <LoggerProvider>
-        <WithLogger>
-            <Slot />
-        </WithLogger>
-    </LoggerProvider>;
+  return (
+    <LoggerProvider>
+      <UIProvider>
+        <Slot />
+      </UIProvider>
+    </LoggerProvider>
+  );
 }
