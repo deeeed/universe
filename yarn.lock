@@ -4366,7 +4366,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@siteed/design-system@npm:^0.3.15, @siteed/design-system@workspace:packages/design-system":
+"@siteed/design-system@workspace:^, @siteed/design-system@workspace:packages/design-system":
   version: 0.0.0-use.local
   resolution: "@siteed/design-system@workspace:packages/design-system"
   dependencies:
@@ -12340,7 +12340,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-localization@npm:^14.8.3":
+"expo-localization@npm:^14.8.3, expo-localization@npm:~14.8.3":
   version: 14.8.3
   resolution: "expo-localization@npm:14.8.3"
   dependencies:
@@ -12459,7 +12459,7 @@ __metadata:
     "@babel/core": "npm:^7.20.0"
     "@babel/plugin-proposal-export-namespace-from": "npm:^7.18.9"
     "@gorhom/bottom-sheet": "npm:^4.6.1"
-    "@siteed/design-system": "npm:^0.3.15"
+    "@siteed/design-system": "workspace:^"
     "@siteed/react-native-confirm": "npm:^0.4.0"
     "@siteed/react-native-logger": "npm:^0.4.0"
     "@siteed/react-native-toaster": "npm:^0.6.0"
@@ -12469,8 +12469,10 @@ __metadata:
     expo: "npm:~50.0.14"
     expo-constants: "npm:~15.4.5"
     expo-linking: "npm:~6.2.2"
+    expo-localization: "npm:~14.8.3"
     expo-router: "npm:~3.4.8"
     expo-status-bar: "npm:~1.11.1"
+    i18next: "npm:^23.10.1"
     prettier: "npm:^3.2.5"
     react: "npm:18.2.0"
     react-dom: "npm:18.2.0"
