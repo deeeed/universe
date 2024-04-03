@@ -19,7 +19,7 @@ import { CustomBottomSheetModal } from "./custom-bottomsheet-provider"
 import { LanguageProvider } from "./language-provider"
 import { ThemeProvider } from "./theme-provider"
 
-const defaultLightTheme: AppTheme = {
+export const DefaultLightTheme: AppTheme = {
   ...MD3LightTheme,
   dark: false,
   padding: {
@@ -44,7 +44,7 @@ const defaultLightTheme: AppTheme = {
   },
 }
 
-const defaultDarkTheme: AppTheme = {
+export const DefaultDarkTheme: AppTheme = {
   ...MD3DarkTheme,
   dark: true,
   padding: {
@@ -71,18 +71,30 @@ const defaultDarkTheme: AppTheme = {
 
 export interface UIProviderProps {
   locale?: string;
-  preferences?: ThemePreferences & ThemeActions;
+  lightTheme?: AppTheme;
+  darkTheme?: AppTheme;
+  preferences?: Partial<Omit<ThemePreferences, "theme">>;
+  actions?: ThemeActions;
   children: React.ReactNode;
 }
 
-const UIProviderWithLanguage = ({
+const UIProviderWithLanguageReady = ({
   preferences,
+  actions,
+  darkTheme,
+  lightTheme,
   children,
-}: UIProviderProps) => {
+}: Omit<UIProviderProps, "locale">) => {
   // Create default preferences if none are provided
   const [activePreferences, setActivePreferences] = React.useState<ThemePreferences & ThemeActions>()
   const {i18n} = useTranslation()
-  const { theme, setDarkMode, setThemeVersion } = useAppThemeSetup({ customDarkTheme: defaultDarkTheme, customLightTheme:defaultLightTheme })
+  const { theme: defaultTheme, darkMode, setDarkMode, setThemeVersion } = useAppThemeSetup({ customDarkTheme: DefaultDarkTheme, customLightTheme: DefaultLightTheme })
+
+  // Calculate the theme based on preferences
+  const theme = React.useMemo(() => {
+    return darkMode ? {...defaultTheme, ...darkTheme} : {...defaultTheme, ...lightTheme}
+  }, [darkMode, darkTheme, lightTheme, defaultTheme])
+
   const defaultPreferences = useAppPreferencesSetup({
     theme: theme,
     setDarkMode,
@@ -94,19 +106,21 @@ const UIProviderWithLanguage = ({
   })
 
   useEffect(() => {
+    let dynPrefs = {...defaultPreferences }
     if (preferences) {
-      setActivePreferences(preferences)
-    } else {
-      setActivePreferences(defaultPreferences)
+      dynPrefs = {...dynPrefs , ...preferences}
+    } else if(actions) {
+      dynPrefs = {...dynPrefs, ...actions}
     }
-  }, [preferences])
+    setActivePreferences(dynPrefs)
+  }, [preferences, actions])
 
   if(!activePreferences) {
     return <ActivityIndicator />
   }
 
   return (
-    <ThemeProvider preferences={preferences ? activePreferences : defaultPreferences}>
+    <ThemeProvider preferences={defaultPreferences}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ConfirmProvider>
           <CustomBottomSheetModal>{children}</CustomBottomSheetModal>
@@ -116,17 +130,32 @@ const UIProviderWithLanguage = ({
   )
 }
 
+const UIProviderWithLanguage = (props:Omit<UIProviderProps, "locale">) => {
+  const {i18n} = useTranslation()
+
+  if(!i18n.isInitialized) {
+    return <ActivityIndicator />
+  }
+
+  return (
+    <UIProviderWithLanguageReady {...props} />
+  )
+
+}
+
 export const UIProvider = ({
   locale,
+  actions,
   preferences,
+  darkTheme,
+  lightTheme,
   children,
 }: UIProviderProps) => {
-
   return (
     <SafeAreaProvider>
       {/* Wrap with LanguageProvider to have useTranslation available */}
       <LanguageProvider locale={locale}>
-        <UIProviderWithLanguage preferences={preferences} locale={locale}>
+        <UIProviderWithLanguage actions={actions} darkTheme={darkTheme} lightTheme={lightTheme} preferences={preferences}>
           {children}
         </UIProviderWithLanguage>
       </LanguageProvider>

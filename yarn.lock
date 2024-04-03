@@ -4428,6 +4428,7 @@ __metadata:
     intl-pluralrules: "npm:^2.0.1"
     os-browserify: "npm:^0.3.0"
     prop-types: "npm:^15.8.1"
+    react: "npm:^18.2.0"
     react-i18next: "npm:^14.1.0"
     react-native: "npm:0.73.6"
     react-native-gesture-handler: "npm:^2.15.0"
@@ -4476,6 +4477,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@siteed/mobile-framework@workspace:."
   dependencies:
+    prettier: "npm:^3.2.5"
     typescript: "npm:^5.4.3"
   languageName: unknown
   linkType: soft
@@ -19640,7 +19642,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react@npm:18.2.0, react@npm:^16.8.0 || ^17.0.0 || ^18.0.0":
+"react@npm:18.2.0, react@npm:^16.8.0 || ^17.0.0 || ^18.0.0, react@npm:^18.2.0":
   version: 18.2.0
   resolution: "react@npm:18.2.0"
   dependencies:

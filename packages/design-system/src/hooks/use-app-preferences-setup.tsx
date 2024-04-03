@@ -46,7 +46,7 @@ export const useAppPreferencesSetup = ({
 
   useEffect(() => {
     setDynamicTheme(theme)
-  }, [theme, dynamicTheme])
+  }, [theme])
 
   useEffect(() => {
     const onLanguage = (lng: string) => {

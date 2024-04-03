@@ -50,14 +50,14 @@ config.resolver = {
   // extraNodeModules,
   blacklistRE,
   resolveRequest: (context, moduleName, platform) => {
-    // if (moduleName.startsWith('@siteed/design-system')) {
-    //   // Logic to resolve the module name to a file path...
-    //   // NOTE: Throw an error if there is no resolution.
-    //   return {
-    //     filePath: designSystem + '/src/index.ts',
-    //     type: 'sourceFile',
-    //   };
-    // }
+    if (moduleName.startsWith("@siteed/design-system")) {
+      // Logic to resolve the module name to a file path...
+      // NOTE: Throw an error if there is no resolution.
+      return {
+        filePath: designSystem + "/src/index.ts",
+        type: "sourceFile",
+      };
+    }
 
     // Ensure you call the default resolver.
     return context.resolveRequest(context, moduleName, platform);

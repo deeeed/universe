@@ -1,9 +1,10 @@
 import { LoggerProvider } from "@siteed/react-native-logger"
 import type { Decorator, Preview } from "@storybook/react"
 import React from "react"
-import { Platform, ScrollView, View } from "react-native"
-import { ThemeConfig } from "../src/components/theme-config/theme-config"
+import { Platform, ScrollView } from "react-native"
+import { ScreenWrapper } from "../src/components/screen-wrapper/screen-wrapper"
 import { UIProvider } from "../src/providers/ui-provider"
+import { ThemeConfig } from "../src/settings/theme-config/theme-config"
 
 /** @type { import('@storybook/react').Preview } */
 const preview: Preview = {
@@ -35,14 +36,14 @@ export const decorators: Decorator[] = [
           ) : null
           }
           <UIProvider locale={"en"}>
-            <View style={{}}>
+            <>
               <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
                 <ThemeConfig flexDirection={"row"} />
               </ScrollView>
-              <View style={{ flex: 1, padding: 8, backgroundColor: "#D3D3D3", minHeight: 300 }}>
+              <ScreenWrapper style={{ minHeight: 300, padding: 8 }}>
                 <StoryFn />
-              </View>
-            </View>
+              </ScreenWrapper>
+            </>
           </UIProvider>
         </>
       </LoggerProvider>

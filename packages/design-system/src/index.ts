@@ -12,6 +12,7 @@ export * from "./components/select-items/select-items"
 export * from "./components/bottom-modal/footers/confirm-cancel-footer"
 export * from "./components/bottom-modal/handlers/label-handler"
 export * from "./components/bottom-modal/backdrop/custom-backdrop"
+export * from "./components/screen-wrapper/screen-wrapper"
 
 export * from "./hooks/use-app-preferences-setup"
 export * from "./hooks/use-app-theme-setup"

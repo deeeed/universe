@@ -4,7 +4,7 @@ import { MD3Theme, TextInput, useTheme } from "react-native-paper"
 import { Button } from "../button/Button"
 import { SelectButtons, SelectOption } from "../select-buttons/select-buttons"
 
-type InputType = "text" | "textarea" | "number" | "radio" | "select-button";
+type InputType = "text" | "textarea" | "number" | "radio" | "select-button" | "custom";
 
 export type DynamicType = string | number | SelectOption[] | SelectOption;
 
@@ -18,6 +18,7 @@ export interface DynInputProps {
   showFooter?: boolean;
   label?: string;
   numberOfLines?: number;
+  customRender?: (value: DynamicType, onChange: (value: DynamicType) => void) => React.ReactNode;
   onFinish?: (value: DynamicType) => void;
   onCancel?: () => void;
 }
@@ -55,6 +56,7 @@ export const DynInput = ({
   showFooter = true,
   label,
   numberOfLines,
+  customRender,
   onCancel,
   onFinish,
 }: DynInputProps) => {
@@ -118,6 +120,7 @@ export const DynInput = ({
     <View style={styles.container}>
       {inputType === "text" && renderText()}
       {inputType === "number" && renderNumber()}
+      {inputType === "custom" && customRender?.(data, handleChange)}
       {inputType === "select-button" && (
         <SelectButtons
           // Prevent passing references to the original data

@@ -5,8 +5,8 @@ import { SegmentedButtons } from "react-native-paper"
 import { colorOptions } from "../../_mocks/mock_data"
 import { AppTheme } from "../../hooks/use-app-theme-setup"
 import { useTheme, useThemePreferences } from "../../providers/theme-provider"
-import { LabelSwitch } from "../label-switch/label-switch"
-import { ColorPicker } from "../color-picker/color-picker"
+import { LabelSwitch } from "../../components/label-switch/label-switch"
+import { ColorPicker } from "../../components/color-picker/color-picker"
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
@@ -14,6 +14,7 @@ const getStyles = (theme: AppTheme) => {
       backgroundColor: theme.colors.surface,
       display: "flex",
       gap: 15,
+      paddingRight: 15,
       justifyContent: "center",
       alignItems: "center",
     },

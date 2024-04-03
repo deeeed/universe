@@ -28,7 +28,6 @@ export interface AppTheme extends Omit<MD3Theme, "colors"> {
 export interface SavedUserPreferences {
   darkMode: boolean;
   locale?: string;
-  themeName?: "default" | "custom"; // TODO add support for custom themes
   rippleEffectEnabled: boolean;
 }
 
@@ -66,8 +65,6 @@ export const useAppThemeSetup = ({
       })
       : undefined,
   }
-
-  console.log("theme", theme)
 
   return {
     theme,
