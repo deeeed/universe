@@ -5,8 +5,12 @@
     "packages/*",
     "examples/*"
   ],
-  "nohoist": ["**/react-native", "**/react-native/**"],
+  "nohoist": [
+    "**/react-native",
+    "**/react-native/**"
+  ],
   "devDependencies": {
     "typescript": "^5.4.3"
-  }
+  },
+  "packageManager": "yarn@4.1.1"
 }
