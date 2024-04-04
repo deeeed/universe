@@ -6,7 +6,7 @@ import { colorOptions } from "../../_mocks/mock_data"
 import { AppTheme } from "../../hooks/use-app-theme-setup"
 import { useTheme, useThemePreferences } from "../../providers/theme-provider"
 import { LabelSwitch } from "../../components/label-switch/label-switch"
-import { ColorPicker } from "../../components/color-picker/color-picker"
+import { ColorPicker } from "../../components/colors/color-picker/color-picker"
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({

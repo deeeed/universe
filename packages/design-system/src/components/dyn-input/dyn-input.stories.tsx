@@ -3,7 +3,7 @@ import React from "react"
 import { Pressable, View } from "react-native"
 import { Text as PaperText } from "react-native-paper"
 import { colorOptions, randomSelectValues } from "../../_mocks/mock_data"
-import { ColorItem } from "../color-item/color-item"
+import { ColorItem } from "../colors/color-item/color-item"
 import { DynInput, DynInputProps } from "./dyn-input"
 import { SelectOption } from "../select-buttons/select-buttons"
 

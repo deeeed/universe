@@ -1,7 +1,7 @@
 import React, { useMemo } from "react"
 import { ScrollView, StyleSheet, View } from "react-native"
 import { Text } from "react-native-paper"
-import { ColorItem } from "../../components/color-item/color-item"
+import { ColorItem } from "../../components/colors/color-item/color-item"
 import { useTheme } from "../../providers/theme-provider"
 
 const getStyles = () => {

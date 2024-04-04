@@ -2,10 +2,10 @@
 import React, { useEffect, useMemo } from "react"
 import { Pressable, StyleSheet, View } from "react-native"
 import { Text } from "react-native-paper"
-import { AppTheme } from "../../hooks/use-app-theme-setup"
-import { useBottomModal } from "../../providers/custom-bottomsheet-provider"
-import { useTheme } from "../../providers/theme-provider"
-import { SelectOption } from "../select-buttons/select-buttons"
+import { AppTheme } from "../../../hooks/use-app-theme-setup"
+import { useBottomModal } from "../../../providers/custom-bottomsheet-provider"
+import { useTheme } from "../../../providers/theme-provider"
+import { SelectOption } from "../../select-buttons/select-buttons"
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({

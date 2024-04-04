@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react"
-import { colorOptions } from "../../_mocks/mock_data"
+import { colorOptions } from "../../../_mocks/mock_data"
 import { ColorPicker, ColorPickerProps } from "./color-picker"
 
 const ColorPickerMeta: Meta<ColorPickerProps> = {
