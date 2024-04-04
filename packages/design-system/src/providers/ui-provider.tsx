@@ -1,6 +1,10 @@
 import { ConfirmProvider } from "@siteed/react-native-confirm"
 import React, { useEffect } from "react"
 import { useTranslation } from "react-i18next"
+import {
+  DarkTheme,
+  DefaultTheme,
+} from "@react-navigation/native"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import {
   ActivityIndicator,
@@ -34,12 +38,7 @@ export const DefaultLightTheme: AppTheme = {
   },
   colors: {
     ...MD3LightTheme.colors,
-    primary: "tomato",
-    secondary: "yellow",
-    card: "#121212",
-    border: "#121212",
-    notification: "#121212",
-    text: "#fff",
+    ...DefaultTheme.colors,
     brand: MD3Colors.primary0,
   },
 }
@@ -59,12 +58,7 @@ export const DefaultDarkTheme: AppTheme = {
   },
   colors: {
     ...MD3DarkTheme.colors,
-    primary: "tomato",
-    secondary: "yellow",
-    card: "#121212",
-    border: "#121212",
-    notification: "#121212",
-    text: "#fff",
+    ...DarkTheme.colors,
     brand: MD3Colors.primary0,
   },
 }

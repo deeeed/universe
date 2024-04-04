@@ -13,7 +13,7 @@ const WithLogger = ({ children }: { children: React.ReactNode }) => {
   const { theme } = useThemePreferences();
 
   useEffect(() => {
-    logger.info("App started");
+    logger.info("App started", theme);
   }, [logger]);
 
   return <ThemeProvider value={{ ...theme }}>{children}</ThemeProvider>;
@@ -25,7 +25,7 @@ export default function HomeLayout() {
       <UIProvider
         lightTheme={{
           ...DefaultLightTheme,
-          colors: { ...DefaultLightTheme.colors, background: "red" },
+          // colors: { ...DefaultLightTheme.colors, background: "red" },
         }}
       >
         <WithLogger>
