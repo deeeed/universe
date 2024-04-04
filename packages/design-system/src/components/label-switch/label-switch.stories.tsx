@@ -1,9 +1,9 @@
-import type { Meta } from "@storybook/react"
-import React from "react"
+import type { Meta, StoryObj } from "@storybook/react"
 import { LabelSwitch, LabelSwitchProps } from "./label-switch"
 
 const LabelSwitchMeta: Meta<typeof LabelSwitch> = {
   component: LabelSwitch,
+  tags: ["autodocs"],
   argTypes: {},
   args: {
     label: "subscribe to notification",
@@ -13,4 +13,14 @@ const LabelSwitchMeta: Meta<typeof LabelSwitch> = {
 
 export default LabelSwitchMeta
 
-export const Primary = (args: LabelSwitchProps) => <LabelSwitch {...args} />
+
+export const Primary: StoryObj<LabelSwitchProps> = {
+  args: {},
+  parameters: {
+    docs: {
+      source: {
+        code: "<LabelSwitch label=\"subscribe to notifications\" value={false} />",
+      },
+    },
+  },
+}

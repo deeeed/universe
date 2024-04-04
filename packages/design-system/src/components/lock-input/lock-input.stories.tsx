@@ -1,5 +1,4 @@
-import type { Meta } from "@storybook/react"
-import React from "react"
+import type { Meta, StoryObj } from "@storybook/react"
 import { LockInput, LockInputProps } from "./lock-input"
 
 const LockInputMeta: Meta<LockInputProps> = {
@@ -14,4 +13,19 @@ const LockInputMeta: Meta<LockInputProps> = {
 
 export default LockInputMeta
 
-export const Primary = (args: LockInputProps) => <LockInput {...args} />
+
+export const Primary: StoryObj<LockInputProps> = {
+  args: {},
+  parameters: {
+    docs: {
+      source: {
+        code: `
+<LockInput
+  locked={true}
+  label="Pinyin"
+  text="ni2 hao3"
+/>`,
+      },
+    },
+  },
+}

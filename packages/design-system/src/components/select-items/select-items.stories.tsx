@@ -1,4 +1,4 @@
-import type { Meta } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/react"
 import React from "react"
 import { View } from "react-native"
 import { Text } from "react-native-paper"
@@ -59,6 +59,7 @@ const renderSampleItem = ({
 
 const SelectItemsMeta: Meta<SelectItemsProps<ItemData>> = {
   component: SelectItems,
+  tags: ["autodocs"],
   argTypes: {},
   args: {
     options: sampleData,
@@ -68,38 +69,77 @@ const SelectItemsMeta: Meta<SelectItemsProps<ItemData>> = {
 
 export default SelectItemsMeta
 
-export const SingleSelectWithoutSearch: React.FC<
-  SelectItemsProps<ItemData>
-> = () => {
-  return (
-    <SelectItems<ItemData>
-      options={sampleData}
-      renderItem={renderSampleItem}
-      multiSelect={false}
-      showSearch={false}
-    />
-  )
+export const SingleSelectWithoutSearch: StoryObj<SelectItemsProps<ItemData>> = {
+  args: {
+    multiSelect: false,
+    showSearch: false,
+  },
+  parameters: {
+    docs: {
+      source: {
+        code: `
+interface ItemData {
+  id: string;
+  name: string;
 }
 
-export const MultiSelectWithSearch: React.FC<
-  SelectItemsProps<ItemData>
-> = () => (
-  <SelectItems<ItemData>
-    options={sampleData}
-    renderItem={renderSampleItem}
-    multiSelect={true}
-    showSearch={true}
-  />
-)
+const sampleData: SelectItemOption<ItemData>[] = [
+  { label: "Apple", item: { id: "1", name: "Apple" } },
+  { label: "Banana", item: { id: "2", name: "Banana" } },
+  { label: "Cherry", item: { id: "3", name: "Cherry" } },
+  { label: "Strawberry", item: { id: "4", name: "Strawberry" } },
+  // ... add more as needed
+]
 
-export const DisplayWithTwoColumns: React.FC<
-  SelectItemsProps<ItemData>
-> = () => (
-  <SelectItems<ItemData>
-    options={sampleData}
-    renderItem={renderSampleItem}
-    multiSelect={true}
-    showSearch={true}
-    cols={2}
-  />
-)
+<SelectItems<ItemData>
+  options={sampleData}
+  renderItem={renderSampleItem}
+  multiSelect={false}
+  showSearch={false}
+/>`,
+      },
+    },
+  },
+}
+
+export const MultiSelectWithSearch: StoryObj<SelectItemsProps<ItemData>> = {
+  args: {
+    multiSelect: true,
+    showSearch: true,
+  },
+  parameters: {
+    docs: {
+      source: {
+        code: `// Assuming sampleData and renderSampleItem are imported or defined above
+<SelectItems<ItemData>
+  options={sampleData}
+  renderItem={renderSampleItem}
+  multiSelect={true}
+  showSearch={true}
+/>`,
+      },
+    },
+  },
+}
+
+export const DisplayWithTwoColumns: StoryObj<SelectItemsProps<ItemData>> = {
+  args: {
+    multiSelect: true,
+    showSearch: true,
+    cols: 2,
+  },
+  parameters: {
+    docs: {
+      source: {
+        code: `// Assuming sampleData and renderSampleItem are imported or defined above
+<SelectItems<ItemData>
+  options={sampleData}
+  renderItem={renderSampleItem}
+  multiSelect={true}
+  showSearch={true}
+  cols={2}
+/>`,
+      },
+    },
+  },
+}

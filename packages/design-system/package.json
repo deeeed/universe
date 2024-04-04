@@ -37,10 +37,10 @@
   "peerDependencies": {
     "@expo/vector-icons": "*",
     "@gorhom/bottom-sheet": "*",
+    "@react-navigation/native": "*",
     "@siteed/react-native-confirm": "*",
     "@siteed/react-native-logger": "*",
     "@siteed/react-native-toaster": "*",
-    "@react-navigation/native": "*",
     "expo": "*",
     "expo-localization": "*",
     "i18next": "*",

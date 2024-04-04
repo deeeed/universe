@@ -1,6 +1,7 @@
 import { Header } from "./Header"
-import { fn } from "@storybook/test"
+// import { fn } from "@storybook/test"
 
+const fn = () => false
 export default {
   title: "Example/Header",
   component: Header,

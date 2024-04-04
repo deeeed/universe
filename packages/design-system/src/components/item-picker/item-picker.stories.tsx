@@ -1,4 +1,4 @@
-import type { Meta } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/react"
 import React from "react"
 import { ItemPicker, ItemPickerProps } from "./item-picker"
 
@@ -37,6 +37,7 @@ const options = [
 
 const CategoryPickerMeta: Meta<ItemPickerProps> = {
   component: ItemPicker,
+  tags: ["autodocs"],
   argTypes: {},
   args: {
     label: "Category",
@@ -50,13 +51,28 @@ const CategoryPickerMeta: Meta<ItemPickerProps> = {
 
 export default CategoryPickerMeta
 
-export const Primary = (args: ItemPickerProps) => <ItemPicker {...args} />
+export const Primary: StoryObj<ItemPickerProps> = {
+  args: {},
+  // Story level custom code snippet
+  parameters: {
+    docs: {
+      source: {
+        code: "<ItemPicker label=\"Category\" options={options} />",
+      },
+    },
+  },
+}
 
-export const AllSelected = (args: ItemPickerProps) => (
-  <ItemPicker
-    {...args}
-    options={options.map((opt) => {
-      return { ...opt, selected: true }
-    })}
-  />
-)
+export const AllSelected: StoryObj<ItemPickerProps> = {
+  args: {
+    ...CategoryPickerMeta.args, // Spread the default args from the meta
+    options: options.map((opt) => ({ ...opt, selected: true })),
+  },
+  parameters: {
+    docs: {
+      source: {
+        code: "<ItemPicker label=\"Category\" options={options.map(opt => ({ ...opt, selected: true }))} multi={true} />",
+      },
+    },
+  },
+}
