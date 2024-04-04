@@ -14,9 +14,12 @@ export * from "./components/bottom-modal/handlers/label-handler"
 export * from "./components/bottom-modal/backdrop/custom-backdrop"
 export * from "./components/screen-wrapper/screen-wrapper"
 export * from "./components/color-item/color-item"
+export * from "./components/themed-view/themed-view"
+export * from "./components/accordion/accordion"
+export * from "./components/accordion/accordion-item/accordion-item"
+
 export * from "./hooks/use-app-preferences-setup"
 export * from "./hooks/use-app-theme-setup"
-export * from "./components/themed-view/themed-view"
 export * from "./hooks/use-screen-width"
 
 export * from "./providers/custom-bottomsheet-provider"

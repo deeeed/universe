@@ -1,0 +1,30 @@
+import type { Meta } from "@storybook/react"
+import React from "react"
+import { Accordion, AccordionProps } from "./accordion"
+import { AccordionItemProps } from "./accordion-item/accordion-item"
+
+
+// Assuming you have a predefined set of items for demonstration
+const sampleData: AccordionItemProps[] = [
+  { title: "Item 1", children: <p>Details for item 1</p>, titleStyle: {} },
+  { title: "Item 2", children: <p>Details for item 2</p>, titleStyle: {} },
+  { title: "Item 3", children: <p>Details for item 3</p>, titleStyle: {} },
+]
+  
+const AccordionMeta: Meta<AccordionProps> = {
+  component: Accordion,
+  tags: ["autodocs"],
+  argTypes: {
+    singleExpand: {
+      control: "boolean",
+      description: "Allow only one expanded item at a time",
+    },
+  },
+  args: {
+    data: sampleData
+  },
+}
+
+export default AccordionMeta
+
+export const Primary = (args: AccordionProps) => <Accordion {...args} />
