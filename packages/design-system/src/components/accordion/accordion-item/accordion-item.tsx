@@ -2,19 +2,17 @@ import React, { useMemo } from "react"
 import { Pressable, StyleProp, StyleSheet, TextStyle, View, ViewStyle } from "react-native"
 import { Text } from "react-native-paper"
 import { MaterialCommunityIcons } from "@expo/vector-icons"
-import { useTheme } from "@siteed/design-system"
+import { useTheme } from "../../../providers/theme-provider"
 import { AppTheme } from "../../../hooks/use-app-theme-setup"
 
 const getStyles = ({theme}:{theme: AppTheme}) => {
   return StyleSheet.create({
     container: {
-      flex: 1,
     },
     header: {
       padding: 12,
       backgroundColor: theme.colors.primaryContainer,
       color: theme.colors.text,
-      flex: 1,
       flexDirection: "row",
       justifyContent:"space-between"
     },

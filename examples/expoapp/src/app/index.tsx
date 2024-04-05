@@ -17,7 +17,7 @@ export default function Page() {
   const { theme, darkMode, toggleDarkMode } = useThemePreferences();
   const width = useScreenWidth();
   return (
-    <ScreenWrapper>
+    <ScreenWrapper withScrollView style={{ paddingTop: 50 }}>
       <View style={{ flex: 1 }}>
         <Link href="/(tabs)">Go to Tabs</Link>
         <Text>Width: {width}</Text>
