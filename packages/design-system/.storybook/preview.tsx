@@ -5,6 +5,7 @@ import { Platform, ScrollView } from "react-native"
 import { ScreenWrapper } from "../src/components/screen-wrapper/screen-wrapper"
 import { UIProvider } from "../src/providers/ui-provider"
 import { ThemeConfig } from "../src/settings/theme-config/theme-config"
+import { colorOptions } from "../src/_mocks/mock_data"
 
 /** @type { import('@storybook/react').Preview } */
 const preview: Preview = {
@@ -17,6 +18,9 @@ const preview: Preview = {
     },
   },
 }
+
+const colors = colorOptions.map((colorOption) => colorOption.value)
+
 
 export const decorators: Decorator[] = [
   // Using a decorator to apply padding for every story
@@ -38,7 +42,7 @@ export const decorators: Decorator[] = [
           <UIProvider locale={"en"}>
             <>
               <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
-                <ThemeConfig flexDirection={"row"} />
+                <ThemeConfig flexDirection={"row"} colors={colors} />
               </ScrollView>
               <ScreenWrapper style={{ minHeight: 300, padding: 8 }}>
                 <StoryFn />

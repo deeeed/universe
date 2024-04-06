@@ -2,11 +2,10 @@ import React, { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { StyleSheet, View } from "react-native"
 import { SegmentedButtons } from "react-native-paper"
-import { colorOptions } from "../../_mocks/mock_data"
+import { ColorPicker } from "../../components/colors/color-picker/color-picker"
+import { LabelSwitch } from "../../components/label-switch/label-switch"
 import { AppTheme } from "../../hooks/use-app-theme-setup"
 import { useTheme, useThemePreferences } from "../../providers/theme-provider"
-import { LabelSwitch } from "../../components/label-switch/label-switch"
-import { ColorPicker } from "../../components/colors/color-picker/color-picker"
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
@@ -23,11 +22,10 @@ const getStyles = (theme: AppTheme) => {
 
 export interface ThemeConfigProps {
   flexDirection: "row" | "column";
+  colors: string[];
 }
 
-const colors = colorOptions.map((colorOption) => colorOption.value)
-
-export const ThemeConfig = ({ flexDirection }: ThemeConfigProps) => {
+export const ThemeConfig = ({ flexDirection, colors }: ThemeConfigProps) => {
   const theme = useTheme()
   const styles = useMemo(() => getStyles(theme), [theme])
   const { toggleDarkMode, setThemeColor, darkMode } = useThemePreferences()
@@ -46,7 +44,7 @@ export const ThemeConfig = ({ flexDirection }: ThemeConfigProps) => {
         colorOptions={colors}
         onChange={(newColor: string) => {
           console.log(newColor)
-          setThemeColor({ name: "primary", value: newColor })
+          // setThemeColor({ name: "primary", value: newColor })
         }}
       />
       <ColorPicker
@@ -56,15 +54,6 @@ export const ThemeConfig = ({ flexDirection }: ThemeConfigProps) => {
         onChange={(newColor: string) => {
           console.log(newColor)
           setThemeColor({ name: "secondary", value: newColor })
-        }}
-      />
-      <ColorPicker
-        label={"Tertiary"}
-        color={theme.colors.tertiary}
-        colorOptions={colors}
-        onChange={(newColor: string) => {
-          console.log(newColor)
-          setThemeColor({ name: "tertiary", value: newColor })
         }}
       />
       <SegmentedButtons

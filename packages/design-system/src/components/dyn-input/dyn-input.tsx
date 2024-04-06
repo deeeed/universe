@@ -69,7 +69,8 @@ export const DynInput = ({
       let formatedValue = value
 
       if (Array.isArray(value) && value.length > 0 && !multiSelect) {
-        formatedValue = value[0] as SelectOption
+        // Return the first selected value
+        formatedValue = value.find((option) => option.selected) as SelectOption
       }
 
       setTemp(value)
@@ -112,7 +113,6 @@ export const DynInput = ({
   }, [data, onCancel])
 
   const handleFinish = useCallback(() => {
-    console.log("calling onFinish DynInput ==> temp", temp)
     onFinish?.(temp)
   }, [onFinish, temp])
 

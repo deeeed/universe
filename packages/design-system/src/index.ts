@@ -19,6 +19,10 @@ export * from "./components/spacer/spacer"
 export * from "./components/text-input/text-input"
 export * from "./components/themed-view/themed-view"
 
+// Settings related components, useful to re-use and visualize in external storybooks
+export * from "./settings/theme-config/theme-config"
+export * from "./settings/theme-viewer/theme-viewer"
+
 export * from "./hooks/use-app-preferences-setup"
 export * from "./hooks/use-app-theme-setup"
 export * from "./hooks/use-screen-width"

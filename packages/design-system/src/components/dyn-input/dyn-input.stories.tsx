@@ -10,7 +10,7 @@ import { SelectOption } from "../select-buttons/select-buttons"
 const DynInputMeta: Meta<DynInputProps> = {
   component: DynInput,
   argTypes: {},
-  tags: ["autodocs"],
+  // tags: ["autodocs"],
   args: {
     data: "test",
     inputType: "text",
@@ -111,4 +111,14 @@ export const Custom: StoryObj<DynInputProps> = {
       },
     },
   },
+}
+
+export const Testing: StoryObj<DynInputProps> = {
+  args: {
+    multiSelect: false,
+    showFooter: false,
+  },
+  render: (args) => {
+    return <DynInput {...args} />
+  }
 }
