@@ -112,13 +112,3 @@ export const Custom: StoryObj<DynInputProps> = {
     },
   },
 }
-
-export const Testing: StoryObj<DynInputProps> = {
-  args: {
-    multiSelect: false,
-    showFooter: false,
-  },
-  render: (args) => {
-    return <DynInput {...args} />
-  }
-}
