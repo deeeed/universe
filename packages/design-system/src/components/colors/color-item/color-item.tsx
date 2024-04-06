@@ -1,5 +1,5 @@
 import React, { useMemo } from "react"
-import { StyleSheet, View } from "react-native"
+import { StyleProp, StyleSheet, TextStyle, View } from "react-native"
 import { Text } from "react-native-paper"
 
 const getStyles = () => {
@@ -23,19 +23,25 @@ const getStyles = () => {
       gap: 5,
       alignItems: "center",
       justifyContent: "center",
-    }
+    },
+    textStyle: {}
   })
 }
 
-export interface ColorItemProps { label?: string; color: string, previewSize?: number }
-export const ColorItem = ({ color, label, previewSize = 20 }: ColorItemProps ) => {
+export interface ColorItemProps { 
+  label?: string; 
+  labelStyle?: StyleProp<TextStyle>;
+  color: string, 
+  previewSize?: number 
+}
+export const ColorItem = ({ color, labelStyle, label, previewSize = 20 }: ColorItemProps ) => {
   const styles = useMemo(() => getStyles(), [])
 
   return <View style={styles.container}>
     <View style={[styles.colorPreview, { backgroundColor: color, width: previewSize, height: previewSize }]} />
     {label ? <View style={styles.labelContainer}>
-      <Text>{label}</Text>
-      <Text>( {color} )</Text>
-    </View> : <Text>{color}</Text>}
+      <Text style={[styles.textStyle, labelStyle]}>{label}</Text>
+      <Text style={[styles.textStyle, labelStyle]}>( {color} )</Text>
+    </View> : <Text style={[styles.textStyle, labelStyle]}>{color}</Text>}
   </View>
 }
