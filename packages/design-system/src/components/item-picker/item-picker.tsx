@@ -44,18 +44,21 @@ export interface ItemPickerProps {
   options: SelectOption[];
   label: string;
   multi?: boolean;
+  emptyLabel?: string;
   onFinish?: (selection: SelectOption[]) => void;
 }
 export const ItemPicker = ({
   onFinish,
   options,
   multi = false,
+  emptyLabel = 'No selection',
   label,
 }: ItemPickerProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const { editProp } = useBottomModal();
   const [activeOptions, setActiveOptions] = useState<SelectOption[]>(options);
+  const selectedOptions = options.filter((option) => option.selected);
 
   useEffect(() => {
     setActiveOptions(options);
@@ -83,8 +86,8 @@ export const ItemPicker = ({
             {label}
           </Text>
         </Pressable>
-        {activeOptions.length === 0 ? (
-          <Text style={styles.emptyText}>No selection</Text>
+        {selectedOptions.length === 0 ? (
+          <Text style={styles.emptyText}>{emptyLabel}</Text>
         ) : (
           <ScrollView
             horizontal={true}
@@ -92,30 +95,30 @@ export const ItemPicker = ({
             style={styles.scrollview}
             contentContainerStyle={styles.scrollContainer}
           >
-            {activeOptions.map((category, index) => {
-              if (category.selected === true) {
-                return (
-                  <Chip
-                    key={`cid${index}`}
-                    style={{ backgroundColor: category.color }}
-                    compact={true}
-                    mode={'flat'}
-                  >
-                    {category.label}
-                  </Chip>
-                );
-              } else return undefined;
+            {selectedOptions.map((category, index) => {
+              return (
+                <Chip
+                  key={`cid${index}`}
+                  style={{ backgroundColor: category.color }}
+                  compact={true}
+                  mode={'flat'}
+                >
+                  {category.label}
+                </Chip>
+              );
             })}
           </ScrollView>
         )}
       </View>
-      <Pressable
-        style={styles.actionContainer}
-        onPress={handlePick}
-        testID="picker-right-handle"
-      >
-        <AntDesign name="right" size={24} />
-      </Pressable>
+      {activeOptions.length > 0 && (
+        <Pressable
+          style={styles.actionContainer}
+          onPress={handlePick}
+          testID="picker-right-handle"
+        >
+          <AntDesign name="right" size={24} />
+        </Pressable>
+      )}
     </View>
   );
 };

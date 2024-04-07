@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { colorOptions } from '../../_mocks/mock_data';
 import { SelectOption } from '../select-buttons/select-buttons';
 import { ItemPicker, ItemPickerProps } from './item-picker';
+import { Story } from '@storybook/blocks';
 
 const options = [
   {
@@ -61,6 +62,19 @@ export const Primary: StoryObj<ItemPickerProps> = {
     docs: {
       source: {
         code: '<ItemPicker label="Category" options={options} />',
+      },
+    },
+  },
+};
+
+export const NoSelection: StoryObj<ItemPickerProps> = {
+  args: {
+    options: [],
+  },
+  parameters: {
+    docs: {
+      source: {
+        code: '<ItemPicker label="Category" options={options.map(opt => ({ ...opt, selected: false }))} />',
       },
     },
   },
