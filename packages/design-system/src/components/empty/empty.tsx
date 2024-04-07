@@ -1,15 +1,15 @@
-import React, { useMemo } from "react"
-import { Image, ImageSourcePropType, StyleSheet, View } from "react-native"
-import { Button, MD3Theme, Text, useTheme } from "react-native-paper"
+import React, { useMemo } from 'react';
+import { Image, ImageSourcePropType, StyleSheet, View } from 'react-native';
+import { Button, MD3Theme, Text, useTheme } from 'react-native-paper';
 
 const getItemStyle = (_: { theme: MD3Theme }) => {
   return StyleSheet.create({
     container: {
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
       flexGrow: 1,
-      display: "flex",
+      display: 'flex',
       gap: 20,
       marginTop: 20,
     },
@@ -18,8 +18,8 @@ const getItemStyle = (_: { theme: MD3Theme }) => {
       width: 200,
       padding: 5,
     },
-  })
-}
+  });
+};
 
 export interface EmptyProps {
   image: ImageSourcePropType;
@@ -29,8 +29,8 @@ export interface EmptyProps {
 }
 
 export const Empty = ({ message, onPress, buttonValue, image }: EmptyProps) => {
-  const theme = useTheme()
-  const styles = useMemo(() => getItemStyle({ theme }), [theme])
+  const theme = useTheme();
+  const styles = useMemo(() => getItemStyle({ theme }), [theme]);
 
   return (
     <View style={styles.container}>
@@ -38,5 +38,5 @@ export const Empty = ({ message, onPress, buttonValue, image }: EmptyProps) => {
       <Text variant="labelMedium">{message}</Text>
       {buttonValue && <Button onPress={onPress}>{buttonValue}</Button>}
     </View>
-  )
-}
+  );
+};

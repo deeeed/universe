@@ -1,6 +1,6 @@
-import React from "react"
-import { TextInput } from "../text-input/text-input"
-import { TextInput as PTextInput } from "react-native-paper"
+import React from 'react';
+import { TextInput } from '../text-input/text-input';
+import { TextInput as PTextInput } from 'react-native-paper';
 export interface LockInputProps {
   locked: boolean;
   label?: string;
@@ -16,10 +16,10 @@ export const LockInput = ({ locked, label, text, onPress }: LockInputProps) => {
       disabled={locked}
       right={
         <PTextInput.Icon
-          icon={locked ? "lock" : "lock-open-variant-outline"}
+          icon={locked ? 'lock' : 'lock-open-variant-outline'}
           onPress={onPress}
         />
       }
     />
-  )
-}
+  );
+};

@@ -6,8 +6,8 @@ import {
   BottomSheetModalProvider,
   BottomSheetView,
   useBottomSheetModal,
-} from "@gorhom/bottom-sheet"
-import { useLoggerActions } from "@siteed/react-native-logger"
+} from '@gorhom/bottom-sheet';
+import { useLoggerActions } from '@siteed/react-native-logger';
 import React, {
   FunctionComponent,
   ReactNode,
@@ -15,30 +15,30 @@ import React, {
   useCallback,
   useRef,
   useState,
-} from "react"
-import { StyleSheet } from "react-native"
+} from 'react';
+import { StyleSheet } from 'react-native';
 import {
   CustomBackdrop,
   CustomBackdropProps,
-} from "../components/bottom-modal/backdrop/custom-backdrop"
-import { ConfirmCancelFooter } from "../components/bottom-modal/footers/confirm-cancel-footer"
-import { LabelHandler } from "../components/bottom-modal/handlers/label-handler"
+} from '../components/bottom-modal/backdrop/custom-backdrop';
+import { ConfirmCancelFooter } from '../components/bottom-modal/footers/confirm-cancel-footer';
+import { LabelHandler } from '../components/bottom-modal/handlers/label-handler';
 import {
   DynInput,
   DynInputProps,
   DynamicType,
-} from "../components/dyn-input/dyn-input"
-import { SelectItemOption } from "../components/select-items/select-items"
+} from '../components/dyn-input/dyn-input';
+import { SelectItemOption } from '../components/select-items/select-items';
 
 interface CustomBottomSheetModalProviderProps {
   dismiss: (key?: string) => boolean;
-  editProp: (props: DynInputProps) => Promise<DynInputProps["data"]>;
+  editProp: (props: DynInputProps) => Promise<DynInputProps['data']>;
   openDrawer: ({
     render,
   }: {
     snapPoints?: string[];
     title?: string;
-    footerType?: "confirm_cancel";
+    footerType?: 'confirm_cancel';
     initialData?: unknown;
     render: (props: {
       resolve?: (value: unknown) => void;
@@ -51,7 +51,7 @@ interface CustomBottomSheetModalProviderProps {
 
 export const CustomContext = createContext<
   CustomBottomSheetModalProviderProps | undefined
->(undefined)
+>(undefined);
 
 interface CustomBottomSheetModalProps {
   children: ReactNode;
@@ -64,80 +64,80 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     paddingBottom: 40,
   },
-})
+});
 
-const defaultSnapPoints = ["40%", "80%"]
+const defaultSnapPoints = ['40%', '80%'];
 
 const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   children,
 }) => {
-  const { dismiss, dismissAll } = useBottomSheetModal()
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null)
-  const [snapPoints, setSnapPoints] = useState(defaultSnapPoints)
-  const { logger } = useLoggerActions("CustomBottomSheetModalProvider")
-  const onFinishResolveRef = useRef<(values: DynInputProps["data"]) => void>()
-  const onCustomDrawerResolveRef = useRef<(values: unknown) => void>()
-  const onCustomDrawerRejectRef = useRef<(error: unknown) => void>()
-  const [drawerContent, setDrawerContent] = useState<ReactNode>()
-  const [footerType, setFooterType] = useState<"confirm_cancel">()
-  const [title, setTitle] = useState<string>()
+  const { dismiss, dismissAll } = useBottomSheetModal();
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [snapPoints, setSnapPoints] = useState(defaultSnapPoints);
+  const { logger } = useLoggerActions('CustomBottomSheetModalProvider');
+  const onFinishResolveRef = useRef<(values: DynInputProps['data']) => void>();
+  const onCustomDrawerResolveRef = useRef<(values: unknown) => void>();
+  const onCustomDrawerRejectRef = useRef<(error: unknown) => void>();
+  const [drawerContent, setDrawerContent] = useState<ReactNode>();
+  const [footerType, setFooterType] = useState<'confirm_cancel'>();
+  const [title, setTitle] = useState<string>();
 
-  const initialInputParamsRef = useRef<string>()
-  const latestInputParamsRef = useRef<unknown>()
+  const initialInputParamsRef = useRef<string>();
+  const latestInputParamsRef = useRef<unknown>();
   // const { t } = useTranslation('bottom_modal');
 
   const editProp = useCallback(
     async (
-      props: Omit<DynInputProps, "onFinish">
-    ): Promise<DynInputProps["data"]> => {
+      props: Omit<DynInputProps, 'onFinish'>
+    ): Promise<DynInputProps['data']> => {
       const newInputParams = {
         ...props,
         onCancel: () => {
           if (bottomSheetModalRef.current) {
-            bottomSheetModalRef.current.dismiss()
+            bottomSheetModalRef.current.dismiss();
           }
         },
         onFinish: (values: DynamicType) => {
           if (onFinishResolveRef.current) {
-            onFinishResolveRef.current(values)
-            onFinishResolveRef.current = undefined
+            onFinishResolveRef.current(values);
+            onFinishResolveRef.current = undefined;
           }
           if (bottomSheetModalRef.current) {
-            bottomSheetModalRef.current.dismiss()
+            bottomSheetModalRef.current.dismiss();
           }
         },
-      }
+      };
 
-      setDrawerContent(<DynInput {...newInputParams} />)
+      setDrawerContent(<DynInput {...newInputParams} />);
 
       if (bottomSheetModalRef.current) {
-        bottomSheetModalRef.current.snapToIndex(0)
-        bottomSheetModalRef.current.present()
+        bottomSheetModalRef.current.snapToIndex(0);
+        bottomSheetModalRef.current.present();
       }
 
       return new Promise((resolve) => {
-        onFinishResolveRef.current = resolve
-      })
+        onFinishResolveRef.current = resolve;
+      });
     },
     []
-  )
+  );
 
   const handleCancelFooter = useCallback(() => {
     if (bottomSheetModalRef.current) {
       if (initialInputParamsRef.current) {
         const temp = JSON.parse(
           initialInputParamsRef.current
-        ) as SelectItemOption<unknown>[]
+        ) as SelectItemOption<unknown>[];
         // printout selected options
         logger.debug(
-          "handleCancelFooter options",
+          'handleCancelFooter options',
           latestInputParamsRef.current
-        )
-        onCustomDrawerResolveRef.current?.(temp)
+        );
+        onCustomDrawerResolveRef.current?.(temp);
       }
       // bottomSheetModalRef.current.dismiss();
     }
-  }, [logger])
+  }, [logger]);
 
   const handleFinishFooter = useCallback(() => {
     if (bottomSheetModalRef.current) {
@@ -147,28 +147,28 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       //     .filter((o) => o.selected)
       //     .map((o) => o.label)
       // );
-      logger.debug("finish footer", latestInputParamsRef.current)
-      onCustomDrawerResolveRef.current?.(latestInputParamsRef.current)
+      logger.debug('finish footer', latestInputParamsRef.current);
+      onCustomDrawerResolveRef.current?.(latestInputParamsRef.current);
     }
-  }, [logger])
+  }, [logger]);
 
   const renderFooter = useCallback(
     (props: BottomSheetFooterProps) => {
-      logger.debug(`renderFooter type=${footerType}`)
-      if (footerType === "confirm_cancel") {
+      logger.debug(`renderFooter type=${footerType}`);
+      if (footerType === 'confirm_cancel') {
         return (
           <ConfirmCancelFooter
             {...props}
             onCancel={handleCancelFooter}
             onFinish={handleFinishFooter}
           />
-        )
+        );
       }
 
-      return undefined
+      return undefined;
     },
     [footerType, handleCancelFooter, handleFinishFooter, logger]
-  )
+  );
 
   const renderHandler = useCallback(
     (props: BottomSheetHandleProps) =>
@@ -178,25 +178,25 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         <BottomSheetHandle {...props} />
       ),
     [title]
-  )
+  );
 
   const renderBackdrop = useCallback(
     (props: CustomBackdropProps) => {
       return (
         <CustomBackdrop
           {...props}
-          pressBehavior={"close"}
+          pressBehavior={'close'}
           onPress={() => {
-            logger.debug("backdrop pressed")
+            logger.debug('backdrop pressed');
             if (bottomSheetModalRef.current) {
-              bottomSheetModalRef.current.dismiss()
+              bottomSheetModalRef.current.dismiss();
             }
           }}
         />
-      )
+      );
     },
     [logger]
-  )
+  );
 
   const openDrawer = useCallback(
     async ({
@@ -209,7 +209,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       snapPoints?: string[];
       initialData?: unknown; // Used to restore value when cancel is pressed
       title?: string;
-      footerType?: "confirm_cancel";
+      footerType?: 'confirm_cancel';
       render: (_: {
         resolve?: (value: unknown) => void;
         onChange?: (value: unknown) => void;
@@ -217,66 +217,66 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       }) => ReactNode;
     }) => {
       if (_snapPoints) {
-        setSnapPoints(_snapPoints)
+        setSnapPoints(_snapPoints);
       }
 
       if (_footerType) {
-        setFooterType(_footerType)
+        setFooterType(_footerType);
       }
 
       if (_title) {
-        setTitle(_title)
+        setTitle(_title);
       }
 
-      logger.info("openDrawer", {
+      logger.info('openDrawer', {
         initialData,
         _snapPoints,
         _footerType,
         _title,
-      })
-      initialInputParamsRef.current = JSON.stringify(initialData)
+      });
+      initialInputParamsRef.current = JSON.stringify(initialData);
 
       return new Promise((resolve, reject) => {
         const wrapResolve = (value: unknown) => {
-          logger.log("wrapResolve", value)
-          resolve(value)
+          logger.log('wrapResolve', value);
+          resolve(value);
           if (bottomSheetModalRef.current) {
-            bottomSheetModalRef.current.dismiss()
+            bottomSheetModalRef.current.dismiss();
           }
-        }
+        };
         const wrapReject = (error: unknown) => {
           if (bottomSheetModalRef.current) {
-            bottomSheetModalRef.current.dismiss()
+            bottomSheetModalRef.current.dismiss();
           }
-          reject(error)
-        }
+          reject(error);
+        };
 
-        onCustomDrawerResolveRef.current = wrapResolve
-        onCustomDrawerRejectRef.current = wrapReject
+        onCustomDrawerResolveRef.current = wrapResolve;
+        onCustomDrawerRejectRef.current = wrapReject;
 
         setDrawerContent(
           render({
             resolve: wrapResolve,
             onChange: (newValue) => {
               logger.debug(
-                "onChange",
+                'onChange',
                 (newValue as SelectItemOption<unknown>[])
                   .filter((o) => o.selected)
                   .map((o) => o.label)
-              )
-              latestInputParamsRef.current = newValue
+              );
+              latestInputParamsRef.current = newValue;
             },
             reject: wrapReject,
           })
-        )
+        );
         if (bottomSheetModalRef.current) {
-          bottomSheetModalRef.current.present()
-          bottomSheetModalRef.current.snapToIndex(0)
+          bottomSheetModalRef.current.present();
+          bottomSheetModalRef.current.snapToIndex(0);
         }
-      })
+      });
     },
     [logger]
-  )
+  );
 
   const handleSheetChanges = useCallback((index: number) => {
     if (index === -1) {
@@ -296,12 +296,12 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       // }
 
       // Reset content
-      setDrawerContent(undefined)
-      setSnapPoints(defaultSnapPoints)
-      setFooterType(undefined)
-      setTitle(undefined)
+      setDrawerContent(undefined);
+      setSnapPoints(defaultSnapPoints);
+      setFooterType(undefined);
+      setTitle(undefined);
     }
-  }, [])
+  }, []);
 
   return (
     <CustomContext.Provider
@@ -323,8 +323,8 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         </BottomSheetView>
       </BottomSheetModal>
     </CustomContext.Provider>
-  )
-}
+  );
+};
 
 export const CustomBottomSheetModal: FunctionComponent<
   CustomBottomSheetModalProps
@@ -333,15 +333,15 @@ export const CustomBottomSheetModal: FunctionComponent<
     <BottomSheetModalProvider>
       <WithProvider>{children}</WithProvider>
     </BottomSheetModalProvider>
-  )
-}
+  );
+};
 
 export const useBottomModal = () => {
-  const context = React.useContext(CustomContext)
+  const context = React.useContext(CustomContext);
   if (!context) {
     throw new Error(
-      "useCustomBottomSheetModal must be used within a CustomBottomSheetModalProvider"
-    )
+      'useCustomBottomSheetModal must be used within a CustomBottomSheetModalProvider'
+    );
   }
-  return context
-}
+  return context;
+};

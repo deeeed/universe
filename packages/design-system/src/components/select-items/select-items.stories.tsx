@@ -1,12 +1,12 @@
-import type { Meta, StoryObj } from "@storybook/react"
-import React from "react"
-import { View } from "react-native"
-import { Text } from "react-native-paper"
+import type { Meta, StoryObj } from '@storybook/react';
+import React from 'react';
+import { View } from 'react-native';
+import { Text } from 'react-native-paper';
 import {
   SelectItemOption,
   SelectItems,
   SelectItemsProps,
-} from "./select-items"
+} from './select-items';
 
 interface ItemData {
   id: string;
@@ -14,12 +14,12 @@ interface ItemData {
 }
 
 const sampleData: SelectItemOption<ItemData>[] = [
-  { label: "Apple", item: { id: "1", name: "Apple" } },
-  { label: "Banana", item: { id: "2", name: "Banana" } },
-  { label: "Cherry", item: { id: "3", name: "Cherry" } },
-  { label: "Strawberry", item: { id: "4", name: "Strawberry" } },
+  { label: 'Apple', item: { id: '1', name: 'Apple' } },
+  { label: 'Banana', item: { id: '2', name: 'Banana' } },
+  { label: 'Cherry', item: { id: '3', name: 'Cherry' } },
+  { label: 'Strawberry', item: { id: '4', name: 'Strawberry' } },
   // ... add more as needed
-]
+];
 
 const renderSampleItem = ({
   item,
@@ -40,9 +40,9 @@ const renderSampleItem = ({
     <View
       style={{
         flex: 1,
-        display: "flex",
-        flexDirection: "row",
-        backgroundColor: item.selected ? "red" : "white",
+        display: 'flex',
+        flexDirection: 'row',
+        backgroundColor: item.selected ? 'red' : 'white',
       }}
     >
       <Text
@@ -54,20 +54,20 @@ const renderSampleItem = ({
         {item.label}
       </Text>
     </View>
-  )
-}
+  );
+};
 
 const SelectItemsMeta: Meta<SelectItemsProps<ItemData>> = {
   component: SelectItems,
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {},
   args: {
     options: sampleData,
     renderItem: renderSampleItem,
   },
-}
+};
 
-export default SelectItemsMeta
+export default SelectItemsMeta;
 
 export const SingleSelectWithoutSearch: StoryObj<SelectItemsProps<ItemData>> = {
   args: {
@@ -100,7 +100,7 @@ const sampleData: SelectItemOption<ItemData>[] = [
       },
     },
   },
-}
+};
 
 export const MultiSelectWithSearch: StoryObj<SelectItemsProps<ItemData>> = {
   args: {
@@ -120,7 +120,7 @@ export const MultiSelectWithSearch: StoryObj<SelectItemsProps<ItemData>> = {
       },
     },
   },
-}
+};
 
 export const DisplayWithTwoColumns: StoryObj<SelectItemsProps<ItemData>> = {
   args: {
@@ -142,4 +142,4 @@ export const DisplayWithTwoColumns: StoryObj<SelectItemsProps<ItemData>> = {
       },
     },
   },
-}
+};

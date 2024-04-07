@@ -1,20 +1,20 @@
-import { AntDesign } from "@expo/vector-icons"
-import React, { useCallback, useMemo } from "react"
-import { Pressable, ScrollView, StyleSheet, View } from "react-native"
-import { Chip, Text } from "react-native-paper"
-import { AppTheme } from "../../hooks/use-app-theme-setup"
-import { SelectOption } from "../select-buttons/select-buttons"
-import { useTheme } from "../../providers/theme-provider"
-import { useBottomModal } from "../../providers/custom-bottomsheet-provider"
+import { AntDesign } from '@expo/vector-icons';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Chip, Text } from 'react-native-paper';
+import { AppTheme } from '../../hooks/use-app-theme-setup';
+import { useBottomModal } from '../../providers/custom-bottomsheet-provider';
+import { useTheme } from '../../providers/theme-provider';
+import { SelectOption } from '../select-buttons/select-buttons';
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
       backgroundColor: theme.colors.surface,
-      display: "flex",
-      flexDirection: "row",
-      justifyContent: "center",
-      alignItems: "center",
+      display: 'flex',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     leftSide: {
       flexGrow: 1,
@@ -33,9 +33,12 @@ const getStyles = (theme: AppTheme) => {
       padding: 10,
     },
     title: {},
-    emptyText: {},
-  })
-}
+    emptyText: {
+      padding: 10,
+      color: theme.colors.scrim,
+    },
+  });
+};
 
 export interface ItemPickerProps {
   options: SelectOption[];
@@ -49,23 +52,28 @@ export const ItemPicker = ({
   multi = false,
   label,
 }: ItemPickerProps) => {
-  const theme = useTheme()
-  const styles = useMemo(() => getStyles(theme), [theme])
-  const { editProp } = useBottomModal()
+  const theme = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+  const { editProp } = useBottomModal();
+  const [activeOptions, setActiveOptions] = useState<SelectOption[]>(options);
+
+  useEffect(() => {
+    setActiveOptions(options);
+  }, [options]);
 
   const handlePick = useCallback(async () => {
     // pick new categories between allCategories
     const newSelection = (await editProp({
-      data: options,
+      data: activeOptions,
       multiSelect: multi,
       showFooter: true,
       min: 0,
       max: Infinity,
       showSearch: false,
-      inputType: "select-button",
-    })) as SelectOption[]
-    onFinish?.(newSelection)
-  }, [editProp, onFinish, multi, options])
+      inputType: 'select-button',
+    })) as SelectOption[];
+    onFinish?.(newSelection);
+  }, [editProp, onFinish, multi, activeOptions]);
 
   return (
     <View style={styles.container}>
@@ -75,7 +83,7 @@ export const ItemPicker = ({
             {label}
           </Text>
         </Pressable>
-        {options.length === 0 ? (
+        {activeOptions.length === 0 ? (
           <Text style={styles.emptyText}>No selection</Text>
         ) : (
           <ScrollView
@@ -84,14 +92,19 @@ export const ItemPicker = ({
             style={styles.scrollview}
             contentContainerStyle={styles.scrollContainer}
           >
-            {options.map((category, index) => {
+            {activeOptions.map((category, index) => {
               if (category.selected === true) {
                 return (
-                  <Chip key={`cid${index}`} compact={true} mode={"flat"}>
+                  <Chip
+                    key={`cid${index}`}
+                    style={{ backgroundColor: category.color }}
+                    compact={true}
+                    mode={'flat'}
+                  >
                     {category.label}
                   </Chip>
-                )
-              } else return undefined
+                );
+              } else return undefined;
             })}
           </ScrollView>
         )}
@@ -104,5 +117,5 @@ export const ItemPicker = ({
         <AntDesign name="right" size={24} />
       </Pressable>
     </View>
-  )
-}
+  );
+};
