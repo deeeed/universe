@@ -4,7 +4,6 @@ import { View } from 'react-native';
 import { colorOptions } from '../../_mocks/mock_data';
 import { SelectOption } from '../select-buttons/select-buttons';
 import { ItemPicker, ItemPickerProps } from './item-picker';
-import { Story } from '@storybook/blocks';
 
 const options = [
   {
