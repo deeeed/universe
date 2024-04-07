@@ -169,16 +169,6 @@ export const UIProvider = ({
       {/* Wrap with LanguageProvider to have useTranslation available */}
       <LanguageProvider locale={locale}>
         <>
-          {Platform.OS === 'web' ? (
-            <style type="text/css">
-              {`
-                  @font-face {
-                    font-family: 'MaterialCommunityIcons';
-                    src: url(${require('react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf')}) format('truetype');
-                  }
-                `}
-            </style>
-          ) : null}
           <UIProviderWithLanguage
             actions={actions}
             darkTheme={darkTheme}
