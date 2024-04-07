@@ -37,6 +37,12 @@ export const DefaultLightTheme: AppTheme = {
     ...MD3LightTheme.colors,
     ...DefaultTheme.colors,
     brand: MD3Colors.primary0,
+    success: '#90EE90',
+    successContainer: 'rgba(75,153,79,0.1)',
+    warning: '#FFC300',
+    warningContainer: 'rgba(255,193,7,0.1)',
+    info: '#00BBFF',
+    infoContainer: 'rgba(0,122,255,0.1)',
   },
 };
 
@@ -57,6 +63,12 @@ export const DefaultDarkTheme: AppTheme = {
     ...MD3DarkTheme.colors,
     ...DarkTheme.colors,
     brand: MD3Colors.primary0,
+    success: 'rgba(75,153,79,0.9)',
+    successContainer: 'rgba(75,153,79,0.1)',
+    warning: 'rgba(255,193,7,0.9)',
+    warningContainer: 'rgba(255,193,7,0.1)',
+    info: 'rgba(0,122,255,0.9)',
+    infoContainer: 'rgba(0,122,255,0.1)',
   },
 };
 

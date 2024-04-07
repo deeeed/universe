@@ -1,11 +1,9 @@
-import type { Meta, StoryFn, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { colorOptions } from '../../_mocks/mock_data';
-import { ItemPicker, ItemPickerProps } from './item-picker';
 import { SelectOption } from '../select-buttons/select-buttons';
-import { Text } from 'react-native-paper';
-import { Button } from '../button/Button';
+import { ItemPicker, ItemPickerProps } from './item-picker';
 
 const options = [
   {

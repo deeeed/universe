@@ -6,11 +6,13 @@ export interface AppTheme extends Omit<MD3Theme, 'colors'> {
   // add fields for @react-navigation/native theme compatibility
   dark: boolean;
   padding: {
+    // should adjust based on viewport
     s: number;
     m: number;
     l: number;
   };
   margin: {
+    // should adjust based on viewport
     s: number;
     m: number;
     l: number;
@@ -20,6 +22,13 @@ export interface AppTheme extends Omit<MD3Theme, 'colors'> {
     text: string;
     border: string;
     notification: string;
+    // notification related
+    warning: string;
+    warningContainer: string;
+    success: string;
+    successContainer: string;
+    info: string;
+    infoContainer: string;
     // custom fields
     brand?: string;
   };

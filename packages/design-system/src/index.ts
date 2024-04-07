@@ -18,6 +18,7 @@ export * from './components/select-items/select-items';
 export * from './components/spacer/spacer';
 export * from './components/text-input/text-input';
 export * from './components/themed-view/themed-view';
+export * from './components/notice/notice';
 
 // Settings related components, useful to re-use and visualize in external storybooks
 export * from './settings/theme-config/theme-config';
