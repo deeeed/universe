@@ -55,17 +55,11 @@ export const ItemPicker = ({
   const theme = useTheme()
   const styles = useMemo(() => getStyles(theme), [theme])
   const { editProp } = useBottomModal()
-  const [activeOptions, setActiveOptions] = useState<SelectOption[]>(options)
-
-  useEffect(() => {
-    console.log("updated options", options)
-    setActiveOptions(options)
-  },[options])
 
   const handlePick = useCallback(async () => {
     // pick new categories between allCategories
     const newSelection = (await editProp({
-      data: activeOptions,
+      data: options,
       multiSelect: multi,
       showFooter: true,
       min: 0,
@@ -74,7 +68,7 @@ export const ItemPicker = ({
       inputType: "select-button",
     })) as SelectOption[]
     onFinish?.(newSelection)
-  }, [editProp, onFinish, multi, activeOptions])
+  }, [editProp, onFinish, multi, options])
 
   return (
     <View style={styles.container}>
@@ -84,7 +78,7 @@ export const ItemPicker = ({
             {label}
           </Text>
         </Pressable>
-        {activeOptions.length === 0 ? (
+        {options.length === 0 ? (
           <Text style={styles.emptyText}>No selection</Text>
         ) : (
           <ScrollView
@@ -93,7 +87,7 @@ export const ItemPicker = ({
             style={styles.scrollview}
             contentContainerStyle={styles.scrollContainer}
           >
-            {activeOptions.map((category, index) => {
+            {options.map((category, index) => {
               if (category.selected === true) {
                 return (
                   <Chip key={`cid${index}`} style={{backgroundColor: category.color}} compact={true} mode={"flat"}>
