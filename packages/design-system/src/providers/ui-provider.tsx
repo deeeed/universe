@@ -19,6 +19,7 @@ import { AppTheme, useAppThemeSetup } from '../hooks/use-app-theme-setup';
 import { CustomBottomSheetModal } from './custom-bottomsheet-provider';
 import { LanguageProvider } from './language-provider';
 import { ThemeProvider } from './theme-provider';
+import { Platform } from 'react-native';
 
 export const DefaultLightTheme: AppTheme = {
   ...MD3LightTheme,
@@ -167,14 +168,26 @@ export const UIProvider = ({
     <SafeAreaProvider>
       {/* Wrap with LanguageProvider to have useTranslation available */}
       <LanguageProvider locale={locale}>
-        <UIProviderWithLanguage
-          actions={actions}
-          darkTheme={darkTheme}
-          lightTheme={lightTheme}
-          preferences={preferences}
-        >
-          {children}
-        </UIProviderWithLanguage>
+        <>
+          {Platform.OS === 'web' ? (
+            <style type="text/css">
+              {`
+                  @font-face {
+                    font-family: 'MaterialCommunityIcons';
+                    src: url(${require('react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf')}) format('truetype');
+                  }
+                `}
+            </style>
+          ) : null}
+          <UIProviderWithLanguage
+            actions={actions}
+            darkTheme={darkTheme}
+            lightTheme={lightTheme}
+            preferences={preferences}
+          >
+            {children}
+          </UIProviderWithLanguage>
+        </>
       </LanguageProvider>
     </SafeAreaProvider>
   );
