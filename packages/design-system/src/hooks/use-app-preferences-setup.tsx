@@ -1,11 +1,11 @@
-import { useLoggerActions } from "@siteed/react-native-logger"
-import { useEffect, useMemo, useState } from "react"
-import { I18nextProviderProps } from "react-i18next"
-import { AppTheme, SavedUserPreferences } from "./use-app-theme-setup"
+import { useLoggerActions } from '@siteed/react-native-logger';
+import { useEffect, useMemo, useState } from 'react';
+import { I18nextProviderProps } from 'react-i18next';
+import { AppTheme, SavedUserPreferences } from './use-app-theme-setup';
 
 interface useThemePreferencesProps {
   theme: AppTheme;
-  i18nInstance: I18nextProviderProps["i18n"];
+  i18nInstance: I18nextProviderProps['i18n'];
   savedPreferences?: SavedUserPreferences;
   savePreferences?: (userPrefs: SavedUserPreferences) => void;
   setDarkMode: (value: boolean | ((oldValue: boolean) => boolean)) => void;
@@ -37,16 +37,16 @@ export const useAppPreferencesSetup = ({
   savePreferences,
   setDarkMode,
 }: useThemePreferencesProps) => {
-  const [collapsed, setCollapsed] = useState(false)
-  const [customFontLoaded, setCustomFont] = useState(false)
-  const [rippleEffectEnabled, setRippleEffectEnabled] = useState(true)
-  const [dynamicTheme, setDynamicTheme] = useState<AppTheme>(theme)
-  const { logger } = useLoggerActions("useAppPreferencesSetup")
-  const [listener, setListener] = useState(false)
+  const [collapsed, setCollapsed] = useState(false);
+  const [customFontLoaded, setCustomFont] = useState(false);
+  const [rippleEffectEnabled, setRippleEffectEnabled] = useState(true);
+  const [dynamicTheme, setDynamicTheme] = useState<AppTheme>(theme);
+  const { logger } = useLoggerActions('useAppPreferencesSetup');
+  const [listener, setListener] = useState(false);
 
   useEffect(() => {
-    setDynamicTheme(theme)
-  }, [theme])
+    setDynamicTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     const onLanguage = (lng: string) => {
@@ -54,15 +54,15 @@ export const useAppPreferencesSetup = ({
         darkMode: dynamicTheme.dark,
         rippleEffectEnabled,
         locale: lng,
-      })
-    }
+      });
+    };
 
     if (!listener && i18nInstance.isInitialized) {
-      i18nInstance.on("languageChanged", onLanguage)
-      setListener(true)
+      i18nInstance.on('languageChanged', onLanguage);
+      setListener(true);
     }
 
-    return () => {}
+    return () => {};
   }, [
     i18nInstance,
     savePreferences,
@@ -70,19 +70,19 @@ export const useAppPreferencesSetup = ({
     logger,
     dynamicTheme,
     rippleEffectEnabled,
-  ])
+  ]);
 
   const preferences: ThemeActions & ThemePreferences = useMemo(
     () => ({
       toggleDarkMode: () => {
-        const oldValue = dynamicTheme.dark ?? false
-        const newValue = !oldValue
-        setDarkMode(newValue)
+        const oldValue = dynamicTheme.dark ?? false;
+        const newValue = !oldValue;
+        setDarkMode(newValue);
         savePreferences?.({
           darkMode: newValue,
           rippleEffectEnabled,
           locale: i18nInstance.language,
-        })
+        });
       },
       toggleCollapsed: () => setCollapsed(!collapsed),
       toggleCustomFont: () => setCustomFont(!customFontLoaded),
@@ -92,9 +92,9 @@ export const useAppPreferencesSetup = ({
             darkMode: dynamicTheme.dark,
             rippleEffectEnabled: !oldValue,
             locale: i18nInstance.language,
-          })
-          return !oldValue
-        })
+          });
+          return !oldValue;
+        });
       },
       setThemeColor: ({ name, value }: { name: string; value: string }) => {
         setDynamicTheme((oldTheme) => {
@@ -104,17 +104,17 @@ export const useAppPreferencesSetup = ({
               ...oldTheme.colors,
               [name]: value,
             },
-          }
+          };
           console.log(
             `[${name}] ${
-              oldTheme.colors[name as keyof AppTheme["colors"]]
+              oldTheme.colors[name as keyof AppTheme['colors']]
             } -> ${value}`
-          )
+          );
           console.log(
             `primary: ${newTheme.colors.primary} secondary: ${newTheme.colors.secondary} tertiary: ${newTheme.colors.tertiary}`
-          )
-          return newTheme
-        })
+          );
+          return newTheme;
+        });
       },
       toggleThemeVersion: () => {},
       customFontLoaded,
@@ -132,7 +132,7 @@ export const useAppPreferencesSetup = ({
       rippleEffectEnabled,
       setDarkMode,
     ]
-  )
+  );
 
-  return preferences
-}
+  return preferences;
+};

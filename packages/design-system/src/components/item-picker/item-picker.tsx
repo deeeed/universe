@@ -1,20 +1,20 @@
-import { AntDesign } from "@expo/vector-icons"
-import React, { useCallback, useEffect, useMemo, useState } from "react"
-import { Pressable, ScrollView, StyleSheet, View } from "react-native"
-import { Chip, Text } from "react-native-paper"
-import { AppTheme } from "../../hooks/use-app-theme-setup"
-import { useBottomModal } from "../../providers/custom-bottomsheet-provider"
-import { useTheme } from "../../providers/theme-provider"
-import { SelectOption } from "../select-buttons/select-buttons"
+import { AntDesign } from '@expo/vector-icons';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Chip, Text } from 'react-native-paper';
+import { AppTheme } from '../../hooks/use-app-theme-setup';
+import { useBottomModal } from '../../providers/custom-bottomsheet-provider';
+import { useTheme } from '../../providers/theme-provider';
+import { SelectOption } from '../select-buttons/select-buttons';
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
       backgroundColor: theme.colors.surface,
-      display: "flex",
-      flexDirection: "row",
-      justifyContent: "center",
-      alignItems: "center",
+      display: 'flex',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     leftSide: {
       flexGrow: 1,
@@ -37,8 +37,8 @@ const getStyles = (theme: AppTheme) => {
       padding: 10,
       color: theme.colors.scrim,
     },
-  })
-}
+  });
+};
 
 export interface ItemPickerProps {
   options: SelectOption[];
@@ -52,14 +52,14 @@ export const ItemPicker = ({
   multi = false,
   label,
 }: ItemPickerProps) => {
-  const theme = useTheme()
-  const styles = useMemo(() => getStyles(theme), [theme])
-  const { editProp } = useBottomModal()
-  const [activeOptions, setActiveOptions] = useState<SelectOption[]>(options)
+  const theme = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+  const { editProp } = useBottomModal();
+  const [activeOptions, setActiveOptions] = useState<SelectOption[]>(options);
 
   useEffect(() => {
-    setActiveOptions(options)
-  },[options])
+    setActiveOptions(options);
+  }, [options]);
 
   const handlePick = useCallback(async () => {
     // pick new categories between allCategories
@@ -70,10 +70,10 @@ export const ItemPicker = ({
       min: 0,
       max: Infinity,
       showSearch: false,
-      inputType: "select-button",
-    })) as SelectOption[]
-    onFinish?.(newSelection)
-  }, [editProp, onFinish, multi, activeOptions])
+      inputType: 'select-button',
+    })) as SelectOption[];
+    onFinish?.(newSelection);
+  }, [editProp, onFinish, multi, activeOptions]);
 
   return (
     <View style={styles.container}>
@@ -95,11 +95,16 @@ export const ItemPicker = ({
             {activeOptions.map((category, index) => {
               if (category.selected === true) {
                 return (
-                  <Chip key={`cid${index}`} style={{backgroundColor: category.color}} compact={true} mode={"flat"}>
+                  <Chip
+                    key={`cid${index}`}
+                    style={{ backgroundColor: category.color }}
+                    compact={true}
+                    mode={'flat'}
+                  >
                     {category.label}
                   </Chip>
-                )
-              } else return undefined
+                );
+              } else return undefined;
             })}
           </ScrollView>
         )}
@@ -112,5 +117,5 @@ export const ItemPicker = ({
         <AntDesign name="right" size={24} />
       </Pressable>
     </View>
-  )
-}
+  );
+};

@@ -1,19 +1,19 @@
-import type { Meta, StoryObj } from "@storybook/react"
-import { colorOptions } from "../../../_mocks/mock_data"
-import { ColorPicker, ColorPickerProps } from "./color-picker"
+import type { Meta, StoryObj } from '@storybook/react';
+import { colorOptions } from '../../../_mocks/mock_data';
+import { ColorPicker, ColorPickerProps } from './color-picker';
 
 const ColorPickerMeta: Meta<ColorPickerProps> = {
   component: ColorPicker,
   argTypes: {},
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   args: {
-    label: "Primary",
-    color: "tomato",
+    label: 'Primary',
+    color: 'tomato',
     colorOptions: colorOptions.map((colorOption) => colorOption.value),
   },
-}
+};
 
-export default ColorPickerMeta
+export default ColorPickerMeta;
 
 export const Primary: StoryObj<ColorPickerProps> = {
   args: {},
@@ -28,4 +28,4 @@ export const Primary: StoryObj<ColorPickerProps> = {
       },
     },
   },
-}
+};

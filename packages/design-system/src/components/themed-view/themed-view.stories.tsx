@@ -1,6 +1,6 @@
-import type { Meta } from "@storybook/react"
-import React from "react"
-import { ThemedView, ThemedViewProps } from "./themed-view"
+import type { Meta } from '@storybook/react';
+import React from 'react';
+import { ThemedView, ThemedViewProps } from './themed-view';
 
 const ThemedViewMeta: Meta<ThemedViewProps> = {
   component: ThemedView,
@@ -8,8 +8,8 @@ const ThemedViewMeta: Meta<ThemedViewProps> = {
   args: {
     // data: 'test',
   },
-}
+};
 
-export default ThemedViewMeta
+export default ThemedViewMeta;
 
-export const Primary = (args: ThemedViewProps) => <ThemedView {...args} />
+export const Primary = (args: ThemedViewProps) => <ThemedView {...args} />;

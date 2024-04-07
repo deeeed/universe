@@ -1,14 +1,14 @@
-import type { Meta, StoryObj } from "@storybook/react"
-import { randomSelectValues } from "../../_mocks/mock_data"
+import type { Meta, StoryObj } from '@storybook/react';
+import { randomSelectValues } from '../../_mocks/mock_data';
 import {
   SelectButtons,
   SelectButtonsProps,
   SelectOption,
-} from "./select-buttons"
+} from './select-buttons';
 
 const SelectButtonsMeta: Meta<SelectButtonsProps> = {
   component: SelectButtons,
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {},
   args: {
     showSearch: false,
@@ -18,10 +18,9 @@ const SelectButtonsMeta: Meta<SelectButtonsProps> = {
       randomSelectValues[3],
     ] as SelectOption[],
   },
-}
+};
 
-export default SelectButtonsMeta
-
+export default SelectButtonsMeta;
 
 export const Default: StoryObj<SelectButtonsProps> = {
   args: {},
@@ -40,8 +39,8 @@ export const Default: StoryObj<SelectButtonsProps> = {
       },
     },
   },
-}
-Default.storyName = "Default Settings"
+};
+Default.storyName = 'Default Settings';
 
 export const Multi: StoryObj<SelectButtonsProps> = {
   args: {
@@ -67,7 +66,7 @@ export const Multi: StoryObj<SelectButtonsProps> = {
       },
     },
   },
-}
+};
 
 export const MultiLong: StoryObj<SelectButtonsProps> = {
   args: {
@@ -90,4 +89,4 @@ export const MultiLong: StoryObj<SelectButtonsProps> = {
       },
     },
   },
-}
+};

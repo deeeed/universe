@@ -1,14 +1,14 @@
-import React, { useMemo } from "react"
-import { Pressable, StyleProp, ViewStyle } from "react-native"
-import { MD3Theme, Switch, Text, useTheme } from "react-native-paper"
+import React, { useMemo } from 'react';
+import { Pressable, StyleProp, ViewStyle } from 'react-native';
+import { MD3Theme, Switch, Text, useTheme } from 'react-native-paper';
 
 const getStyle = (theme: MD3Theme) => {
   return {
     container: {
-      display: "flex" as const,
-      flexDirection: "row" as const,
-      justifyContent: "space-between" as const,
-      alignItems: "center" as const,
+      display: 'flex' as const,
+      flexDirection: 'row' as const,
+      justifyContent: 'space-between' as const,
+      alignItems: 'center' as const,
       padding: 10,
       margin: 10,
       backgroundColor: theme.colors.background,
@@ -16,8 +16,8 @@ const getStyle = (theme: MD3Theme) => {
     label: {
       paddingRight: 10,
     },
-  }
-}
+  };
+};
 
 export interface LabelSwitchProps {
   label: string;
@@ -32,8 +32,8 @@ export const LabelSwitch = ({
   containerStyle,
   onValueChange,
 }: LabelSwitchProps) => {
-  const theme = useTheme()
-  const styles = useMemo(() => getStyle(theme), [theme])
+  const theme = useTheme();
+  const styles = useMemo(() => getStyle(theme), [theme]);
 
   return (
     <Pressable
@@ -43,5 +43,5 @@ export const LabelSwitch = ({
       <Text style={styles.label}>{label}</Text>
       <Switch value={value} onValueChange={onValueChange} />
     </Pressable>
-  )
-}
+  );
+};

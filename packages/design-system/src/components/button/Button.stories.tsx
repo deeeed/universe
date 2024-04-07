@@ -1,22 +1,22 @@
-import type { Meta, StoryObj } from "@storybook/react"
-import { Button } from "./Button"
+import type { Meta, StoryObj } from '@storybook/react';
+import { Button } from './Button';
 
 const ButtonMeta: Meta<typeof Button> = {
   component: Button,
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
-    onPress: { action: "pressed the button" },
+    onPress: { action: 'pressed the button' },
   },
   args: {
-    children: "Hello world",
+    children: 'Hello world',
   },
-}
+};
 
-export default ButtonMeta
+export default ButtonMeta;
 type Story = StoryObj<typeof Button>;
 
 export const Basic: Story = {
-  name: "Test Basic",
+  name: 'Test Basic',
   parameters: {
     docs: {
       source: {
@@ -24,15 +24,15 @@ export const Basic: Story = {
 import { Button } from '@siteed/design-system';
 <Button>A button</Button>
         `,
-      }
+      },
     },
   },
-}
+};
 
 export const AnotherExample: Story = {
-  name: "Contained",
+  name: 'Contained',
   args: {
-    mode: "contained",
+    mode: 'contained',
   },
   parameters: {
     docs: {
@@ -41,7 +41,7 @@ export const AnotherExample: Story = {
 import { Button } from '@siteed/design-system';
 <Button mode="contained">A button</Button>
         `,
-      }
+      },
     },
   },
-}
+};

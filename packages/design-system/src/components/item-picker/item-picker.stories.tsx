@@ -1,60 +1,60 @@
-import type { Meta, StoryFn, StoryObj } from "@storybook/react"
-import React, { useState } from "react"
-import { View } from "react-native"
-import { colorOptions } from "../../_mocks/mock_data"
-import { ItemPicker, ItemPickerProps } from "./item-picker"
-import { SelectOption } from "../select-buttons/select-buttons"
-import { Text } from "react-native-paper"
-import { Button } from "../button/Button"
+import type { Meta, StoryFn, StoryObj } from '@storybook/react';
+import React, { useState } from 'react';
+import { View } from 'react-native';
+import { colorOptions } from '../../_mocks/mock_data';
+import { ItemPicker, ItemPickerProps } from './item-picker';
+import { SelectOption } from '../select-buttons/select-buttons';
+import { Text } from 'react-native-paper';
+import { Button } from '../button/Button';
 
 const options = [
   {
-    label: "Daily Sentences",
-    value: "1",
+    label: 'Daily Sentences',
+    value: '1',
     selected: true,
   },
   {
-    label: "Custom Cards",
-    value: "2",
+    label: 'Custom Cards',
+    value: '2',
   },
   {
-    label: "Greetings",
-    value: "3",
+    label: 'Greetings',
+    value: '3',
   },
   {
-    label: "Dinings & Food",
-    value: "4",
+    label: 'Dinings & Food',
+    value: '4',
   },
   {
-    label: "Shopping",
+    label: 'Shopping',
     selected: true,
-    value: "5",
+    value: '5',
   },
   {
-    label: "Direction & Transportation",
-    value: "6",
+    label: 'Direction & Transportation',
+    value: '6',
   },
   {
-    label: "Accommodation",
-    value: "7",
+    label: 'Accommodation',
+    value: '7',
   },
-]
+];
 
 const CategoryPickerMeta: Meta<ItemPickerProps> = {
   component: ItemPicker,
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {},
   args: {
-    label: "Category",
+    label: 'Category',
     options,
     multi: true,
     onFinish(selected) {
-      console.log("selected", selected)
+      console.log('selected', selected);
     },
   },
-}
+};
 
-export default CategoryPickerMeta
+export default CategoryPickerMeta;
 
 export const Primary: StoryObj<ItemPickerProps> = {
   args: {},
@@ -62,33 +62,38 @@ export const Primary: StoryObj<ItemPickerProps> = {
   parameters: {
     docs: {
       source: {
-        code: "<ItemPicker label=\"Category\" options={options} />",
+        code: '<ItemPicker label="Category" options={options} />',
       },
     },
   },
-}
+};
 
-export const WithColors : StoryObj<ItemPickerProps> = {
+export const WithColors: StoryObj<ItemPickerProps> = {
   args: {
     ...CategoryPickerMeta.args, // Spread the default args from the meta
-    options: options.map((opt, index) => ({ ...opt, color: colorOptions[colorOptions.length % index]?.value })),
+    options: options.map((opt, index) => ({
+      ...opt,
+      color: colorOptions[colorOptions.length % index]?.value,
+    })),
   },
   decorators: [
     (_Story, context) => {
-      const {args} = context
-      const [options, setOptions] = useState(args.options)
+      const { args } = context;
+      const [options, setOptions] = useState(args.options);
 
       const onFinish = (selected: SelectOption[]) => {
-        setOptions(selected)
-        args.onFinish?.(selected)
-      }
+        setOptions(selected);
+        args.onFinish?.(selected);
+      };
 
-      return <View>
-        <ItemPicker {...args} options={options} onFinish={onFinish} />
-      </View>
+      return (
+        <View>
+          <ItemPicker {...args} options={options} onFinish={onFinish} />
+        </View>
+      );
     },
   ],
-}
+};
 
 export const AllSelected: StoryObj<ItemPickerProps> = {
   args: {
@@ -98,8 +103,8 @@ export const AllSelected: StoryObj<ItemPickerProps> = {
   parameters: {
     docs: {
       source: {
-        code: "<ItemPicker label=\"Category\" options={options.map(opt => ({ ...opt, selected: true }))} multi={true} />",
+        code: '<ItemPicker label="Category" options={options.map(opt => ({ ...opt, selected: true }))} multi={true} />',
       },
     },
   },
-}
+};
