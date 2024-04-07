@@ -108,6 +108,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         },
       };
 
+      logger.debug('editProp', props, newInputParams);
       setDrawerContent(<DynInput {...newInputParams} />);
 
       if (bottomSheetModalRef.current) {

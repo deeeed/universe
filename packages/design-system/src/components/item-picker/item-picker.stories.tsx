@@ -70,13 +70,20 @@ export const NoSelection: StoryObj<ItemPickerProps> = {
   args: {
     options: [],
   },
-  parameters: {
-    docs: {
-      source: {
-        code: '<ItemPicker label="Category" options={options.map(opt => ({ ...opt, selected: false }))} />',
+  parameters: {},
+};
+
+export const NoSelectionWithOptions: StoryObj<ItemPickerProps> = {
+  args: {
+    options: [
+      {
+        label: 'Daily Sentences',
+        value: '1',
+        selected: false,
       },
-    },
+    ],
   },
+  parameters: {},
 };
 
 export const WithColors: StoryObj<ItemPickerProps> = {
