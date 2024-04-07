@@ -65,6 +65,9 @@ export const ItemPicker = ({
   }, [options]);
 
   const handlePick = useCallback(async () => {
+    if (!activeOptions || activeOptions.length === 0) {
+      return;
+    }
     // pick new categories between allCategories
     const newSelection = (await editProp({
       data: activeOptions,
