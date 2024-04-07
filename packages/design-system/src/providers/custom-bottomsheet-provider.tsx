@@ -73,7 +73,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
 }) => {
   const { dismiss, dismissAll } = useBottomSheetModal();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const [snapPoints, setSnapPoints] = useState(defaultSnapPoints);
+  const [_snapPoints, setSnapPoints] = useState(defaultSnapPoints);
   const { logger } = useLoggerActions('CustomBottomSheetModalProvider');
   const onFinishResolveRef = useRef<(values: DynInputProps['data']) => void>();
   const onCustomDrawerResolveRef = useRef<(values: unknown) => void>();
@@ -311,8 +311,9 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       {children}
       <BottomSheetModal
         ref={bottomSheetModalRef}
-        index={0}
-        snapPoints={snapPoints}
+        // index={0}
+        // snapPoints={snapPoints}
+        enableDynamicSizing
         enablePanDownToClose={true}
         onChange={handleSheetChanges}
         footerComponent={renderFooter}

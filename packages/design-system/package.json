@@ -57,7 +57,7 @@
     "@commitlint/config-conventional": "^19.1.0",
     "@evilmartians/lefthook": "^1.6.7",
     "@expo/vector-icons": "^13.0.0",
-    "@gorhom/bottom-sheet": "^4.6.1",
+    "@gorhom/bottom-sheet": "5.0.0-alpha.9",
     "@react-native-async-storage/async-storage": "^1.23.1",
     "@react-native-community/datetimepicker": "^7.6.3",
     "@react-native-community/eslint-config": "^3.2.0",
