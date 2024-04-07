@@ -33,6 +33,7 @@ export interface SelectOption {
   label: string;
   value: string;
   order?: number;
+  color?: string;
   selected?: boolean;
 }
 

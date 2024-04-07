@@ -1,5 +1,11 @@
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryFn, StoryObj } from "@storybook/react"
+import React, { useState } from "react"
+import { View } from "react-native"
+import { colorOptions } from "../../_mocks/mock_data"
 import { ItemPicker, ItemPickerProps } from "./item-picker"
+import { SelectOption } from "../select-buttons/select-buttons"
+import { Text } from "react-native-paper"
+import { Button } from "../button/Button"
 
 const options = [
   {
@@ -60,6 +66,28 @@ export const Primary: StoryObj<ItemPickerProps> = {
       },
     },
   },
+}
+
+export const WithColors : StoryObj<ItemPickerProps> = {
+  args: {
+    ...CategoryPickerMeta.args, // Spread the default args from the meta
+    options: options.map((opt, index) => ({ ...opt, color: colorOptions[colorOptions.length % index]?.value })),
+  },
+  decorators: [
+    (_Story, context) => {
+      const {args} = context
+      const [options, setOptions] = useState(args.options)
+
+      const onFinish = (selected: SelectOption[]) => {
+        setOptions(selected)
+        args.onFinish?.(selected)
+      }
+
+      return <View>
+        <ItemPicker {...args} options={options} onFinish={onFinish} />
+      </View>
+    },
+  ],
 }
 
 export const AllSelected: StoryObj<ItemPickerProps> = {
