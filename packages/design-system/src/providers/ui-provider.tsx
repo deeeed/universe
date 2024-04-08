@@ -1,7 +1,7 @@
+import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { ConfirmProvider } from '@siteed/react-native-confirm';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   ActivityIndicator,
@@ -19,7 +19,6 @@ import { AppTheme, useAppThemeSetup } from '../hooks/use-app-theme-setup';
 import { CustomBottomSheetModal } from './custom-bottomsheet-provider';
 import { LanguageProvider } from './language-provider';
 import { ThemeProvider } from './theme-provider';
-import { Platform } from 'react-native';
 
 export const DefaultLightTheme: AppTheme = {
   ...MD3LightTheme,
