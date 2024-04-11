@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { colorOptions } from '../../_mocks/mock_data';
 import { SelectOption } from '../select-buttons/select-buttons';
-import { ItemPicker, ItemPickerProps } from './item-picker';
+import { Picker, PickerProps } from './picker';
 
 const options = [
   {
@@ -38,8 +38,8 @@ const options = [
   },
 ];
 
-const CategoryPickerMeta: Meta<ItemPickerProps> = {
-  component: ItemPicker,
+const CategoryPickerMeta: Meta<PickerProps> = {
+  component: Picker,
   tags: ['autodocs'],
   argTypes: {},
   args: {
@@ -54,7 +54,7 @@ const CategoryPickerMeta: Meta<ItemPickerProps> = {
 
 export default CategoryPickerMeta;
 
-export const Primary: StoryObj<ItemPickerProps> = {
+export const Primary: StoryObj<PickerProps> = {
   args: {},
   // Story level custom code snippet
   parameters: {
@@ -66,14 +66,14 @@ export const Primary: StoryObj<ItemPickerProps> = {
   },
 };
 
-export const NoSelection: StoryObj<ItemPickerProps> = {
+export const NoSelection: StoryObj<PickerProps> = {
   args: {
     options: [],
   },
   parameters: {},
 };
 
-export const NoSelectionWithOptions: StoryObj<ItemPickerProps> = {
+export const NoSelectionWithOptions: StoryObj<PickerProps> = {
   args: {
     options: [
       {
@@ -86,7 +86,7 @@ export const NoSelectionWithOptions: StoryObj<ItemPickerProps> = {
   parameters: {},
 };
 
-export const WithColors: StoryObj<ItemPickerProps> = {
+export const WithColors: StoryObj<PickerProps> = {
   args: {
     ...CategoryPickerMeta.args, // Spread the default args from the meta
     options: options.map((opt, index) => ({
@@ -106,14 +106,14 @@ export const WithColors: StoryObj<ItemPickerProps> = {
 
       return (
         <View>
-          <ItemPicker {...args} options={options} onFinish={onFinish} />
+          <Picker {...args} options={options} onFinish={onFinish} />
         </View>
       );
     },
   ],
 };
 
-export const AllSelected: StoryObj<ItemPickerProps> = {
+export const AllSelected: StoryObj<PickerProps> = {
   args: {
     ...CategoryPickerMeta.args, // Spread the default args from the meta
     options: options.map((opt) => ({ ...opt, selected: true })),

@@ -9,7 +9,7 @@ export * from './components/colors/color-picker/color-picker';
 export * from './components/divider/divider';
 export * from './components/dyn-input/dyn-input';
 export * from './components/empty/empty';
-export * from './components/item-picker/item-picker';
+export * from './components/picker/picker';
 export * from './components/label-switch/label-switch';
 export * from './components/lock-input/lock-input';
 export * from './components/screen-wrapper/screen-wrapper';
@@ -19,6 +19,7 @@ export * from './components/spacer/spacer';
 export * from './components/text-input/text-input';
 export * from './components/themed-view/themed-view';
 export * from './components/notice/notice';
+export * from './components/result/result';
 
 // Settings related components, useful to re-use and visualize in external storybooks
 export * from './settings/theme-config/theme-config';

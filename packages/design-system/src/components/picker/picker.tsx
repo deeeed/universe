@@ -40,20 +40,20 @@ const getStyles = (theme: AppTheme) => {
   });
 };
 
-export interface ItemPickerProps {
+export interface PickerProps {
   options: SelectOption[];
   label: string;
   multi?: boolean;
   emptyLabel?: string;
   onFinish?: (selection: SelectOption[]) => void;
 }
-export const ItemPicker = ({
+export const Picker = ({
   onFinish,
   options,
   multi = false,
   emptyLabel = 'No selection',
   label,
-}: ItemPickerProps) => {
+}: PickerProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const { editProp } = useBottomModal();
