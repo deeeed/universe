@@ -16,7 +16,7 @@ export const TextInput = ({ mandatory, label, ...rest }: TextInputProps) => {
     return (
       <PTextInput
         {...rest}
-        style={{ backgroundColor: colors.background, color: colors.text }}
+        style={{ color: colors.text }}
         label={
           <Text>
             {label}

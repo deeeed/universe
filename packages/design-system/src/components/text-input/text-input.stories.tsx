@@ -23,3 +23,11 @@ const TextInputMeta: Meta<TextInputProps> = {
 export default TextInputMeta;
 
 export const Primary = (args: TextInputProps) => <TextInput {...args} />;
+
+export const Disabled = (args: TextInputProps) => (
+  <TextInput {...args} disabled />
+);
+
+export const Mandatory = (args: TextInputProps) => (
+  <TextInput {...args} mandatory />
+);
