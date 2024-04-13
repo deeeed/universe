@@ -41,7 +41,7 @@ export const useThemePreferences = () => {
 export const useTheme = () => {
   const context = React.useContext(PreferencesContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    throw new Error('useTheme must be used within a ThemeProvider ooo');
   }
   return context.theme;
 };

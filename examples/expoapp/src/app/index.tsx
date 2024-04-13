@@ -1,7 +1,9 @@
 import {
+  Button,
   LockInput,
   ScreenWrapper,
   ThemeConfig,
+  useConfirm,
   useScreenWidth,
   useThemePreferences,
 } from "@siteed/design-system";
@@ -11,6 +13,7 @@ import { Text, View } from "react-native";
 export default function Page() {
   const { theme, darkMode, toggleDarkMode } = useThemePreferences();
   const width = useScreenWidth();
+  const confirm = useConfirm();
 
   const colors = [
     theme.colors.primary,
@@ -25,6 +28,13 @@ export default function Page() {
         <Link href="/(tabs)">Go to Tabs</Link>
         <Text>Width: {width}</Text>
       </View>
+      <Button
+        onPress={() => {
+          confirm({ title: "Confirm ?" });
+        }}
+      >
+        Confirm Now
+      </Button>
       <LockInput text="ok" locked />
     </ScreenWrapper>
   );

@@ -44,6 +44,7 @@ export interface PickerProps {
   options: SelectOption[];
   label: string;
   multi?: boolean;
+  closable?: boolean;
   emptyLabel?: string;
   onFinish?: (selection: SelectOption[]) => void;
 }
@@ -51,6 +52,7 @@ export const Picker = ({
   onFinish,
   options,
   multi = false,
+  closable = false,
   emptyLabel = 'No selection',
   label,
 }: PickerProps) => {
@@ -58,7 +60,7 @@ export const Picker = ({
   const styles = useMemo(() => getStyles(theme), [theme]);
   const { editProp } = useBottomModal();
   const [activeOptions, setActiveOptions] = useState<SelectOption[]>(options);
-  const selectedOptions = options.filter((option) => option.selected);
+  const selectedOptions = activeOptions.filter((option) => option.selected);
 
   useEffect(() => {
     setActiveOptions(options);
@@ -104,6 +106,19 @@ export const Picker = ({
                   key={`cid${index}`}
                   style={{ backgroundColor: category.color }}
                   compact={true}
+                  onClose={
+                    closable
+                      ? () => {
+                          setActiveOptions((prev) =>
+                            prev.map((c) =>
+                              c.value === category.value
+                                ? { ...c, selected: false }
+                                : c
+                            )
+                          );
+                        }
+                      : undefined
+                  }
                   mode={'flat'}
                 >
                   {category.label}

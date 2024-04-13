@@ -17,6 +17,9 @@ const ToastMeta: Meta<ToastProps> = {
     duration: 3000,
     visibility: true,
     iconVisible: true,
+    onDismiss() {
+      console.log('this is dismissed');
+    },
     action: undefined,
     loading: false,
   },

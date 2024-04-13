@@ -140,15 +140,15 @@ const UIProviderWithLanguageReady = ({
   }
 
   return (
-    <ThemeProvider preferences={defaultPreferences}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <ConfirmProvider>
-          <ToastProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider preferences={defaultPreferences}>
+        <ToastProvider>
+          <ConfirmProvider>
             <CustomBottomSheetModal>{children}</CustomBottomSheetModal>
-          </ToastProvider>
-        </ConfirmProvider>
-      </GestureHandlerRootView>
-    </ThemeProvider>
+          </ConfirmProvider>
+        </ToastProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 };
 
@@ -175,16 +175,14 @@ export const UIProvider = ({
     <SafeAreaProvider {...saveAreaProviderProps}>
       {/* Wrap with LanguageProvider to have useTranslation available */}
       <LanguageProvider locale={locale}>
-        <>
-          <UIProviderWithLanguage
-            actions={actions}
-            darkTheme={darkTheme}
-            lightTheme={lightTheme}
-            preferences={preferences}
-          >
-            {children}
-          </UIProviderWithLanguage>
-        </>
+        <UIProviderWithLanguage
+          actions={actions}
+          darkTheme={darkTheme}
+          lightTheme={lightTheme}
+          preferences={preferences}
+        >
+          {children}
+        </UIProviderWithLanguage>
       </LanguageProvider>
     </SafeAreaProvider>
   );

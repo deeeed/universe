@@ -1,7 +1,6 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import React, { createContext, useMemo, useState } from 'react';
 import { Platform, StyleSheet, ViewStyle } from 'react-native';
-import { Portal } from 'react-native-paper';
 import { ConfirmDialog } from '../components/confirm-dialog/confirm-dialog';
 import { AppTheme } from '../hooks/use-app-theme-setup';
 import { useTheme } from './theme-provider';
@@ -51,10 +50,10 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
 export const ConfirmProvider: FunctionComponent<ConfirmProviderProps> = ({
   children,
 }) => {
+  const theme = useTheme();
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [options, setOptions] = useState<ConfirmOptions>({ title: '' });
   const [resolve, setResolve] = useState<(value: boolean) => void | null>();
-  const theme = useTheme();
   const styles = useMemo(() => getStyles({ theme }), [theme]);
   const dialogStyle = useMemo(() => {
     if (Platform.OS === 'web') {
@@ -83,17 +82,15 @@ export const ConfirmProvider: FunctionComponent<ConfirmProviderProps> = ({
     <ConfirmContext.Provider value={confirm}>
       {children}
       {isVisible ? (
-        <Portal>
-          <ConfirmDialog
-            title={options.title}
-            notice={options.notice}
-            confirmLabel={options.confirmLabel || 'Yes'}
-            cancelLabel={options.cancelLabel || 'No'}
-            onConfirm={() => handleConfirm(true)}
-            onCancel={() => handleConfirm(false)}
-            style={dialogStyle}
-          />
-        </Portal>
+        <ConfirmDialog
+          title={options.title}
+          notice={options.notice}
+          confirmLabel={options.confirmLabel || 'Yes'}
+          cancelLabel={options.cancelLabel || 'No'}
+          onConfirm={() => handleConfirm(true)}
+          onCancel={() => handleConfirm(false)}
+          style={dialogStyle}
+        />
       ) : undefined}
     </ConfirmContext.Provider>
   );
