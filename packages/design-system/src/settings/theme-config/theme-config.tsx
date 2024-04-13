@@ -21,11 +21,14 @@ const getStyles = (theme: AppTheme) => {
 };
 
 export interface ThemeConfigProps {
-  flexDirection: 'row' | 'column';
+  flexDirection?: 'row' | 'column';
   colors: string[];
 }
 
-export const ThemeConfig = ({ flexDirection, colors }: ThemeConfigProps) => {
+export const ThemeConfig = ({
+  flexDirection = 'row',
+  colors,
+}: ThemeConfigProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const { toggleDarkMode, setThemeColor, darkMode } = useThemePreferences();

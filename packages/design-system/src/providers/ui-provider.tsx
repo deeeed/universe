@@ -1,5 +1,4 @@
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
-import { ConfirmProvider } from '@siteed/react-native-confirm';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -9,16 +8,21 @@ import {
   MD3DarkTheme,
   MD3LightTheme,
 } from 'react-native-paper';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  SafeAreaProviderProps,
+} from 'react-native-safe-area-context';
 import {
   ThemeActions,
   ThemePreferences,
   useAppPreferencesSetup,
 } from '../hooks/use-app-preferences-setup';
 import { AppTheme, useAppThemeSetup } from '../hooks/use-app-theme-setup';
+import { ConfirmProvider } from './confirm-provider';
 import { CustomBottomSheetModal } from './custom-bottomsheet-provider';
 import { LanguageProvider } from './language-provider';
 import { ThemeProvider } from './theme-provider';
+import { ToastProvider } from './toast.provider';
 
 export const DefaultLightTheme: AppTheme = {
   ...MD3LightTheme,
@@ -78,6 +82,7 @@ export interface UIProviderProps {
   darkTheme?: AppTheme;
   preferences?: Partial<Omit<ThemePreferences, 'theme'>>;
   actions?: ThemeActions;
+  saveAreaProviderProps?: SafeAreaProviderProps;
   children: React.ReactNode;
 }
 
@@ -138,7 +143,9 @@ const UIProviderWithLanguageReady = ({
     <ThemeProvider preferences={defaultPreferences}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ConfirmProvider>
-          <CustomBottomSheetModal>{children}</CustomBottomSheetModal>
+          <ToastProvider>
+            <CustomBottomSheetModal>{children}</CustomBottomSheetModal>
+          </ToastProvider>
         </ConfirmProvider>
       </GestureHandlerRootView>
     </ThemeProvider>
@@ -158,13 +165,14 @@ const UIProviderWithLanguage = (props: Omit<UIProviderProps, 'locale'>) => {
 export const UIProvider = ({
   locale,
   actions,
+  saveAreaProviderProps,
   preferences,
   darkTheme,
   lightTheme,
   children,
 }: UIProviderProps) => {
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider {...saveAreaProviderProps}>
       {/* Wrap with LanguageProvider to have useTranslation available */}
       <LanguageProvider locale={locale}>
         <>

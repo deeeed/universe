@@ -30,7 +30,7 @@ import {
 } from '../components/dyn-input/dyn-input';
 import { SelectItemOption } from '../components/select-items/select-items';
 
-interface CustomBottomSheetModalProviderProps {
+export interface CustomBottomSheetModalProviderProps {
   dismiss: (key?: string) => boolean;
   editProp: (props: DynInputProps) => Promise<DynInputProps['data']>;
   openDrawer: ({
@@ -49,7 +49,7 @@ interface CustomBottomSheetModalProviderProps {
   dismissAll: () => void;
 }
 
-export const CustomContext = createContext<
+export const CustomBottomSheetModalContext = createContext<
   CustomBottomSheetModalProviderProps | undefined
 >(undefined);
 
@@ -305,7 +305,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   }, []);
 
   return (
-    <CustomContext.Provider
+    <CustomBottomSheetModalContext.Provider
       value={{ dismiss, dismissAll, editProp, openDrawer }}
     >
       {children}
@@ -324,7 +324,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
           {drawerContent}
         </BottomSheetView>
       </BottomSheetModal>
-    </CustomContext.Provider>
+    </CustomBottomSheetModalContext.Provider>
   );
 };
 
@@ -336,14 +336,4 @@ export const CustomBottomSheetModal: FunctionComponent<
       <WithProvider>{children}</WithProvider>
     </BottomSheetModalProvider>
   );
-};
-
-export const useBottomModal = () => {
-  const context = React.useContext(CustomContext);
-  if (!context) {
-    throw new Error(
-      'useCustomBottomSheetModal must be used within a CustomBottomSheetModalProvider'
-    );
-  }
-  return context;
 };

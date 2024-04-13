@@ -1,7 +1,7 @@
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import React, { useCallback, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Button } from '../components/button/Button';
+import { Button } from '../../components/button/Button';
 
 const getStyles = () => {
   return StyleSheet.create({

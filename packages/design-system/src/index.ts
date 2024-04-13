@@ -20,6 +20,8 @@ export * from './components/text-input/text-input';
 export * from './components/themed-view/themed-view';
 export * from './components/notice/notice';
 export * from './components/result/result';
+export * from './components/confirm-dialog/confirm-dialog';
+export * from './components/toast/toast';
 
 // Settings related components, useful to re-use and visualize in external storybooks
 export * from './settings/theme-config/theme-config';
@@ -28,8 +30,13 @@ export * from './settings/theme-viewer/theme-viewer';
 export * from './hooks/use-app-preferences-setup';
 export * from './hooks/use-app-theme-setup';
 export * from './hooks/use-screen-width';
+export * from './hooks/use-confirm';
+export * from './hooks/use-toast';
+export * from './hooks/use-bottom-modal';
 
 export * from './providers/custom-bottomsheet-provider';
 export * from './providers/language-provider';
 export * from './providers/theme-provider';
 export * from './providers/ui-provider';
+export * from './providers/confirm-provider';
+export * from './providers/toast.provider';
