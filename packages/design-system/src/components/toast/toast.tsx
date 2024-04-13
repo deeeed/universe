@@ -12,12 +12,12 @@ export type ToastType = 'info' | 'success' | 'warning' | 'error';
 export type ToastPosition = 'top' | 'bottom' | 'middle';
 
 const getStyles = ({ theme, type }: { type: ToastType; theme: AppTheme }) => {
-  const _backgroundColor = {
-    info: theme.colors.infoContainer,
-    warning: theme.colors.warningContainer,
-    error: theme.colors.errorContainer,
-    success: theme.colors.successContainer,
-  }[type];
+  // const _backgroundColor = {
+  //   info: theme.colors.infoContainer,
+  //   warning: theme.colors.warningContainer,
+  //   error: theme.colors.errorContainer,
+  //   success: theme.colors.successContainer,
+  // }[type];
 
   const whiteColor = '#FFF5EE';
 
