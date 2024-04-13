@@ -87,7 +87,7 @@ export interface ToastProps {
   messageContainerStyle?: StyleProp<ViewStyle>;
   /** Toast Snackbar Style */
   snackbarStyle?: StyleProp<ViewStyle>;
-  onDismiss: () => void;
+  onDismiss?: () => void;
 }
 
 export type ToastIconType = {
@@ -170,9 +170,13 @@ export const Toast = ({
     return style;
   }, [insets, position, windowDimensions]);
 
+  const handleDismiss = () => {
+    onDismiss?.();
+  };
+
   return (
     <Snackbar
-      onDismiss={onDismiss}
+      onDismiss={handleDismiss}
       style={[styles.snackBarStyle, snackbarStyle]}
       wrapperStyle={computedStyle as StyleProp<ViewStyle>}
       duration={duration}

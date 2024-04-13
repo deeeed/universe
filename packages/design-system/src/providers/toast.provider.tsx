@@ -3,6 +3,7 @@ import { Keyboard } from 'react-native';
 
 import { Toast, ToastProps } from '../components/toast/toast';
 
+// Make all partial except dismiss
 export type ToastOptions = Partial<ToastProps>;
 
 export interface ToastMethods {
@@ -50,7 +51,6 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
     () => ({
       visibility: false,
       message: '',
-      onDismiss: () => {},
       type: 'info', // default type
       position: 'bottom', // default position
       iconVisible: false, // default icon visibility
@@ -74,6 +74,9 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
           type: ToastActionType.SHOW,
           payload: { ...options, message, loading: true },
         });
+        if (options?.position === 'bottom') {
+          Keyboard.dismiss();
+        }
       },
       hide() {
         dispatch({ type: ToastActionType.HIDE });
@@ -86,10 +89,15 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
     dispatch({ type: ToastActionType.HYDRATE, payload: initialState });
   }, [initialState]);
 
+  const handleDismiss = () => {
+    state.onDismiss?.();
+    toastMethods.hide();
+  };
+
   return (
     <ToastContext.Provider value={toastMethods}>
       {children}
-      <Toast {...state} onDismiss={() => toastMethods.hide()} />
+      <Toast {...state} onDismiss={handleDismiss} />
     </ToastContext.Provider>
   );
 };
