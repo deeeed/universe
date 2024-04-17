@@ -22,6 +22,9 @@ export * from './components/notice/notice';
 export * from './components/result/result';
 export * from './components/confirm-dialog/confirm-dialog';
 export * from './components/toast/toast';
+export * from './components/skeleton/skeleton';
+export * from './components/skeleton/loading-pulse-circle/loading-pulse-circle';
+export * from './components/skeleton/loading-pulse-bar/loading-pulse-bar';
 
 // Settings related components, useful to re-use and visualize in external storybooks
 export * from './settings/theme-config/theme-config';
