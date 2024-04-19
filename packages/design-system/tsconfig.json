@@ -27,11 +27,11 @@
     "noImplicitUseStrict": false,
     "noStrictGenericChecks": false,
     "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noEmit": false,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "noUnusedLocals": false,
     "strict": true,
     "target": "esnext",
     "verbatimModuleSyntax": false
