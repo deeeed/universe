@@ -25,6 +25,9 @@ export * from './components/toast/toast';
 export * from './components/skeleton/skeleton';
 export * from './components/skeleton/loading-pulse-circle/loading-pulse-circle';
 export * from './components/skeleton/loading-pulse-bar/loading-pulse-bar';
+export * from './components/pagination/pagination';
+export * from './components/pagination/pagination-item';
+export * from './components/list-item/list-item';
 
 // Settings related components, useful to re-use and visualize in external storybooks
 export * from './settings/theme-config/theme-config';
