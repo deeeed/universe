@@ -2,7 +2,10 @@
 
 ## Installation
 ```bash
-npx expo install @siteed/design-system react-native-paper react-native-safe-area-context @gorhom/bottom-sheet@5.0.0-alpha.9 react-native-gesture-handler @expo/vector-icons expo-localization
+npx expo install @siteed/design-system react-native-paper react-native-safe-area-context @gorhom/bottom-sheet@5.0.0-alpha.9 react-native-gesture-handler @expo/vector-icons expo-localization react-native-reanimated react-native-screens react-native-vector-icons react-native-web i18next
+
+# TODO complete documentation
+# it should use @siteed/expo-design-system to automatically configure dependencies and web
 
 npm install # or yarn install
 ```
