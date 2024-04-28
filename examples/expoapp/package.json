@@ -11,8 +11,8 @@
   "dependencies": {
     "@babel/plugin-proposal-export-namespace-from": "^7.18.9",
     "@gorhom/bottom-sheet": "^5.0.0-alpha.9",
-    "@siteed/design-system": "*",
-    "@siteed/react-native-logger": "0.6.0",
+    "@siteed/design-system": "workspace:^",
+    "@siteed/react-native-logger": "workspace:^",
     "expo": "~50.0.14",
     "expo-constants": "~15.4.5",
     "expo-linking": "~6.2.2",

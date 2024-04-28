@@ -5685,7 +5685,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@siteed/design-system@npm:*, @siteed/design-system@workspace:packages/design-system":
+"@siteed/design-system@workspace:^, @siteed/design-system@workspace:packages/design-system":
   version: 0.0.0-use.local
   resolution: "@siteed/design-system@workspace:packages/design-system"
   dependencies:
@@ -5709,7 +5709,7 @@ __metadata:
     "@rollup/plugin-json": "npm:^6.0.1"
     "@rollup/plugin-node-resolve": "npm:^13.3.0"
     "@rollup/plugin-typescript": "npm:^8.3.3"
-    "@siteed/react-native-logger": "npm:^0.6.0"
+    "@siteed/react-native-logger": "workspace:^"
     "@size-limit/preset-big-lib": "npm:^11.1.2"
     "@storybook/addon-essentials": "npm:^8.0.4"
     "@storybook/addon-interactions": "npm:^8.0.4"
@@ -5803,7 +5803,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@siteed/react-native-logger@npm:0.6.0, @siteed/react-native-logger@npm:^0.6.0, @siteed/react-native-logger@workspace:packages/react-native-logger":
+"@siteed/react-native-logger@workspace:^, @siteed/react-native-logger@workspace:packages/react-native-logger":
   version: 0.0.0-use.local
   resolution: "@siteed/react-native-logger@workspace:packages/react-native-logger"
   dependencies:
@@ -14684,8 +14684,8 @@ __metadata:
     "@babel/core": "npm:^7.20.0"
     "@babel/plugin-proposal-export-namespace-from": "npm:^7.18.9"
     "@gorhom/bottom-sheet": "npm:^5.0.0-alpha.9"
-    "@siteed/design-system": "npm:*"
-    "@siteed/react-native-logger": "npm:0.6.0"
+    "@siteed/design-system": "workspace:^"
+    "@siteed/react-native-logger": "workspace:^"
     "@types/react": "npm:^18.3.1"
     eslint: "npm:^8.57.0"
     eslint-config-universe: "npm:^12.0.0"
