@@ -13,10 +13,6 @@ const PaginationMeta: Meta<PaginationProps> = {
     showQuickJumper: { control: 'boolean' },
     showSizeChanger: { control: 'boolean' },
     disabled: { control: 'boolean' },
-    showTotal: {
-      control: 'function',
-      description: 'Function to render total text',
-    },
   },
   args: {
     total: 150,
