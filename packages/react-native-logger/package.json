@@ -1,6 +1,6 @@
 {
   "name": "@siteed/react-native-logger",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Simple logger to wrap console and keep track of latest logs",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
