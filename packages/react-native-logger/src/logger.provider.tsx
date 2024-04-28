@@ -139,26 +139,6 @@ export const useLogger = (
   };
 };
 
-// @deprecated use useLogger instead
-export const useLoggerActions = (
-  context: string
-): {
-  logger: LoggerMethods;
-  clearLogs: () => void;
-} => {
-  const loggerContext = useContext(LoggerActionsContext);
-  console.warn(`useLoggerActions is deprecated, use useLogger instead`);
-
-  if (!loggerContext) {
-    throw new Error('useLoggerActions must be used within a LoggerProvider');
-  }
-  const logger = loggerContext.getLogger(context);
-  return {
-    logger,
-    clearLogs: loggerContext.clearLogs,
-  };
-};
-
 export const useLoggerState = (): {
   logs: LogEntry[];
   refreshLogs: () => void;
