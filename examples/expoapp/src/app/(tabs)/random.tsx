@@ -1,12 +1,17 @@
 import {
   Accordion,
   AccordionItemProps,
+  LabelSwitch,
+  LockInput,
   ScreenWrapper,
+  useThemePreferences,
 } from "@siteed/design-system";
 import { View } from "react-native";
 import { Text } from "react-native-paper";
 
-const SecondPage = () => {
+const RandomPage = () => {
+  const { darkMode, toggleDarkMode } = useThemePreferences();
+
   const renderMany = () => {
     const items = [];
     for (let i = 0; i < 100; i++) {
@@ -30,9 +35,15 @@ const SecondPage = () => {
   ];
   return (
     <ScreenWrapper>
+      <LabelSwitch
+        label="Dark Mode"
+        onValueChange={toggleDarkMode}
+        value={darkMode}
+      />
+      <LockInput text="This is a locked input" locked />
       <Accordion data={accordionData} />
     </ScreenWrapper>
   );
 };
 
-export default SecondPage;
+export default RandomPage;

@@ -4,12 +4,12 @@ import {
   UIProvider,
   useThemePreferences,
 } from "@siteed/design-system";
-import { LoggerProvider, useLoggerActions } from "@siteed/react-native-logger";
+import { LoggerProvider, useLogger } from "@siteed/react-native-logger";
 import { Slot } from "expo-router";
 import { useEffect } from "react";
 
 const WithLogger = ({ children }: { children: React.ReactNode }) => {
-  const { logger } = useLoggerActions("GoodApp");
+  const { logger } = useLogger("GoodApp");
   const { theme } = useThemePreferences();
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useLoggerActions } from '@siteed/react-native-logger';
+import { useLogger } from '@siteed/react-native-logger';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -89,7 +89,7 @@ export const SelectItems = <T,>({
   const refInit = useRef<null | { index: number; selected: boolean }[]>(null);
   const { t } = useTranslation('select_items');
 
-  const { logger } = useLoggerActions('SelectItems');
+  const { logger } = useLogger('SelectItems');
 
   if (refInit.current === null) {
     refInit.current = options.map((option, index) => ({

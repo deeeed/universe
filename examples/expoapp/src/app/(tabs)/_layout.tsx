@@ -6,7 +6,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      initialRouteName="stream"
+      initialRouteName="index"
       screenOptions={
         {
           // headerLeft: () => (
@@ -24,7 +24,7 @@ export default function TabLayout() {
       }
     >
       <Tabs.Screen name="index" options={{}} />
-      <Tabs.Screen name="second" options={{}} />
+      <Tabs.Screen name="random" options={{}} />
     </Tabs>
   );
 }

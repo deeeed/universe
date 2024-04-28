@@ -7,7 +7,7 @@ import {
   BottomSheetView,
   useBottomSheetModal,
 } from '@gorhom/bottom-sheet';
-import { useLoggerActions } from '@siteed/react-native-logger';
+import { useLogger } from '@siteed/react-native-logger';
 import React, {
   FunctionComponent,
   ReactNode,
@@ -74,7 +74,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const { dismiss, dismissAll } = useBottomSheetModal();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [_snapPoints, setSnapPoints] = useState(defaultSnapPoints);
-  const { logger } = useLoggerActions('CustomBottomSheetModalProvider');
+  const { logger } = useLogger('CustomBottomSheetModalProvider');
   const onFinishResolveRef = useRef<(values: DynInputProps['data']) => void>();
   const onCustomDrawerResolveRef = useRef<(values: unknown) => void>();
   const onCustomDrawerRejectRef = useRef<(error: unknown) => void>();

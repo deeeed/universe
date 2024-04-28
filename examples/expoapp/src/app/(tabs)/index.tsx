@@ -4,14 +4,15 @@ import {
   useTheme as useNavigationTheme,
 } from "@react-navigation/native";
 import {
-  ScreenWrapper,
-  useThemePreferences,
   ColorItem,
-  LabelSwitch,
+  ScreenWrapper,
+  ThemeConfig,
   ThemedView,
+  useScreenWidth,
+  useThemePreferences
 } from "@siteed/design-system";
 import { useMemo } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { Text } from "react-native-paper";
 
 const getStyles = () => {
@@ -27,9 +28,16 @@ const getStyles = () => {
 };
 
 const IndexPage = () => {
-  const { theme, darkMode, toggleDarkMode } = useThemePreferences();
+  const { theme } = useThemePreferences();
   const navTheme = useNavigationTheme();
   const styles = useMemo(() => getStyles(), []);
+  const width = useScreenWidth();
+
+  const colors = [
+    theme.colors.primary,
+    theme.colors.secondary,
+    theme.colors.tertiary,
+  ];
 
   const colorEntries = Object.entries(navTheme.colors).filter(
     ([, value]) => typeof value === "string",
@@ -45,11 +53,8 @@ const IndexPage = () => {
 
   return (
     <ScreenWrapper>
-      <LabelSwitch
-        label="Dark Mode"
-        onValueChange={toggleDarkMode}
-        value={darkMode}
-      />
+      <ThemeConfig colors={colors} />
+      <Text>Width: {width}</Text>
       <Text>Default Theme Background: {DefaultTheme.colors.background}</Text>
       <Text>Dark Theme Background: {DarkTheme.colors.background}</Text>
       <Text>NavTheme background: {navTheme.colors.background}</Text>

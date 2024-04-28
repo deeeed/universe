@@ -2,7 +2,7 @@ import { getLocales } from 'expo-localization';
 import React, { useEffect, useState } from 'react';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
 
-import { useLoggerActions } from '@siteed/react-native-logger';
+import { useLogger } from '@siteed/react-native-logger';
 import i18n, { TFunction } from 'i18next';
 import { ActivityIndicator } from 'react-native-paper';
 
@@ -113,7 +113,7 @@ export const LanguageProvider = ({
   locale,
   children,
 }: LanguageProviderProps) => {
-  const { logger } = useLoggerActions('useI18nSetup');
+  const { logger } = useLogger('useI18nSetup');
   const [isReady, setReady] = useState(i18n.isInitialized);
 
   useEffect(() => {
