@@ -8,6 +8,8 @@
     "./src",
     "./*.js",
     "./*.mjs",
+    "./plugin/**/*.ts",
+    "./app.plugin.js",
     ".eslintrc.js",
     ".storybook/main.ts",
     ".storybook/preview.tsx",

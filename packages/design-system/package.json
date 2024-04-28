@@ -107,6 +107,7 @@
     "expo": "^50.0.14",
     "expo-clipboard": "^5.0.1",
     "expo-localization": "^14.8.3",
+    "expo-module-scripts": "3.4.2",
     "os-browserify": "^0.3.0",
     "prettier": "^3.2.5",
     "prop-types": "^15.8.1",
