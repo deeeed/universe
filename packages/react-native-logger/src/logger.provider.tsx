@@ -99,10 +99,15 @@ export const getLogger = (context: string) => {
 
 interface LoggerProviderProps {
   children: ReactNode;
+  context?: string;
 }
 
-export const LoggerProvider: React.FC<LoggerProviderProps> = ({ children }) => {
+export const LoggerProvider: React.FC<LoggerProviderProps> = ({
+  context,
+  children,
+}) => {
   const [logs, setLogs] = useState<LogEntry[]>(logsArray);
+  console.log(`Init LoggerProvider rootContext=${context}`);
 
   const refreshLogs = useCallback(() => {
     setLogs(logsArray);
@@ -129,8 +134,11 @@ export const useLogger = (
   clearLogs: () => void;
 } => {
   const loggerContext = useContext(LoggerActionsContext);
+
   if (!loggerContext) {
-    throw new Error('useLogger must be used within a LoggerProvider');
+    throw new Error(
+      `[${context}] useLogger must be used within a LoggerProvider`
+    );
   }
   const logger = loggerContext.getLogger(context);
   return {
