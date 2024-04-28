@@ -2711,6 +2711,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@siteed/react-native-logger@npm:^0.6.0":
+  version: 0.6.0
+  resolution: "@siteed/react-native-logger@npm:0.6.0"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/5decffbacd13f133928177b3e2fbedc4250b0099fe50fd56243f90047f58935cf90c9b2bfccffd1f49948e598dc08a9fba9daec9120f5da3116311e3de883dad
+  languageName: node
+  linkType: hard
+
 "@trysound/sax@npm:0.2.0":
   version: 0.2.0
   resolution: "@trysound/sax@npm:0.2.0"
@@ -5550,6 +5560,7 @@ __metadata:
   dependencies:
     "@babel/core": "npm:^7.20.0"
     "@expo/webpack-config": "npm:^18.0.1"
+    "@siteed/react-native-logger": "npm:^0.6.0"
     babel-loader: "npm:^8.1.0"
     babel-plugin-module-resolver: "npm:^5.0.0"
     expo: "npm:~49.0.10"

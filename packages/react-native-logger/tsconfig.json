@@ -2,14 +2,18 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
-      "@siteed/react-native-logger": ["./src/index"]
+      "@siteed/react-native-logger": [
+        "./src/index"
+      ]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
-    "lib": ["esnext"],
+    "lib": [
+      "esnext"
+    ],
     "module": "esnext",
     "moduleResolution": "node",
     "noFallthroughCasesInSwitch": true,
@@ -24,5 +28,9 @@
     "strict": true,
     "target": "esnext",
     "verbatimModuleSyntax": true
-  }
+  },
+  "include": [
+    "src/**/*",
+    "globals.d.ts"
+  ],
 }
