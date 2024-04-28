@@ -12,8 +12,9 @@ const getStyles = (theme: AppTheme) => {
     container: {
       backgroundColor: theme.colors.surface,
       display: 'flex',
-      gap: 15,
-      paddingRight: 15,
+      flexWrap: 'wrap',
+      gap: theme.padding.s,
+      padding: theme.padding.s,
       justifyContent: 'center',
       alignItems: 'center',
     },
