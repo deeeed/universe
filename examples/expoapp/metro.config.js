@@ -11,11 +11,16 @@ const projectRoot = __dirname;
 // This can be replaced with `find-yarn-workspace-root`
 const monorepoRoot = path.resolve(projectRoot, "../..");
 const designSystem = path.resolve(monorepoRoot, "packages/design-system");
+const siteedLogger = path.resolve(monorepoRoot, "packages/react-native-logger");
 
 const modules = [
   "react-native-paper",
   "react-native-safe-area-context",
   "react-native-reanimated",
+  "@siteed/design-system",
+  "@siteed/react-native-logger",
+  "react-dom",
+  "react",
   ...Object.keys({ ...pak.peerDependencies }),
 ];
 
@@ -55,6 +60,12 @@ config.resolver = {
       // NOTE: Throw an error if there is no resolution.
       return {
         filePath: designSystem + "/src/index.ts",
+        type: "sourceFile",
+      };
+    } else if (moduleName.startsWith("@siteed/react-native-logger")) {
+      console.log(`Resolving ${moduleName} to ${siteedLogger}/src/index.tsx`);
+      return {
+        filePath: siteedLogger + "/src/index.tsx",
         type: "sourceFile",
       };
     }

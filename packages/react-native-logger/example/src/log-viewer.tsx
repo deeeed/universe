@@ -5,8 +5,7 @@ import { useLogger, useLoggerState } from '@siteed/react-native-logger';
 
 export interface LogViewerProps {}
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const LogViewer = (props: LogViewerProps) => {
+export const LogViewer = (_: LogViewerProps) => {
   const { clearLogs } = useLogger('log-viewer');
   const { logs, refreshLogs } = useLoggerState();
   const theme = useTheme();
