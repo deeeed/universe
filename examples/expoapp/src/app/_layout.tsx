@@ -5,14 +5,14 @@ import {
   useThemePreferences,
 } from "@siteed/design-system";
 import { LoggerProvider, useLogger } from "@siteed/react-native-logger";
-import { Slot } from "expo-router";
+import { Drawer } from "expo-router/drawer";
 import { useEffect } from "react";
 
 export const unstable_settings = {
-  initialRouteName: "(tabs)",
+  initialRouteName: "(tabs)", // always go back to the tabs screen
 };
 
-const WithLogger = ({ children }: { children: React.ReactNode }) => {
+const WithMainProviders = () => {
   const { logger } = useLogger("GoodApp");
   const { theme } = useThemePreferences();
 
@@ -20,7 +20,13 @@ const WithLogger = ({ children }: { children: React.ReactNode }) => {
     logger.info("App started", theme);
   }, [logger]);
 
-  return <ThemeProvider value={{ ...theme }}>{children}</ThemeProvider>;
+  return (
+    <ThemeProvider value={{ ...theme }}>
+      <Drawer screenOptions={{ headerShown: true }}>
+        <Drawer.Screen name="(tabs)" />
+      </Drawer>
+    </ThemeProvider>
+  );
 };
 
 export default function HomeLayout() {
@@ -29,12 +35,10 @@ export default function HomeLayout() {
       <UIProvider
         lightTheme={{
           ...DefaultLightTheme,
-          // colors: { ...DefaultLightTheme.colors, background: "red" },
+          // colors: { ...DefaultLightTheme.colors, background: "red" }
         }}
       >
-        <WithLogger>
-          <Slot />
-        </WithLogger>
+        <WithMainProviders />
       </UIProvider>
     </LoggerProvider>
   );

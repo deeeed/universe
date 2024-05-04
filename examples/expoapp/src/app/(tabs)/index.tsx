@@ -5,15 +5,15 @@ import {
 } from "@react-navigation/native";
 import {
   ColorItem,
-  ScreenWrapper,
   ThemeConfig,
   ThemedView,
   useScreenWidth,
-  useThemePreferences
+  useThemePreferences,
 } from "@siteed/design-system";
 import { useMemo } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { Text } from "react-native-paper";
+import { View } from "react-native-reanimated/lib/typescript/Animated";
 
 const getStyles = () => {
   return StyleSheet.create({
@@ -52,7 +52,7 @@ const IndexPage = () => {
   );
 
   return (
-    <ScreenWrapper>
+    <ThemedView>
       <ThemeConfig colors={colors} />
       <Text>Width: {width}</Text>
       <Text>Default Theme Background: {DefaultTheme.colors.background}</Text>
@@ -117,7 +117,7 @@ const IndexPage = () => {
           ))}
         </ThemedView>
       </ScrollView>
-    </ScreenWrapper>
+    </ThemedView>
   );
 };
 
