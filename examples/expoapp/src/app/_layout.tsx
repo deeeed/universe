@@ -8,6 +8,10 @@ import { LoggerProvider, useLogger } from "@siteed/react-native-logger";
 import { Slot } from "expo-router";
 import { useEffect } from "react";
 
+export const unstable_settings = {
+  initialRouteName: "(tabs)",
+};
+
 const WithLogger = ({ children }: { children: React.ReactNode }) => {
   const { logger } = useLogger("GoodApp");
   const { theme } = useThemePreferences();

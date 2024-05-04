@@ -14933,6 +14933,7 @@ __metadata:
     expo-router: "npm:~3.4.8"
     expo-status-bar: "npm:~1.11.1"
     i18next: "npm:^23.10.1"
+    intl-pluralrules: "npm:^2.0.1"
     prettier: "npm:^3.2.5"
     react: "npm:18.2.0"
     react-dom: "npm:18.2.0"
