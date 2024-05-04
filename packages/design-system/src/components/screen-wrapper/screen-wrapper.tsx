@@ -13,18 +13,20 @@ import { useTheme } from '../../providers/theme-provider';
 const getStyles = ({
   theme,
   insets,
+  useInsets,
 }: {
   theme: AppTheme;
   insets: EdgeInsets;
+  useInsets: boolean;
 }) => {
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
-      paddingTop: insets.top,
-      paddingBottom: insets.bottom,
-      paddingLeft: insets.left,
-      paddingRight: insets.left,
+      paddingTop: useInsets ? insets.top : 0,
+      paddingBottom: useInsets ? insets.bottom : 0,
+      paddingLeft: useInsets ? insets.left : 0,
+      paddingRight: useInsets ? insets.right : 0,
     },
   });
 };
@@ -34,18 +36,23 @@ export interface ScreenWrapperProps {
   withScrollView?: boolean;
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  useInsets: boolean;
 }
 
 export const ScreenWrapper = ({
   children,
   withScrollView = true,
+  useInsets = true,
   style,
   contentContainerStyle,
   ...rest
 }: ScreenWrapperProps) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => getStyles({ theme, insets }), [theme, insets]);
+  const styles = useMemo(
+    () => getStyles({ theme, insets, useInsets }),
+    [theme, insets, useInsets]
+  );
 
   return (
     <>
