@@ -36,7 +36,7 @@ export interface ScreenWrapperProps {
   withScrollView?: boolean;
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
-  useInsets: boolean;
+  useInsets?: boolean;
 }
 
 export const ScreenWrapper = ({

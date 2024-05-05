@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleProp, ViewStyle } from 'react-native';
-import { MD3Theme, Switch, Text, useTheme } from 'react-native-paper';
+import { Switch, Text } from 'react-native-paper';
+import { AppTheme } from '../../hooks/use-app-theme-setup';
+import { useTheme } from '../../providers/theme-provider';
 
-const getStyle = (theme: MD3Theme) => {
+const getStyle = (theme: AppTheme) => {
   return {
     container: {
       display: 'flex' as const,
