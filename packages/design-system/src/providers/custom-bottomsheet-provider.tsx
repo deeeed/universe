@@ -29,14 +29,21 @@ import {
   DynamicType,
 } from '../components/dyn-input/dyn-input';
 import { SelectItemOption } from '../components/select-items/select-items';
-
 export interface CustomBottomSheetModalProviderProps {
   dismiss: (key?: string) => boolean;
-  editProp: (props: DynInputProps) => Promise<DynInputProps['data']>;
+  editProp: (
+    props: DynInputProps & {
+      snapPoints?: string[];
+      index?: number;
+      enableDynamicSizing?: boolean;
+    }
+  ) => Promise<DynInputProps['data']>;
   openDrawer: ({
     render,
   }: {
     snapPoints?: string[];
+    enableDynamicSizing?: boolean;
+    index?: number;
     title?: string;
     footerType?: 'confirm_cancel';
     initialData?: unknown;
@@ -74,6 +81,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const { dismiss, dismissAll } = useBottomSheetModal();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [_snapPoints, setSnapPoints] = useState(defaultSnapPoints);
+  const [_enableDynamicSizing, setEnableDynamicSizing] = useState(true);
   const { logger } = useLogger('CustomBottomSheetModalProvider');
   const onFinishResolveRef = useRef<(values: DynInputProps['data']) => void>();
   const onCustomDrawerResolveRef = useRef<(values: unknown) => void>();
@@ -81,15 +89,35 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const [drawerContent, setDrawerContent] = useState<ReactNode>();
   const [footerType, setFooterType] = useState<'confirm_cancel'>();
   const [title, setTitle] = useState<string>();
-
+  const [index, setIndex] = useState<number>(0);
   const initialInputParamsRef = useRef<string>();
   const latestInputParamsRef = useRef<unknown>();
   // const { t } = useTranslation('bottom_modal');
 
   const editProp = useCallback(
     async (
-      props: Omit<DynInputProps, 'onFinish'>
+      props: Omit<
+        DynInputProps & {
+          snapPoints?: string[];
+          index?: number;
+          enableDynamicSizing?: boolean;
+        },
+        'onFinish'
+      >
     ): Promise<DynInputProps['data']> => {
+      const { enableDynamicSizing, snapPoints, index } = props;
+      if (enableDynamicSizing) {
+        setEnableDynamicSizing(enableDynamicSizing);
+        setSnapPoints([]);
+        setIndex(0);
+      } else {
+        if (snapPoints) {
+          setSnapPoints(snapPoints);
+        }
+        if (index) {
+          setIndex(index);
+        }
+      }
       const newInputParams = {
         ...props,
         onCancel: () => {
@@ -201,13 +229,17 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
 
   const openDrawer = useCallback(
     async ({
-      snapPoints: _snapPoints,
+      snapPoints,
       title: _title,
+      index,
       footerType: _footerType,
+      enableDynamicSizing,
       initialData,
       render,
     }: {
       snapPoints?: string[];
+      enableDynamicSizing?: boolean;
+      index?: number;
       initialData?: unknown; // Used to restore value when cancel is pressed
       title?: string;
       footerType?: 'confirm_cancel';
@@ -219,6 +251,19 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     }) => {
       if (_snapPoints) {
         setSnapPoints(_snapPoints);
+      }
+
+      if (enableDynamicSizing) {
+        setEnableDynamicSizing(enableDynamicSizing);
+        setSnapPoints([]);
+        setIndex(0);
+      } else {
+        if (snapPoints) {
+          setSnapPoints(snapPoints);
+        }
+        if (index) {
+          setIndex(index);
+        }
       }
 
       if (_footerType) {
@@ -272,7 +317,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         );
         if (bottomSheetModalRef.current) {
           bottomSheetModalRef.current.present();
-          bottomSheetModalRef.current.snapToIndex(0);
+          bottomSheetModalRef.current.snapToIndex(index || 0);
         }
       });
     },
@@ -311,9 +356,9 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       {children}
       <BottomSheetModal
         ref={bottomSheetModalRef}
-        // index={0}
-        // snapPoints={snapPoints}
-        enableDynamicSizing
+        index={index}
+        snapPoints={_snapPoints}
+        enableDynamicSizing={_enableDynamicSizing}
         enablePanDownToClose={true}
         onChange={handleSheetChanges}
         footerComponent={renderFooter}

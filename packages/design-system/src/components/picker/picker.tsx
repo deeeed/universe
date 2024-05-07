@@ -45,7 +45,9 @@ export interface PickerProps {
   label: string;
   multi?: boolean;
   closable?: boolean;
+  showFooter?: boolean;
   emptyLabel?: string;
+  enableDynamicSizing?: boolean;
   onFinish?: (selection: SelectOption[]) => void;
 }
 export const Picker = ({
@@ -53,6 +55,7 @@ export const Picker = ({
   options,
   multi = false,
   closable = false,
+  showFooter = false,
   emptyLabel = 'No selection',
   label,
 }: PickerProps) => {
@@ -74,9 +77,10 @@ export const Picker = ({
     const newSelection = (await editProp({
       data: activeOptions,
       multiSelect: multi,
-      showFooter: true,
+      enableDynamicSizing: true,
       min: 0,
       max: Infinity,
+      showFooter: !multi ? showFooter : true,
       showSearch: false,
       inputType: 'select-button',
     })) as SelectOption[];

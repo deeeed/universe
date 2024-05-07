@@ -60,7 +60,7 @@ export const Primary: StoryObj<PickerProps> = {
   parameters: {
     docs: {
       source: {
-        code: '<ItemPicker label="Category" options={options} />',
+        code: '<Picker label="Category" options={options} />',
       },
     },
   },
@@ -121,7 +121,7 @@ export const AllSelected: StoryObj<PickerProps> = {
   parameters: {
     docs: {
       source: {
-        code: '<ItemPicker label="Category" options={options.map(opt => ({ ...opt, selected: true }))} multi={true} />',
+        code: '<Picker label="Category" options={options.map(opt => ({ ...opt, selected: true }))} multi={true} />',
       },
     },
   },

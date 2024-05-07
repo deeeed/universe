@@ -36,9 +36,8 @@ const getStyles = (theme: MD3Theme) => {
   return StyleSheet.create({
     container: {
       display: 'flex',
-      flex: 1,
+      // flex: 1,
       flexDirection: 'column',
-      flexGrow: 1,
       backgroundColor: theme.colors.surface,
     },
     footer: {
@@ -46,6 +45,7 @@ const getStyles = (theme: MD3Theme) => {
       borderTopColor: theme.colors.outline,
       marginBottom: 20,
       display: 'flex',
+      // alignSelf: 'flex-end',
       flexDirection: 'row',
       justifyContent: 'space-around',
       padding: 10,
@@ -131,20 +131,22 @@ export const DynInput = ({
 
   return (
     <View style={styles.container}>
-      {inputType === 'text' && renderText()}
-      {inputType === 'number' && renderNumber()}
-      {inputType === 'custom' && customRender?.(data, handleChange)}
-      {inputType === 'select-button' && (
-        <SelectButtons
-          // Prevent passing references to the original data
-          options={JSON.parse(JSON.stringify(temp)) as SelectOption[]}
-          min={min}
-          max={max}
-          multiSelect={multiSelect}
-          showSearch={showSearch}
-          onChange={handleChange}
-        />
-      )}
+      <View style={{ flexGrow: 1 }}>
+        {inputType === 'text' && renderText()}
+        {inputType === 'number' && renderNumber()}
+        {inputType === 'custom' && customRender?.(data, handleChange)}
+        {inputType === 'select-button' && (
+          <SelectButtons
+            // Prevent passing references to the original data
+            options={JSON.parse(JSON.stringify(temp)) as SelectOption[]}
+            min={min}
+            max={max}
+            multiSelect={multiSelect}
+            showSearch={showSearch}
+            onChange={handleChange}
+          />
+        )}
+      </View>
       {showFooter && (
         <View style={styles.footer}>
           <Button
