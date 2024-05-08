@@ -29,28 +29,31 @@ import {
   DynamicType,
 } from '../components/dyn-input/dyn-input';
 import { SelectItemOption } from '../components/select-items/select-items';
+
+export interface OpenDrawerProps {
+  snapPoints?: string[];
+  enableDynamicSizing?: boolean;
+  index?: number;
+  title?: string;
+  footerType?: 'confirm_cancel';
+  initialData?: unknown;
+  render: (props: {
+    resolve?: (value: unknown) => void;
+    onChange?: (value: unknown) => void;
+    reject?: (error: unknown) => void;
+  }) => ReactNode;
+}
+
+export interface EditPropProps extends DynInputProps {
+  snapPoints?: string[];
+  index?: number;
+  enableDynamicSizing?: boolean;
+}
+
 export interface CustomBottomSheetModalProviderProps {
   dismiss: (key?: string) => boolean;
-  editProp: (
-    props: DynInputProps & {
-      snapPoints?: string[];
-      index?: number;
-      enableDynamicSizing?: boolean;
-    }
-  ) => Promise<DynInputProps['data']>;
-  openDrawer: (props: {
-    snapPoints?: string[];
-    enableDynamicSizing?: boolean;
-    index?: number;
-    title?: string;
-    footerType?: 'confirm_cancel';
-    initialData?: unknown;
-    render: (props: {
-      resolve?: (value: unknown) => void;
-      onChange?: (value: unknown) => void;
-      reject?: (error: unknown) => void;
-    }) => ReactNode;
-  }) => Promise<unknown>;
+  editProp: (props: EditPropProps) => Promise<DynInputProps['data']>;
+  openDrawer: (props: OpenDrawerProps) => Promise<unknown>;
   dismissAll: () => void;
 }
 
@@ -93,16 +96,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   // const { t } = useTranslation('bottom_modal');
 
   const editProp = useCallback(
-    async (
-      props: Omit<
-        DynInputProps & {
-          snapPoints?: string[];
-          index?: number;
-          enableDynamicSizing?: boolean;
-        },
-        'onFinish'
-      >
-    ): Promise<DynInputProps['data']> => {
+    async (props: EditPropProps): Promise<DynInputProps['data']> => {
       const { enableDynamicSizing, snapPoints, index } = props;
       if (enableDynamicSizing) {
         setEnableDynamicSizing(enableDynamicSizing);
@@ -235,19 +229,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       enableDynamicSizing,
       initialData,
       render,
-    }: {
-      snapPoints?: string[];
-      enableDynamicSizing?: boolean;
-      index?: number;
-      initialData?: unknown; // Used to restore value when cancel is pressed
-      title?: string;
-      footerType?: 'confirm_cancel';
-      render: (_: {
-        resolve?: (value: unknown) => void;
-        onChange?: (value: unknown) => void;
-        reject?: (error: unknown) => void;
-      }) => ReactNode;
-    }) => {
+    }: OpenDrawerProps) => {
       if (_snapPoints) {
         setSnapPoints(_snapPoints);
       }
