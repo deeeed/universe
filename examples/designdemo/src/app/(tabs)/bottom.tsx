@@ -1,5 +1,11 @@
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
-import { Button, Picker, useBottomModal } from "@siteed/design-system";
+import {
+  Accordion,
+  AccordionItemProps,
+  Button,
+  Picker,
+  useBottomModal,
+} from "@siteed/design-system";
 import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -73,7 +79,6 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleOpenDrawer`, openDrawer);
     const result = await openDrawer({
       title: "This is Title",
-      snapPoints: ["20%", "50%"],
       render: () => {
         return <Text>Drawer content</Text>;
       },
@@ -81,12 +86,49 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleOpenDrawer result`, result);
   }, []);
 
+  const renderMany = () => {
+    const items = [];
+    for (let i = 0; i < 100; i++) {
+      items.push(<Text key={i}>Item {i}</Text>);
+    }
+    return items;
+  };
+
+  const accordionData: AccordionItemProps[] = [
+    {
+      title: "Accordion Item 1",
+      children: <Text>Content 1</Text>,
+    },
+    {
+      title: "Accordion Item 2",
+      children: <View>{renderMany()}</View>,
+    },
+    {
+      title: "Accordion Item 3",
+      children: <Text>Content 3</Text>,
+    },
+  ];
+
+  const handleDynamicDrawer = useCallback(async () => {
+    console.log(`handleOpenDrawer`, openDrawer);
+    const result = await openDrawer({
+      title: "This is Title",
+      render: () => {
+        return <Accordion data={accordionData} />;
+      },
+    });
+    console.log(`handleOpenDrawer result`, result);
+  }, [accordionData, openDrawer]);
+
   return (
     <View style={styles.container}>
       <View>
         <Picker label="Category (multi)" options={options} multi />
         <Picker label="Category" options={options} />
         <Button onPress={handleOpenDrawer}>open drawer</Button>
+        <Button onPress={handleDynamicDrawer}>
+          open drawer (with according inside)
+        </Button>
       </View>
       <View>
         <Text>Within Provider</Text>

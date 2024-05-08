@@ -14933,9 +14933,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expoapp@workspace:examples/expoapp":
+"expoapp@workspace:examples/designdemo":
   version: 0.0.0-use.local
-  resolution: "expoapp@workspace:examples/expoapp"
+  resolution: "expoapp@workspace:examples/designdemo"
   dependencies:
     "@babel/core": "npm:^7.20.0"
     "@babel/plugin-proposal-export-namespace-from": "npm:^7.18.9"

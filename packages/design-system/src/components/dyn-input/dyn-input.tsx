@@ -24,6 +24,7 @@ export interface DynInputProps {
   showFooter?: boolean;
   label?: string;
   numberOfLines?: number;
+  useFlatList?: boolean;
   customRender?: (
     value: DynamicType,
     onChange: (value: DynamicType) => void

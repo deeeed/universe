@@ -3,6 +3,8 @@ import React, { useCallback, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/button/Button';
 import { useBottomModal } from '../../hooks/use-bottom-modal';
+import { AccordionItemProps } from '../../components/accordion/accordion-item/accordion-item';
+import { Accordion } from '../../components/accordion/accordion';
 
 const getStyles = () => {
   return StyleSheet.create({
@@ -49,11 +51,49 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleOpenDrawer result`, result);
   }, []);
 
+  const renderMany = () => {
+    const items = [];
+    for (let i = 0; i < 100; i++) {
+      items.push(<Text key={i}>Item {i}</Text>);
+    }
+    return items;
+  };
+
+  const accordionData: AccordionItemProps[] = [
+    {
+      title: 'Accordion Item 1',
+      children: <Text>Content 1</Text>,
+    },
+    {
+      title: 'Accordion Item 2',
+      children: <View>{renderMany()}</View>,
+    },
+    {
+      title: 'Accordion Item 3',
+      children: <Text>Content 3</Text>,
+    },
+  ];
+
+  const handleDynamicDrawer = useCallback(async () => {
+    console.log(`handleOpenDrawer`, openDrawer);
+    const result = await openDrawer({
+      title: 'This is Title',
+      enableDynamicSizing: true,
+      render: () => {
+        return <Accordion data={accordionData} />;
+      },
+    });
+    console.log(`handleOpenDrawer result`, result);
+  }, [accordionData, openDrawer]);
+
   return (
     <View style={styles.container}>
       <View>
         <Text>Single use</Text>
         <Button onPress={handleOpenDrawer}>open drawer</Button>
+        <Button onPress={handleDynamicDrawer}>
+          open drawer (with according inside)
+        </Button>
       </View>
       <View>
         <Text>Within Provider</Text>

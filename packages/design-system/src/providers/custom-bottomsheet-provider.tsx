@@ -4,7 +4,7 @@ import {
   BottomSheetHandleProps,
   BottomSheetModal,
   BottomSheetModalProvider,
-  BottomSheetView,
+  BottomSheetScrollView,
   useBottomSheetModal,
 } from '@gorhom/bottom-sheet';
 import { useLogger } from '@siteed/react-native-logger';
@@ -38,9 +38,7 @@ export interface CustomBottomSheetModalProviderProps {
       enableDynamicSizing?: boolean;
     }
   ) => Promise<DynInputProps['data']>;
-  openDrawer: ({
-    render,
-  }: {
+  openDrawer: (props: {
     snapPoints?: string[];
     enableDynamicSizing?: boolean;
     index?: number;
@@ -120,6 +118,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       }
       const newInputParams = {
         ...props,
+        useFlatList: false,
         onCancel: () => {
           if (bottomSheetModalRef.current) {
             bottomSheetModalRef.current.dismiss();
@@ -365,9 +364,9 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         handleComponent={renderHandler}
         backdropComponent={renderBackdrop}
       >
-        <BottomSheetView style={styles.container}>
+        <BottomSheetScrollView style={styles.container}>
           {drawerContent}
-        </BottomSheetView>
+        </BottomSheetScrollView>
       </BottomSheetModal>
     </CustomBottomSheetModalContext.Provider>
   );

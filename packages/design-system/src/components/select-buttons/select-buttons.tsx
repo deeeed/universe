@@ -2,13 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   NativeSyntheticEvent,
   Platform,
+  ScrollView,
   StyleSheet,
   TextInputKeyPressEventData,
   View,
 } from 'react-native';
+import { FlatList } from 'react-native-gesture-handler';
 import { Button, HelperText, MD3Theme, Searchbar } from 'react-native-paper';
 import { useScreenWidth } from '../../hooks/use-screen-width';
-import { FlatList } from 'react-native-gesture-handler';
 import { useTheme } from '../../providers/theme-provider';
 
 const getStyles = (theme: MD3Theme) => {
@@ -40,6 +41,7 @@ export interface SelectOption {
 export interface SelectButtonsProps {
   multiSelect?: boolean;
   showSearch?: boolean;
+  useFlatList?: boolean;
   min?: number; // minimum number of options that must be selected
   max?: number; // maximum number of options that can be selected
   cols?: number; // overwrite number of columns to display options in
@@ -59,6 +61,7 @@ export const SelectButtons = ({
   max, //= 1, // Infinity,
   cols,
   multiSelect = false, // default value is false
+  useFlatList = false,
   onChange,
   showSearch,
 }: SelectButtonsProps) => {
@@ -152,8 +155,16 @@ export const SelectButtons = ({
 
   // Render a single button
   const renderButton = useCallback(
-    ({ item, index }: { item: SelectOption; index: number }) => (
-      <View style={styles.buttonContainer}>
+    ({
+      item,
+      index,
+      key,
+    }: {
+      item: SelectOption;
+      index: number;
+      key?: string;
+    }) => (
+      <View key={key} style={styles.buttonContainer}>
         {/* Add padding here */}
         <Button
           key={`opt${index}`}
@@ -195,14 +206,21 @@ export const SelectButtons = ({
       <HelperText type="error" visible={isErrorVisible || false}>
         {errorText}
       </HelperText>
-      {/* Use FlatList to handle the grid layout */}
-      <FlatList
-        data={filteredOptions}
-        renderItem={renderButton}
-        keyExtractor={(_item, index) => `opt${index}`}
-        numColumns={numColumns}
-        key={`flatlist-${numColumns}`} // force re-render when numColumns changes
-      />
+      {useFlatList ? (
+        <FlatList
+          data={filteredOptions}
+          renderItem={renderButton}
+          keyExtractor={(_item, index) => `opt${index}`}
+          numColumns={numColumns}
+          key={`flatlist-${numColumns}`} // force re-render when numColumns changes
+        />
+      ) : (
+        <ScrollView>
+          {filteredOptions.map((item, index) =>
+            renderButton({ item, index, key: `opt${index}` })
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 };
