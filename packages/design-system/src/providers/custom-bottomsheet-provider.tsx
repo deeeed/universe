@@ -5,6 +5,7 @@ import {
   BottomSheetModal,
   BottomSheetModalProvider,
   BottomSheetScrollView,
+  BottomSheetModalProps,
   useBottomSheetModal,
 } from '@gorhom/bottom-sheet';
 import { useLogger } from '@siteed/react-native-logger';
@@ -29,14 +30,13 @@ import {
   DynamicType,
 } from '../components/dyn-input/dyn-input';
 import { SelectItemOption } from '../components/select-items/select-items';
+import { SharedValue } from 'react-native-reanimated';
 
 export interface OpenDrawerProps {
-  snapPoints?: string[];
-  enableDynamicSizing?: boolean;
-  index?: number;
   title?: string;
   footerType?: 'confirm_cancel';
   initialData?: unknown;
+  bottomSheetProps?: BottomSheetModalProps;
   render: (props: {
     resolve?: (value: unknown) => void;
     onChange?: (value: unknown) => void;
@@ -45,9 +45,7 @@ export interface OpenDrawerProps {
 }
 
 export interface EditPropProps extends DynInputProps {
-  snapPoints?: string[];
-  index?: number;
-  enableDynamicSizing?: boolean;
+  bottomSheetProps?: BottomSheetModalProps;
 }
 
 export interface CustomBottomSheetModalProviderProps {
@@ -55,6 +53,7 @@ export interface CustomBottomSheetModalProviderProps {
   editProp: (props: EditPropProps) => Promise<DynInputProps['data']>;
   openDrawer: (props: OpenDrawerProps) => Promise<unknown>;
   dismissAll: () => void;
+  bottomSheetModalRef: React.RefObject<BottomSheetModal>;
 }
 
 export const CustomBottomSheetModalContext = createContext<
@@ -70,7 +69,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexGrow: 1,
     flexShrink: 1,
-    paddingBottom: 40,
+    // paddingBottom: 40,
   },
 });
 
@@ -81,7 +80,9 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
 }) => {
   const { dismiss, dismissAll } = useBottomSheetModal();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const [_snapPoints, setSnapPoints] = useState(defaultSnapPoints);
+  const [_snapPoints, setSnapPoints] = useState<
+    (string | number)[] | SharedValue<(string | number)[]>
+  >(defaultSnapPoints);
   const [_enableDynamicSizing, setEnableDynamicSizing] = useState(true);
   const { logger } = useLogger('CustomBottomSheetModalProvider');
   const onFinishResolveRef = useRef<(values: DynInputProps['data']) => void>();
@@ -97,7 +98,8 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
 
   const editProp = useCallback(
     async (props: EditPropProps): Promise<DynInputProps['data']> => {
-      const { enableDynamicSizing, snapPoints, index } = props;
+      const { bottomSheetProps } = props;
+      const { snapPoints, index, enableDynamicSizing } = bottomSheetProps || {};
       if (enableDynamicSizing) {
         setEnableDynamicSizing(enableDynamicSizing);
         setSnapPoints([]);
@@ -221,15 +223,11 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   );
 
   const openDrawer = useCallback(
-    async ({
-      snapPoints,
-      title: _title,
-      index,
-      footerType: _footerType,
-      enableDynamicSizing,
-      initialData,
-      render,
-    }: OpenDrawerProps) => {
+    async (props: OpenDrawerProps) => {
+      const { bottomSheetProps, footerType, title, initialData, render } =
+        props;
+      const { snapPoints, index, enableDynamicSizing } = bottomSheetProps || {};
+
       if (_snapPoints) {
         setSnapPoints(_snapPoints);
       }
@@ -247,20 +245,14 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         }
       }
 
-      if (_footerType) {
-        setFooterType(_footerType);
+      if (footerType) {
+        setFooterType(footerType);
       }
 
-      if (_title) {
-        setTitle(_title);
+      if (title) {
+        setTitle(title);
       }
 
-      logger.info('openDrawer', {
-        initialData,
-        _snapPoints,
-        _footerType,
-        _title,
-      });
       initialInputParamsRef.current = JSON.stringify(initialData);
 
       return new Promise((resolve, reject) => {
@@ -332,7 +324,13 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
 
   return (
     <CustomBottomSheetModalContext.Provider
-      value={{ dismiss, dismissAll, editProp, openDrawer }}
+      value={{
+        dismiss,
+        dismissAll,
+        editProp,
+        openDrawer,
+        bottomSheetModalRef: bottomSheetModalRef,
+      }}
     >
       {children}
       <BottomSheetModal
@@ -343,6 +341,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         enablePanDownToClose={true}
         onChange={handleSheetChanges}
         footerComponent={renderFooter}
+        keyboardBlurBehavior="restore"
         handleComponent={renderHandler}
         backdropComponent={renderBackdrop}
       >

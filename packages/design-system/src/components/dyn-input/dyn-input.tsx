@@ -10,7 +10,6 @@ import { TextInput as RNTextInput, StyleSheet, View } from 'react-native';
 import { MD3Theme, TextInput, useTheme } from 'react-native-paper';
 import { Button } from '../button/Button';
 import { SelectButtons, SelectOption } from '../select-buttons/select-buttons';
-import { useLogger } from '@siteed/react-native-logger';
 
 type InputType =
   | 'text'
@@ -78,14 +77,12 @@ export const DynInput = ({
   onCancel,
   onFinish,
 }: DynInputProps) => {
-  const { logger } = useLogger('DynInput');
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
   const inputRef = useRef<RNTextInput>(null);
   const { shouldHandleKeyboardEvents } = useBottomSheetInternal();
 
-  console.log(`DynInput`, data);
   useEffect(() => {
     setTemp(data);
   }, [data]);
@@ -108,44 +105,38 @@ export const DynInput = ({
   );
 
   const handleFocus = () => {
-    logger.debug(`handleFocus`);
     shouldHandleKeyboardEvents.value = true;
   };
 
   const handleBlur = () => {
-    logger.debug(`handleBlur`);
     shouldHandleKeyboardEvents.value = false;
   };
 
   const renderNumber = () => {
     return (
-      <View>
-        <TextInput
-          ref={inputRef}
-          inputMode="numeric"
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          value={temp as string}
-          onChangeText={handleChange}
-        />
-      </View>
+      <TextInput
+        ref={inputRef}
+        inputMode="numeric"
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        value={temp as string}
+        onChangeText={handleChange}
+      />
     );
   };
 
   const renderText = () => {
     return (
-      <View>
-        <TextInput
-          ref={inputRef}
-          multiline={!!(numberOfLines && numberOfLines > 0)}
-          numberOfLines={numberOfLines}
-          label={label}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          value={temp as string}
-          onChangeText={handleChange}
-        />
-      </View>
+      <TextInput
+        ref={inputRef}
+        multiline={!!(numberOfLines && numberOfLines > 0)}
+        numberOfLines={numberOfLines}
+        label={label}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        value={temp as string}
+        onChangeText={handleChange}
+      />
     );
   };
 
