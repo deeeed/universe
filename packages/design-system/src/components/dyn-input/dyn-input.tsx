@@ -85,6 +85,7 @@ export const DynInput = ({
   const inputRef = useRef<RNTextInput>(null);
   const { shouldHandleKeyboardEvents } = useBottomSheetInternal();
 
+  console.log(`DynInput`, data);
   useEffect(() => {
     setTemp(data);
   }, [data]);
