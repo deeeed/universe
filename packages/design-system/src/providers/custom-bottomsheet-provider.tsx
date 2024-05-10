@@ -36,7 +36,7 @@ export interface OpenDrawerProps {
   title?: string;
   footerType?: 'confirm_cancel';
   initialData?: unknown;
-  bottomSheetProps?: BottomSheetModalProps;
+  bottomSheetProps?: Partial<BottomSheetModalProps>;
   render: (props: {
     resolve?: (value: unknown) => void;
     onChange?: (value: unknown) => void;
@@ -45,7 +45,7 @@ export interface OpenDrawerProps {
 }
 
 export interface EditPropProps extends DynInputProps {
-  bottomSheetProps?: BottomSheetModalProps;
+  bottomSheetProps?: Partial<BottomSheetModalProps>;
 }
 
 export interface CustomBottomSheetModalProviderProps {

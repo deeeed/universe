@@ -43,7 +43,9 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleOpenDrawer`, openDrawer);
     const result = await openDrawer({
       title: 'This is Title',
-      snapPoints: ['20%', '50%'],
+      bottomSheetProps: {
+        enableDynamicSizing: true,
+      },
       render: () => {
         return <Text>Drawer content</Text>;
       },
@@ -78,7 +80,9 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleOpenDrawer`, openDrawer);
     const result = await openDrawer({
       title: 'This is Title',
-      enableDynamicSizing: true,
+      bottomSheetProps: {
+        enableDynamicSizing: true,
+      },
       render: () => {
         return <Accordion data={accordionData} />;
       },

@@ -77,7 +77,9 @@ export const Picker = ({
     const newSelection = (await editProp({
       data: activeOptions,
       multiSelect: multi,
-      enableDynamicSizing: true,
+      bottomSheetProps: {
+        enableDynamicSizing: true,
+      },
       min: 0,
       max: Infinity,
       showFooter: !multi ? showFooter : true,
