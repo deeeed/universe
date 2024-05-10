@@ -28,6 +28,7 @@ export * from './components/skeleton/loading-pulse-bar/loading-pulse-bar';
 export * from './components/pagination/pagination';
 export * from './components/pagination/pagination-item';
 export * from './components/list-item/list-item';
+export * from './components/item-view/item-view';
 
 // Settings related components, useful to re-use and visualize in external storybooks
 export * from './settings/theme-config/theme-config';

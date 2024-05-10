@@ -63,7 +63,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
   // variables
   const snapPoints = useMemo(() => ["20%", "50%"], []);
 
-  const { openDrawer } = useBottomModal();
+  const { openDrawer, editProp } = useBottomModal();
 
   // callbacks
   const handlePresentModalPress = useCallback(() => {
@@ -121,6 +121,20 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleOpenDrawer result`, result);
   }, [accordionData, openDrawer]);
 
+  const handleEditProp = useCallback(async () => {
+    console.log(`handleEditProp`);
+    try {
+      const result = await editProp({
+        enableDynamicSizing: true,
+        data: "Hello",
+        inputType: "text",
+      });
+      console.log(`result`, result);
+    } catch (error) {
+      // Ignore error.
+    }
+  }, []);
+
   return (
     <View style={styles.container}>
       <View>
@@ -130,6 +144,9 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
         <Button onPress={handleDynamicDrawer}>
           open drawer (with according inside)
         </Button>
+      </View>
+      <View>
+        <Button onPress={handleEditProp}>Edit PRops (string)</Button>
       </View>
       <View>
         <Text>Within Provider</Text>

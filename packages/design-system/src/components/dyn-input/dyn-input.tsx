@@ -1,5 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useBottomSheetInternal } from '@gorhom/bottom-sheet';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { TextInput as RNTextInput, StyleSheet, View } from 'react-native';
 import { MD3Theme, TextInput, useTheme } from 'react-native-paper';
 import { Button } from '../button/Button';
 import { SelectButtons, SelectOption } from '../select-buttons/select-buttons';
@@ -73,6 +80,8 @@ export const DynInput = ({
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
+  const inputRef = useRef<RNTextInput>(null);
+  const { shouldHandleKeyboardEvents } = useBottomSheetInternal();
 
   useEffect(() => {
     setTemp(data);
@@ -95,11 +104,22 @@ export const DynInput = ({
     [multiSelect, onFinish, showFooter]
   );
 
+  const handleFocus = () => {
+    shouldHandleKeyboardEvents.value = true;
+  };
+
+  const handleBlur = () => {
+    shouldHandleKeyboardEvents.value = false;
+  };
+
   const renderNumber = () => {
     return (
       <View>
         <TextInput
+          ref={inputRef}
           inputMode="numeric"
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           value={temp as string}
           onChangeText={handleChange}
         />
@@ -111,9 +131,12 @@ export const DynInput = ({
     return (
       <View>
         <TextInput
+          ref={inputRef}
           multiline={!!(numberOfLines && numberOfLines > 0)}
           numberOfLines={numberOfLines}
           label={label}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           value={temp as string}
           onChangeText={handleChange}
         />
