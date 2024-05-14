@@ -137,12 +137,15 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       if (enableDynamicSizing) {
         setSnapPoints([]);
         setIndex(0);
+        logger.debug('Dynamic sizing enabled, snap points and index reset.');
       } else {
         if (snapPoints) {
           setSnapPoints(snapPoints);
+          logger.debug('Snap points set:', snapPoints);
         }
-        if (index) {
+        if (index !== undefined) {
           setIndex(index);
+          logger.debug('Index set:', index);
         }
       }
       const newInputParams: DynInputProps = {
@@ -150,29 +153,25 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         useFlatList: false,
         onCancel: () => {
           logger.debug('onCancel', bottomSheetModalRef.current);
-          if (bottomSheetModalRef.current) {
-            bottomSheetModalRef.current.dismiss();
-          }
+          bottomSheetModalRef.current?.dismiss();
           onFinishResolveRef.current?.(props.data);
           onFinishResolveRef.current = undefined;
           setDrawerContent(null);
+          logger.debug('Drawer content reset on cancel.');
         },
         onFinish: (values: DynamicType) => {
-          if (onFinishResolveRef.current) {
-            onFinishResolveRef.current(values);
-            onFinishResolveRef.current = undefined;
-          }
-          if (bottomSheetModalRef.current) {
-            bottomSheetModalRef.current.dismiss();
-          }
+          onFinishResolveRef.current?.(values);
+          onFinishResolveRef.current = undefined;
+          bottomSheetModalRef.current?.dismiss();
           setDrawerContent(null);
+          logger.debug('Drawer content reset on finish.');
         },
       };
 
       logger.debug('editProp', props, newInputParams);
       setDrawerContent(<DynInput {...newInputParams} />);
 
-      logger.debug(`modal`, bottomSheetModalRef.current);
+      logger.debug('Presenting modal');
       bottomSheetModalRef.current?.present();
 
       return new Promise((resolve) => {
@@ -332,7 +331,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   );
 
   const handleSheetChanges = useCallback((index: number) => {
-    console.log(`handleSheetChanges`, index);
+    logger.debug(`handleSheetChanges called with index:`, index);
     if (index === -1) {
       // // If modal was dismissed without onFinish being called
       // if (onFinishResolveRef.current) {
@@ -347,19 +346,24 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       // if (onCustomDrawerResolveRef.current) {
       //   onCustomDrawerResolveRef.current(true);
       //   onCustomDrawerResolveRef.current = undefined;
-      // }
 
       // Reset content
       setDrawerContent(undefined);
       setSnapPoints(defaultSnapPoints);
       setFooterType(undefined);
       setTitle(undefined);
+
+      // Reset the resolve and reject refs
+      onFinishResolveRef.current = undefined;
+      onCustomDrawerResolveRef.current = undefined;
+      onCustomDrawerRejectRef.current = undefined;
     }
   }, []);
 
   console.log(
     `enableDynamicSizing=${_enableDynamicSizing} snappoints`,
-    _snapPoints
+    _snapPoints,
+    drawerContent
   );
   return (
     <CustomBottomSheetModalContext.Provider
