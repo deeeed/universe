@@ -35,6 +35,7 @@ export interface OpenDrawerProps {
   title?: string;
   footerType?: 'confirm_cancel';
   initialData?: unknown;
+  withBackdrop?: boolean;
   bottomSheetProps?: Partial<BottomSheetModalProps>;
   render: (props: {
     resolve?: (value: unknown) => void;
@@ -44,6 +45,7 @@ export interface OpenDrawerProps {
 }
 
 export interface EditPropProps extends DynInputProps {
+  withBackdrop?: boolean;
   bottomSheetProps?: Partial<BottomSheetModalProps>;
 }
 
@@ -93,6 +95,8 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const [index, setIndex] = useState<number>(0);
   const initialInputParamsRef = useRef<string>();
   const latestInputParamsRef = useRef<unknown>();
+  const [wihBackdrop, setWithBackdrop] = useState(false);
+
   // const { t } = useTranslation('bottom_modal');
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [enableDismissOnClose, setEnableDismissOnClose] = useState(true);
@@ -130,9 +134,10 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
 
   const editProp = useCallback(
     async (props: EditPropProps): Promise<DynInputProps['data']> => {
-      const { bottomSheetProps } = props;
+      const { bottomSheetProps, withBackdrop } = props;
       const { snapPoints, index, enableDynamicSizing } = bottomSheetProps || {};
 
+      setWithBackdrop(withBackdrop ?? false);
       setEnableDynamicSizing(enableDynamicSizing ?? false);
       if (enableDynamicSizing) {
         setSnapPoints([]);
@@ -251,10 +256,17 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
 
   const openDrawer = useCallback(
     async (props: OpenDrawerProps) => {
-      const { bottomSheetProps, footerType, title, initialData, render } =
-        props;
+      const {
+        bottomSheetProps,
+        footerType,
+        title,
+        initialData,
+        render,
+        withBackdrop,
+      } = props;
       const { snapPoints, index, enableDynamicSizing } = bottomSheetProps || {};
 
+      setWithBackdrop(withBackdrop ?? false);
       if (_snapPoints) {
         setSnapPoints(_snapPoints);
       }
@@ -369,7 +381,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         footerComponent={renderFooter}
         keyboardBlurBehavior="restore"
         handleComponent={renderHandler}
-        backdropComponent={renderBackdrop}
+        backdropComponent={wihBackdrop ? renderBackdrop : undefined}
       >
         <BottomSheetScrollView style={styles.container}>
           {drawerContent}
