@@ -1,11 +1,13 @@
 import {
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
   BottomSheetFooterProps,
   BottomSheetHandle,
   BottomSheetHandleProps,
   BottomSheetModal,
+  BottomSheetModalProps,
   BottomSheetModalProvider,
   BottomSheetScrollView,
-  BottomSheetModalProps,
   useBottomSheetModal,
 } from '@gorhom/bottom-sheet';
 import { useLogger } from '@siteed/react-native-logger';
@@ -19,10 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { Keyboard, Platform, StyleSheet } from 'react-native';
-import {
-  CustomBackdrop,
-  CustomBackdropProps,
-} from '../components/bottom-modal/backdrop/custom-backdrop';
+import { SharedValue } from 'react-native-reanimated';
 import { ConfirmCancelFooter } from '../components/bottom-modal/footers/confirm-cancel-footer';
 import { LabelHandler } from '../components/bottom-modal/handlers/label-handler';
 import {
@@ -31,7 +30,6 @@ import {
   DynamicType,
 } from '../components/dyn-input/dyn-input';
 import { SelectItemOption } from '../components/select-items/select-items';
-import { SharedValue } from 'react-native-reanimated';
 
 export interface OpenDrawerProps {
   title?: string;
@@ -135,7 +133,6 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       const { bottomSheetProps } = props;
       const { snapPoints, index, enableDynamicSizing } = bottomSheetProps || {};
 
-      console.log(`snapPoints`, snapPoints, index, enableDynamicSizing);
       setEnableDynamicSizing(enableDynamicSizing ?? false);
       if (enableDynamicSizing) {
         setSnapPoints([]);
@@ -241,20 +238,15 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   );
 
   const renderBackdrop = useCallback(
-    (props: CustomBackdropProps) => {
+    (props: BottomSheetBackdropProps) => {
+      console.log(`backdrop prods`, props);
       return (
-        <CustomBackdrop
+        <BottomSheetBackdrop
           {...props}
-          pressBehavior={'none'}
-          onPress={() => {
-            logger.debug('backdrop pressed');
-            // if (!enableDismissOnClose && keyboardOpen) {
-            //   setEnableDismissOnClose(true);
-            // }
-            if (bottomSheetModalRef.current) {
-              bottomSheetModalRef.current.dismiss();
-            }
-          }}
+          pressBehavior={'close'}
+          disappearsOnIndex={-1}
+          appearsOnIndex={0}
+          opacity={0.5}
         />
       );
     },
