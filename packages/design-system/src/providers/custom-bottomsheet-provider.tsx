@@ -153,7 +153,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         useFlatList: false,
         onCancel: () => {
           logger.debug('onCancel', bottomSheetModalRef.current);
-          bottomSheetModalRef.current?.dismiss();
+          bottomSheetModalRef.current?.close();
           onFinishResolveRef.current?.(props.data);
           onFinishResolveRef.current = undefined;
           setDrawerContent(null);
@@ -161,7 +161,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         },
         onFinish: (values: DynamicType) => {
           logger.debug('onFinish', values);
-          bottomSheetModalRef.current?.dismiss();
+          bottomSheetModalRef.current?.close();
           onFinishResolveRef.current?.(values);
           onFinishResolveRef.current = undefined;
           setDrawerContent(null);
@@ -195,7 +195,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         );
         onCustomDrawerResolveRef.current?.(temp);
       }
-      // bottomSheetModalRef.current.dismiss();
+      // bottomSheetModalRef.current.close();
     }
   }, [logger]);
 
@@ -294,12 +294,12 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
           logger.log('wrapResolve', value);
           resolve(value);
           if (bottomSheetModalRef.current) {
-            bottomSheetModalRef.current.dismiss();
+            bottomSheetModalRef.current.close();
           }
         };
         const wrapReject = (error: unknown) => {
           if (bottomSheetModalRef.current) {
-            bottomSheetModalRef.current.dismiss();
+            bottomSheetModalRef.current.close();
           }
           reject(error);
         };
@@ -389,6 +389,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         index={index}
         snapPoints={_snapPoints}
         android_keyboardInputMode="adjustResize"
+        animateOnMount={Platform.OS === 'ios' ? false : true}
         enableDynamicSizing={_enableDynamicSizing}
         enablePanDownToClose={true}
         enableDismissOnClose={enableDismissOnClose}
