@@ -330,6 +330,10 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     [logger]
   );
 
+  const handleDismiss = useCallback(() => {
+    logger.log(`handleDismiss called`);
+  }, []);
+
   const handleSheetChanges = useCallback((index: number) => {
     logger.debug(`handleSheetChanges called with index:`, index);
     if (index === -1) {
@@ -365,6 +369,9 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     _snapPoints,
     drawerContent
   );
+  console.log(`modal ref`, bottomSheetModalRef.current);
+  console.log(`index`, index);
+  console.log(`enableDismissOnClose`, enableDismissOnClose);
   return (
     <CustomBottomSheetModalContext.Provider
       value={{
@@ -384,6 +391,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         enableDynamicSizing={_enableDynamicSizing}
         enablePanDownToClose={true}
         enableDismissOnClose={enableDismissOnClose}
+        onDismiss={handleDismiss}
         onChange={handleSheetChanges}
         footerComponent={renderFooter}
         keyboardBlurBehavior="restore"

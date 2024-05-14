@@ -10,6 +10,7 @@ import { TextInput as RNTextInput, StyleSheet, View } from 'react-native';
 import { MD3Theme, TextInput, useTheme } from 'react-native-paper';
 import { Button } from '../button/Button';
 import { SelectButtons, SelectOption } from '../select-buttons/select-buttons';
+import { useLogger } from '@siteed/react-native-logger';
 
 type InputType =
   | 'text'
@@ -80,12 +81,14 @@ export const DynInput = ({
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
+  const { logger } = useLogger('DynInput');
   const inputRef = useRef<RNTextInput>(null);
   const { shouldHandleKeyboardEvents } = useBottomSheetInternal();
 
   useEffect(() => {
     setTemp(data);
-  }, [data]);
+    logger.log('DynInput useEffect - data changed:', data);
+  }, [data, logger]);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -103,6 +106,8 @@ export const DynInput = ({
       }
 
       setTemp(value);
+      logger.debug('DynInput handleChange - value changed:', value);
+
       if (!showFooter) {
         onFinish?.(formatedValue);
       }
