@@ -155,6 +155,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
           }
           onFinishResolveRef.current?.(props.data);
           onFinishResolveRef.current = undefined;
+          setDrawerContent(null);
         },
         onFinish: (values: DynamicType) => {
           if (onFinishResolveRef.current) {
@@ -164,16 +165,15 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
           if (bottomSheetModalRef.current) {
             bottomSheetModalRef.current.dismiss();
           }
+          setDrawerContent(null);
         },
       };
 
       logger.debug('editProp', props, newInputParams);
       setDrawerContent(<DynInput {...newInputParams} />);
 
-      if (bottomSheetModalRef.current) {
-        bottomSheetModalRef.current.snapToIndex(0);
-        bottomSheetModalRef.current.present();
-      }
+      logger.debug(`modal`, bottomSheetModalRef.current);
+      bottomSheetModalRef.current?.present();
 
       return new Promise((resolve) => {
         onFinishResolveRef.current = resolve;
