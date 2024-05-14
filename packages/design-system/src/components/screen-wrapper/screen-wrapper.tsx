@@ -1,11 +1,6 @@
 import React, { useMemo } from 'react';
-import {
-  ScrollView,
-  StyleProp,
-  StyleSheet,
-  View,
-  ViewStyle,
-} from 'react-native';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppTheme } from '../../hooks/use-app-theme-setup';
 import { useTheme } from '../../providers/theme-provider';
