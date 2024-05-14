@@ -160,9 +160,10 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
           logger.debug('Drawer content reset on cancel.');
         },
         onFinish: (values: DynamicType) => {
+          logger.debug('onFinish', values);
+          bottomSheetModalRef.current?.dismiss();
           onFinishResolveRef.current?.(values);
           onFinishResolveRef.current = undefined;
-          bottomSheetModalRef.current?.dismiss();
           setDrawerContent(null);
           logger.debug('Drawer content reset on finish.');
         },
