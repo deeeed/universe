@@ -4,6 +4,7 @@ import {
   AccordionItemProps,
   Button,
   Picker,
+  TextInput,
   useBottomModal,
 } from "@siteed/design-system";
 import React, { useCallback, useMemo, useRef } from "react";
@@ -16,7 +17,7 @@ const getStyles = () => {
       flex: 1,
       alignItems: "center",
       backgroundColor: "red",
-      minHeight: 200,
+      // minHeight: 200,
     },
   });
 };
@@ -79,7 +80,9 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleOpenDrawer`, openDrawer);
     const result = await openDrawer({
       title: "This is Title",
-      enableDynamicSizing: true,
+      bottomSheetProps: {
+        enableDynamicSizing: true,
+      },
       render: () => {
         return <Text>Drawer content</Text>;
       },
@@ -125,7 +128,9 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleEditProp`);
     try {
       const result = await editProp({
-        enableDynamicSizing: true,
+        bottomSheetProps: {
+          enableDynamicSizing: true,
+        },
         data: "Hello",
         inputType: "text",
       });
@@ -154,14 +159,16 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
         <BottomSheetModal
           // enableDynamicSizing
           ref={bottomSheetModalRef}
+          android_keyboardInputMode="adjustResize"
           enablePanDownToClose
-          index={0}
-          snapPoints={snapPoints}
+          // index={0}
+          // snapPoints={snapPoints}
+          enableDynamicSizing={true}
           // containerStyle={{ backgroundColor: 'transparent' }}
           onChange={handleSheetChanges}
         >
           <BottomSheetView style={styles.contentContainer}>
-            <Text>Awesome 🎉</Text>
+            <TextInput placeholder="Type here" />
           </BottomSheetView>
         </BottomSheetModal>
       </View>

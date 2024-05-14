@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TextStyle,
   View,
+  ViewStyle,
 } from 'react-native';
 import { AppTheme } from '../../hooks/use-app-theme-setup';
 import { useTheme } from '../../providers/theme-provider';
@@ -36,8 +37,10 @@ const getStyle = (theme: AppTheme) => {
 };
 
 export interface ListItemProps {
+  contentContainerStyle?: StyleProp<ViewStyle>;
+  textContentContainerStyle?: StyleProp<ViewStyle>;
   label: string;
-  labelStyle: StyleProp<TextStyle>;
+  labelStyle?: StyleProp<TextStyle>;
   subLabel?: string;
   subLabelStyle?: StyleProp<TextStyle>;
   onPress?: () => void;
@@ -46,6 +49,8 @@ export const ListItem = ({
   label,
   labelStyle,
   subLabel,
+  contentContainerStyle,
+  textContentContainerStyle,
   subLabelStyle,
   onPress,
 }: ListItemProps) => {
@@ -53,10 +58,15 @@ export const ListItem = ({
   const styles = useMemo(() => getStyle(theme), [theme]);
 
   return (
-    <Pressable style={styles.container} onPress={onPress}>
-      <View style={styles.textContainer}>
+    <Pressable
+      style={[styles.container, contentContainerStyle]}
+      onPress={onPress}
+    >
+      <View style={[styles.textContainer, textContentContainerStyle]}>
         <Text style={[styles.label, labelStyle]}>{label}</Text>
-        <Text style={[styles.subLabel, subLabelStyle]}>{subLabel}</Text>
+        {subLabel ? (
+          <Text style={[styles.subLabel, subLabelStyle]}>{subLabel}</Text>
+        ) : null}
       </View>
       <MaterialCommunityIcons
         name={'chevron-right'}

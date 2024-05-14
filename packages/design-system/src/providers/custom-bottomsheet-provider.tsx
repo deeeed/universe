@@ -14,10 +14,11 @@ import React, {
   ReactNode,
   createContext,
   useCallback,
+  useEffect,
   useRef,
   useState,
 } from 'react';
-import { StyleSheet } from 'react-native';
+import { Keyboard, Platform, StyleSheet } from 'react-native';
 import {
   CustomBackdrop,
   CustomBackdropProps,
@@ -95,13 +96,48 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const initialInputParamsRef = useRef<string>();
   const latestInputParamsRef = useRef<unknown>();
   // const { t } = useTranslation('bottom_modal');
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [enableDismissOnClose, setEnableDismissOnClose] = useState(true);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => setKeyboardOpen(true)
+    );
+
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => setKeyboardOpen(false)
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    setEnableDismissOnClose(!keyboardOpen);
+  }, [keyboardOpen]);
+
+  useEffect(() => {
+    if (!enableDismissOnClose && keyboardOpen) {
+      setTimeout(() => {
+        setEnableDismissOnClose(true);
+      }, 10);
+    }
+  }, [enableDismissOnClose, keyboardOpen]);
 
   const editProp = useCallback(
     async (props: EditPropProps): Promise<DynInputProps['data']> => {
       const { bottomSheetProps } = props;
       const { snapPoints, index, enableDynamicSizing } = bottomSheetProps || {};
+
+      console.log(`snapPoints`, snapPoints, index, enableDynamicSizing);
+      setEnableDynamicSizing(enableDynamicSizing ?? false);
       if (enableDynamicSizing) {
-        setEnableDynamicSizing(enableDynamicSizing);
         setSnapPoints([]);
         setIndex(0);
       } else {
@@ -112,7 +148,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
           setIndex(index);
         }
       }
-      const newInputParams = {
+      const newInputParams: DynInputProps = {
         ...props,
         useFlatList: false,
         onCancel: () => {
@@ -143,7 +179,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         onFinishResolveRef.current = resolve;
       });
     },
-    []
+    [setEnableDynamicSizing, setSnapPoints, logger]
   );
 
   const handleCancelFooter = useCallback(() => {
@@ -209,9 +245,12 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       return (
         <CustomBackdrop
           {...props}
-          pressBehavior={'close'}
+          pressBehavior={'none'}
           onPress={() => {
             logger.debug('backdrop pressed');
+            // if (!enableDismissOnClose && keyboardOpen) {
+            //   setEnableDismissOnClose(true);
+            // }
             if (bottomSheetModalRef.current) {
               bottomSheetModalRef.current.dismiss();
             }
@@ -298,8 +337,9 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   );
 
   const handleSheetChanges = useCallback((index: number) => {
+    console.log(`handleSheetChanges`, index);
     if (index === -1) {
-      // If modal was dismissed without onFinish being called
+      // // If modal was dismissed without onFinish being called
       // if (onFinishResolveRef.current) {
       //   if (inputParams?.data) {
       //     // calling on finish with the current data
@@ -322,6 +362,10 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     }
   }, []);
 
+  console.log(
+    `enableDynamicSizing=${_enableDynamicSizing} snappoints`,
+    _snapPoints
+  );
   return (
     <CustomBottomSheetModalContext.Provider
       value={{
@@ -337,8 +381,10 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         ref={bottomSheetModalRef}
         index={index}
         snapPoints={_snapPoints}
+        android_keyboardInputMode="adjustResize"
         enableDynamicSizing={_enableDynamicSizing}
         enablePanDownToClose={true}
+        enableDismissOnClose={enableDismissOnClose}
         onChange={handleSheetChanges}
         footerComponent={renderFooter}
         keyboardBlurBehavior="restore"

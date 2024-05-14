@@ -87,6 +87,12 @@ export const DynInput = ({
     setTemp(data);
   }, [data]);
 
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current?.focus();
+    }
+  }, [shouldHandleKeyboardEvents.value]);
+
   const handleChange = useCallback(
     (value: DynamicType) => {
       let formatedValue = value;
