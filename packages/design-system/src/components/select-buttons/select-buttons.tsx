@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   NativeSyntheticEvent,
   Platform,
-  ScrollView,
   StyleSheet,
   TextInputKeyPressEventData,
   View,
@@ -215,11 +214,11 @@ export const SelectButtons = ({
           key={`flatlist-${numColumns}`} // force re-render when numColumns changes
         />
       ) : (
-        <ScrollView>
+        <View>
           {filteredOptions.map((item, index) =>
             renderButton({ item, index, key: `opt${index}` })
           )}
-        </ScrollView>
+        </View>
       )}
     </View>
   );

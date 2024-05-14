@@ -149,9 +149,12 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         ...props,
         useFlatList: false,
         onCancel: () => {
+          logger.debug('onCancel', bottomSheetModalRef.current);
           if (bottomSheetModalRef.current) {
             bottomSheetModalRef.current.dismiss();
           }
+          onFinishResolveRef.current?.(props.data);
+          onFinishResolveRef.current = undefined;
         },
         onFinish: (values: DynamicType) => {
           if (onFinishResolveRef.current) {

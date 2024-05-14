@@ -137,6 +137,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
       console.log(`result`, result);
     } catch (error) {
       // Ignore error.
+      console.log(`error`, error);
     }
   }, []);
 
@@ -163,7 +164,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
           enablePanDownToClose
           // index={0}
           // snapPoints={snapPoints}
-          enableDynamicSizing={true}
+          enableDynamicSizing
           // containerStyle={{ backgroundColor: 'transparent' }}
           onChange={handleSheetChanges}
         >
