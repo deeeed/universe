@@ -84,7 +84,7 @@ export const DynInput = ({
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
   const { logger } = useLogger('DynInput');
-  const inputRef = useRef<RNGTextInput | RNT>(null);
+  const inputRef = useRef<RNGTextInput>(null);
   const { shouldHandleKeyboardEvents } = useBottomSheetInternal();
 
   useEffect(() => {
