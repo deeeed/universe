@@ -130,6 +130,8 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
       const result = await editProp({
         bottomSheetProps: {
           enableDynamicSizing: true,
+          snapPoints: ["10%", "20%"],
+          index: 0,
         },
         data: "Hello",
         inputType: "text",
