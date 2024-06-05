@@ -74,7 +74,7 @@ export const Picker = ({
       return;
     }
     // pick new categories between allCategories
-    const newSelection = (await editProp({
+    let newSelection = (await editProp({
       data: activeOptions,
       multiSelect: multi,
       bottomSheetProps: {
@@ -85,7 +85,11 @@ export const Picker = ({
       showFooter: !multi ? showFooter : true,
       showSearch: false,
       inputType: 'select-button',
-    })) as SelectOption[];
+    })) as SelectOption[] | SelectOption;
+    // if the user selected only one category, we need to convert it to an array
+    if(typeof newSelection === 'object' && !Array.isArray(newSelection)) {
+      newSelection = [newSelection];
+    }
     onFinish?.(newSelection);
   }, [editProp, onFinish, multi, activeOptions]);
 
