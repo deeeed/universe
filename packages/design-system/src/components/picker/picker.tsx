@@ -1,3 +1,4 @@
+// packages/design-system/src/components/picker/picker.tsx
 import { AntDesign } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -49,9 +50,11 @@ export interface PickerProps {
   emptyLabel?: string;
   enableDynamicSizing?: boolean;
   onFinish?: (selection: SelectOption[]) => void;
+  onItemPress?: (item: SelectOption) => void;
 }
 export const Picker = ({
   onFinish,
+  onItemPress,
   options,
   multi = false,
   closable = false,
@@ -74,7 +77,7 @@ export const Picker = ({
       return;
     }
     // pick new categories between allCategories
-    const newSelection = (await editProp({
+    let newSelection = (await editProp({
       data: activeOptions,
       multiSelect: multi,
       bottomSheetProps: {
@@ -85,9 +88,24 @@ export const Picker = ({
       showFooter: !multi ? showFooter : true,
       showSearch: false,
       inputType: 'select-button',
-    })) as SelectOption[];
+    })) as SelectOption[] | SelectOption;
+    // if the user selected only one category, we need to convert it to an array
+    if (typeof newSelection === 'object' && !Array.isArray(newSelection)) {
+      newSelection = [newSelection];
+    }
     onFinish?.(newSelection);
   }, [editProp, onFinish, multi, activeOptions]);
+
+  const handleItemPress = useCallback(
+    async (item: SelectOption) => {
+      if (onItemPress) {
+        onItemPress(item);
+      } else {
+        handlePick();
+      }
+    },
+    [onItemPress, handlePick]
+  );
 
   return (
     <View style={styles.container}>
@@ -112,6 +130,7 @@ export const Picker = ({
                   key={`cid${index}`}
                   style={{ backgroundColor: category.color }}
                   compact={true}
+                  onPress={() => handleItemPress(category)}
                   onClose={
                     closable
                       ? () => {

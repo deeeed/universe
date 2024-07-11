@@ -1,4 +1,5 @@
 import { useBottomSheetInternal } from '@gorhom/bottom-sheet';
+import { useLogger } from '@siteed/react-native-logger';
 import React, {
   useCallback,
   useEffect,
@@ -6,11 +7,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { TextInput as RNTextInput, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { TextInput as RNGTextInput } from 'react-native-gesture-handler';
 import { MD3Theme, TextInput, useTheme } from 'react-native-paper';
 import { Button } from '../button/Button';
 import { SelectButtons, SelectOption } from '../select-buttons/select-buttons';
-import { useLogger } from '@siteed/react-native-logger';
 
 type InputType =
   | 'text'
@@ -46,13 +47,14 @@ const getStyles = (theme: MD3Theme) => {
     container: {
       display: 'flex',
       // flex: 1,
-      flexDirection: 'column',
+      // height: 100,
+      // flexDirection: 'column',
       backgroundColor: theme.colors.surface,
     },
     footer: {
-      borderTopWidth: 2,
-      borderTopColor: theme.colors.outline,
-      marginBottom: 20,
+      // borderTopWidth: 2,
+      // borderTopColor: theme.colors.outline,
+      // marginBottom: 20,
       display: 'flex',
       // alignSelf: 'flex-end',
       flexDirection: 'row',
@@ -82,7 +84,7 @@ export const DynInput = ({
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
   const { logger } = useLogger('DynInput');
-  const inputRef = useRef<RNTextInput>(null);
+  const inputRef = useRef<RNGTextInput>(null);
   const { shouldHandleKeyboardEvents } = useBottomSheetInternal();
 
   useEffect(() => {
@@ -92,7 +94,10 @@ export const DynInput = ({
 
   useEffect(() => {
     if (inputRef.current) {
-      inputRef.current?.focus();
+      setTimeout(() => {
+        // adding the timeout prevents the input focus to break sizing
+        inputRef.current?.focus();
+      }, 100);
     }
   }, [shouldHandleKeyboardEvents.value]);
 
@@ -162,7 +167,7 @@ export const DynInput = ({
 
   return (
     <View style={styles.container}>
-      <View style={{ flexGrow: 1 }}>
+      <View style={{}}>
         {inputType === 'text' && renderText()}
         {inputType === 'number' && renderNumber()}
         {inputType === 'custom' && customRender?.(data, handleChange)}

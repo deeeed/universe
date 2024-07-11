@@ -93,6 +93,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const [index, setIndex] = useState<number>(0);
   const initialInputParamsRef = useRef<string>();
   const latestInputParamsRef = useRef<unknown>();
+
   // const { t } = useTranslation('bottom_modal');
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [enableDismissOnClose, setEnableDismissOnClose] = useState(true);
@@ -137,15 +138,12 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       if (enableDynamicSizing) {
         setSnapPoints([]);
         setIndex(0);
-        logger.debug('Dynamic sizing enabled, snap points and index reset.');
       } else {
         if (snapPoints) {
           setSnapPoints(snapPoints);
-          logger.debug('Snap points set:', snapPoints);
         }
         if (index !== undefined) {
           setIndex(index);
-          logger.debug('Index set:', index);
         }
       }
       const newInputParams: DynInputProps = {
@@ -153,26 +151,22 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         useFlatList: false,
         onCancel: () => {
           logger.debug('onCancel', bottomSheetModalRef.current);
-          bottomSheetModalRef.current?.dismiss();
+          bottomSheetModalRef.current?.close();
           onFinishResolveRef.current?.(props.data);
           onFinishResolveRef.current = undefined;
           setDrawerContent(null);
-          logger.debug('Drawer content reset on cancel.');
         },
         onFinish: (values: DynamicType) => {
           logger.debug('onFinish', values);
-          bottomSheetModalRef.current?.dismiss();
+          bottomSheetModalRef.current?.close();
           onFinishResolveRef.current?.(values);
           onFinishResolveRef.current = undefined;
           setDrawerContent(null);
-          logger.debug('Drawer content reset on finish.');
         },
       };
 
-      logger.debug('editProp', props, newInputParams);
       setDrawerContent(<DynInput {...newInputParams} />);
 
-      logger.debug('Presenting modal');
       bottomSheetModalRef.current?.present();
 
       return new Promise((resolve) => {
@@ -195,7 +189,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         );
         onCustomDrawerResolveRef.current?.(temp);
       }
-      // bottomSheetModalRef.current.dismiss();
+      // bottomSheetModalRef.current.close();
     }
   }, [logger]);
 
@@ -240,21 +234,17 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     [title]
   );
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => {
-      console.log(`backdrop prods`, props);
-      return (
-        <BottomSheetBackdrop
-          {...props}
-          pressBehavior={'close'}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-          opacity={0.5}
-        />
-      );
-    },
-    [logger]
-  );
+  const renderBackdrop = useCallback((props: BottomSheetBackdropProps) => {
+    return (
+      <BottomSheetBackdrop
+        {...props}
+        pressBehavior={'close'}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.6}
+      />
+    );
+  }, []);
 
   const openDrawer = useCallback(
     async (props: OpenDrawerProps) => {
@@ -291,15 +281,15 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
 
       return new Promise((resolve, reject) => {
         const wrapResolve = (value: unknown) => {
-          logger.log('wrapResolve', value);
+          logger.debug('wrapResolve', value);
           resolve(value);
           if (bottomSheetModalRef.current) {
-            bottomSheetModalRef.current.dismiss();
+            bottomSheetModalRef.current.close();
           }
         };
         const wrapReject = (error: unknown) => {
           if (bottomSheetModalRef.current) {
-            bottomSheetModalRef.current.dismiss();
+            bottomSheetModalRef.current.close();
           }
           reject(error);
         };
@@ -332,26 +322,12 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   );
 
   const handleDismiss = useCallback(() => {
-    logger.log(`handleDismiss called`);
+    logger.debug(`handleDismiss called`);
   }, []);
 
   const handleSheetChanges = useCallback((index: number) => {
     logger.debug(`handleSheetChanges called with index:`, index);
     if (index === -1) {
-      // // If modal was dismissed without onFinish being called
-      // if (onFinishResolveRef.current) {
-      //   if (inputParams?.data) {
-      //     // calling on finish with the current data
-      //     onFinishResolveRef.current(inputParams?.data);
-      //   }
-
-      //   onFinishResolveRef.current = undefined;
-      // }
-
-      // if (onCustomDrawerResolveRef.current) {
-      //   onCustomDrawerResolveRef.current(true);
-      //   onCustomDrawerResolveRef.current = undefined;
-
       // Reset content
       setDrawerContent(undefined);
       setSnapPoints(defaultSnapPoints);
@@ -365,14 +341,6 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     }
   }, []);
 
-  console.log(
-    `enableDynamicSizing=${_enableDynamicSizing} snappoints`,
-    _snapPoints,
-    drawerContent
-  );
-  console.log(`modal ref`, bottomSheetModalRef.current);
-  console.log(`index`, index);
-  console.log(`enableDismissOnClose`, enableDismissOnClose);
   return (
     <CustomBottomSheetModalContext.Provider
       value={{
@@ -388,14 +356,14 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         ref={bottomSheetModalRef}
         index={index}
         snapPoints={_snapPoints}
-        android_keyboardInputMode="adjustResize"
         enableDynamicSizing={_enableDynamicSizing}
+        android_keyboardInputMode="adjustResize"
+        keyboardBlurBehavior="restore"
         enablePanDownToClose={true}
         enableDismissOnClose={enableDismissOnClose}
         onDismiss={handleDismiss}
         onChange={handleSheetChanges}
         footerComponent={renderFooter}
-        keyboardBlurBehavior="restore"
         handleComponent={renderHandler}
         backdropComponent={renderBackdrop}
       >
