@@ -132,7 +132,7 @@ export const Result = ({
         </View>
       ) : null}
       <View style={styles.buttonWrap}>
-        {onButtonPress && !buttonText ? (
+        {onButtonPress ? (
           <Button
             style={styles.button}
             mode={buttonMode}

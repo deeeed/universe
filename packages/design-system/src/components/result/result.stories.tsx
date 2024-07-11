@@ -9,9 +9,6 @@ const ResultMeta: Meta<ResultProps> = {
   argTypes: {},
   args: {
     title: 'Your operation has been executed successfully!',
-    message: '',
-    buttonText: 'Button',
-    status: 'info',
   },
 };
 
@@ -28,6 +25,9 @@ export const Error: StoryObj<ResultProps> = {
     status: 'error',
     title: 'Your operation has failed!',
     message: 'Please try again later.',
+    onButtonPress: () => {
+      console.log('Button Pressed');
+    },
   },
   // Story level custom code snippet
   parameters: {},
