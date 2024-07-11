@@ -18,3 +18,12 @@ TODO: Create script that
 - cleanup branches?
 - run `yarn release`
 - Add to CI/CD pipeline
+
+
+## Current Example with design system
+```bash
+packages/design-system
+yarn version patch
+git commit -m 'feat(design-system): bump version x.x.x'
+yarn release
+```
