@@ -45,13 +45,13 @@ const getStyles = ({ theme }: { theme: AppTheme }) => {
 };
 
 export interface ResultProps {
-  status: 'success' | 'error' | 'info' | 'warning';
+  status?: 'success' | 'error' | 'info' | 'warning';
   img?: React.ReactNode;
   imgUrl?: ImageSourcePropType;
   imgStyle?: StyleProp<ImageStyle>;
   title: React.ReactNode;
   message?: React.ReactNode;
-  buttonText: string;
+  buttonText?: string;
   buttonMode?: ButtonProps['mode'];
   secondaryButtonText?: string;
   secondaryButtonMode?: ButtonProps['mode'];
@@ -61,7 +61,7 @@ export interface ResultProps {
   onSecondaryButtonPress?: (e: GestureResponderEvent) => void;
 }
 export const Result = ({
-  buttonText,
+  buttonText = 'ACTION',
   buttonMode = 'contained',
   secondaryButtonMode = 'outlined',
   secondaryButtonText,
@@ -132,9 +132,15 @@ export const Result = ({
         </View>
       ) : null}
       <View style={styles.buttonWrap}>
-        <Button style={styles.button} mode={buttonMode} onPress={onButtonPress}>
-          {buttonText}
-        </Button>
+        {onButtonPress && !buttonText ? (
+          <Button
+            style={styles.button}
+            mode={buttonMode}
+            onPress={onButtonPress}
+          >
+            {buttonText}
+          </Button>
+        ) : null}
         {secondaryButtonText ? (
           <Button mode={secondaryButtonMode} onPress={onSecondaryButtonPress}>
             {secondaryButtonText}
