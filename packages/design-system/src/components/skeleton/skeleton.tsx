@@ -29,8 +29,12 @@ const getStyles = () => {
   });
 };
 
+const defaultSkeletonItems: SkeletonItem[] = [
+  { circles: 1, bars: 3 },
+  { circles: 1, bars: 3 },
+];
 export interface SkeletonProps {
-  items: SkeletonItem[];
+  items?: SkeletonItem[];
   circleSize?: number;
   barHeight?: number;
   color?: string;
@@ -40,7 +44,7 @@ export interface SkeletonProps {
   style?: StyleProp<ViewStyle>;
 }
 export const Skeleton = ({
-  items,
+  items = defaultSkeletonItems,
   circleSize = 50,
   barHeight = 20,
   color = '#ccc',
