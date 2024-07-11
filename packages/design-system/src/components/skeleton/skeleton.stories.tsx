@@ -49,11 +49,6 @@ const SkeletonMeta: Meta<SkeletonProps> = {
     },
   },
   args: {
-    items: [
-      { circles: 1, bars: 3 },
-      { circles: 1, bars: 2 },
-      { circles: 1, bars: 1 },
-    ],
     circleSize: 50,
     barHeight: 20,
     color: '#ccc',
