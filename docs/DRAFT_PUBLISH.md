@@ -17,3 +17,4 @@ TODO: Create script that
 - create a new git tag
 - cleanup branches?
 - run `yarn release`
+- Add to CI/CD pipeline
