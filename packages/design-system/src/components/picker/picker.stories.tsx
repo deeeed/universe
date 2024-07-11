@@ -1,9 +1,11 @@
+// packages/design-system/src/components/picker/picker.stories.tsx
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { colorOptions } from '../../_mocks/mock_data';
 import { SelectOption } from '../select-buttons/select-buttons';
 import { Picker, PickerProps } from './picker';
+import { useToast } from '../../hooks/use-toast';
 
 const options = [
   {
@@ -122,6 +124,32 @@ export const AllSelected: StoryObj<PickerProps> = {
     docs: {
       source: {
         code: '<Picker label="Category" options={options.map(opt => ({ ...opt, selected: true }))} multi={true} />',
+      },
+    },
+  },
+};
+
+export const CustomPressBehavior: StoryObj<PickerProps> = {
+  decorators: [
+    (_Story, context) => {
+      const { args } = context;
+      const { show } = useToast();
+
+      const onItemPress = (item: SelectOption) => {
+        show({ message: `CUSTOM ACTION Item pressed: ${item.label}` });
+      };
+
+      return (
+        <View>
+          <Picker {...args} options={options} onItemPress={onItemPress} />
+        </View>
+      );
+    },
+  ],
+  parameters: {
+    docs: {
+      source: {
+        code: '<Picker label="Category" options={options} onItemPress={(item) => console.log("item pressed", item)} />',
       },
     },
   },
