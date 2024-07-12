@@ -1,8 +1,9 @@
+// packages/design-system/src/components/refresh-control/refresh-control.stories.tsx
 import type { Meta } from '@storybook/react';
 import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView } from 'react-native';
 import { Text } from 'react-native-paper';
-import RefreshControl from './refresh-control';
+import { RefreshControl } from './refresh-control';
 
 const RefreshControlWebMeta: Meta = {
   component: RefreshControl,
