@@ -22,7 +22,7 @@ TODO: Create script that
 
 ## Current Example with design system
 ```bash
-cd packages/design-system
+# cd packages/design-system
 yarn version patch
 version=$(node -p "require('./package.json').version")
 git add .
