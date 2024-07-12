@@ -18,3 +18,5 @@ node_modules/
 **/dist/
 **/build/
 **/.eslintcache
+
+*storybook.log

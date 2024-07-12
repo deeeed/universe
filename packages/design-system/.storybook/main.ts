@@ -36,9 +36,7 @@ const config: StorybookConfig = {
     name: '@storybook/react-webpack5',
     options: {},
   },
-  docs: {
-    autodocs: 'tag',
-  },
+  docs: {},
   webpackFinal: (config: Configuration) => {
     if (!config.resolve) config.resolve = {};
     config.resolve.alias = {
