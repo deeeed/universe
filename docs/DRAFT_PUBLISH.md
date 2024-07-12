@@ -22,8 +22,11 @@ TODO: Create script that
 
 ## Current Example with design system
 ```bash
-packages/design-system
+cd packages/design-system
 yarn version patch
-git commit -m 'feat(design-system): bump version x.x.x'
+# extract new version number from package.json
+version=$(node -p "require('./package.json').version")
+git add .
+git commit -m 'feat(design-system): bump version $version'
 yarn release
 ```
