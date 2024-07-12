@@ -1,11 +1,10 @@
 // packages/design-system/src/components/refresh-control/refresh-control.tsx
 import { Feather } from '@expo/vector-icons';
 import { useLogger } from '@siteed/react-native-logger';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
-  Platform,
-  RefreshControl as RefreshControlRN,
-  RefreshControlProps,
+  ColorValue,
+  RefreshControlProps as RefreshControlPropsRN,
   StyleSheet,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -16,34 +15,55 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { AppTheme } from '../../hooks/use-app-theme-setup';
+import { useTheme } from '../../providers/theme-provider';
 
-const styles = StyleSheet.create({
-  container: {},
-  pullingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+const getStyles = ({
+  progressBackgroundColor,
+}: {
+  theme: AppTheme;
+  progressBackgroundColor?: ColorValue;
+}) => {
+  return StyleSheet.create({
+    container: {},
+    pullingContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: progressBackgroundColor,
+    },
+  });
+};
 
-export interface RefreshControlWebProps extends RefreshControlProps {
+export interface RefreshControlProps extends RefreshControlPropsRN {
   PullingIndicator?: () => React.ReactNode;
   RefreshingIndicator?: () => React.ReactNode;
 }
 
 const maxTranslateY = 50;
-const refreshThreshold = 20;
-const hiddenCursorY = -20;
+const defaultProgressViewOffset = -20;
+const defaultIndicatorSize = 24;
 
-const DefaultPullingIndicator = () => {
-  return <Feather name="arrow-down" size={24} color="black" />;
+interface PullingIndicatorProps {
+  color?: string;
+  size?: number;
+}
+const DefaultPullingIndicator = ({
+  color,
+  size = defaultIndicatorSize,
+}: PullingIndicatorProps) => {
+  return <Feather name="arrow-down" size={size} color={color} />;
 };
 
 const DefaultRefreshingIndicator = () => {
   return <ActivityIndicator />;
 };
 
-const RefreshControlWeb: React.FC<RefreshControlWebProps> = ({
+export const RefreshControl: React.FC<RefreshControlProps> = ({
   refreshing,
+  enabled = true,
+  progressBackgroundColor,
+  progressViewOffset = defaultProgressViewOffset,
+  size = defaultIndicatorSize, // size of the indicator
   onRefresh,
   PullingIndicator = DefaultPullingIndicator,
   RefreshingIndicator = DefaultRefreshingIndicator,
@@ -53,6 +73,11 @@ const RefreshControlWeb: React.FC<RefreshControlWebProps> = ({
   const translateY = useSharedValue(0);
   const cursorOpacity = useSharedValue(0);
   const cursorPositionY = useSharedValue(0);
+  const theme = useTheme();
+  const styles = useMemo(
+    () => getStyles({ theme, progressBackgroundColor }),
+    [theme, progressBackgroundColor]
+  );
   const { logger } = useLogger('todo-refresh-control');
 
   useEffect(() => {
@@ -66,6 +91,7 @@ const RefreshControlWeb: React.FC<RefreshControlWebProps> = ({
       initialTranslateY.current = translateY.value;
     })
     .onChange((e) => {
+      if (!enabled) return;
       let newTranslateY = translateY.value + e.changeY;
       const distance = newTranslateY - initialTranslateY.current;
       if (newTranslateY < 0) {
@@ -84,12 +110,12 @@ const RefreshControlWeb: React.FC<RefreshControlWebProps> = ({
     })
     .onEnd(() => {
       logger.log('end drag', translateY.value);
-      if (translateY.value > refreshThreshold) {
+      if (translateY.value > progressViewOffset) {
         translateY.value = withSpring(0);
         onRefresh?.();
       }
       cursorOpacity.value = 0;
-      cursorPositionY.value = hiddenCursorY;
+      cursorPositionY.value = progressViewOffset;
     });
 
   const animatedStyles = useAnimatedStyle(() => ({
@@ -112,7 +138,7 @@ const RefreshControlWeb: React.FC<RefreshControlWebProps> = ({
               <Animated.View
                 style={[styles.pullingContainer, cursorAnimatedStyles]}
               >
-                <PullingIndicator />
+                <PullingIndicator color={theme.colors.primary} size={size} />
               </Animated.View>
               {children}
             </>
@@ -122,6 +148,3 @@ const RefreshControlWeb: React.FC<RefreshControlWebProps> = ({
     </GestureDetector>
   );
 };
-
-export const RefreshControl =
-  Platform.OS === 'web' ? RefreshControlWeb : RefreshControlRN;

@@ -24,7 +24,6 @@ TODO: Create script that
 ```bash
 cd packages/design-system
 yarn version patch
-# extract new version number from package.json
 version=$(node -p "require('./package.json').version")
 git add .
 git commit -m 'feat(design-system): bump version $version'
