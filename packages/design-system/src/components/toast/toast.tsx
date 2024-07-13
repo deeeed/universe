@@ -110,7 +110,7 @@ export const Toast = ({
   actionLabel = 'DONE',
   duration = 2000,
   visibility = false,
-  iconVisible = false,
+  iconVisible = true,
   loading = false,
   message,
   subMessage,
