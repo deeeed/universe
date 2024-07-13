@@ -30,6 +30,7 @@ export * from './components/pagination/pagination-item';
 export * from './components/list-item/list-item';
 export * from './components/item-view/item-view';
 export * from './components/refresh-control/refresh-control';
+export * from './components/number-adjuster/number-adjuster';
 
 // Settings related components, useful to re-use and visualize in external storybooks
 export * from './settings/theme-config/theme-config';
