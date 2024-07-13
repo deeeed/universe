@@ -4,8 +4,11 @@ import { useLogger } from '@siteed/react-native-logger';
 import React, { useEffect, useMemo, useRef } from 'react';
 import {
   ColorValue,
+  Platform,
   RefreshControlProps as RefreshControlPropsRN,
   StyleSheet,
+  View,
+  ViewStyle,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { ActivityIndicator } from 'react-native-paper';
@@ -25,7 +28,11 @@ const getStyles = ({
   progressBackgroundColor?: ColorValue;
 }) => {
   return StyleSheet.create({
-    container: {},
+    container: {
+      ...((Platform.OS === 'web'
+        ? { overflow: 'auto', height: '100%' }
+        : {}) as ViewStyle),
+    },
     pullingContainer: {
       alignItems: 'center',
       justifyContent: 'center',
@@ -92,6 +99,7 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     })
     .onChange((e) => {
       if (!enabled) return;
+
       let newTranslateY = translateY.value + e.changeY;
       const distance = newTranslateY - initialTranslateY.current;
       if (newTranslateY < 0) {
@@ -109,13 +117,14 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
       translateY.value = newTranslateY;
     })
     .onEnd(() => {
+      cursorOpacity.value = 0;
+      cursorPositionY.value = progressViewOffset;
+
       logger.log('end drag', translateY.value);
       if (translateY.value > progressViewOffset) {
         translateY.value = withSpring(0);
         onRefresh?.();
       }
-      cursorOpacity.value = 0;
-      cursorPositionY.value = progressViewOffset;
     });
 
   const animatedStyles = useAnimatedStyle(() => ({
@@ -130,7 +139,7 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
   return (
     <GestureDetector gesture={tap}>
       <Animated.View style={[styles.container, animatedStyles]}>
-        <>
+        <View>
           {refreshing ? (
             <RefreshingIndicator />
           ) : (
@@ -143,7 +152,7 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
               {children}
             </>
           )}
-        </>
+        </View>
       </Animated.View>
     </GestureDetector>
   );
