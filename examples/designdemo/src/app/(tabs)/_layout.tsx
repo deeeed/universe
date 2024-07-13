@@ -22,8 +22,8 @@ export default function TabLayout() {
         ),
       }}
     >
-      <Tabs.Screen name="index" options={{}} />
-      <Tabs.Screen name="random" options={{}} />
+      <Tabs.Screen name="index" options={{ title: "Theme" }} />
+      <Tabs.Screen name="try" options={{ href: "try" }} />
     </Tabs>
   );
 }
