@@ -1,7 +1,7 @@
-import { ListItem, ListItemProps } from "@siteed/design-system";
+import { ListItem } from "@siteed/design-system";
 import { useRouter } from "expo-router";
 import React, { useMemo } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet } from "react-native";
 
 const getStyles = () => {
   return StyleSheet.create({
