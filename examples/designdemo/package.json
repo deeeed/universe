@@ -1,6 +1,6 @@
 {
   "name": "expoapp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "src/index",
   "scripts": {
     "start": "expo start --dev-client --port 7765",
