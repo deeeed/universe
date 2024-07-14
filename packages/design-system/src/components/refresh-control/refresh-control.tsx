@@ -6,6 +6,7 @@ import {
   ColorValue,
   Platform,
   RefreshControlProps as RefreshControlPropsRN,
+  RefreshControl as RefreshControlRN,
   StyleSheet,
   View,
   ViewStyle,
@@ -13,6 +14,7 @@ import {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { ActivityIndicator } from 'react-native-paper';
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -20,6 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { AppTheme } from '../../hooks/use-app-theme-setup';
 import { useTheme } from '../../providers/theme-provider';
+import { Loader } from './loader';
 
 const getStyles = ({
   progressBackgroundColor,
@@ -85,7 +88,7 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     () => getStyles({ theme, progressBackgroundColor }),
     [theme, progressBackgroundColor]
   );
-  const { logger } = useLogger('todo-refresh-control');
+  const { logger } = useLogger('RefreshControl');
 
   useEffect(() => {
     if (!refreshing) {
@@ -101,7 +104,7 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
       if (!enabled) return;
 
       let newTranslateY = translateY.value + e.changeY;
-      const distance = newTranslateY - initialTranslateY.current;
+      // const distance = newTranslateY - initialTranslateY.current;
       if (newTranslateY < 0) {
         newTranslateY = 0;
       } else if (newTranslateY >= maxTranslateY) {
@@ -111,19 +114,22 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
       cursorPositionY.value = Math.min(10, newTranslateY);
       cursorOpacity.value = 0.5 + (newTranslateY / maxTranslateY) * 0.5;
 
-      logger.debug(
-        `distance: ${distance}, newTranslateY: ${newTranslateY} ==> translateY: ${translateY.value}`
-      );
+      // runOnJS(logger.debug)(
+      //   'drag',
+      //   `distance: ${distance}, newTranslateY: ${newTranslateY} ==> translateY: ${translateY.value}`
+      // );
       translateY.value = newTranslateY;
     })
     .onEnd(() => {
       cursorOpacity.value = 0;
       cursorPositionY.value = progressViewOffset;
 
-      logger.log('end drag', translateY.value);
+      runOnJS(logger.log)('end drag', translateY.value);
       if (translateY.value > progressViewOffset) {
         translateY.value = withSpring(0);
-        onRefresh?.();
+        if (onRefresh) {
+          runOnJS(onRefresh)();
+        }
       }
     });
 
@@ -136,23 +142,28 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     transform: [{ translateY: cursorPositionY.value }],
   }));
 
+  if (Platform.OS === 'ios') {
+    return <RefreshControlRN refreshing={refreshing} onRefresh={onRefresh} />;
+  }
+
   return (
     <GestureDetector gesture={tap}>
       <Animated.View style={[styles.container, animatedStyles]}>
-        <View>
+        <>
           {refreshing ? (
             <RefreshingIndicator />
           ) : (
-            <>
+            <View>
               <Animated.View
                 style={[styles.pullingContainer, cursorAnimatedStyles]}
               >
                 <PullingIndicator color={theme.colors.primary} size={size} />
+                <Loader />
               </Animated.View>
-              {children}
-            </>
+              {children ? <View>{children}</View> : null}
+            </View>
           )}
-        </View>
+        </>
       </Animated.View>
     </GestureDetector>
   );

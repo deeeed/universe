@@ -28,7 +28,7 @@ export * from './components/skeleton/loading-pulse-bar/loading-pulse-bar';
 export * from './components/pagination/pagination';
 export * from './components/pagination/pagination-item';
 export * from './components/list-item/list-item';
-export * from './components/item-view/item-view';
+export * from './components/editable-info-card/editable-info-card';
 export * from './components/refresh-control/refresh-control';
 export * from './components/number-adjuster/number-adjuster';
 

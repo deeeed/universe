@@ -10,7 +10,7 @@ import { ActivityIndicator, IconButton, Text } from 'react-native-paper';
 import { useTheme } from '../../providers/theme-provider';
 import { AppTheme } from '../../hooks/use-app-theme-setup';
 
-export interface ItemViewProps {
+export interface EditableInfoCardProps {
   label: string;
   value?: string;
   processing?: boolean;
@@ -32,7 +32,6 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
       backgroundColor: theme.colors.background,
       borderWidth: 1,
       borderRadius: 8,
-      margin: 8,
       // width: '100%',
     },
     label: {
@@ -52,7 +51,7 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
     },
   });
 
-export const ItemView = ({
+export const EditableInfoCard = ({
   label,
   value,
   error,
@@ -61,7 +60,7 @@ export const ItemView = ({
   onEdit,
   containerStyle,
   contentStyle,
-}: ItemViewProps) => {
+}: EditableInfoCardProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles({ theme }), [theme]);
 
