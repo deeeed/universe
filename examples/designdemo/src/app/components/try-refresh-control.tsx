@@ -1,6 +1,6 @@
 import { RefreshControl } from "@siteed/design-system";
 import React, { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native";
 
 const getStyles = () => {
   return StyleSheet.create({
@@ -39,26 +39,49 @@ export const TryRefreshControl = () => {
     }, 2000); // simulate a refresh time of 2 seconds
   };
 
-  return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        <View style={styles.content}>
-          <Text>Hello world</Text>
-          {/* Add more content to make the ScrollView scrollable */}
-          {Array.from({ length: 20 }, (_, index) => (
-            <Text key={index} style={{ height: 50 }}>
-              Scrollable content {index + 1}
-            </Text>
-          ))}
-        </View>
-      </ScrollView>
+  const data = Array.from({ length: 20 }, (_, index) => ({
+    key: `${index}`,
+    text: `Scrollable content ${index + 1}`,
+  }));
+
+  const renderItem = ({ item }: any) => (
+    <View style={styles.item}>
+      <Text>{item.text}</Text>
     </View>
   );
+
+  return (
+    <FlatList
+      data={data}
+      renderItem={renderItem}
+      keyExtractor={(item) => item.key}
+      contentContainerStyle={styles.list}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    />
+  );
+
+  // return (
+  //   <View style={styles.container}>
+  //     <ScrollView
+  //       contentContainerStyle={styles.scrollView}
+  //       refreshControl={
+  //         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+  //       }
+  //     >
+  //       <View style={styles.content}>
+  //         <Text>Hello world</Text>
+  //         {/* Add more content to make the ScrollView scrollable */}
+  //         {Array.from({ length: 20 }, (_, index) => (
+  //           <Text key={index} style={{ height: 50 }}>
+  //             Scrollable content {index + 1}
+  //           </Text>
+  //         ))}
+  //       </View>
+  //     </ScrollView>
+  //   </View>
+  // );
 };
 
 export default TryRefreshControl;
