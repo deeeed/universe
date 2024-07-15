@@ -35,6 +35,8 @@ const getStyles = ({
       ...((Platform.OS === 'web'
         ? { overflow: 'auto', height: '100%' }
         : {}) as ViewStyle),
+      flex: 1,
+      width: '100%',
     },
     pullingContainer: {
       alignItems: 'center',
@@ -50,7 +52,7 @@ export interface RefreshControlProps extends RefreshControlPropsRN {
 }
 
 const maxTranslateY = 50;
-const defaultProgressViewOffset = -20;
+const defaultProgressViewOffset = -maxTranslateY / 2;
 const defaultIndicatorSize = 24;
 
 interface PullingIndicatorProps {
@@ -69,16 +71,24 @@ const DefaultRefreshingIndicator = () => {
 };
 
 export const RefreshControl: React.FC<RefreshControlProps> = ({
-  refreshing,
-  enabled = true,
-  progressBackgroundColor,
-  progressViewOffset = defaultProgressViewOffset,
-  size = defaultIndicatorSize, // size of the indicator
-  onRefresh,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   PullingIndicator = DefaultPullingIndicator,
   RefreshingIndicator = DefaultRefreshingIndicator,
-  children,
+  ...rcProps
 }) => {
+  if (Platform.OS !== 'web') {
+    return <RefreshControlRN {...rcProps} />;
+  }
+
+  const {
+    refreshing,
+    enabled = true,
+    progressBackgroundColor,
+    progressViewOffset = -defaultProgressViewOffset,
+    size = defaultIndicatorSize, // size of the indicator
+    onRefresh,
+    children,
+  } = rcProps;
   const initialTranslateY = useRef(0);
   const translateY = useSharedValue(0);
   const cursorOpacity = useSharedValue(0);
@@ -124,7 +134,10 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
       cursorOpacity.value = 0;
       cursorPositionY.value = progressViewOffset;
 
-      runOnJS(logger.log)('end drag', translateY.value);
+      runOnJS(logger.debug)(
+        `end drag translateY.value=${translateY.value} progressViewOffset=${progressViewOffset} `,
+        translateY.value
+      );
       if (translateY.value > progressViewOffset) {
         translateY.value = withSpring(0);
         if (onRefresh) {
@@ -142,10 +155,6 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     transform: [{ translateY: cursorPositionY.value }],
   }));
 
-  if (Platform.OS === 'ios') {
-    return <RefreshControlRN refreshing={refreshing} onRefresh={onRefresh} />;
-  }
-
   return (
     <GestureDetector gesture={tap}>
       <Animated.View style={[styles.container, animatedStyles]}>
@@ -157,10 +166,11 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
               <Animated.View
                 style={[styles.pullingContainer, cursorAnimatedStyles]}
               >
-                <PullingIndicator color={theme.colors.primary} size={size} />
-                <Loader />
+                {}
+                {/* <PullingIndicator color={theme.colors.primary} size={size} /> */}
+                <Loader color={theme.colors.primary} size={size} />
               </Animated.View>
-              {children ? <View>{children}</View> : null}
+              {children}
             </View>
           )}
         </>

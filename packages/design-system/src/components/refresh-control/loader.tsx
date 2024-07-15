@@ -11,15 +11,17 @@ import { useTheme } from '../../providers/theme-provider';
 
 const getStyles = ({
   backgroundColor,
+  size,
   theme,
 }: {
   backgroundColor?: ColorValue;
+  size: number;
   theme: AppTheme;
 }) =>
   StyleSheet.create({
     loader: {
-      height: 40,
-      width: 40,
+      height: size,
+      width: size,
       backgroundColor: backgroundColor ?? theme.colors.primary,
       marginTop: 5,
     },
@@ -27,14 +29,15 @@ const getStyles = ({
 
 interface LoaderProps {
   color?: ColorValue;
+  size?: number;
 }
 
-export const Loader = ({ color }: LoaderProps) => {
+export const Loader = ({ color, size = 40 }: LoaderProps) => {
   const theme = useTheme();
   const rotateValue = useSharedValue(0);
   const styles = useMemo(
-    () => getStyles({ theme, backgroundColor: color }),
-    [color, theme]
+    () => getStyles({ theme, size, backgroundColor: color }),
+    [color, size, theme]
   );
   const handleRotation = (value: number): string => {
     'worklet';
