@@ -18,11 +18,11 @@ import {
   useAppPreferencesSetup,
 } from '../hooks/use-app-preferences-setup';
 import { AppTheme, useAppThemeSetup } from '../hooks/use-app-theme-setup';
-import { ConfirmProvider } from './confirm-provider';
+import { ConfirmProvider, ConfirmProviderProps } from './confirm-provider';
 import { CustomBottomSheetModal } from './custom-bottomsheet-provider';
 import { LanguageProvider } from './language-provider';
 import { ThemeProvider } from './theme-provider';
-import { ToastProvider } from './toast.provider';
+import { ToastProvider, ToastProviderProps } from './toast.provider';
 
 export const DefaultLightTheme: AppTheme = {
   ...MD3LightTheme,
@@ -82,7 +82,9 @@ export interface UIProviderProps {
   darkTheme?: AppTheme;
   preferences?: Partial<Omit<ThemePreferences, 'theme'>>;
   actions?: ThemeActions;
-  saveAreaProviderProps?: SafeAreaProviderProps;
+  safeAreaProviderProps?: SafeAreaProviderProps;
+  toastProviderProps?: ToastProviderProps;
+  confirmProviderProps?: ConfirmProviderProps;
   children: React.ReactNode;
 }
 
@@ -91,6 +93,8 @@ const UIProviderWithLanguageReady = ({
   actions,
   darkTheme,
   lightTheme,
+  toastProviderProps,
+  confirmProviderProps,
   children,
 }: Omit<UIProviderProps, 'locale'>) => {
   // Create default preferences if none are provided
@@ -142,8 +146,8 @@ const UIProviderWithLanguageReady = ({
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider preferences={defaultPreferences}>
-        <ToastProvider>
-          <ConfirmProvider>
+        <ToastProvider {...toastProviderProps}>
+          <ConfirmProvider {...confirmProviderProps}>
             <CustomBottomSheetModal>{children}</CustomBottomSheetModal>
           </ConfirmProvider>
         </ToastProvider>
@@ -165,14 +169,16 @@ const UIProviderWithLanguage = (props: Omit<UIProviderProps, 'locale'>) => {
 export const UIProvider = ({
   locale,
   actions,
-  saveAreaProviderProps,
+  safeAreaProviderProps,
+  toastProviderProps,
+  confirmProviderProps,
   preferences,
   darkTheme,
   lightTheme,
   children,
 }: UIProviderProps) => {
   return (
-    <SafeAreaProvider {...saveAreaProviderProps}>
+    <SafeAreaProvider {...safeAreaProviderProps}>
       {/* Wrap with LanguageProvider to have useTranslation available */}
       <LanguageProvider locale={locale}>
         <UIProviderWithLanguage
@@ -180,6 +186,8 @@ export const UIProvider = ({
           darkTheme={darkTheme}
           lightTheme={lightTheme}
           preferences={preferences}
+          toastProviderProps={toastProviderProps}
+          confirmProviderProps={confirmProviderProps}
         >
           {children}
         </UIProviderWithLanguage>
