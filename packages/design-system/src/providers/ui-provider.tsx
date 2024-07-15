@@ -81,10 +81,10 @@ export interface UIProviderProps {
   lightTheme?: AppTheme;
   darkTheme?: AppTheme;
   preferences?: Partial<Omit<ThemePreferences, 'theme'>>;
-  actions?: ThemeActions;
+  actions?: Partial<ThemeActions>;
   safeAreaProviderProps?: SafeAreaProviderProps;
-  toastProviderProps?: ToastProviderProps;
-  confirmProviderProps?: ConfirmProviderProps;
+  toastProviderProps?: Partial<Omit<ToastProviderProps, 'children'>>;
+  confirmProviderProps?: Partial<Omit<ConfirmProviderProps, 'children'>>;
   children: React.ReactNode;
 }
 

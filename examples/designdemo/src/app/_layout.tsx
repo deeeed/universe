@@ -37,6 +37,11 @@ export default function HomeLayout() {
           ...DefaultLightTheme,
           // colors: { ...DefaultLightTheme.colors, background: "red" }
         }}
+        toastProviderProps={{
+          overrides: {
+            snackbarStyle: { marginBottom: 100 },
+          },
+        }}
       >
         <WithMainProviders />
       </UIProvider>
