@@ -13,8 +13,8 @@
     "lint": "expo lint",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "rimraf dist",
-    "deploy": "NODE_ENV=production yarn clean && gh-pages -t -d dist --dest design-playground",
     "predeploy": "expo export -p web",
+    "deploy": "NODE_ENV=production yarn clean && yarn predeploy && gh-pages -t -d dist --dest design-playground",
     "serve:static": "serve dist"
   },
   "dependencies": {
@@ -51,6 +51,7 @@
     "gh-pages": "^6.1.1",
     "prettier": "^3.2.5",
     "rimraf": "^6.0.1",
+    "serve": "^14.2.3",
     "ts-node": "^10.9.2",
     "typescript": "~5.3.3"
   },
