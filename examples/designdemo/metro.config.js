@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-env node */
 const escape = require("escape-string-regexp");
 const { getDefaultConfig } = require("expo/metro-config");
@@ -11,14 +12,12 @@ const projectRoot = __dirname;
 // This can be replaced with `find-yarn-workspace-root`
 const monorepoRoot = path.resolve(projectRoot, "../..");
 const designSystem = path.resolve(monorepoRoot, "packages/design-system");
-const siteedLogger = path.resolve(monorepoRoot, "packages/react-native-logger");
 
 const modules = [
   "react-native-paper",
   "react-native-safe-area-context",
   "react-native-reanimated",
   "@siteed/design-system",
-  "@siteed/react-native-logger",
   "react-dom",
   "react",
   "react-native",
@@ -55,11 +54,6 @@ config.resolver.nodeModulesPaths = [
 config.resolver = {
   ...config.resolver,
   extraNodeModules,
-  // extraNodeModules: {
-  //   react: path.resolve(projectRoot, "node_modules/react"),
-  //   "react-native": path.resolve(projectRoot, "node_modules/react-native"),
-  //   "react-dom": path.resolve(projectRoot, "node_modules/react-dom"),
-  // },
   blacklistRE,
   resolveRequest: (context, moduleName, platform) => {
     if (moduleName.startsWith("@siteed/design-system")) {
@@ -69,21 +63,23 @@ config.resolver = {
         filePath: designSystem + "/src/index.ts",
         type: "sourceFile",
       };
-    } else if (moduleName.startsWith("@siteed/react-native-logger")) {
-      console.log(`Resolving ${moduleName} to ${siteedLogger}/src/index.tsx`);
-      return {
-        filePath: siteedLogger + "/src/index.tsx",
-        type: "sourceFile",
-      };
     } else if (moduleName === "react" || moduleName === "react-dom") {
-      console.log(
-        `Resolving ${moduleName} to ${path.resolve(projectRoot, `node_modules/${moduleName}`)}`,
-      );
+      // console.log(
+      //   `Resolving ${moduleName} to ${path.resolve(projectRoot, `node_modules/${moduleName}`)}`,
+      // );
       // Force resolution to the local versions specified in extraNodeModules
       return {
         filePath: path.resolve(
           projectRoot,
           `node_modules/${moduleName}/index.js`,
+        ),
+        type: "sourceFile",
+      };
+    } else if (moduleName === "react-native-safe-area-context") {
+      return {
+        filePath: path.resolve(
+          projectRoot,
+          `node_modules/${moduleName}/lib/module/index.js`,
         ),
         type: "sourceFile",
       };

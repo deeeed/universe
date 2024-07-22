@@ -1,6 +1,6 @@
 // packages/design-system/src/components/refresh-control/refresh-control.tsx
 import { Feather } from '@expo/vector-icons';
-import { useLogger } from '@siteed/react-native-logger';
+import { getLogger } from '@siteed/react-native-logger';
 import React, { useEffect, useMemo, useRef } from 'react';
 import {
   ColorValue,
@@ -23,6 +23,8 @@ import Animated, {
 import { AppTheme } from '../../hooks/use-app-theme-setup';
 import { useTheme } from '../../providers/theme-provider';
 import { Loader } from './loader';
+
+const logger = getLogger('RefreshControl');
 
 const getStyles = ({
   progressBackgroundColor,
@@ -98,7 +100,6 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     () => getStyles({ theme, progressBackgroundColor }),
     [theme, progressBackgroundColor]
   );
-  const { logger } = useLogger('RefreshControl');
 
   useEffect(() => {
     if (!refreshing) {

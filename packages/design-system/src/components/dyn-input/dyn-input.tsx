@@ -1,5 +1,5 @@
 import { useBottomSheetInternal } from '@gorhom/bottom-sheet';
-import { useLogger } from '@siteed/react-native-logger';
+import { getLogger } from '@siteed/react-native-logger';
 import React, {
   useCallback,
   useEffect,
@@ -42,6 +42,8 @@ export interface DynInputProps {
   onCancel?: () => void;
 }
 
+const logger = getLogger('DynInput');
+
 const getStyles = (theme: MD3Theme) => {
   return StyleSheet.create({
     container: {
@@ -83,7 +85,6 @@ export const DynInput = ({
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
-  const { logger } = useLogger('DynInput');
   const inputRef = useRef<RNGTextInput>(null);
   const { shouldHandleKeyboardEvents } = useBottomSheetInternal();
 

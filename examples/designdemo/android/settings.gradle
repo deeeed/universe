@@ -1,4 +1,4 @@
-rootProject.name = 'designdemo'
+rootProject.name = 'design-playground'
 
 dependencyResolutionManagement {
   versionCatalogs {

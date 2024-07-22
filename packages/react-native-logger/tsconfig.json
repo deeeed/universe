@@ -1,9 +1,13 @@
 {
   "compilerOptions": {
+    "outDir": "./dist/",
     "baseUrl": "./",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "paths": {
       "@siteed/react-native-logger": [
-        "./src/index"
+        "./src/logger"
       ]
     },
     "allowUnreachableCode": false,
@@ -12,7 +16,7 @@
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
     "lib": [
-      "esnext"
+      "esnext", "dom"
     ],
     "module": "esnext",
     "moduleResolution": "node",
@@ -32,5 +36,5 @@
   "include": [
     "src/**/*",
     "globals.d.ts"
-  ],
+  ]
 }

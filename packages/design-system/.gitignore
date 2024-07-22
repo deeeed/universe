@@ -14,3 +14,5 @@
 **/dist
 *storybook.log
 node_modules
+
+storybook-static

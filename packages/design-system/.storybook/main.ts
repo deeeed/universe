@@ -10,10 +10,16 @@ function getAbsolutePath(value) {
   return dirname(require.resolve(join(value, 'package.json')));
 }
 
+const production = process.env.NODE_ENV === 'production';
+
 /** @type { import('@storybook/react-webpack5').StorybookConfig } */
 const config: StorybookConfig = {
   stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
   staticDirs: ['../assets/'],
+  managerHead: (head) => `
+  ${head}
+  ${production ? '<base href="/universe/design-system-storybook/" />' : ''}
+  `,
   addons: [
     getAbsolutePath('@storybook/addon-webpack5-compiler-swc'),
     getAbsolutePath('@storybook/addon-onboarding'),
@@ -33,7 +39,7 @@ const config: StorybookConfig = {
     },
   ],
   framework: {
-    name: '@storybook/react-webpack5',
+    name: getAbsolutePath('@storybook/react-webpack5'),
     options: {},
   },
   docs: {},

@@ -83,13 +83,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.deeeed.expoapp'
+    namespace 'net.siteed.designplayground'
     defaultConfig {
-        applicationId 'com.deeeed.expoapp'
+        applicationId 'net.siteed.designplayground'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0.0"
+        versionName "0.8.14"
     }
     signingConfigs {
         debug {

@@ -29,3 +29,6 @@ git add .
 git commit -m 'feat(design-system): bump version $version'
 yarn release
 ```
+
+
+## Publish logger package

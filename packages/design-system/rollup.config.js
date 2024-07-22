@@ -5,7 +5,6 @@ import { terser } from 'rollup-plugin-terser';
 import external from 'rollup-plugin-peer-deps-external';
 import json from '@rollup/plugin-json';
 import image from '@rollup/plugin-image';
-// import image from 'rollup-plugin-img';
 import packageJson from './package.json';
 
 /**
@@ -34,14 +33,6 @@ const config = [
     plugins: [
       external(),
       image(),
-      // copy({
-      //   verbose: true,
-      //   targets: [
-      //     { src: 'assets/**/*', dest: 'dist/assets'},
-      //     // { src: ['assets/fonts/arial.woff', 'assets/fonts/arial.woff2'], dest: 'dist/public/fonts' },
-      //     // { src: 'assets/images/**/*', dest: 'dist/public/images' }
-      //   ]
-      // }),
       nodeResolve({
         browser: true,
       }),
