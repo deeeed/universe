@@ -19,7 +19,7 @@ npm install @siteed/react-native-logger
 
 <div align="center">
   <h2>Try it out</h2>
-  <img src="../../assets/loggerdemo.gif" alt="Demo"/>
+  <img src="./docs/loggerdemo.gif" alt="Demo"/>
   <p>Test the logger via a web interface at <a href="https://deeeed.github.io/universe/loggerdemo/">https://deeeed.github.io/universe/loggerdemo/</a></p>
   <p>Full demo is accessible in the monorepo at <code>example/loggerdemo</code></p>
 </div>
