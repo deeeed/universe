@@ -1,4 +1,4 @@
-import { useLogger } from '@siteed/react-native-logger';
+import { getLogger } from '@siteed/react-native-logger';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -13,6 +13,8 @@ import { Button, HelperText, MD3Theme, Searchbar } from 'react-native-paper';
 import { useScreenWidth } from '../../hooks/use-screen-width';
 import { useTheme } from '../../providers/theme-provider';
 import { BREAKPOINTS } from '../select-buttons/select-buttons';
+
+const logger = getLogger('SelectItems');
 
 const getStyles = (theme: MD3Theme) => {
   return StyleSheet.create({
@@ -88,8 +90,6 @@ export const SelectItems = <T,>({
   const [currentOptions, setCurrentOptions] = useState(options);
   const refInit = useRef<null | { index: number; selected: boolean }[]>(null);
   const { t } = useTranslation('select_items');
-
-  const { logger } = useLogger('SelectItems');
 
   if (refInit.current === null) {
     refInit.current = options.map((option, index) => ({

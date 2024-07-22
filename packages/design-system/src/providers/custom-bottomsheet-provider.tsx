@@ -10,7 +10,6 @@ import {
   BottomSheetScrollView,
   useBottomSheetModal,
 } from '@gorhom/bottom-sheet';
-import { useLogger } from '@siteed/react-native-logger';
 import React, {
   FunctionComponent,
   ReactNode,
@@ -30,6 +29,7 @@ import {
   DynamicType,
 } from '../components/dyn-input/dyn-input';
 import { SelectItemOption } from '../components/select-items/select-items';
+import { getLogger } from '@siteed/react-native-logger';
 
 export interface OpenDrawerProps {
   title?: string;
@@ -74,6 +74,8 @@ const styles = StyleSheet.create({
 
 const defaultSnapPoints = ['40%', '80%'];
 
+const logger = getLogger('CustomBottomSheetModal');
+
 const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   children,
 }) => {
@@ -83,7 +85,6 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     (string | number)[] | SharedValue<(string | number)[]>
   >(defaultSnapPoints);
   const [_enableDynamicSizing, setEnableDynamicSizing] = useState(true);
-  const { logger } = useLogger('CustomBottomSheetModalProvider');
   const onFinishResolveRef = useRef<(values: DynInputProps['data']) => void>();
   const onCustomDrawerResolveRef = useRef<(values: unknown) => void>();
   const onCustomDrawerRejectRef = useRef<(error: unknown) => void>();

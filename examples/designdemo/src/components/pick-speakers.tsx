@@ -5,7 +5,7 @@ import {
   type AppTheme,
   type SelectOption,
 } from "@siteed/design-system";
-import { useLogger } from "@siteed/react-native-logger";
+import { getLogger } from "@siteed/react-native-logger";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Chip, Text } from "react-native-paper";
@@ -42,6 +42,8 @@ const getStyles = (theme: AppTheme) => {
   });
 };
 
+const logger = getLogger("PickSpeakers");
+
 export interface PickSpeakersProps {
   options: SelectOption[];
   label: string;
@@ -59,7 +61,6 @@ export const PickSpeakers = ({
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const { editProp } = useBottomModal();
-  const { logger } = useLogger("PickSpeakers");
   const [activeOptions, setActiveOptions] = useState<SelectOption[]>(options);
   const selectedOptions = activeOptions.filter((option) => option.selected);
 

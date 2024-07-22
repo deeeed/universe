@@ -83,9 +83,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'net.siteed.designdemo'
+    namespace 'net.siteed.designplayground'
     defaultConfig {
-        applicationId 'net.siteed.designdemo'
+        applicationId 'net.siteed.designplayground'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

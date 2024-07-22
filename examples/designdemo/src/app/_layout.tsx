@@ -4,7 +4,7 @@ import {
   UIProvider,
   useThemePreferences,
 } from "@siteed/design-system";
-import { LoggerProvider, useLogger } from "@siteed/react-native-logger";
+import { getLogger } from "@siteed/react-native-logger";
 import { Drawer } from "expo-router/drawer";
 import { useEffect } from "react";
 
@@ -12,8 +12,8 @@ export const unstable_settings = {
   initialRouteName: "(tabs)", // always go back to the tabs screen
 };
 
+const logger = getLogger("WithMainProviders");
 const WithMainProviders = () => {
-  const { logger } = useLogger("GoodApp");
   const { theme } = useThemePreferences();
 
   useEffect(() => {
@@ -31,20 +31,18 @@ const WithMainProviders = () => {
 
 export default function HomeLayout() {
   return (
-    <LoggerProvider>
-      <UIProvider
-        lightTheme={{
-          ...DefaultLightTheme,
-          // colors: { ...DefaultLightTheme.colors, background: "red" }
-        }}
-        toastProviderProps={{
-          overrides: {
-            snackbarStyle: { marginBottom: 100 },
-          },
-        }}
-      >
-        <WithMainProviders />
-      </UIProvider>
-    </LoggerProvider>
+    <UIProvider
+      lightTheme={{
+        ...DefaultLightTheme,
+        // colors: { ...DefaultLightTheme.colors, background: "red" }
+      }}
+      toastProviderProps={{
+        overrides: {
+          snackbarStyle: { marginBottom: 100 },
+        },
+      }}
+    >
+      <WithMainProviders />
+    </UIProvider>
   );
 }

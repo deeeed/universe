@@ -1,4 +1,4 @@
-package net.siteed.designdemo
+package net.siteed.designplayground
 
 import android.app.Application
 import android.content.res.Configuration

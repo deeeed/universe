@@ -25,13 +25,13 @@ console.log(
 );
 
 const config: ExpoConfig = {
-  name: "designdemo",
-  slug: "designdemo",
+  name: "design-playground",
+  slug: "design-playground",
   version: designSystemPackageVersion,
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "light",
-  scheme: "siteeduidemo",
+  scheme: "designplayground",
   splash: {
     image: "./assets/splash.png",
     resizeMode: "contain",
@@ -40,21 +40,21 @@ const config: ExpoConfig = {
   assetBundlePatterns: ["**/*"],
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "net.siteed.designdemo",
+    bundleIdentifier: "net.siteed.designplayground",
   },
   android: {
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#ffffff",
     },
-    package: "net.siteed.designdemo",
+    package: "net.siteed.designplayground",
   },
   web: {
     favicon: "./assets/favicon.png",
     bundler: "metro",
   },
   experiments: {
-    baseUrl: isDev ? "" : "/universe/designdemo/",
+    baseUrl: isDev ? "" : "/universe/design-playground",
   },
   plugins: ["expo-localization", "expo-router"],
 };

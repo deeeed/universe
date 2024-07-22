@@ -1,4 +1,4 @@
-import { useLogger } from '@siteed/react-native-logger';
+import { getLogger } from '@siteed/react-native-logger';
 import { useEffect, useMemo, useState } from 'react';
 import { I18nextProviderProps } from 'react-i18next';
 import { AppTheme, SavedUserPreferences } from './use-app-theme-setup';
@@ -31,6 +31,8 @@ export interface ThemePreferences {
   shouldUseDeviceColors?: boolean;
 }
 
+const logger = getLogger('useAppPreferencesSetup');
+
 export const useAppPreferencesSetup = ({
   theme,
   i18nInstance,
@@ -41,7 +43,6 @@ export const useAppPreferencesSetup = ({
   const [customFontLoaded, setCustomFont] = useState(false);
   const [rippleEffectEnabled, setRippleEffectEnabled] = useState(true);
   const [dynamicTheme, setDynamicTheme] = useState<AppTheme>(theme);
-  const { logger } = useLogger('useAppPreferencesSetup');
   const [listener, setListener] = useState(false);
 
   useEffect(() => {

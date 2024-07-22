@@ -1,5 +1,5 @@
 {
-  "name": "expoapp",
+  "name": "design-playground",
   "version": "1.0.1",
   "main": "src/index",
   "scripts": {
@@ -8,14 +8,21 @@
     "ios": "NODE_ENV=development expo run:ios --port 7765  --device",
     "web": "NODE_ENV=development expo start --web --port 7765",
     "open:android": "open -a \"Android Studio\" ./android",
-    "open:ios": "open -a \"Xcode\" ./ios"
+    "open:ios": "open -a \"Xcode\" ./ios",
+    "test": "jest --watchAll",
+    "lint": "expo lint",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rimraf dist",
+    "deploy": "NODE_ENV=production yarn clean && gh-pages -t -d dist --dest design-playground",
+    "predeploy": "expo export -p web",
+    "serve:static": "serve dist"
   },
   "dependencies": {
     "@babel/plugin-proposal-export-namespace-from": "^7.18.9",
     "@gorhom/bottom-sheet": "^5.0.0-alpha.9",
     "@react-navigation/drawer": "^6.6.15",
     "@siteed/design-system": "workspace:^",
-    "@siteed/react-native-logger": "0.7.1",
+    "@siteed/react-native-logger": "workspace:^",
     "expo": "^51.0.21",
     "expo-constants": "~16.0.2",
     "expo-linking": "~6.3.1",
@@ -37,9 +44,11 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "@types/gh-pages": "^6",
     "@types/react": "~18.2.45",
     "eslint": "^8.57.0",
     "eslint-config-universe": "^12.0.0",
+    "gh-pages": "^6.1.1",
     "prettier": "^3.2.5",
     "rimraf": "^6.0.1",
     "ts-node": "^10.9.2",

@@ -12,9 +12,8 @@
     "lint": "expo lint",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "rimraf dist",
-    "deploy": "NODE_ENV=production yarn clean && yarn predeploy && gh-pages -t -d dist --dest loggerdemo",
+    "deploy": "NODE_ENV=production yarn clean && gh-pages -t -d dist --dest loggerdemo",
     "predeploy": "expo export -p web",
-    "serve:single": "serve dist --single",
     "serve:static": "serve dist"
   },
   "jest": {

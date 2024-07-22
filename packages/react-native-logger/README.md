@@ -19,7 +19,7 @@ npm install @siteed/react-native-logger
 
 <div align="center">
   <h2>Try it out</h2>
-  <img src="./docs/loggerdemo.gif" alt="Demo"/>
+  <img src="../../docs/loggerdemo.gif" alt="Demo"/>
   <p>Test the logger via a web interface at <a href="https://deeeed.github.io/universe/loggerdemo/">https://deeeed.github.io/universe/loggerdemo/</a></p>
   <p>Full demo is accessible in the monorepo at <code>example/loggerdemo</code></p>
 </div>
@@ -32,24 +32,23 @@ To get started with `@siteed/react-native-logger`, configure the logger settings
 ### Basic Setup
 
 ```tsx
-import { LoggerProvider, useLogger, getLogger, setLoggerConfig } from '@siteed/react-native-logger';
+import { getLogger, setLoggerConfig } from '@siteed/react-native-logger';
 
 // Set logger configuration
 setLoggerConfig({ maxLogs: 500 }); // Set the maximum number of logs to 500
 
 // To use outside react component, you can call getLogger directly
-const outLogger = getLogger('out');
-outLogger.debug('This is a debug message');
-outLogger.info('This is an info message');
-outLogger.warn('This is a warning message');
-outLogger.error('This is an error message');
+const logger = getLogger('App');
+logger.debug('This is a debug message');
+logger.info('This is an info message');
+logger.warn('This is a warning message');
+logger.error('This is an error message');
 
 const App = () => {
-  const logger = useLogger('App');
 
   useEffect(() => {
     logger.log('App mounted');
-  }, [logger]);
+  }, []);
 
   return (
     <View>
@@ -99,7 +98,7 @@ localStorage.setItem('DEBUG', '-namespace1,-namespace2');
 `@siteed/react-native-logger` is particularly useful in production, where traditional debugging tools are not accessible. For instance, you can create a dedicated screen within your app that displays log history, allowing users to copy and send these logs for support purposes, or even set up automatic log forwarding via email or a web service.
 
 ```tsx
-import { useLogger, getLogger, setLoggerConfig } from '@siteed/react-native-logger';
+import { getLogger, setLoggerConfig } from '@siteed/react-native-logger';
 import React, { useEffect } from 'react';
 import { View, Text } from 'react-native';
 
