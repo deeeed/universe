@@ -3,7 +3,7 @@
     "baseUrl": "./",
     "paths": {
       "@siteed/react-native-logger": [
-        "./src/index"
+        "./src/logger"
       ]
     },
     "allowUnreachableCode": false,
@@ -12,7 +12,7 @@
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
     "lib": [
-      "esnext"
+      "esnext", "dom"
     ],
     "module": "esnext",
     "moduleResolution": "node",
