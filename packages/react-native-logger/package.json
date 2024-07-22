@@ -18,7 +18,8 @@
     "build:tsc": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "lint": "eslint \"**/*.{js,ts,tsx}\""
+    "lint": "eslint \"**/*.{js,ts,tsx}\"",
+    "release": "yarn clean && yarn build && npm publish"
   },
   "keywords": [
     "react-native",
