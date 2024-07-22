@@ -1,12 +1,26 @@
 import "ts-node/register"; // Add this to import TypeScript files
 import { ExpoConfig } from "@expo/config";
+import path from "path";
+import fs from "fs";
 
 const isDev = process.env.NODE_ENV === "development";
+
+
+// Path to the react-native-logger package.json
+const packageJsonPath = path.resolve(__dirname, '..', '..', 'packages', 'react-native-logger', 'package.json');
+
+// Read the package.json file
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+
+// Extract the version
+const loggerPackageVersion = packageJson.version;
+
+console.log(`Using react-native-logger version: ${loggerPackageVersion}`);
 
 const config: ExpoConfig = {
   name: "loggerdemo",
   slug: "loggerdemo",
-  version: "1.0.0",
+  version: loggerPackageVersion, // Use the dynamically read version
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "light",

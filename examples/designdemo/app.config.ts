@@ -1,12 +1,33 @@
 import "ts-node/register"; // Add this to import TypeScript files
 import { ExpoConfig } from "@expo/config";
+import fs from "fs";
+import path from "path";
 
 const isDev = process.env.NODE_ENV === "development";
+
+const packageJsonPath = path.resolve(
+  __dirname,
+  "..",
+  "..",
+  "packages",
+  "design-system",
+  "package.json",
+);
+
+// Read the package.json file
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+
+// Extract the version
+const designSystemPackageVersion = packageJson.version;
+
+console.log(
+  `Using @siteed/design-system version: ${designSystemPackageVersion}`,
+);
 
 const config: ExpoConfig = {
   name: "designdemo",
   slug: "designdemo",
-  version: "1.0.0",
+  version: designSystemPackageVersion,
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "light",
@@ -33,7 +54,7 @@ const config: ExpoConfig = {
     bundler: "metro",
   },
   experiments: {
-    baseUrl: isDev ? "" : "/universe/design-demo/",
+    baseUrl: isDev ? "" : "/universe/designdemo/",
   },
   plugins: ["expo-localization", "expo-router"],
 };

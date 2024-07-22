@@ -1,4 +1,4 @@
-package com.deeeed.expoapp
+package net.siteed.designdemo
 
 import android.os.Build
 import android.os.Bundle

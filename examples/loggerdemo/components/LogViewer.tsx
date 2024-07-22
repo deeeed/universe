@@ -1,25 +1,24 @@
+import { Picker } from "@react-native-picker/picker";
 import {
   clearLogs,
   disable,
   disableAll,
   enable,
-  enabled,
   getLogger,
   getLogs,
 } from "@siteed/react-native-logger";
 import React, { useEffect, useState } from "react";
 import {
   Button,
+  LogBox,
   ScrollView,
   StyleSheet,
-  Text,
-  View,
   Switch,
+  Text,
   TextInput,
+  View,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
 import { NamespaceManager } from "./NamespaceManager";
-import { LogBox } from 'react-native';
 
 export interface LogViewerProps {}
 
