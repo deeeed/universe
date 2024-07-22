@@ -63,20 +63,27 @@ config.resolver = {
         filePath: designSystem + "/src/index.ts",
         type: "sourceFile",
       };
+    } else if (moduleName === "react" || moduleName === "react-dom") {
+      // console.log(
+      //   `Resolving ${moduleName} to ${path.resolve(projectRoot, `node_modules/${moduleName}`)}`,
+      // );
+      // Force resolution to the local versions specified in extraNodeModules
+      return {
+        filePath: path.resolve(
+          projectRoot,
+          `node_modules/${moduleName}/index.js`,
+        ),
+        type: "sourceFile",
+      };
+    } else if (moduleName === "react-native-safe-area-context") {
+      return {
+        filePath: path.resolve(
+          projectRoot,
+          `node_modules/${moduleName}/lib/module/index.js`,
+        ),
+        type: "sourceFile",
+      };
     }
-    // else if (moduleName === "react" || moduleName === "react-dom") {
-    //   console.log(
-    //     `Resolving ${moduleName} to ${path.resolve(projectRoot, `node_modules/${moduleName}`)}`,
-    //   );
-    //   // Force resolution to the local versions specified in extraNodeModules
-    //   return {
-    //     filePath: path.resolve(
-    //       projectRoot,
-    //       `node_modules/${moduleName}/index.js`,
-    //     ),
-    //     type: "sourceFile",
-    //   };
-    // }
     // Ensure you call the default resolver.
     return context.resolveRequest(context, moduleName, platform);
   },

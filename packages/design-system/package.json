@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/deeeed/mobile-framework",
+    "url": "https://github.com/deeeed/universe",
     "directory": "packages/design-system"
   },
   "main": "dist/src/index.js",

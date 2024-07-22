@@ -15,7 +15,7 @@
     "@gorhom/bottom-sheet": "^5.0.0-alpha.9",
     "@react-navigation/drawer": "^6.6.15",
     "@siteed/design-system": "workspace:^",
-    "@siteed/react-native-logger": "workspace:^",
+    "@siteed/react-native-logger": "0.7.1",
     "expo": "^51.0.21",
     "expo-constants": "~16.0.2",
     "expo-linking": "~6.3.1",

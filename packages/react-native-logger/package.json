@@ -1,39 +1,24 @@
 {
   "name": "@siteed/react-native-logger",
-  "version": "0.7.2",
-  "description": "Simple logger to wrap console and keep track of latest logs",
-  "main": "lib/commonjs/logger",
-  "module": "lib/module/logger",
-  "types": "lib/typescript/logger.d.ts",
-  "react-native": "src/logger",
+  "version": "0.8.0",
+  "description": "A simple yet powerful logging library for React Native applications, compatible with the debug package and supporting persistent log history.",
+  "main": "dist/logger.js",
+  "module": "dist/logger.js",
   "source": "src/logger",
+  "types": "dist/logger.d.ts",
+  "sideEffects": false,
   "files": [
-    "src",
-    "lib",
-    "android",
-    "ios",
-    "cpp",
-    "*.podspec",
-    "!lib/typescript/example",
-    "!ios/build",
-    "!android/build",
-    "!android/gradle",
-    "!android/gradlew",
-    "!android/gradlew.bat",
-    "!android/local.properties",
-    "!**/__tests__",
-    "!**/__fixtures__",
-    "!**/__mocks__",
-    "!**/.*"
+    "dist",
+    "package.json",
+    "README.md"
   ],
   "scripts": {
-    "test": "jest",
+    "clean": "rimraf ./dist",
+    "build": "yarn build:tsc",
+    "build:tsc": "tsc",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "prepack": "bob build",
-    "release": "release-it",
-    "example": "yarn --cwd example",
-    "bootstrap": "yarn example && yarn install"
+    "test": "jest",
+    "lint": "eslint \"**/*.{js,ts,tsx}\""
   },
   "keywords": [
     "react-native",
@@ -43,7 +28,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/deeeed/mobile-framework",
+    "url": "https://github.com/deeeed/universe",
     "directory": "packages/react-native-logger"
   },
   "author": "Arthur Breton <abreton@siteed.net> (https://github.com/deeeed)",
@@ -56,10 +41,7 @@
     "@babel/eslint-parser": "^7.24.8",
     "@commitlint/config-conventional": "^17.0.2",
     "@evilmartians/lefthook": "^1.2.2",
-    "@react-native-community/eslint-config": "^3.0.2",
-    "@release-it/conventional-changelog": "^5.0.0",
     "@types/jest": "^28.1.2",
-    "@types/react": "^18.3.1",
     "commitlint": "^17.0.2",
     "del-cli": "^5.0.0",
     "eslint": "^8.4.1",
@@ -68,40 +50,8 @@
     "eslint-plugin-prettier": "^4.0.0",
     "jest": "^28.1.1",
     "metro-react-native-babel-preset": "^0.77.0",
-    "pod-install": "^0.1.0",
     "prettier": "^2.0.5",
-    "react": "^18.3.1",
-    "react-native": "^0.74.0",
-    "react-native-builder-bob": "^0.20.0",
-    "release-it": "^15.0.0",
+    "rimraf": "^6.0.1",
     "typescript": "^5.0.2"
-  },
-  "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
-  },
-  "engines": {
-    "node": ">= 16.0.0"
-  },
-  "jest": {
-    "preset": "react-native",
-    "modulePathIgnorePatterns": [
-      "<rootDir>/example/node_modules",
-      "<rootDir>/lib/"
-    ]
-  },
-  "react-native-builder-bob": {
-    "source": "src",
-    "output": "lib",
-    "targets": [
-      "commonjs",
-      "module",
-      [
-        "typescript",
-        {
-          "project": "tsconfig.build.json"
-        }
-      ]
-    ]
   }
 }

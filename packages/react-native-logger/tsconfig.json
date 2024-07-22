@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
+    "outDir": "./dist/",
     "baseUrl": "./",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "paths": {
       "@siteed/react-native-logger": [
         "./src/logger"
@@ -32,5 +36,5 @@
   "include": [
     "src/**/*",
     "globals.d.ts"
-  ],
+  ]
 }

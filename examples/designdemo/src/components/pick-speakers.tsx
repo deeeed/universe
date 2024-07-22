@@ -58,7 +58,7 @@ export const PickSpeakers = ({
 }: PickSpeakersProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
-  const { editProp, bottomSheetModalRef } = useBottomModal();
+  const { editProp } = useBottomModal();
   const { logger } = useLogger("PickSpeakers");
   const [activeOptions, setActiveOptions] = useState<SelectOption[]>(options);
   const selectedOptions = activeOptions.filter((option) => option.selected);
