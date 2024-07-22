@@ -1,0 +1,19 @@
+{
+  "search.exclude": {
+    "**/.yarn": true,
+    "**/.pnp.*": true,
+    "**/node_modules": true,
+    "**/dist": true,
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.rollup.cache/": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/dist": true,
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+}
