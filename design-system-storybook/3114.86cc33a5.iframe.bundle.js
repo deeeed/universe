@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_siteed_design_system=self.webpackChunk_siteed_design_system||[]).push([[3114],{"./src/stories/assets/docs.png":(module,__unused_webpack_exports,__webpack_require__)=>{module.exports=__webpack_require__.p+"static/media/docs.f7d8b9a8.png"}}]);

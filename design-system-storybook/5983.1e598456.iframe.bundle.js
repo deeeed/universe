@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_siteed_design_system=self.webpackChunk_siteed_design_system||[]).push([[5983],{"./src/stories/assets/figma-plugin.png":(module,__unused_webpack_exports,__webpack_require__)=>{module.exports=__webpack_require__.p+"static/media/figma-plugin.9335a1a9.png"}}]);

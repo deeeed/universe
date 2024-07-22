@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_siteed_design_system=self.webpackChunk_siteed_design_system||[]).push([[9471],{"./src/stories/assets/accessibility.png":(module,__unused_webpack_exports,__webpack_require__)=>{module.exports=__webpack_require__.p+"static/media/accessibility.2dbc6973.png"}}]);
