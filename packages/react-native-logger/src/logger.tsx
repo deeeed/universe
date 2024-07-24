@@ -1,9 +1,7 @@
+// packages/react-native-logger/src/logger.tsx
 import {
   addLog,
   clearLogs,
-  disable,
-  disableAll,
-  enable,
   setLoggerConfig,
   enabled,
   getLogs,
@@ -32,6 +30,10 @@ export const getLogger = (namespace: string): LoggerMethods => {
       addLog({ namespace, level: 'warn', params }),
     error: (...params: unknown[]) =>
       addLog({ namespace, level: 'error', params }),
+    extend: (subNamespace: string) => {
+      const extendedNamespace = `${namespace}:${subNamespace}`;
+      return getLogger(extendedNamespace);
+    },
   };
 
   loggersMap.set(namespace, logger);
@@ -41,9 +43,6 @@ export const getLogger = (namespace: string): LoggerMethods => {
 export {
   getLogs,
   clearLogs,
-  enable,
-  disable,
-  disableAll,
   enabled,
   setLoggerConfig,
 };

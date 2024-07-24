@@ -1,10 +1,10 @@
+// packages/react-native-logger/src/logger.core.tsx
 import type { AddLogParams, LogEntry, LoggerConfig } from './logger.types';
-import { coerceToString, toNamespace } from './logger.utils';
+import { coerceToString } from './logger.utils';
 
-let enabledNamespaces: RegExp[] = [];
-let skippedNamespaces: RegExp[] = [];
+let enabledNamespaces: string[] = [];
 let logsArray: LogEntry[] = [];
-let config: LoggerConfig = { maxLogs: 100 }; // Default configuration
+let config: LoggerConfig = { maxLogs: 100, namespaces: '' }; // Default configuration
 
 // Function to initialize debug settings from environment variables or local storage
 const initializeDebugSettings = () => {
@@ -12,12 +12,15 @@ const initializeDebugSettings = () => {
 
   if (typeof process !== 'undefined' && process.env.DEBUG) {
     debugSetting = process.env.DEBUG;
+    console.debug(`DEBUG setting from environment variable: ${debugSetting}`);
   } else if (typeof window !== 'undefined' && window.localStorage) {
     debugSetting = window.localStorage.getItem('DEBUG') || '';
+    console.debug('DEBUG setting from local storage:', debugSetting);
   }
 
   if (debugSetting) {
-    enable(debugSetting);
+    config.namespaces = debugSetting;
+    setNamespaces(debugSetting);
   }
 };
 
@@ -29,7 +32,10 @@ initializeDebugSettings();
  * @param params - Parameters for the log entry.
  */
 export const addLog = ({ namespace, level, params = [] }: AddLogParams) => {
-  if (!enabled(namespace)) return;
+  if (!enabled(namespace)) {
+    console.debug(`DISABLED: ${namespace}`);
+    return;
+  }
 
   const [message, ...restParams] = params;
 
@@ -55,7 +61,7 @@ export const addLog = ({ namespace, level, params = [] }: AddLogParams) => {
 
   // Trim the logs array if it exceeds the maximum number of logs
   if (logsArray.length > config.maxLogs) {
-    logsArray = logsArray.slice(0, config.maxLogs);
+    logsArray = logsArray.slice(-config.maxLogs);
   }
 
   const toLogParams = hasStringMessage ? restParams : params;
@@ -84,64 +90,28 @@ export const addLog = ({ namespace, level, params = [] }: AddLogParams) => {
  * @returns True if logging is enabled, false otherwise.
  */
 export const enabled = (namespace: string) => {
-  for (const skip of skippedNamespaces) {
-    if (skip.test(namespace)) {
-      return false;
-    }
-  }
   for (const name of enabledNamespaces) {
-    if (name.test(namespace)) {
+    if (namespace === name || namespace.startsWith(name.replace('*', ''))) {
       return true;
     }
   }
   return false;
 };
 
+
 /**
- * Enables logging for specified namespaces.
- * @param namespaces - The namespaces to enable.
+ * Sets logging for specified namespaces.
+ * @param namespaces - The namespaces to set.
  */
-export const enable = (namespaces: string) => {
+export const setNamespaces = (namespaces: string) => {
   const split = namespaces.split(/[\s,]+/);
   enabledNamespaces = [];
-  skippedNamespaces = [];
 
   for (const ns of split) {
     if (!ns) continue;
-    const regex = new RegExp('^' + ns.replace(/\*/g, '.*?') + '$');
-    if (ns[0] === '-') {
-      skippedNamespaces.push(regex);
-    } else {
-      enabledNamespaces.push(regex);
-    }
+    enabledNamespaces.push(ns);
   }
-};
-
-/**
- * Disables logging for specified namespaces.
- * @param namespaces - The namespaces to disable.
- */
-export const disable = (namespaces: string) => {
-  const split = namespaces.split(/[\s,]+/);
-
-  for (const ns of split) {
-    if (!ns) continue;
-    const regex = new RegExp('^' + ns.replace(/\*/g, '.*?') + '$');
-    skippedNamespaces.push(regex);
-  }
-};
-
-/**
- * Disables all logging.
- * @returns The disabled namespaces.
- */
-export const disableAll = () => {
-  const namespaces = [
-    ...enabledNamespaces.map(toNamespace),
-    ...skippedNamespaces.map(toNamespace).map((ns) => '-' + ns),
-  ].join(',');
-  enable('');
-  return namespaces;
+  console.log(`Enabled namespaces: ${enabledNamespaces.join(', ')}`);
 };
 
 /**
@@ -165,4 +135,7 @@ export const clearLogs = () => {
  */
 export const setLoggerConfig = (newConfig: Partial<LoggerConfig>) => {
   config = { ...config, ...newConfig };
+  if (newConfig.namespaces !== undefined) {
+    setNamespaces(newConfig.namespaces);
+  }
 };
