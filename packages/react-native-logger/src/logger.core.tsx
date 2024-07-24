@@ -2,9 +2,12 @@
 import type { AddLogParams, LogEntry, LoggerConfig } from './logger.types';
 import { coerceToString } from './logger.utils';
 
+const DEFAULT_MAX_LOGS = 100;
+const DEFAULT_NAMESPACES = '';
+
 let enabledNamespaces: string[] = [];
 let logsArray: LogEntry[] = [];
-let config: LoggerConfig = { maxLogs: 100, namespaces: '' }; // Default configuration
+let config: LoggerConfig = { maxLogs: DEFAULT_MAX_LOGS, namespaces: DEFAULT_NAMESPACES }; // Default configuration
 
 // Function to initialize debug settings from environment variables or local storage
 const initializeDebugSettings = () => {
@@ -128,6 +131,15 @@ export const getLogs = () => {
 export const clearLogs = () => {
   logsArray = [];
 };
+
+/**
+ * Resets the logger to its default state and loads debug settings from environment variables or local storage.
+ */
+export const reset = () => {
+  clearLogs();
+  setLoggerConfig({ maxLogs: DEFAULT_MAX_LOGS, namespaces: DEFAULT_NAMESPACES });
+  initializeDebugSettings();
+}
 
 /**
  * Sets the logger configuration.

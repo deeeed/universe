@@ -4,6 +4,7 @@ import {
   clearLogs,
   setLoggerConfig,
   enabled,
+  reset,
   getLogs,
 } from './logger.core';
 import type { LoggerMethods } from './logger.types';
@@ -44,5 +45,6 @@ export {
   getLogs,
   clearLogs,
   enabled,
+  reset,
   setLoggerConfig,
 };
