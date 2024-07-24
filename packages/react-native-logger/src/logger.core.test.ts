@@ -1,6 +1,4 @@
 // packages/react-native-logger/src/logger.core.test.ts
-import { mockGetItem } from './__mocks__/localStorage';
-import { mockProcessEnv } from './__mocks__/processEnv';
 import {
   addLog,
   clearLogs,
@@ -9,6 +7,24 @@ import {
   enabled,
   reset,
 } from './logger.core';
+
+export const mockGetItem = jest.fn();
+export const mockSetItem = jest.fn();
+export const mockRemoveItem = jest.fn();
+
+Object.defineProperty(window, 'localStorage', {
+  value: {
+    getItem: mockGetItem,
+    setItem: mockSetItem,
+    removeItem: mockRemoveItem,
+    clear: jest.fn(),
+  },
+  writable: true,
+});
+
+export const mockProcessEnv = (key: string, value: string) => {
+  process.env[key] = value;
+};
 
 // Utility functions for initializing and resetting the logger
 const initializeLogger = () => {
@@ -57,7 +73,10 @@ describe('Logger Tests', () => {
       console.log('Enabled ns1:* and ns2:subnamespace');
       console.log('enabled ns1:file:', enabled('ns1:file'));
       console.log('enabled ns2:file:', enabled('ns2:file'));
-      console.log('enabled ns2:subnamespace:file:', enabled('ns2:subnamespace:file'));
+      console.log(
+        'enabled ns2:subnamespace:file:',
+        enabled('ns2:subnamespace:file')
+      );
 
       expect(enabled('ns1:file')).toBe(true);
       expect(enabled('ns2:file')).toBe(false);
@@ -66,7 +85,10 @@ describe('Logger Tests', () => {
       setLoggerConfig({ namespaces: '' });
       console.log('Disabled all namespaces');
       console.log('enabled ns1:file:', enabled('ns1:file'));
-      console.log('enabled ns2:subnamespace:file:', enabled('ns2:subnamespace:file'));
+      console.log(
+        'enabled ns2:subnamespace:file:',
+        enabled('ns2:subnamespace:file')
+      );
 
       expect(enabled('ns1:file')).toBe(false);
       expect(enabled('ns2:subnamespace:file')).toBe(false);
@@ -74,7 +96,10 @@ describe('Logger Tests', () => {
       setLoggerConfig({ namespaces: 'ns3:file' });
       console.log('Enabled ns3:file');
       console.log('enabled ns3:file:', enabled('ns3:file'));
-      console.log('enabled ns2:subnamespace:file:', enabled('ns2:subnamespace:file'));
+      console.log(
+        'enabled ns2:subnamespace:file:',
+        enabled('ns2:subnamespace:file')
+      );
 
       expect(enabled('ns3:file')).toBe(true);
       expect(enabled('ns2:subnamespace:file')).toBe(false);
@@ -83,7 +108,11 @@ describe('Logger Tests', () => {
     it('should not exceed max log limit', () => {
       setLoggerConfig({ namespaces: 'test', maxLogs: 10 });
       for (let i = 0; i < 15; i++) {
-        addLog({ namespace: 'test', level: 'info', params: [`Log entry ${i}`] });
+        addLog({
+          namespace: 'test',
+          level: 'info',
+          params: [`Log entry ${i}`],
+        });
       }
       const logs = getLogs();
       expect(logs.length).toBe(10);
@@ -110,7 +139,11 @@ describe('Logger Tests', () => {
       reset(); // Re-initialize to load settings again
 
       expect(enabled('testNamespace')).toBe(true);
-      addLog({ namespace: 'testNamespace', level: 'info', params: ['Log entry'] });
+      addLog({
+        namespace: 'testNamespace',
+        level: 'info',
+        params: ['Log entry'],
+      });
       const logs = getLogs();
       expect(logs.length).toBe(1);
       expect(logs[0]?.message).toContain('Log entry');
@@ -121,10 +154,14 @@ describe('Logger Tests', () => {
       reset(); // Re-initialize to load settings again
 
       expect(enabled('envNamespace')).toBe(true);
-      addLog({ namespace: 'envNamespace', level: 'info', params: ['Log entry'] });
+      addLog({
+        namespace: 'envNamespace',
+        level: 'info',
+        params: ['Log entry'],
+      });
       const logs = getLogs();
       expect(logs.length).toBe(1);
       expect(logs[0]?.message).toContain('Log entry');
     });
-  })
+  });
 });

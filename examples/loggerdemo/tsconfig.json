@@ -6,7 +6,7 @@
       "@/*": [
         "./*"
       ],
-      "@siteed/react-native-logger": ["../../packages/react-native-logger/src/logger.tsx"],
+      "@siteed/react-native-logger": ["../../packages/react-native-logger/src/logger.ts"],
       "@siteed/react-native-logger/*": ["../../packages/react-native-logger/src/*"]
     }
   },

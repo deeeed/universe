@@ -14,6 +14,10 @@ module.exports = {
       files: ["*.ts", "*.tsx"], // Specify the file extensions to be parsed as TypeScript
       rules: {
         // Add or override rules specific to TypeScript files here
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+        ],
       },
     },
   ],

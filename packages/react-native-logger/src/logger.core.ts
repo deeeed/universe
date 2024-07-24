@@ -1,34 +1,8 @@
 // packages/react-native-logger/src/logger.core.tsx
+import { initializeDebugSettings } from './logger.init';
+import { DEFAULT_MAX_LOGS, DEFAULT_NAMESPACES, state } from './logger.state';
 import type { AddLogParams, LogEntry, LoggerConfig } from './logger.types';
 import { coerceToString } from './logger.utils';
-
-const DEFAULT_MAX_LOGS = 100;
-const DEFAULT_NAMESPACES = '';
-
-let enabledNamespaces: string[] = [];
-let logsArray: LogEntry[] = [];
-let config: LoggerConfig = { maxLogs: DEFAULT_MAX_LOGS, namespaces: DEFAULT_NAMESPACES }; // Default configuration
-
-// Function to initialize debug settings from environment variables or local storage
-const initializeDebugSettings = () => {
-  let debugSetting = '';
-
-  if (typeof process !== 'undefined' && process.env.DEBUG) {
-    debugSetting = process.env.DEBUG;
-    console.debug(`DEBUG setting from environment variable: ${debugSetting}`);
-  } else if (typeof window !== 'undefined' && window.localStorage) {
-    debugSetting = window.localStorage.getItem('DEBUG') || '';
-    console.debug('DEBUG setting from local storage:', debugSetting);
-  }
-
-  if (debugSetting) {
-    config.namespaces = debugSetting;
-    setNamespaces(debugSetting);
-  }
-};
-
-// Call the initialization function on library load
-initializeDebugSettings();
 
 /**
  * Adds a log entry.
@@ -60,11 +34,11 @@ export const addLog = ({ namespace, level, params = [] }: AddLogParams) => {
     namespace: namespace,
     timestamp: Date.now(),
   };
-  logsArray = [...logsArray, newLog];
+  state.logsArray = [...state.logsArray, newLog];
 
   // Trim the logs array if it exceeds the maximum number of logs
-  if (logsArray.length > config.maxLogs) {
-    logsArray = logsArray.slice(-config.maxLogs);
+  if (state.logsArray.length > state.config.maxLogs) {
+    state.logsArray = state.logsArray.slice(-state.config.maxLogs);
   }
 
   const toLogParams = hasStringMessage ? restParams : params;
@@ -93,7 +67,7 @@ export const addLog = ({ namespace, level, params = [] }: AddLogParams) => {
  * @returns True if logging is enabled, false otherwise.
  */
 export const enabled = (namespace: string) => {
-  for (const name of enabledNamespaces) {
+  for (const name of state.enabledNamespaces) {
     if (namespace === name || namespace.startsWith(name.replace('*', ''))) {
       return true;
     }
@@ -101,20 +75,23 @@ export const enabled = (namespace: string) => {
   return false;
 };
 
-
 /**
  * Sets logging for specified namespaces.
  * @param namespaces - The namespaces to set.
  */
 export const setNamespaces = (namespaces: string) => {
   const split = namespaces.split(/[\s,]+/);
-  enabledNamespaces = [];
+  state.enabledNamespaces = [];
 
   for (const ns of split) {
     if (!ns) continue;
-    enabledNamespaces.push(ns);
+    state.enabledNamespaces.push(ns);
   }
-  console.log(`Enabled namespaces: ${enabledNamespaces.join(', ')}`);
+  console.log(
+    `setNamespaces: ${namespaces} Enabled namespaces: ${state.enabledNamespaces.join(
+      ', '
+    )}`
+  );
 };
 
 /**
@@ -122,14 +99,14 @@ export const setNamespaces = (namespaces: string) => {
  * @returns An array of log entries.
  */
 export const getLogs = () => {
-  return logsArray;
+  return state.logsArray;
 };
 
 /**
  * Clears all log entries.
  */
 export const clearLogs = () => {
-  logsArray = [];
+  state.logsArray = [];
 };
 
 /**
@@ -137,16 +114,19 @@ export const clearLogs = () => {
  */
 export const reset = () => {
   clearLogs();
-  setLoggerConfig({ maxLogs: DEFAULT_MAX_LOGS, namespaces: DEFAULT_NAMESPACES });
+  setLoggerConfig({
+    maxLogs: DEFAULT_MAX_LOGS,
+    namespaces: DEFAULT_NAMESPACES,
+  });
   initializeDebugSettings();
-}
+};
 
 /**
  * Sets the logger configuration.
  * @param newConfig - The new configuration object.
  */
 export const setLoggerConfig = (newConfig: Partial<LoggerConfig>) => {
-  config = { ...config, ...newConfig };
+  state.config = { ...state.config, ...newConfig };
   if (newConfig.namespaces !== undefined) {
     setNamespaces(newConfig.namespaces);
   }

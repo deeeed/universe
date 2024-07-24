@@ -2,14 +2,14 @@
 import {
   addLog,
   clearLogs,
-  setLoggerConfig,
   enabled,
-  reset,
   getLogs,
+  reset,
+  setLoggerConfig,
 } from './logger.core';
+import { initializeDebugSettings } from './logger.init';
+import { state } from './logger.state';
 import type { LoggerMethods } from './logger.types';
-
-const loggersMap = new Map<string, LoggerMethods>();
 
 /**
  * Retrieves or creates a logger for a given namespace.
@@ -17,8 +17,8 @@ const loggersMap = new Map<string, LoggerMethods>();
  * @returns The logger methods.
  */
 export const getLogger = (namespace: string): LoggerMethods => {
-  if (loggersMap.has(namespace)) {
-    return loggersMap.get(namespace)!;
+  if (state.loggersMap.has(namespace)) {
+    return state.loggersMap.get(namespace)!;
   }
 
   const logger: LoggerMethods = {
@@ -37,14 +37,11 @@ export const getLogger = (namespace: string): LoggerMethods => {
     },
   };
 
-  loggersMap.set(namespace, logger);
+  state.loggersMap.set(namespace, logger);
   return logger;
 };
 
-export {
-  getLogs,
-  clearLogs,
-  enabled,
-  reset,
-  setLoggerConfig,
-};
+// Call the initialization function on library load
+initializeDebugSettings();
+
+export { clearLogs, enabled, getLogs, reset, setLoggerConfig };

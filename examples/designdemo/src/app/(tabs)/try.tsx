@@ -1,6 +1,7 @@
 import { ListItem } from "@siteed/design-system";
+import { getLogger } from "@siteed/react-native-logger";
 import { useRouter } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { FlatList, StyleSheet } from "react-native";
 
 const getStyles = () => {
@@ -27,9 +28,16 @@ const links = [
   },
 ];
 
-export const TryItComponents = () => {
-  const styles = useMemo(() => getStyles(), []);
+const logger = getLogger("TryItScreen");
+
+export const TryItScreen = () => {
+  const _styles = useMemo(() => getStyles(), []);
   const router = useRouter();
+
+  useEffect(() => {
+    logger.info("TryItScreen mounted");
+  }, []);
+
   return (
     <FlatList
       data={links}
@@ -47,4 +55,4 @@ export const TryItComponents = () => {
   );
 };
 
-export default TryItComponents;
+export default TryItScreen;

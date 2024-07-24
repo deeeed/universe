@@ -32,3 +32,10 @@ yarn release
 
 
 ## Publish logger package
+```bash
+# cd packages/react-native-logger
+version=$(node -p "require('./package.json').version")
+git add .
+git commit -m 'feat(react-native-logger): bump version $version'
+yarn release
+```

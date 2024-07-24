@@ -31,10 +31,16 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "esnext",
-    "verbatimModuleSyntax": false
+    "verbatimModuleSyntax": true
   },
   "include": [
     "src/**/*",
-    "globals.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "src/__mocks__"
   ]
 }

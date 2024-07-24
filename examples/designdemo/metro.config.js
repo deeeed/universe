@@ -18,6 +18,7 @@ const modules = [
   "react-native-safe-area-context",
   "react-native-reanimated",
   "@siteed/design-system",
+  "@siteed/react-native-logger",
   "react-dom",
   "react",
   "react-native",

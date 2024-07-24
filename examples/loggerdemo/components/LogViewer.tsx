@@ -3,8 +3,7 @@ import {
   clearLogs,
   getLogger,
   getLogs,
-  setLoggerConfig,
-} from "@siteed/react-native-logger";
+  setLoggerConfig, }  from "@siteed/react-native-logger";
 import React, { useEffect, useState } from "react";
 import {
   Button,
@@ -21,6 +20,7 @@ import { NamespaceManager } from "./NamespaceManager";
 export interface LogViewerProps {}
 
 LogBox.ignoreAllLogs(); // Ignore all log notifications
+
 const logger = getLogger("LogViewer");
 
 export const LogViewer = (_: LogViewerProps) => {
@@ -77,6 +77,9 @@ export const LogViewer = (_: LogViewerProps) => {
   }, []);
 
   useEffect(() => {
+    if(namespaces.length === 0) {
+      return;
+    }
     setLoggerConfig({ namespaces: namespaces.join(",") });
   }, [namespaces]);
 
