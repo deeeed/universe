@@ -1,21 +1,21 @@
 # @siteed/react-native-logger
 
-`@siteed/react-native-logger` is a simple, yet powerful logging library designed for React Native applications. It extends the basic console logging functions by maintaining a log history that can be displayed within your app or exported for troubleshooting. Additionally, it is compatible with the `debug` package, allowing you to enable or disable logging based on environment variables or local storage settings.
+`@siteed/react-native-logger` is a simple, yet powerful logging library designed for React Native applications. It extends the basic console logging functions by maintaining a log history that can be displayed within your app or exported for troubleshooting.
 
 
 ## Installation
 
 ```sh
 npm install @siteed/react-native-logger
+yarn add @siteed/react-native-logger
 ```
 
 ## Key Features
 
-- **Easy Integration**: Seamlessly integrates with any React Native project.
 - **Persistent Log History**: Keeps a history of log messages that can be displayed in-app for easier debugging and diagnostics.
 - **Production Debugging**: Facilitates debugging in production by allowing logs to be reviewed directly from a device.
 - **Configurable Maximum Logs**: Set the maximum number of logs kept in memory to prevent overflow.
-- **Compatibility with `debug` Package**: Enable or disable logging for specific namespaces based on environment variables or local storage settings.
+- **Namespace-Based Logging**: Enable or disable logging for specific namespaces based on environment variables or local storage settings.
 
 <div align="center">
   <h2>Try it out</h2>
@@ -29,13 +29,17 @@ npm install @siteed/react-native-logger
 
 To get started with `@siteed/react-native-logger`, configure the logger settings and use the logging functions within your React components or outside of them.
 
+### Recommended Setup
+
+It is recommended to create a base logger for your project and extend it for any specific features or screens. This approach allows you to isolate logging per application or feature while remaining compatible if an external library also uses a different namespace.
+
 ### Basic Setup
 
 ```tsx
 import { getLogger, setLoggerConfig } from '@siteed/react-native-logger';
 
 // Set logger configuration
-setLoggerConfig({ maxLogs: 500 }); // Set the maximum number of logs to 500
+setLoggerConfig({ maxLogs: 500, namespaces: 'App:*' }); // Set the maximum number of logs to 500 and enable logging for App namespace
 
 // To use outside react component, you can call getLogger directly
 const logger = getLogger('App');
@@ -44,10 +48,15 @@ logger.info('This is an info message');
 logger.warn('This is a warning message');
 logger.error('This is an error message');
 
+// Creating a sub-logger
+const subLogger = logger.extend('Sub');
+subLogger.info('This is a message from the sub-logger');
+
 const App = () => {
 
   useEffect(() => {
     logger.log('App mounted');
+    subLogger.debug('App component mounted');
   }, []);
 
   return (
@@ -56,7 +65,7 @@ const App = () => {
     </View>
   );
 };
-export default App
+export default App;
 ```
 
 ### Activating logs with `debug` compatibility
@@ -73,9 +82,6 @@ export DEBUG=*
 
 # Enable logs for specific namespaces
 export DEBUG=namespace1,namespace2
-
-# Disable logs for specific namespaces
-export DEBUG=-namespace1,-namespace2
 ```
 
 #### Local Storage (web)
@@ -88,9 +94,6 @@ localStorage.setItem('DEBUG', '*');
 
 // Enable logs for specific namespaces
 localStorage.setItem('DEBUG', 'namespace1,namespace2');
-
-// Disable logs for specific namespaces
-localStorage.setItem('DEBUG', '-namespace1,-namespace2');
 ```
 
 ### Accessing logs in Production
@@ -98,9 +101,9 @@ localStorage.setItem('DEBUG', '-namespace1,-namespace2');
 `@siteed/react-native-logger` is particularly useful in production, where traditional debugging tools are not accessible. For instance, you can create a dedicated screen within your app that displays log history, allowing users to copy and send these logs for support purposes, or even set up automatic log forwarding via email or a web service.
 
 ```tsx
-import { getLogger, setLoggerConfig } from '@siteed/react-native-logger';
-import React, { useEffect } from 'react';
-import { View, Text } from 'react-native';
+import { getLogger, getLogs, clearLogs } from '@siteed/react-native-logger';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Button, ScrollView } from 'react-native';
 
 const LogScreen = () => {
   const [logs, setLogs] = useState(getLogs());
@@ -115,7 +118,7 @@ const LogScreen = () => {
   }, []);
 
   return (
-     <View>
+    <View>
       <ScrollView>
         {logs.map((log, index) => (
           <View key={index}>
