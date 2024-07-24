@@ -1,7 +1,7 @@
 {
   "name": "@siteed/react-native-logger",
-  "version": "0.8.2",
-  "description": "A simple yet powerful logging library for React Native applications, compatible with the debug package and supporting persistent log history.",
+  "version": "0.9.2",
+  "description": "A simple yet powerful logging library for cross platform applications, supporting persistent log history.",
   "main": "dist/logger.js",
   "module": "dist/logger.js",
   "source": "src/logger",
@@ -15,6 +15,7 @@
   "scripts": {
     "clean": "rimraf ./dist",
     "build": "yarn build:tsc",
+    "build:clean": "yarn clean && yarn build",
     "build:tsc": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "jest",
@@ -42,17 +43,20 @@
     "@babel/eslint-parser": "^7.24.8",
     "@commitlint/config-conventional": "^17.0.2",
     "@evilmartians/lefthook": "^1.2.2",
-    "@types/jest": "^28.1.2",
+    "@types/jest": "^29.5.12",
+    "@typescript-eslint/eslint-plugin": "^7.17.0",
+    "@typescript-eslint/parser": "^7.17.0",
     "commitlint": "^17.0.2",
     "del-cli": "^5.0.0",
     "eslint": "^8.4.1",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-ft-flow": "^3.0.11",
     "eslint-plugin-prettier": "^4.0.0",
-    "jest": "^28.1.1",
-    "metro-react-native-babel-preset": "^0.77.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "prettier": "^2.0.5",
     "rimraf": "^6.0.1",
+    "ts-jest": "^29.2.3",
     "typescript": "^5.0.2"
   }
 }

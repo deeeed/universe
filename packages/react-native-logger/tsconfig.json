@@ -35,6 +35,12 @@
   },
   "include": [
     "src/**/*",
-    "globals.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "src/__mocks__"
   ]
 }

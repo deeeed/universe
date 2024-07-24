@@ -46,7 +46,7 @@
     "@babel/core": "^7.20.0",
     "@types/gh-pages": "^6",
     "@types/react": "~18.2.45",
-    "eslint": "^8.57.0",
+    "eslint": "^8.56.0",
     "eslint-config-universe": "^12.0.0",
     "gh-pages": "^6.1.1",
     "prettier": "^3.2.5",
@@ -55,5 +55,12 @@
     "ts-node": "^10.9.2",
     "typescript": "~5.3.3"
   },
+  "resolutions": {
+    "@siteed/react-native-logger": "0.8.2"
+  },
+  "nohoist": [
+    "**/@siteed/react-native-logger",
+    "**/@siteed/react-native-logger/**"
+  ],
   "private": true
 }

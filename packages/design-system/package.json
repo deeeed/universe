@@ -1,6 +1,6 @@
 {
   "name": "@siteed/design-system",
-  "version": "0.8.14",
+  "version": "0.8.15",
   "author": "Arthur Breton <abreton@siteed.net> (https://github.com/deeeed)",
   "license": "MIT",
   "repository": {
@@ -74,7 +74,7 @@
     "@rollup/plugin-json": "^6.0.1",
     "@rollup/plugin-node-resolve": "^13.3.0",
     "@rollup/plugin-typescript": "^8.3.3",
-    "@siteed/react-native-logger": "0.8.1",
+    "@siteed/react-native-logger": "0.8.2",
     "@size-limit/preset-big-lib": "^11.1.2",
     "@storybook/addon-essentials": "^8.2.5",
     "@storybook/addon-interactions": "^8.2.5",

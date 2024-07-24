@@ -1,5 +1,6 @@
 export interface LoggerConfig {
   maxLogs: number;
+  namespaces: string;
 }
 
 /**
@@ -29,4 +30,5 @@ export interface LoggerMethods {
   debug: (...params: unknown[]) => void;
   warn: (...params: unknown[]) => void;
   error: (...params: unknown[]) => void;
+  extend: (subNamespace: string) => LoggerMethods;
 }
