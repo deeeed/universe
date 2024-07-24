@@ -1,7 +1,11 @@
 // packages/react-native-logger/src/logger.core.tsx
-import { initializeDebugSettings } from './logger.init';
 import { DEFAULT_MAX_LOGS, DEFAULT_NAMESPACES, state } from './logger.state';
-import type { AddLogParams, LogEntry, LoggerConfig } from './logger.types';
+import type {
+  AddLogParams,
+  LogEntry,
+  LoggerConfig,
+  LoggerMethods,
+} from './logger.types';
 import { coerceToString } from './logger.utils';
 
 /**
@@ -10,7 +14,6 @@ import { coerceToString } from './logger.utils';
  */
 export const addLog = ({ namespace, level, params = [] }: AddLogParams) => {
   if (!enabled(namespace)) {
-    console.debug(`DISABLED: ${namespace}`);
     return;
   }
 
@@ -87,11 +90,6 @@ export const setNamespaces = (namespaces: string) => {
     if (!ns) continue;
     state.enabledNamespaces.push(ns);
   }
-  console.log(
-    `setNamespaces: ${namespaces} Enabled namespaces: ${state.enabledNamespaces.join(
-      ', '
-    )}`
-  );
 };
 
 /**
@@ -129,5 +127,51 @@ export const setLoggerConfig = (newConfig: Partial<LoggerConfig>) => {
   state.config = { ...state.config, ...newConfig };
   if (newConfig.namespaces !== undefined) {
     setNamespaces(newConfig.namespaces);
+  }
+};
+
+/**
+ * Retrieves or creates a logger for a given namespace.
+ * @param namespace - The namespace for the logger.
+ * @returns The logger methods.
+ */
+export const getLogger = (namespace: string): LoggerMethods => {
+  if (state.loggersMap.has(namespace)) {
+    return state.loggersMap.get(namespace)!;
+  }
+
+  const logger: LoggerMethods = {
+    log: (...params: unknown[]) => addLog({ namespace, level: 'log', params }),
+    info: (...params: unknown[]) =>
+      addLog({ namespace, level: 'info', params }),
+    debug: (...params: unknown[]) =>
+      addLog({ namespace, level: 'debug', params }),
+    warn: (...params: unknown[]) =>
+      addLog({ namespace, level: 'warn', params }),
+    error: (...params: unknown[]) =>
+      addLog({ namespace, level: 'error', params }),
+    extend: (subNamespace: string) => {
+      const extendedNamespace = `${namespace}:${subNamespace}`;
+      return getLogger(extendedNamespace);
+    },
+  };
+
+  state.loggersMap.set(namespace, logger);
+  return logger;
+};
+
+// Function to initialize debug settings from environment variables or local storage
+export const initializeDebugSettings = () => {
+  let debugSetting = '';
+
+  if (typeof process !== 'undefined' && process.env.DEBUG) {
+    debugSetting = process.env.DEBUG;
+  } else if (typeof window !== 'undefined' && window.localStorage) {
+    debugSetting = window.localStorage.getItem('DEBUG') || '';
+  }
+
+  if (debugSetting) {
+    state.config.namespaces = debugSetting;
+    setNamespaces(debugSetting);
   }
 };

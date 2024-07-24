@@ -6,6 +6,7 @@ import {
   getLogs,
   enabled,
   reset,
+  getLogger,
 } from './logger.core';
 
 export const mockGetItem = jest.fn();
@@ -128,6 +129,32 @@ describe('Logger Tests', () => {
 
       clearLogs();
       expect(getLogs().length).toBe(0); // Ensure logs are cleared
+    });
+
+    // Additional tests for extend functionality
+    it('should create a sub-logger using extend', () => {
+      setLoggerConfig({ namespaces: 'test' });
+      const logger = getLogger('test');
+      const subLogger = logger.extend('sub');
+      subLogger.info('Sub log entry');
+
+      const logs = getLogs();
+      expect(logs.length).toBe(1);
+      expect(logs[0]?.message).toContain('[test:sub]');
+      expect(logs[0]?.message).toContain('Sub log entry');
+    });
+
+    it('should create nested sub-loggers using extend', () => {
+      setLoggerConfig({ namespaces: 'test' });
+      const logger = getLogger('test');
+      const subLogger = logger.extend('sub');
+      const nestedLogger = subLogger.extend('nested');
+      nestedLogger.warn('Nested log entry');
+
+      const logs = getLogs();
+      expect(logs.length).toBe(1);
+      expect(logs[0]?.message).toContain('[test:sub:nested]');
+      expect(logs[0]?.message).toContain('Nested log entry');
     });
   });
 
