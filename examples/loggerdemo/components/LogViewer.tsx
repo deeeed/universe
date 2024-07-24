@@ -1,11 +1,9 @@
 import { Picker } from "@react-native-picker/picker";
 import {
   clearLogs,
-  disable,
-  disableAll,
-  enable,
   getLogger,
   getLogs,
+  setLoggerConfig,
 } from "@siteed/react-native-logger";
 import React, { useEffect, useState } from "react";
 import {
@@ -54,7 +52,7 @@ export const LogViewer = (_: LogViewerProps) => {
   const handleAddNamespace = (namespace: string) => {
     setNamespaces((prev) => {
       const newNamespaces = [...prev, namespace];
-      enable(newNamespaces.join(","));
+      setLoggerConfig({ namespaces: newNamespaces.join(",") });
       return newNamespaces;
     });
   };
@@ -63,10 +61,9 @@ export const LogViewer = (_: LogViewerProps) => {
     setNamespaces((prev) => {
       const newNamespaces = prev.filter((ns) => ns !== namespace);
       if (newNamespaces.length === 0) {
-        disableAll();
+        setLoggerConfig({ namespaces: namespaces.join(",") });
       } else {
-        enable(newNamespaces.join(","));
-        disable(namespace);
+        setLoggerConfig({ namespaces: newNamespaces.join(",") });
       }
       return newNamespaces;
     });
@@ -80,7 +77,7 @@ export const LogViewer = (_: LogViewerProps) => {
   }, []);
 
   useEffect(() => {
-    enable(namespaces.join(","));
+    setLoggerConfig({ namespaces: namespaces.join(",") });
   }, [namespaces]);
 
   return (
