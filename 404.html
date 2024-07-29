@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 - Not Found</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    a {
+      display: block;
+      margin: 20px;
+      font-size: 24px;
+      color: #007bff;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+  <script type="text/javascript">
+    // Extract the pathname from the URL
+    var pathname = window.location.pathname;
+
+    // Redirect logic based on pathname
+    if (pathname.startsWith('/universe/loggerdemo/')) {
+        window.location.href = '/universe/loggerdemo/';
+    } else if (pathname.startsWith('/universe/design-system-storybook/')) {
+        window.location.href = '/universe/design-system-storybook/';
+    } else if (pathname.startsWith('/universe/design-playground/')) {
+        window.location.href = '/universe/design-playground/';
+    } else {
+        // Default redirect (e.g., to the home page)
+        window.location.href = '/';
+    }
+  </script>
+</head>
+<body>
+  <h1>404 - Not Found</h1>
+  <p>Redirecting...</p>
+</body>
+</html>
