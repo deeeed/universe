@@ -1,4 +1,3 @@
-import { getLogger } from '@siteed/react-native-logger';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -12,9 +11,10 @@ import {
 import { Button, HelperText, MD3Theme, Searchbar } from 'react-native-paper';
 import { useScreenWidth } from '../../hooks/useScreenWidth';
 import { useTheme } from '../../providers/ThemeProvider';
+import { baseLogger } from '../../utils/logger';
 import { BREAKPOINTS } from '../SelectButtons/SelectButtons';
 
-const logger = getLogger('SelectItems');
+const logger = baseLogger.extend('SelectItems');
 
 const getStyles = (theme: MD3Theme) => {
   return StyleSheet.create({

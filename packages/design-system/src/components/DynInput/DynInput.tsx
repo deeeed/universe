@@ -1,4 +1,3 @@
-import { getLogger } from '@siteed/react-native-logger';
 import React, {
   useCallback,
   useEffect,
@@ -10,6 +9,7 @@ import { StyleSheet, View } from 'react-native';
 import { TextInput as RNGTextInput } from 'react-native-gesture-handler';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
+import { baseLogger } from '../../utils/logger';
 import { Button } from '../Button/Button';
 import { SelectButtons, SelectOption } from '../SelectButtons/SelectButtons';
 import { TextInput } from '../TextInput/TextInput';
@@ -43,7 +43,7 @@ export interface DynInputProps {
   onCancel?: () => void;
 }
 
-const logger = getLogger('DynInput');
+const logger = baseLogger.extend('DynInput');
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({

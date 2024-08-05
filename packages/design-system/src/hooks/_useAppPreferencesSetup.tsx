@@ -1,6 +1,6 @@
-import { getLogger } from '@siteed/react-native-logger';
 import { useEffect, useMemo, useState } from 'react';
 import { I18nextProviderProps } from 'react-i18next';
+import { baseLogger } from '../utils/logger';
 import { AppTheme, SavedUserPreferences } from './_useAppThemeSetup';
 
 interface useThemePreferencesProps {
@@ -31,7 +31,7 @@ export interface ThemePreferences {
   shouldUseDeviceColors?: boolean;
 }
 
-const logger = getLogger('useAppPreferencesSetup');
+const logger = baseLogger.extend('useAppPreferencesSetup');
 
 export const useAppPreferencesSetup = ({
   theme,

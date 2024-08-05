@@ -6206,7 +6206,7 @@ __metadata:
     "@rollup/plugin-json": "npm:^6.0.1"
     "@rollup/plugin-node-resolve": "npm:^13.3.0"
     "@rollup/plugin-typescript": "npm:^8.3.3"
-    "@siteed/react-native-logger": "npm:0.8.2"
+    "@siteed/react-native-logger": "workspace:^"
     "@size-limit/preset-big-lib": "npm:^11.1.2"
     "@storybook/addon-essentials": "npm:^8.2.7"
     "@storybook/addon-interactions": "npm:^8.2.7"
@@ -6281,6 +6281,7 @@ __metadata:
   peerDependencies:
     "@expo/vector-icons": "*"
     "@gorhom/bottom-sheet": "*"
+    "@react-native-async-storage/async-storage": "*"
     "@react-navigation/native": "*"
     "@siteed/react-native-logger": "*"
     expo: "*"
@@ -6292,13 +6293,6 @@ __metadata:
     react-native-vector-icons: "*"
   languageName: unknown
   linkType: soft
-
-"@siteed/react-native-logger@npm:0.8.2":
-  version: 0.8.2
-  resolution: "@siteed/react-native-logger@npm:0.8.2"
-  checksum: 10c0/0f4b0adc68e22983b06a6d8e720b7e83febd0f37cce6c4b0c050b993986934577f6b0398aadb9e846019d19134b72e92e3be6b93faf1fd61a7fde72abc5093d1
-  languageName: node
-  linkType: hard
 
 "@siteed/react-native-logger@workspace:^, @siteed/react-native-logger@workspace:packages/react-native-logger":
   version: 0.0.0-use.local

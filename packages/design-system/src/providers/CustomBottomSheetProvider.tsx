@@ -21,15 +21,15 @@ import React, {
 } from 'react';
 import { Keyboard, Platform, StyleSheet } from 'react-native';
 import { SharedValue } from 'react-native-reanimated';
-import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFoorter';
-import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import {
   DynInput,
   DynInputProps,
   DynamicType,
 } from '../components/DynInput/DynInput';
 import { SelectItemOption } from '../components/SelectItems/SelectItems';
-import { getLogger } from '@siteed/react-native-logger';
+import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFoorter';
+import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
+import { baseLogger } from '../utils/logger';
 
 export interface OpenDrawerProps {
   title?: string;
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
 
 const defaultSnapPoints = ['40%', '80%'];
 
-const logger = getLogger('CustomBottomSheetModal');
+const logger = baseLogger.extend('CustomBottomSheetModal');
 
 const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   children,
