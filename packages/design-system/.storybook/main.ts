@@ -14,7 +14,12 @@ const production = process.env.NODE_ENV === 'production';
 
 /** @type { import('@storybook/react-webpack5').StorybookConfig } */
 const config: StorybookConfig = {
-  stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
+  stories: [
+    '../src/Installation.mdx',
+    '../src/providers/Providers.mdx',
+    '../src/**/*.mdx',
+    '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)',
+  ],
   staticDirs: ['../assets/'],
   managerHead: (head) => `
   ${head}

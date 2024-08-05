@@ -1,0 +1,372 @@
+import { Meta, Story, Canvas } from '@storybook/addon-docs';
+import { ThemeViewer } from '@siteed/design-system';
+import * as ThemeViewerStories from '../settings/ThemeViewer/ThemeViewer.stories';
+
+<Meta title="Providers" />
+
+## Providers
+
+The `UIProvider` aims to simplify application code by providing a single customizable provider that integrates multiple global state management functionalities. This unified provider streamlines the setup and maintenance of theme preferences, language settings, toast notifications, and more, ensuring a cohesive and consistent user experience.
+
+### UIProvider
+
+The `UIProvider` combines various providers and hooks to manage global states such as theme preferences, language settings, toast notifications, and confirmation dialogs. The following sections describe each component's role and how they interact within the `UIProvider`.
+
+- **Role**: Main provider that combines all other providers to manage global states and preferences.
+- **Props**:
+  - `locale`: Sets the language locale.
+  - `actions`: Partial actions for theme preferences.
+  - `safeAreaProviderProps`: Props for `SafeAreaProvider`.
+  - `toastProviderProps`: Props for `ToastProvider`.
+  - `confirmProviderProps`: Props for `ConfirmProvider`.
+  - `preferences`: Partial theme preferences.
+  - `darkTheme`: Custom dark theme.
+  - `lightTheme`: Custom light theme.
+  - `children`: React nodes to be rendered within the provider.
+
+### LanguageProvider
+
+
+The `LanguageProvider` initializes and provides the i18n translation context, ensuring language preferences are set and available throughout the app.
+
+- **Role**: Initializes and provides the i18n translation context.
+- **Usage**: Nested within `UIProvider` to set up the translation context.
+- **Purpose**: Ensures language preferences are set and available throughout the app.
+
+#### API
+
+- **Props**:
+  - `locale`: Sets the language locale.
+    - **Type**: `string`
+    - **Optional**: Yes
+    - **Description**: Specifies the locale for language translation. If not provided, the device's default locale will be used.
+
+#### Example
+
+```tsx
+import React from 'react';
+import { UIProvider } from '@siteed/design-system';
+import { View, Text } from 'react-native';
+
+const App = () => {
+  return (
+    <UIProvider locale="en">
+      <View>
+        <Text>Hello World</Text>
+      </View>
+    </UIProvider>
+  );
+};
+
+export default App;
+```
+The UIProvider will handle the initialization of the LanguageProvider and set the language based on the locale prop or the device's default locale.
+
+
+### ThemeProvider
+
+The `ThemeProvider` manages theme preferences such as dark mode, colors, and ripple effects, integrating them within the `UIProvider` for consistent theme management across the app.
+
+#### API
+
+- **Props**:
+  - `preferences`: Theme preferences object containing the current theme settings and actions.
+    - **Type**: `ThemePreferences & ThemeActions`
+    - **Description**: Contains the current theme settings and actions to modify them.
+  - `lightTheme`: Custom light theme.
+    - **Type**: `AppTheme`
+    - **Description**: Custom theme configuration for light mode.
+  - `darkTheme`: Custom dark theme.
+    - **Type**: `AppTheme`
+    - **Description**: Custom theme configuration for dark mode.
+
+#### Example
+
+Customize the theme by providing the `lightTheme` and `darkTheme` props in the `UIProvider`.
+
+```tsx
+import React from 'react';
+import { UIProvider } from '@siteed/design-system';
+import { View, Text } from 'react-native';
+import { DefaultDarkTheme, DefaultLightTheme } from '@siteed/design-system';
+
+const lightTheme = {
+  ...DefaultLightTheme,
+  colors: {
+    ...DefaultLightTheme.colors,
+    primary: '#6200ee',
+    background: '#ffffff',
+    surface: '#ffffff',
+    accent: '#03dac4',
+    error: '#B00020',
+    text: '#000000',
+    onSurface: '#000000',
+    disabled: '#f0f0f0',
+    placeholder: '#a0a0a0',
+    backdrop: '#000000',
+    brand: '#6200ee',
+    success: '#90EE90',
+    successContainer: 'rgba(75,153,79,0.1)',
+    warning: '#FFC300',
+    warningContainer: 'rgba(255,193,7,0.1)',
+    info: '#00BBFF',
+    infoContainer: 'rgba(0,122,255,0.1)',
+  },
+  padding: {
+    s: 5,
+    m: 10,
+    l: 15,
+  },
+  margin: {
+    s: 5,
+    m: 10,
+    l: 15,
+  },
+};
+
+const darkTheme = {
+  ...DefaultDarkTheme,
+  colors: {
+    ...DefaultDarkTheme.colors,
+    primary: '#6200ee',
+    background: '#000000',
+    surface: '#333333',
+    accent: '#03dac4',
+    error: '#B00020',
+    text: '#ffffff',
+    onSurface: '#ffffff',
+    disabled: '#3a3a3a',
+    placeholder: '#555555',
+    backdrop: '#000000',
+    brand: '#6200ee',
+    success: 'rgba(75,153,79,0.9)',
+    successContainer: 'rgba(75,153,79,0.1)',
+    warning: 'rgba(255,193,7,0.9)',
+    warningContainer: 'rgba(255,193,7,0.1)',
+    info: 'rgba(0,122,255,0.9)',
+    infoContainer: 'rgba(0,122,255,0.1)',
+  },
+  padding: {
+    s: 5,
+    m: 10,
+    l: 15,
+  },
+  margin: {
+    s: 5,
+    m: 10,
+    l: 15,
+  },
+};
+
+const App = () => {
+  return (
+    <UIProvider lightTheme={lightTheme} darkTheme={darkTheme}>
+      <View>
+        <Text>Hello World</Text>
+      </View>
+    </UIProvider>
+  );
+};
+
+export default App;
+```
+
+#### ThemeViewer
+To preview and debug theme customizations, refer to the [ThemeViewer documentation](?path=/story/settings-themeviewer--primary).
+
+### ToastProvider
+
+The `ToastProvider` manages toast notifications within the application. It allows for customizable toast messages to inform users about various events. Integrated within the `UIProvider`, it provides a consistent and flexible way to handle toast notifications across the app.
+
+#### API
+
+- **Props**:
+  - `overrides`: Default settings for the toast notifications.
+    - **Type**: `ToastOptions`
+    - **Optional**: Yes
+    - **Description**: Allows overriding default toast settings such as visibility, message, type, position, and icon visibility.
+```tsx
+export interface ToastProps {
+  /** The message to show */
+  message: string;
+  subMessage?: string;
+  /** Type of toast */
+  type?: ToastType;
+  /**  Position of the toast */
+  position?: ToastPosition;
+  /** Toast duration */
+  duration?: number;
+  loading?: boolean;
+  /** Toast Visibility */
+  visibility?: boolean;
+  /** Toast Icon visibility */
+  iconVisible?: boolean;
+  /** Toast Action onPress */
+  action?: () => void;
+  /** Toast Action Label */
+  actionLabel?: string;
+  /** Toast Message Style */
+  messageStyle?: StyleProp<ViewStyle>;
+  subMessageStyle?: StyleProp<TextStyle>;
+  /** icon style */
+  iconStyle?: StyleProp<TextStyle>;
+  /** Toast Message Container Style */
+  messageContainerStyle?: StyleProp<ViewStyle>;
+  /** Toast Snackbar Style */
+  snackbarStyle?: StyleProp<ViewStyle>;
+  onDismiss?: () => void;
+}
+export type ToastOptions = Partial<ToastProps>;
+```
+#### Example
+
+Customize the toast notifications by providing the `overrides` prop in the `UIProvider`.
+
+```tsx
+import React from 'react';
+import { UIProvider } from '@siteed/design-system';
+import { View, Text, Button } from 'react-native';
+import { useToast } from '@siteed/design-system/hooks/useToast';
+
+const toastOverrides = {
+  position: 'top', // Default position for toasts
+  type: 'success', // Default type for toasts
+  iconVisible: true, // Default icon visibility
+};
+
+const App = () => {
+  const { show, hide } = useToast();
+
+  return (
+    <UIProvider toastProviderProps={{ overrides: toastOverrides }}>
+      <View>
+        <Text>Hello World</Text>
+        <Button
+          title="Show Toast"
+          onPress={() => show({ message: 'This is a toast message!' })}
+        />
+        <Button
+          title="Hide Toast"
+          onPress={hide}
+        />
+      </View>
+    </UIProvider>
+  );
+};
+
+export default App;
+```
+
+See the [Toast documentation](?path=/docs/components-toast--docs) for more details on customizing toast notifications.
+
+
+### ConfirmProvider
+
+The `ConfirmProvider` manages confirmation dialogs within the application. It allows for customizable confirmation dialogs to prompt users for confirmation before performing critical actions. Integrated within the `UIProvider`, it provides a consistent way to handle user confirmations across the app.
+
+#### Example
+
+```tsx
+import React from 'react';
+import { UIProvider } from '@siteed/design-system';
+import { View, Text, Button } from 'react-native';
+import { useConfirm } from '@siteed/design-system/hooks/useConfirm';
+
+const App = () => {
+  const confirm = useConfirm();
+
+  const handleDelete = async () => {
+    const result = await confirm({
+      title: 'Delete Item',
+      notice: 'Are you sure you want to delete this item?',
+      confirmLabel: 'Yes',
+      cancelLabel: 'No',
+    });
+    if (result) {
+      // Perform delete action
+      console.log('Item deleted');
+    } else {
+      console.log('Delete canceled');
+    }
+  };
+
+  return (
+    <UIProvider>
+      <View>
+        <Text>Hello World</Text>
+        <Button
+          title="Delete Item"
+          onPress={handleDelete}
+        />
+      </View>
+    </UIProvider>
+  );
+};
+
+export default App;
+```
+
+See the [ConfirmDialog documentation](?path=/docs/components-confirmdialog--docs) for more details.
+
+### CustomBottomSheetModal
+
+The `CustomBottomSheetModalProvider` wraps the `@gorhom/bottom-sheet` package to manage custom bottom sheet modals within the application. It allows for highly customizable bottom sheet modals to enhance user interaction and display various content dynamically. Integrated within the `UIProvider`, it provides a consistent and flexible way to handle bottom sheet modals across the app.
+
+
+#### API
+
+- **Props**:
+  - `dismiss`: Function to dismiss a specific bottom sheet modal.
+    - **Type**: `(key?: string) => boolean`
+  - `editProp`: Function to open a bottom sheet modal for editing a property.
+    - **Type**: `(props: EditPropProps) => Promise<DynInputProps['data']>`
+  - `openDrawer`: Function to open a custom bottom sheet modal drawer.
+    - **Type**: `(props: OpenDrawerProps) => Promise<unknown>`
+  - `dismissAll`: Function to dismiss all open bottom sheet modals.
+    - **Type**: `() => void`
+  - `bottomSheetModalRef`: Ref object for the `BottomSheetModal`.
+    - **Type**: `React.RefObject<BottomSheetModal>`
+
+
+#### Example
+
+Customize the bottom sheet modals by using the `openDrawer` or `editProp` methods provided by the `CustomBottomSheetModalProvider`.
+
+```tsx
+import React from 'react';
+import { UIProvider } from '@siteed/design-system';
+import { View, Text, Button } from 'react-native';
+import { useCustomBottomSheet } from '@siteed/design-system/hooks/useCustomBottomSheet';
+
+const App = () => {
+  const { openDrawer, editProp } = useCustomBottomSheet();
+
+  const handleOpenDrawer = async () => {
+    const result = await openDrawer({
+      title: 'Custom Drawer',
+      footerType: 'confirm_cancel',
+      initialData: { name: 'John Doe' },
+      render: ({ resolve, reject }) => (
+        <View>
+          <Text>Drawer Content</Text>
+          <Button title="Confirm" onPress={() => resolve('Confirmed')} />
+          <Button title="Cancel" onPress={() => reject('Canceled')} />
+        </View>
+      ),
+    });
+
+    console.log('Drawer Result:', result);
+  };
+
+  return (
+    <UIProvider>
+      <View>
+        <Text>Hello World</Text>
+        <Button title="Open Drawer" onPress={handleOpenDrawer} />
+      </View>
+    </UIProvider>
+  );
+};
+
+export default App;
+```
