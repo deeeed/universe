@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useTheme } from '../../../providers/theme-provider';
+import { useTheme } from '../../../providers/ThemeProvider';
 import { AppTheme } from '../../../hooks/useAppThemeSetup';
 
 const getStyles = ({ theme }: { theme: AppTheme }) => {

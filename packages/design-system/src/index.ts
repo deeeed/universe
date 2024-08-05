@@ -1,6 +1,6 @@
-export * from './components/accordion/accordion';
-export * from './components/accordion/accordion-item/accordion-item';
-export * from './components/bottom-modal/backdrop/custom-backdrop';
+export * from './components/Accordion/Accordion';
+export * from './components/Accordion/AccordionItem/AccordionItem';
+export * from './components/bottom-modal/CustomBackdrop/CustomBackdrop';
 export * from './components/bottom-modal/footers/confirm-cancel-footer';
 export * from './components/bottom-modal/handlers/label-handler';
 export * from './components/button/Button';
@@ -33,8 +33,8 @@ export * from './components/refresh-control/refresh-control';
 export * from './components/number-adjuster/number-adjuster';
 
 // Settings related components, useful to re-use and visualize in external storybooks
-export * from './settings/theme-config/theme-config';
-export * from './settings/theme-viewer/theme-viewer';
+export * from './settings/ThemeConfig/ThemeConfig';
+export * from './settings/ThemeViewer/ThemeViewer';
 
 export * from './hooks/useAppPreferencesSetup';
 export * from './hooks/useAppThemeSetup';
@@ -43,9 +43,9 @@ export * from './hooks/useConfirm';
 export * from './hooks/useToast';
 export * from './hooks/useBottomModal';
 
-export * from './providers/custom-bottomsheet-provider';
-export * from './providers/language-provider';
-export * from './providers/theme-provider';
-export * from './providers/ui-provider';
-export * from './providers/confirm-provider';
-export * from './providers/toast.provider';
+export * from './providers/CustomBottomSheetProvider';
+export * from './providers/LanguageProvider';
+export * from './providers/ThemeProvider';
+export * from './providers/UIProvider';
+export * from './providers/ConfirmProvider';
+export * from './providers/ToastProvider';

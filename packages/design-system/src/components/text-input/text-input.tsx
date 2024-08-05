@@ -4,7 +4,7 @@ import {
   TextInputProps as PTextInputProps,
   Text,
 } from 'react-native-paper';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 
 export interface TextInputProps extends PTextInputProps {
   mandatory?: boolean;

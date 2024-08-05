@@ -7,7 +7,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ActivityIndicator, IconButton, Text } from 'react-native-paper';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
 
 export interface EditableInfoCardProps {

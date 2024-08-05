@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 
 const getStyles = ({
   backgroundColor,

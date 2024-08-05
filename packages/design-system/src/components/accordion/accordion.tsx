@@ -9,7 +9,7 @@ import {
 import {
   AccordionItem,
   AccordionItemProps,
-} from './accordion-item/accordion-item';
+} from './AccordionItem/AccordionItem';
 
 if (
   Platform.OS === 'android' &&

@@ -1,6 +1,6 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { ThemeViewer, ThemeViewerProps } from './theme-viewer';
+import { ThemeViewer, ThemeViewerProps } from './ThemeViewer';
 
 const ThemeViewerMeta: Meta<ThemeViewerProps> = {
   component: ThemeViewer,

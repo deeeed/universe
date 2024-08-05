@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/button/Button';
 import { useBottomModal } from '../../hooks/useBottomModal';
 import { AccordionItemProps } from '../../components/accordion/accordion-item/accordion-item';
-import { Accordion } from '../../components/accordion/accordion';
+import { Accordion } from '../../components/Accordion/Accordion';
 
 const getStyles = () => {
   return StyleSheet.create({

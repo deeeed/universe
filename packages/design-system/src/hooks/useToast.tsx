@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { ToastContext } from '../providers/toast.provider';
+import { ToastContext } from '../providers/ToastProvider';
 
 /**
  * useToast hook is used to show and hide Toast messages.

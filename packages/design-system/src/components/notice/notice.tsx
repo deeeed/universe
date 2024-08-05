@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export type NoticeType = 'info' | 'warning' | 'error' | 'success';

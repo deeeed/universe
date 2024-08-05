@@ -10,7 +10,7 @@ import { FlatList } from 'react-native-gesture-handler';
 import { HelperText, Searchbar } from 'react-native-paper';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
 import { useScreenWidth } from '../../hooks/useScreenWidth';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 import { Button } from '../button/Button';
 
 const getStyles = (theme: AppTheme) => {

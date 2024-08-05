@@ -9,7 +9,7 @@ import React, {
 import { StyleSheet, View } from 'react-native';
 import { TextInput as RNGTextInput } from 'react-native-gesture-handler';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 import { Button } from '../button/Button';
 import { SelectButtons, SelectOption } from '../select-buttons/select-buttons';
 import { TextInput } from '../text-input/text-input';

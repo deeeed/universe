@@ -1,6 +1,6 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { ThemeConfig, ThemeConfigProps } from './theme-config';
+import { ThemeConfig, ThemeConfigProps } from './ThemeConfig';
 import { colorOptions } from '../../_mocks/mock_data';
 
 const colors = colorOptions.map((colorOption) => colorOption.value);

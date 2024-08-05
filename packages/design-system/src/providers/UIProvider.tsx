@@ -18,11 +18,11 @@ import {
   useAppPreferencesSetup,
 } from '../hooks/useAppPreferencesSetup';
 import { AppTheme, useAppThemeSetup } from '../hooks/useAppThemeSetup';
-import { ConfirmProvider, ConfirmProviderProps } from './confirm-provider';
-import { CustomBottomSheetModal } from './custom-bottomsheet-provider';
-import { LanguageProvider } from './language-provider';
-import { ThemeProvider } from './theme-provider';
-import { ToastProvider, ToastProviderProps } from './toast.provider';
+import { ConfirmProvider, ConfirmProviderProps } from './ConfirmProvider';
+import { CustomBottomSheetModal } from './CustomBottomSheetProvider';
+import { LanguageProvider } from './LanguageProvider';
+import { ThemeProvider } from './ThemeProvider';
+import { ToastProvider, ToastProviderProps } from './ToastProvider';
 
 export const DefaultLightTheme: AppTheme = {
   ...MD3LightTheme,

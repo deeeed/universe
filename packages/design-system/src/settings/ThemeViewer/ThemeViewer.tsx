@@ -2,11 +2,11 @@ import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { ColorItem } from '../../components/colors/color-item/color-item';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 import {
   DefaultDarkTheme,
   DefaultLightTheme,
-} from '../../providers/ui-provider';
+} from '../../providers/UIProvider';
 
 const getStyles = () => {
   return StyleSheet.create({

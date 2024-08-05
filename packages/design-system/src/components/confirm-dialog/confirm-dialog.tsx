@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { StyleSheet, Text, ViewStyle } from 'react-native';
 import { Dialog } from 'react-native-paper';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 import { Button } from '../button/Button';
 
 const getStyles = (_: { theme: AppTheme }) => {

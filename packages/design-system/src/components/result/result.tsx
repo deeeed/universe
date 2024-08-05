@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { ButtonProps, Text } from 'react-native-paper';
 import { Button } from '../button/Button';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 

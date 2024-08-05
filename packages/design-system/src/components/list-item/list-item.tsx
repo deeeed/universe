@@ -9,7 +9,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 import { Text } from 'react-native-paper';
 
 const getStyle = (theme: AppTheme) => {

@@ -1,4 +1,4 @@
-import { useTheme } from '../../../providers/theme-provider';
+import { useTheme } from '../../../providers/ThemeProvider';
 import { AppTheme } from '../../../hooks/useAppThemeSetup';
 import {
   BottomSheetHandle,

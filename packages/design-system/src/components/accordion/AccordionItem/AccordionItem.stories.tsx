@@ -1,6 +1,6 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { AccordionItem, AccordionItemProps } from './accordion-item';
+import { AccordionItem, AccordionItemProps } from './AccordionItem';
 import { Text } from 'react-native-paper';
 
 const AccordionItemMeta: Meta<AccordionItemProps> = {

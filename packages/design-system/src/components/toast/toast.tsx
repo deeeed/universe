@@ -6,7 +6,7 @@ import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { ActivityIndicator, Snackbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 
 export type ToastType = 'info' | 'success' | 'warning' | 'error';
 export type ToastPosition = 'top' | 'bottom' | 'middle';

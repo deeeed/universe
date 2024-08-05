@@ -21,7 +21,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
-import { useTheme } from '../../providers/theme-provider';
+import { useTheme } from '../../providers/ThemeProvider';
 import { Loader } from './loader';
 
 const logger = getLogger('RefreshControl');

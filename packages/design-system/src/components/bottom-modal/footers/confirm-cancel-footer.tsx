@@ -2,7 +2,7 @@ import {
   BottomSheetFooter,
   BottomSheetFooterProps,
 } from '@gorhom/bottom-sheet';
-import { useTheme } from '../../../providers/theme-provider';
+import { useTheme } from '../../../providers/ThemeProvider';
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppTheme } from '../../../hooks/useAppThemeSetup';

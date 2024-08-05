@@ -3,7 +3,7 @@ import React, { createContext, useMemo, useState } from 'react';
 import { Platform, StyleSheet, ViewStyle } from 'react-native';
 import { ConfirmDialog } from '../components/confirm-dialog/confirm-dialog';
 import { AppTheme } from '../hooks/useAppThemeSetup';
-import { useTheme } from './theme-provider';
+import { useTheme } from './ThemeProvider';
 
 export interface ConfirmOptions {
   title: string;

@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { CustomBottomSheetModalContext } from '../providers/custom-bottomsheet-provider';
+import { CustomBottomSheetModalContext } from '../providers/CustomBottomSheetProvider';
 
 export const useBottomModal = () => {
   const context = useContext(CustomBottomSheetModalContext);
