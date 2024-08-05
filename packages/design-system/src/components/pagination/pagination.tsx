@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useScreenWidth } from '../../hooks/useScreenWidth';
-import { TextInput } from '../text-input/text-input';
-import { PaginationItem } from './pagination-item';
+import { TextInput } from '../TextInput/TextInput';
+import { PaginationItem } from './PaginationItem';
 
 const getStyles = ({ isMobile }: { isMobile: boolean }) => {
   return StyleSheet.create({

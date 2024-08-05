@@ -10,7 +10,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ButtonProps, Text } from 'react-native-paper';
-import { Button } from '../button/Button';
+import { Button } from '../Button/Button';
 import { useTheme } from '../../providers/ThemeProvider';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

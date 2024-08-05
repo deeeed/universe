@@ -1,7 +1,7 @@
 import React, { createContext, useEffect, useMemo, useReducer } from 'react';
 import { Keyboard } from 'react-native';
 
-import { Toast, ToastProps } from '../components/toast/toast';
+import { Toast, ToastProps } from '../components/Toast/Toast';
 
 // Make all partial except dismiss
 export type ToastOptions = Partial<ToastProps>;

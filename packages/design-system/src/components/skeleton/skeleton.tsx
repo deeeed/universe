@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { LoadingPulseBar } from './loading-pulse-bar/loading-pulse-bar';
-import { LoadingPulseCircle } from './loading-pulse-circle/loading-pulse-circle';
+import { LoadingPulseBar } from './LoadingPulseBar/LoadingPulseBar';
+import { LoadingPulseCircle } from './LoadingPulseCircle/LoadingPulseCircle';
 
 interface SkeletonItem {
   circles: number;

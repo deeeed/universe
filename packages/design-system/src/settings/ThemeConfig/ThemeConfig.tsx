@@ -2,8 +2,8 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { SegmentedButtons } from 'react-native-paper';
-import { ColorPicker } from '../../components/colors/color-picker/color-picker';
-import { LabelSwitch } from '../../components/label-switch/label-switch';
+import { ColorPicker } from '../../components/Colors/ColorPicker/ColorPicker';
+import { LabelSwitch } from '../../components/LabelSwitch/LabelSwitch';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
 import { useTheme, useThemePreferences } from '../../providers/ThemeProvider';
 

@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Chip, Text } from 'react-native-paper';
 import { AppTheme } from '../../hooks/useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
-import { SelectOption } from '../select-buttons/select-buttons';
+import { SelectOption } from '../SelectButtons/SelectButtons';
 import { useBottomModal } from '../../hooks/useBottomModal';
 
 const getStyles = (theme: AppTheme) => {

@@ -1,4 +1,4 @@
-import { SelectOption } from '../components/select-buttons/select-buttons';
+import { SelectOption } from '../components/SelectButtons/SelectButtons';
 
 export const randomSelectValues: SelectOption[] = Array.from(
   { length: 20 },

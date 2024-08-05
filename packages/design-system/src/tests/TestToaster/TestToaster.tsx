@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from 'react-native-paper';
-import { ScreenWrapper } from '../../components/screen-wrapper/screen-wrapper';
+import { ScreenWrapper } from '../../components/ScreenWrapper/ScreenWrapper';
 import { useToast } from '../../hooks/useToast';
 
 export interface TestToastersProps {}

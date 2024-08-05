@@ -21,14 +21,14 @@ import React, {
 } from 'react';
 import { Keyboard, Platform, StyleSheet } from 'react-native';
 import { SharedValue } from 'react-native-reanimated';
-import { ConfirmCancelFooter } from '../components/bottom-modal/footers/confirm-cancel-footer';
-import { LabelHandler } from '../components/bottom-modal/handlers/label-handler';
+import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFoorter';
+import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import {
   DynInput,
   DynInputProps,
   DynamicType,
-} from '../components/dyn-input/dyn-input';
-import { SelectItemOption } from '../components/select-items/select-items';
+} from '../components/DynInput/DynInput';
+import { SelectItemOption } from '../components/SelectItems/SelectItems';
 import { getLogger } from '@siteed/react-native-logger';
 
 export interface OpenDrawerProps {

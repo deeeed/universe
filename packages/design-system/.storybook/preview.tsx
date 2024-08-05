@@ -3,8 +3,8 @@ import React from 'react';
 import { Platform, ScrollView } from 'react-native';
 import { colorOptions } from '../src/_mocks/mock_data';
 import { ScreenWrapper } from '../src/components/screen-wrapper/screen-wrapper';
-import { UIProvider } from '../src/providers/ui-provider';
-import { ThemeConfig } from '../src/settings/theme-config/theme-config';
+import { UIProvider } from '../src/providers/UIProvider';
+import { ThemeConfig } from '../src/settings/ThemeConfig/ThemeConfig';
 
 /** @type { import('@storybook/react').Preview } */
 const preview: Preview = {
