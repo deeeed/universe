@@ -20,17 +20,17 @@ export default EmptyMeta;
 export const Primary: StoryObj<EmptyProps> = {
   args: {},
   parameters: {
-//     docs: {
-//       source: {
-//         code: `
-// <Empty
-//   buttonValue="Browse categories"
-//   image={require("../../../assets/bookmarks_empty.png")}
-//   message="You don't have any bookmarks yet"
-//   onPress={() => console.log("onPress")}
-// />
-//         `,
-//       },
-//     },
+    docs: {
+      source: {
+        code: `
+<Empty
+  buttonValue="Browse categories"
+  image={require("../../../assets/bookmarks_empty.png")}
+  message="You don't have any bookmarks yet"
+  onPress={() => console.log("onPress")}
+/>
+        `,
+      },
+    },
   },
 };
