@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { LockInput, LockInputProps } from './lock-input';
+import { LockInput, LockInputProps } from './LockInput';
 
 const LockInputMeta: Meta<LockInputProps> = {
   component: LockInput,

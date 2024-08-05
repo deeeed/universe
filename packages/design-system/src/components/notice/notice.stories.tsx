@@ -1,6 +1,6 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { Notice, NoticeProps } from './notice';
+import { Notice, NoticeProps } from './Notice';
 
 const NoticeMeta: Meta<NoticeProps> = {
   component: Notice,

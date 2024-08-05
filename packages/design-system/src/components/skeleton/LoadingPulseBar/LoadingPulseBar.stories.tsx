@@ -1,6 +1,6 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { LoadingPulseBar, LoadingPulseBarProps } from './loading-pulse-bar';
+import { LoadingPulseBar, LoadingPulseBarProps } from './LoadingPulseBar';
 
 const LoadingPulseBarMeta: Meta<LoadingPulseBarProps> = {
   component: LoadingPulseBar,

@@ -2,7 +2,7 @@ import type { Decorator, Preview } from '@storybook/react';
 import React from 'react';
 import { Platform, ScrollView } from 'react-native';
 import { colorOptions } from '../src/_mocks/mock_data';
-import { ScreenWrapper } from '../src/components/screen-wrapper/screen-wrapper';
+import { ScreenWrapper } from '../src/components/ScreenWrapper/ScreenWrapper';
 import { UIProvider } from '../src/providers/UIProvider';
 import { ThemeConfig } from '../src/settings/ThemeConfig/ThemeConfig';
 

@@ -1,6 +1,6 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { ScreenWrapper, ScreenWrapperProps } from './screen-wrapper';
+import { ScreenWrapper, ScreenWrapperProps } from './ScreenWrapper';
 import { Text } from 'react-native-paper';
 
 const ScreenWrapperMeta: Meta<ScreenWrapperProps> = {

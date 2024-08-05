@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { ColorItem, ColorItemProps } from './color-item';
+import { ColorItem, ColorItemProps } from './ColorItem';
 
 const ColorItemMeta: Meta<ColorItemProps> = {
   component: ColorItem,

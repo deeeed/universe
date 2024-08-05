@@ -1,8 +1,8 @@
 import type { Meta } from '@storybook/react';
 import React, { useState } from 'react';
-import { NumberAdjuster } from './NumberAdjuster';
+import { NumberAdjuster, NumberAdjusterProps } from './NumberAdjuster';
 
-const NumberAdjusterMeta: Meta = {
+const NumberAdjusterMeta: Meta<NumberAdjusterProps> = {
   component: NumberAdjuster,
   tags: ['autodocs'],
   argTypes: {
@@ -39,19 +39,19 @@ const NumberAdjusterMeta: Meta = {
 
 export default NumberAdjusterMeta;
 
-export const Primary = (args) => {
+export const Primary = (args: NumberAdjusterProps) => {
   const [value, setValue] = useState(args.value);
   return <NumberAdjuster {...args} value={value} onChange={setValue} />;
 };
 
-export const StepBy10 = (args) => {
+export const StepBy10 = (args: NumberAdjusterProps) => {
   const [value, setValue] = useState(args.value);
   return (
     <NumberAdjuster {...args} value={value} onChange={setValue} step={10} />
   );
 };
 
-export const MinMaxSet = (args) => {
+export const MinMaxSet = (args: NumberAdjusterProps) => {
   const [value, setValue] = useState(args.value);
   return (
     <NumberAdjuster

@@ -3,7 +3,7 @@ import React from 'react';
 import {
   LoadingPulseCircle,
   LoadingPulseCircleProps,
-} from './loading-pulse-circle';
+} from './LoadingPulseCircle';
 
 const LoadingPuleCircleMeta: Meta<LoadingPulseCircleProps> = {
   component: LoadingPulseCircle,

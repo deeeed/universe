@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Empty, EmptyProps } from './empty';
+import { Empty, EmptyProps } from './Empty';
 
 const EmptyMeta: Meta<EmptyProps> = {
   component: Empty,

@@ -1,8 +1,13 @@
 # @siteed/design-system
+[![kandi X-Ray](https://kandi.openweaver.com/badges/xray.svg)](https://kandi.openweaver.com/typescript/siteed/design-system)
+[![Version](https://img.shields.io/npm/v/@siteed/design-system.svg)](https://www.npmjs.com/package/@siteed/design-system)
+[![Dependency Status](https://img.shields.io/npm/dt/@siteed/design-system.svg)](https://www.npmjs.com/package/@siteed/design-system)
+[![License](https://img.shields.io/npm/l/@siteed/design-system.svg)](https://www.npmjs.com/package/@siteed/design-system)
+
 
 ## Introduction
 
-`@siteed/design-system` is a comprehensive cross-platform design system built for Expo and React Native. It extends react-native-paper to provide a robust set of UI components that are easy to implement and customize. Designed with an opinionated selection of libraries, it simplifies the integration process and reduces setup time, allowing developers to focus on building high-quality mobile apps efficiently.
+`@siteed/design-system` is a comprehensive cross-platform design system built around Expo for cross-platform applications. It extends react-native-paper to provide a robust set of UI components that are easy to implement and customize. Designed with an opinionated selection of libraries, it simplifies the integration process and reduces setup time, allowing developers to focus on building high-quality mobile apps efficiently.
 
 ## Key Features
 
@@ -78,54 +83,7 @@ Explore the components and their usage more thoroughly by running the Storybook 
 yarn storybook
 ```
 
+## Documentation
 
-## Providers
+For more detailed information on the design system and its components, check out the storybook site at [https://deeeed.github.io/universe/design-system-storybook/](https://deeeed.github.io/universe/design-system-storybook/)
 
-The `UIProvider` aims to simplify application code by providing a single customizable provider that integrates multiple global state management functionalities. This unified provider streamlines the setup and maintenance of theme preferences, language settings, toast notifications, and more, ensuring a cohesive and consistent user experience.
-
-### UIProvider
-
-The `UIProvider` combines various providers and hooks to manage global states such as theme preferences, language settings, toast notifications, and confirmation dialogs. The following sections describe each component's role and how they interact within the `UIProvider`.
-
-- **Role**: Main provider that combines all other providers to manage global states and preferences.
-- **Props**:
-  - `locale`: Sets the language locale.
-  - `actions`: Partial actions for theme preferences.
-  - `safeAreaProviderProps`: Props for `SafeAreaProvider`.
-  - `toastProviderProps`: Props for `ToastProvider`.
-  - `confirmProviderProps`: Props for `ConfirmProvider`.
-  - `preferences`: Partial theme preferences.
-  - `darkTheme`: Custom dark theme.
-  - `lightTheme`: Custom light theme.
-  - `children`: React nodes to be rendered within the provider.
-
-### LanguageProvider
-
-- **Role**: Initializes and provides the i18n translation context.
-- **Usage**: Nested within `UIProvider` to set up the translation context.
-- **Purpose**: Ensures language preferences are set and available throughout the app.
-
-### ThemeProvider
-
-- **Role**: Manages theme preferences such as dark mode, colors, etc.
-- **Usage**: Nested within `UIProviderWithLanguageReady` to provide theme-related preferences and actions.
-- **Hook Used**: `useAppPreferencesSetup`
-- **Purpose**: Handles the state and actions for dark mode, custom fonts, ripple effects, and more.
-
-### ToastProvider
-
-- **Role**: Provides context for displaying toast notifications.
-- **Usage**: Nested within `ThemeProvider`.
-- **Purpose**: Allows for customizable toast messages to inform users about various events.
-
-### ConfirmProvider
-
-- **Role**: Manages confirmation dialogs.
-- **Usage**: Nested within `ToastProvider`.
-- **Purpose**: Provides context for showing and handling user confirmations for various actions.
-
-### CustomBottomSheetModal
-
-- **Role**: Custom modal component for displaying bottom sheets.
-- **Usage**: Nested within `ConfirmProvider`.
-- **Purpose**: Provides a consistent modal experience across the app.

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { colorOptions } from '../../_mocks/mock_data';
 import { SelectOption } from '../SelectButtons/SelectButtons';
-import { Picker, PickerProps } from './picker';
+import { Picker, PickerProps } from './Picker';
 import { useToast } from '../../hooks/useToast';
 
 const options = [

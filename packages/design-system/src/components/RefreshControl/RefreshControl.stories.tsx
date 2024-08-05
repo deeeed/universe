@@ -1,9 +1,9 @@
 // packages/design-system/src/components/refresh-control/refresh-control.stories.tsx
 import type { Meta } from '@storybook/react';
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, FlatList } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
-import { RefreshControl } from './refresh-control';
+import { RefreshControl, RefreshControlProps } from './RefreshControl';
 
 const RefreshControlWebMeta: Meta = {
   component: RefreshControl,
@@ -14,7 +14,7 @@ const RefreshControlWebMeta: Meta = {
 
 export default RefreshControlWebMeta;
 
-export const WithScrollView = (args) => {
+export const WithScrollView = (args: RefreshControlProps) => {
   const [refreshing, setRefreshing] = useState(args.refreshing);
 
   const onRefresh = () => {
@@ -44,7 +44,7 @@ export const WithScrollView = (args) => {
   );
 };
 
-export const WithFlatList = (args) => {
+export const WithFlatList = (args: RefreshControlProps) => {
   const [refreshing, setRefreshing] = useState(args.refreshing);
 
   const onRefresh = () => {
@@ -59,7 +59,7 @@ export const WithFlatList = (args) => {
     text: `Scrollable content ${index + 1}`,
   }));
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item }: { item: { key: string; text: string } }) => (
     <View style={styles.item}>
       <Text>{item.text}</Text>
     </View>

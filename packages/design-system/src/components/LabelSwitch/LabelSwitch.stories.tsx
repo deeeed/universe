@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { LabelSwitch, LabelSwitchProps } from './label-switch';
+import { LabelSwitch, LabelSwitchProps } from './LabelSwitch';
 
 const LabelSwitchMeta: Meta<typeof LabelSwitch> = {
   component: LabelSwitch,

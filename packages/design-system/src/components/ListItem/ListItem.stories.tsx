@@ -1,6 +1,6 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { ListItem, ListItemProps } from './list-item';
+import { ListItem, ListItemProps } from './ListItem';
 
 const ListItemMeta: Meta<ListItemProps> = {
   component: ListItem,

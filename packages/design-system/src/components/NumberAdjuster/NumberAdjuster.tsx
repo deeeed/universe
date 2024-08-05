@@ -21,7 +21,7 @@ const getStyles = () => {
   });
 };
 
-interface NumberAdjusterProps {
+export interface NumberAdjusterProps {
   label: string;
   value: number;
   onChange: (value: number) => void;
