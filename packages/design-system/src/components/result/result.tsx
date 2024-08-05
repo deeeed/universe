@@ -10,9 +10,9 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ButtonProps, Text } from 'react-native-paper';
-import { Button } from '../button/Button';
-import { useTheme } from '../../providers/theme-provider';
-import { AppTheme } from '../../hooks/use-app-theme-setup';
+import { Button } from '../Button/Button';
+import { useTheme } from '../../providers/ThemeProvider';
+import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const getStyles = ({ theme }: { theme: AppTheme }) => {

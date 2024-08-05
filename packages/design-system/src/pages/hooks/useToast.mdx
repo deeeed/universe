@@ -1,0 +1,78 @@
+import { Meta, Story, Canvas } from '@storybook/addon-docs';
+
+<Meta title="Hooks/useToast" />
+
+# useToast
+
+The `useToast` hook provides methods to manage toast notifications. It is designed to be used within a `ToastProvider`.
+
+## API
+
+### `useToast`
+
+This hook returns an object with two methods: `show` and `hide`.
+
+- **Type**: `() => { show: (options: ToastOptions) => void; hide: () => void; }`
+- **Methods**:
+  - `show`
+    - **Type**: `(options: ToastOptions) => void`
+    - **Parameters**:
+      - `options`: Properties for the toast notification.
+        - **Type**: `ToastOptions`
+        - **Properties**:
+          - `message`: The message to be displayed in the toast.
+            - **Type**: `string`
+            - **Required**: Yes
+          - `type`: The type of toast (e.g., 'info', 'success', 'error').
+            - **Type**: `string`
+            - **Optional**: Yes
+            - **Default**: `'info'`
+          - `position`: The position of the toast on the screen (e.g., 'top', 'bottom').
+            - **Type**: `string`
+            - **Optional**: Yes
+            - **Default**: `'bottom'`
+          - `duration`: Duration for which the toast will be visible.
+            - **Type**: `number`
+            - **Optional**: Yes
+            - **Default**: `3000`
+          - `iconVisible`: Whether an icon should be visible in the toast.
+            - **Type**: `boolean`
+            - **Optional**: Yes
+            - **Default**: `false`
+  - `hide`
+    - **Type**: `() => void`
+    - **Description**: Hides the currently visible toast.
+
+## Example
+
+Use the `useToast` hook to show and hide toast notifications within your component.
+
+```tsx
+import React from 'react';
+import { useToast } from '@siteed/design-system/hooks/useToast';
+import { Button, View, Text } from 'react-native';
+
+const App = () => {
+  const toast = useToast();
+
+  const handleShowToast = () => {
+    toast.show({ message: 'This is a toast message!', type: 'success' });
+  };
+
+  const handleHideToast = () => {
+    toast.hide();
+  };
+
+  return (
+    <View>
+      <Text>Hello World</Text>
+      <Button title="Show Toast" onPress={handleShowToast} />
+      <Button title="Hide Toast" onPress={handleHideToast} />
+    </View>
+  );
+};
+
+export default App;
+```
+
+For more details on the `ToastProvider`, refer to the [ToastProvider documentation](?path=/docs/providers--docs#toastprovider) documentation.

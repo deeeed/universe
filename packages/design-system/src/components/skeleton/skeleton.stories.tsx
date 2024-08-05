@@ -1,6 +1,6 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { Skeleton, SkeletonProps } from './skeleton';
+import { Skeleton, SkeletonProps } from './Skeleton';
 
 const SkeletonMeta: Meta<SkeletonProps> = {
   component: Skeleton,

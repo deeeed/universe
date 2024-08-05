@@ -17,6 +17,11 @@ const links = [
     path: "/components/try-accordion",
   },
   {
+    label: "DynInput",
+    subLabel: "Dynamic Input Component",
+    path: "/components/try-dyn-input",
+  },
+  {
     label: "RefreshControl",
     subLabel: "Explore RefreshControl Components",
     path: "/components/try-refresh-control",

@@ -3,9 +3,9 @@ import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { colorOptions } from '../../_mocks/mock_data';
-import { SelectOption } from '../select-buttons/select-buttons';
-import { Picker, PickerProps } from './picker';
-import { useToast } from '../../hooks/use-toast';
+import { SelectOption } from '../SelectButtons/SelectButtons';
+import { Picker, PickerProps } from './Picker';
+import { useToast } from '../../hooks/useToast';
 
 const options = [
   {

@@ -1,19 +1,29 @@
 # @siteed/design-system
+[![kandi X-Ray](https://kandi.openweaver.com/badges/xray.svg)](https://kandi.openweaver.com/typescript/siteed/design-system)
+[![Version](https://img.shields.io/npm/v/@siteed/design-system.svg)](https://www.npmjs.com/package/@siteed/design-system)
+[![Dependency Status](https://img.shields.io/npm/dt/@siteed/design-system.svg)](https://www.npmjs.com/package/@siteed/design-system)
+[![License](https://img.shields.io/npm/l/@siteed/design-system.svg)](https://www.npmjs.com/package/@siteed/design-system)
+
 
 ## Introduction
 
-`@siteed/design-system` is a comprehensive cross-platform design system built for Expo and React Native. It extends react-native-paper to provide a robust set of UI components that are easy to implement and customize. Designed with an opinionated selection of libraries, it simplifies the integration process and reduces setup time, allowing developers to focus on building high-quality mobile apps efficiently.
+`@siteed/design-system` is a comprehensive cross-platform design system built around Expo for cross-platform applications. It extends react-native-paper to provide a robust set of UI components that are easy to implement and customize. Designed with an opinionated selection of libraries, it simplifies the integration process and reduces setup time, allowing developers to focus on building high-quality mobile apps efficiently.
+
+## Philosophy
+
+The design system is currently under active development and **is not production-ready** at the moment. Components and features are being added as needed, typically when they are required for specific projects. Most components are wrappers around `react-native-paper` to provide a base for customization while maintaining backward compatibility. This allows for quick iteration and integration of new features without breaking existing implementations.
+
+While the design system provides good defaults to get started quickly, users have the flexibility to choose the versions of all peer dependencies instead of hardcoding them as dependencies. This ensures compatibility and allows for greater control over the project's dependency management.
 
 ## Key Features
 
-- **Opinionated Library Choices**: Includes essential libraries such as `react-native-paper` and `react-native-safe-area-context`, ensuring compatibility and functionality.
+- **Opinionated Library Choices**: Includes essential libraries such as `react-native-paper`, `react-native-safe-area-context`, `react-native-reanimated`, ensuring compatibility and functionality.
 - **Ready-to-Use Components**: From typography to modals, get access to a variety of UI components that are production-ready and customizable.
 - **Streamlined Configuration**: Pre-configured settings and integrations to speed up the development process, making it ideal for rapid prototyping and production projects.
-- **Dark Mode Support**: Easily toggle themes with built-in dark mode support.
 
 ## Installation
 ```bash
-npx expo install @siteed/design-system @siteed/react-native-logger react-native-paper react-native-safe-area-context @gorhom/bottom-sheet@5.0.0-alpha.9 react-native-gesture-handler @expo/vector-icons expo-localization react-native-reanimated react-native-screens react-native-vector-icons @react-navigation/native
+npx expo install @siteed/design-system @siteed/react-native-logger react-native-paper react-native-safe-area-context @gorhom/bottom-sheet@5.0.0-alpha.11 react-native-gesture-handler @expo/vector-icons expo-localization react-native-reanimated react-native-screens react-native-vector-icons @react-navigation/native
 ```
 
 ### with web support
@@ -30,7 +40,6 @@ Quickly integrate the design system into your app by importing and using the pro
 import 'intl-pluralrules';
 // Keep polyfills on top
 import { LabelSwitch, ScreenWrapper, UIProvider, useThemePreferences, Picker, SelectOption } from "@siteed/design-system";
-import { LoggerProvider } from '@siteed/react-native-logger';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -53,11 +62,10 @@ export function App() {
 
 export default function WrapApp() {
   return (
-    <LoggerProvider>
       <UIProvider>
         <App />
       </UIProvider>
-    </LoggerProvider>)
+  )
 }
 
 const styles = StyleSheet.create({
@@ -71,6 +79,11 @@ const styles = StyleSheet.create({
 ```
 
 For a full list of components and their usage, you can explore the storybook
+
+## Documentation
+
+For more detailed information on the design system and its components, check out the storybook site at [https://deeeed.github.io/universe/design-system-storybook/](https://deeeed.github.io/universe/design-system-storybook/)
+
 
 ## Storybook
 

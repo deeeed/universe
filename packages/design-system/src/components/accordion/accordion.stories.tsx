@@ -1,7 +1,7 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { Accordion, AccordionProps } from './accordion';
-import { AccordionItemProps } from './accordion-item/accordion-item';
+import { Accordion, AccordionProps } from './Accordion';
+import { AccordionItemProps } from './AccordionItem/AccordionItem';
 import { Text } from 'react-native-paper';
 
 // Assuming you have a predefined set of items for demonstration

@@ -1,6 +1,6 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { Pagination, PaginationProps } from './pagination';
+import { Pagination, PaginationProps } from './Pagination';
 import { Text } from 'react-native-paper';
 
 const PaginationMeta: Meta<PaginationProps> = {

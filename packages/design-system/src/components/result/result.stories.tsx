@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
-import { Result, ResultProps } from './result';
+import { Result, ResultProps } from './Result';
 import { Text } from 'react-native-paper';
 
 const ResultMeta: Meta<ResultProps> = {

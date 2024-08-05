@@ -7,8 +7,8 @@ import {
   TextStyle,
   View,
 } from 'react-native';
-import { AppTheme } from '../../hooks/use-app-theme-setup';
-import { useTheme } from '../../providers/theme-provider';
+import { AppTheme } from '../../hooks/_useAppThemeSetup';
+import { useTheme } from '../../providers/ThemeProvider';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export type NoticeType = 'info' | 'warning' | 'error' | 'success';

@@ -62,7 +62,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   // variables
-  const snapPoints = useMemo(() => ["20%", "50%"], []);
+  const _snapPoints = useMemo(() => ["20%", "50%"], []);
 
   const { openDrawer, editProp } = useBottomModal();
 

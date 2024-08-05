@@ -1,4 +1,8 @@
 # @siteed/react-native-logger
+[![kandi X-Ray](https://kandi.openweaver.com/badges/xray.svg)](https://kandi.openweaver.com/typescript/siteed/react-native-logger)
+[![Version](https://img.shields.io/npm/v/@siteed/react-native-logger.svg)](https://www.npmjs.com/package/@siteed/react-native-logger)
+[![Dependency Status](https://img.shields.io/npm/dt/@siteed/react-native-logger.svg)](https://www.npmjs.com/package/@siteed/react-native-logger)
+[![License](https://img.shields.io/npm/l/@siteed/react-native-logger.svg)](https://www.npmjs.com/package/@siteed/react-native-logger)
 
 `@siteed/react-native-logger` is a simple, yet powerful logging library designed for React Native applications. It extends the basic console logging functions by maintaining a log history that can be displayed within your app or exported for troubleshooting.
 
@@ -103,7 +107,7 @@ localStorage.setItem('DEBUG', 'namespace1,namespace2');
 ```tsx
 import { getLogger, getLogs, clearLogs } from '@siteed/react-native-logger';
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, ScrollView } from 'react-native';
+import { View, Text, Button, FlatList } from 'react-native';
 
 const LogScreen = () => {
   const [logs, setLogs] = useState(getLogs());
@@ -117,15 +121,27 @@ const LogScreen = () => {
     setLogs(getLogs()); // Refresh logs when component mounts
   }, []);
 
+  const renderItem = ({ item }: ListRenderItemInfo<typeof logs[0]>) => (
+    <View style={styles.logEntry}>
+      <View>
+        <Text style={styles.timestamp}>
+          {new Date(item.timestamp).toLocaleTimeString()}
+        </Text>
+        <Text style={styles.context}>{item.namespace}</Text>
+      </View>
+      <Text style={styles.message}>{item.message}</Text>
+    </View>
+  );
+
   return (
-    <View>
-      <ScrollView>
-        {logs.map((log, index) => (
-          <View key={index}>
-            <Text>{`${new Date(log.timestamp).toLocaleString()}: ${log.message}`}</Text>
-          </View>
-        ))}
-      </ScrollView>
+    <View style={styles.container}>
+       <FlatList
+        data={filteredLogs}
+        renderItem={renderItem}
+        keyExtractor={(item, index) => `${index}-${item.timestamp}`}
+        style={styles.viewer}
+        initialNumToRender={20} // Adjust based on performance requirements
+      />
       <Button title="Send Logs to Support" onPress={handleSendLogs} />
     </View>
   );

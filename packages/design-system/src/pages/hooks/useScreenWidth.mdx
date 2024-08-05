@@ -1,0 +1,40 @@
+import { Meta, Story, Canvas } from '@storybook/addon-docs';
+
+<Meta title="Hooks/useScreenWidth" />
+
+# useScreenWidth
+
+The `useScreenWidth` hook provides the current width of the screen. It is useful for implementing responsive designs.
+
+## API
+
+### `useScreenWidth`
+
+This hook returns the current width of the screen.
+
+- **Type**: `() => number`
+- **Returns**: The current width of the screen.
+
+## Example
+
+Use the `useScreenWidth` hook to get the current screen width within your component.
+
+```tsx
+import React from 'react';
+import { useScreenWidth } from '@siteed/design-system/hooks/useScreenWidth';
+import { View, Text } from 'react-native';
+
+const App = () => {
+  const screenWidth = useScreenWidth();
+
+  return (
+    <View>
+      <Text>Screen Width: {screenWidth}</Text>
+    </View>
+  );
+};
+
+export default App;
+```
+
+

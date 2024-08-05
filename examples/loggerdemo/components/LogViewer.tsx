@@ -3,17 +3,19 @@ import {
   clearLogs,
   getLogger,
   getLogs,
-  setLoggerConfig, }  from "@siteed/react-native-logger";
+  setLoggerConfig,
+} from "@siteed/react-native-logger";
 import React, { useEffect, useState } from "react";
 import {
   Button,
+  FlatList,
+  ListRenderItemInfo,
   LogBox,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
   TextInput,
-  View,
+  View
 } from "react-native";
 import { NamespaceManager } from "./NamespaceManager";
 
@@ -83,21 +85,27 @@ export const LogViewer = (_: LogViewerProps) => {
     setLoggerConfig({ namespaces: namespaces.join(",") });
   }, [namespaces]);
 
+  const renderItem = ({ item }: ListRenderItemInfo<typeof logs[0]>) => (
+    <View style={styles.logEntry}>
+      <View>
+        <Text style={styles.timestamp}>
+          {new Date(item.timestamp).toLocaleTimeString()}
+        </Text>
+        <Text style={styles.context}>{item.namespace}</Text>
+      </View>
+      <Text style={styles.message}>{item.message}</Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.viewer}>
-        {filteredLogs.map((log, index) => (
-          <View key={index} style={styles.logEntry}>
-            <View>
-              <Text
-                style={styles.timestamp}
-              >{`${new Date(log.timestamp).toLocaleTimeString()}`}</Text>
-              <Text style={styles.context}>{log.namespace}</Text>
-            </View>
-            <Text style={styles.message}>{log.message}</Text>
-          </View>
-        ))}
-      </ScrollView>
+       <FlatList
+        data={filteredLogs}
+        renderItem={renderItem}
+        keyExtractor={(item, index) => `${index}-${item.timestamp}`}
+        style={styles.viewer}
+        initialNumToRender={20} // Adjust based on performance requirements
+      />
       <View style={styles.buttonsContainer}>
         <Button
           onPress={() => {

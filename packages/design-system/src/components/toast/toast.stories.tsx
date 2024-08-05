@@ -1,6 +1,6 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { Toast, ToastProps } from './toast';
+import { Toast, ToastProps } from './Toast';
 
 const ToastMeta: Meta<ToastProps> = {
   component: Toast,
