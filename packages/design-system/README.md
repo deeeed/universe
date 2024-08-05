@@ -9,6 +9,12 @@
 
 `@siteed/design-system` is a comprehensive cross-platform design system built around Expo for cross-platform applications. It extends react-native-paper to provide a robust set of UI components that are easy to implement and customize. Designed with an opinionated selection of libraries, it simplifies the integration process and reduces setup time, allowing developers to focus on building high-quality mobile apps efficiently.
 
+## Philosophy
+
+The design system is currently under active development and **is not production-ready** at the moment. Components and features are being added as needed, typically when they are required for specific projects. Most components are wrappers around `react-native-paper` to provide a base for customization while maintaining backward compatibility. This allows for quick iteration and integration of new features without breaking existing implementations.
+
+While the design system provides good defaults to get started quickly, users have the flexibility to choose the versions of all peer dependencies instead of hardcoding them as dependencies. This ensures compatibility and allows for greater control over the project's dependency management.
+
 ## Key Features
 
 - **Opinionated Library Choices**: Includes essential libraries such as `react-native-paper`, `react-native-safe-area-context`, `react-native-reanimated`, ensuring compatibility and functionality.
@@ -74,6 +80,11 @@ const styles = StyleSheet.create({
 
 For a full list of components and their usage, you can explore the storybook
 
+## Documentation
+
+For more detailed information on the design system and its components, check out the storybook site at [https://deeeed.github.io/universe/design-system-storybook/](https://deeeed.github.io/universe/design-system-storybook/)
+
+
 ## Storybook
 
 Explore the components and their usage more thoroughly by running the Storybook locally:
@@ -82,8 +93,4 @@ Explore the components and their usage more thoroughly by running the Storybook 
 ```bash
 yarn storybook
 ```
-
-## Documentation
-
-For more detailed information on the design system and its components, check out the storybook site at [https://deeeed.github.io/universe/design-system-storybook/](https://deeeed.github.io/universe/design-system-storybook/)
 

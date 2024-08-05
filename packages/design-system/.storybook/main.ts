@@ -15,7 +15,7 @@ const production = process.env.NODE_ENV === 'production';
 /** @type { import('@storybook/react-webpack5').StorybookConfig } */
 const config: StorybookConfig = {
   stories: [
-    '../src/pages/Installation.mdx',
+    '../src/pages/Introduction.mdx',
     '../src/pages/Providers.mdx',
     '../src/pages/hooks/*.mdx',
     '../src/**/*.mdx',
