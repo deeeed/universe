@@ -6,7 +6,7 @@ import Animated, {
   withRepeat,
   withSpring,
 } from 'react-native-reanimated';
-import { AppTheme } from '../../hooks/use-app-theme-setup';
+import { AppTheme } from '../../hooks/useAppThemeSetup';
 import { useTheme } from '../../providers/theme-provider';
 
 const getStyles = ({

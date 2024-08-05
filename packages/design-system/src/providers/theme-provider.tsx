@@ -3,7 +3,7 @@ import { PaperProvider } from 'react-native-paper';
 import {
   ThemeActions,
   ThemePreferences,
-} from '../hooks/use-app-preferences-setup';
+} from '../hooks/useAppPreferencesSetup';
 
 interface ThemeProviderProps {
   children: ReactNode;

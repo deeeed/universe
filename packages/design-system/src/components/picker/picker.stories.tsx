@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import { colorOptions } from '../../_mocks/mock_data';
 import { SelectOption } from '../select-buttons/select-buttons';
 import { Picker, PickerProps } from './picker';
-import { useToast } from '../../hooks/use-toast';
+import { useToast } from '../../hooks/useToast';
 
 const options = [
   {

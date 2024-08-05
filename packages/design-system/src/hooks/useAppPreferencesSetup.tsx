@@ -1,7 +1,7 @@
 import { getLogger } from '@siteed/react-native-logger';
 import { useEffect, useMemo, useState } from 'react';
 import { I18nextProviderProps } from 'react-i18next';
-import { AppTheme, SavedUserPreferences } from './use-app-theme-setup';
+import { AppTheme, SavedUserPreferences } from './useAppThemeSetup';
 
 interface useThemePreferencesProps {
   theme: AppTheme;
@@ -40,6 +40,7 @@ export const useAppPreferencesSetup = ({
   setDarkMode,
 }: useThemePreferencesProps) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [darkMode, setLocalDarkmode] = useState(theme.dark);
   const [customFontLoaded, setCustomFont] = useState(false);
   const [rippleEffectEnabled, setRippleEffectEnabled] = useState(true);
   const [dynamicTheme, setDynamicTheme] = useState<AppTheme>(theme);
@@ -78,6 +79,7 @@ export const useAppPreferencesSetup = ({
       toggleDarkMode: () => {
         const oldValue = dynamicTheme.dark ?? false;
         const newValue = !oldValue;
+        setLocalDarkmode(newValue);
         setDarkMode(newValue);
         savePreferences?.({
           darkMode: newValue,
@@ -121,7 +123,7 @@ export const useAppPreferencesSetup = ({
       customFontLoaded,
       rippleEffectEnabled,
       collapsed,
-      darkMode: dynamicTheme.dark,
+      darkMode,
       theme: dynamicTheme,
     }),
     [

@@ -36,12 +36,12 @@ export * from './components/number-adjuster/number-adjuster';
 export * from './settings/theme-config/theme-config';
 export * from './settings/theme-viewer/theme-viewer';
 
-export * from './hooks/use-app-preferences-setup';
-export * from './hooks/use-app-theme-setup';
-export * from './hooks/use-screen-width';
-export * from './hooks/use-confirm';
-export * from './hooks/use-toast';
-export * from './hooks/use-bottom-modal';
+export * from './hooks/useAppPreferencesSetup';
+export * from './hooks/useAppThemeSetup';
+export * from './hooks/useScreenWidth';
+export * from './hooks/useConfirm';
+export * from './hooks/useToast';
+export * from './hooks/useBottomModal';
 
 export * from './providers/custom-bottomsheet-provider';
 export * from './providers/language-provider';

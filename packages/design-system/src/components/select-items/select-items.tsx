@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Button, HelperText, MD3Theme, Searchbar } from 'react-native-paper';
-import { useScreenWidth } from '../../hooks/use-screen-width';
+import { useScreenWidth } from '../../hooks/useScreenWidth';
 import { useTheme } from '../../providers/theme-provider';
 import { BREAKPOINTS } from '../select-buttons/select-buttons';
 

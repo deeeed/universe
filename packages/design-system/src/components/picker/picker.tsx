@@ -3,10 +3,10 @@ import { AntDesign } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Chip, Text } from 'react-native-paper';
-import { AppTheme } from '../../hooks/use-app-theme-setup';
+import { AppTheme } from '../../hooks/useAppThemeSetup';
 import { useTheme } from '../../providers/theme-provider';
 import { SelectOption } from '../select-buttons/select-buttons';
-import { useBottomModal } from '../../hooks/use-bottom-modal';
+import { useBottomModal } from '../../hooks/useBottomModal';
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({

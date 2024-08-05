@@ -16,8 +16,8 @@ import {
   ThemeActions,
   ThemePreferences,
   useAppPreferencesSetup,
-} from '../hooks/use-app-preferences-setup';
-import { AppTheme, useAppThemeSetup } from '../hooks/use-app-theme-setup';
+} from '../hooks/useAppPreferencesSetup';
+import { AppTheme, useAppThemeSetup } from '../hooks/useAppThemeSetup';
 import { ConfirmProvider, ConfirmProviderProps } from './confirm-provider';
 import { CustomBottomSheetModal } from './custom-bottomsheet-provider';
 import { LanguageProvider } from './language-provider';
@@ -110,6 +110,7 @@ const UIProviderWithLanguageReady = ({
   } = useAppThemeSetup({
     customDarkTheme: DefaultDarkTheme,
     customLightTheme: DefaultLightTheme,
+    // savedPreferences: preferences,
   });
 
   // Calculate the theme based on preferences
@@ -125,7 +126,7 @@ const UIProviderWithLanguageReady = ({
     i18nInstance: i18n,
     setThemeVersion,
     savePreferences(_) {
-      // Implement overwrites if needed
+      // Implement overwrites if needed but currently leave it up to the user to implement.
     },
   });
 

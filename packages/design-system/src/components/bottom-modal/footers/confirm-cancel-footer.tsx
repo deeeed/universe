@@ -5,7 +5,7 @@ import {
 import { useTheme } from '../../../providers/theme-provider';
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { AppTheme } from '../../../hooks/use-app-theme-setup';
+import { AppTheme } from '../../../hooks/useAppThemeSetup';
 import { Button } from '../../button/Button';
 import React from 'react';
 import { useTranslation } from 'react-i18next';

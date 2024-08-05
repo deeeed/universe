@@ -5,7 +5,7 @@ import { Dimensions, Platform, StyleSheet, View } from 'react-native';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { ActivityIndicator, Snackbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppTheme } from '../../hooks/use-app-theme-setup';
+import { AppTheme } from '../../hooks/useAppThemeSetup';
 import { useTheme } from '../../providers/theme-provider';
 
 export type ToastType = 'info' | 'success' | 'warning' | 'error';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from 'react-native-paper';
 import { ScreenWrapper } from '../../components/screen-wrapper/screen-wrapper';
-import { useToast } from '../../hooks/use-toast';
+import { useToast } from '../../hooks/useToast';
 
 export interface TestToastersProps {}
 export const TestToasters = (_: TestToastersProps) => {

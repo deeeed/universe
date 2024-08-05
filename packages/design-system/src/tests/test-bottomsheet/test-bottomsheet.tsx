@@ -2,7 +2,7 @@ import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import React, { useCallback, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/button/Button';
-import { useBottomModal } from '../../hooks/use-bottom-modal';
+import { useBottomModal } from '../../hooks/useBottomModal';
 import { AccordionItemProps } from '../../components/accordion/accordion-item/accordion-item';
 import { Accordion } from '../../components/accordion/accordion';
 
