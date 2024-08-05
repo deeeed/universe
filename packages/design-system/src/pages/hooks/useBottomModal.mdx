@@ -1,0 +1,90 @@
+import { Meta, Story, Canvas } from '@storybook/addon-docs';
+
+<Meta title="Hooks/useBottomModal" />
+
+# useBottomModal
+
+The `useBottomModal` hook provides methods to manage custom bottom sheet modals. It is designed to be used within a `CustomBottomSheetModalProvider`.
+
+## API
+
+### `dismiss`
+
+Dismiss a specific bottom sheet modal.
+
+- **Type**: `(key?: string) => boolean`
+- **Parameters**:
+  - `key`: Optional key to identify the modal to be dismissed.
+- **Returns**: `boolean`
+
+### `editProp`
+
+Open a bottom sheet modal for editing a property.
+
+- **Type**: `(props: EditPropProps) => Promise<DynInputProps['data']>`
+- **Parameters**:
+  - `props`: Properties for the bottom sheet modal and the data to be edited.
+- **Returns**: `Promise<DynInputProps['data']>`
+
+### `openDrawer`
+
+Open a custom bottom sheet modal drawer.
+
+- **Type**: `(props: OpenDrawerProps) => Promise<unknown>`
+- **Parameters**:
+  - `props`: Properties for the bottom sheet modal drawer.
+- **Returns**: `Promise<unknown>`
+
+### `dismissAll`
+
+Dismiss all open bottom sheet modals.
+
+- **Type**: `() => void`
+
+### `bottomSheetModalRef`
+
+Ref object for the `BottomSheetModal`.
+
+- **Type**: `React.RefObject<BottomSheetModal>`
+
+## Example
+
+Customize the bottom sheet modals by using the `openDrawer` or `editProp` methods provided by the `useBottomModal` hook.
+
+```tsx
+import React from 'react';
+import { useBottomModal } from '@siteed/design-system/hooks/useBottomModal';
+import { Button, View, Text } from 'react-native';
+
+const App = () => {
+  const { openDrawer } = useBottomModal();
+
+  const handleOpenDrawer = async () => {
+    const result = await openDrawer({
+      title: 'Custom Drawer',
+      footerType: 'confirm_cancel',
+      initialData: { name: 'John Doe' },
+      render: ({ resolve, reject }) => (
+        <View>
+          <Text>Drawer Content</Text>
+          <Button title="Confirm" onPress={() => resolve('Confirmed')} />
+          <Button title="Cancel" onPress={() => reject('Canceled')} />
+        </View>
+      ),
+    });
+
+    console.log('Drawer Result:', result);
+  };
+
+  return (
+    <View>
+      <Text>Hello World</Text>
+      <Button title="Open Drawer" onPress={handleOpenDrawer} />
+    </View>
+  );
+};
+
+export default App;
+```
+
+For more details on the CustomBottomSheetModalProvider, refer to the [CustomBottomSheetModalProvider](?path=/docs/providers--docs#custombottomsheetmodal) documentation.

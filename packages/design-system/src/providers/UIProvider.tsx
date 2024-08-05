@@ -16,8 +16,8 @@ import {
   ThemeActions,
   ThemePreferences,
   useAppPreferencesSetup,
-} from '../hooks/useAppPreferencesSetup';
-import { AppTheme, useAppThemeSetup } from '../hooks/useAppThemeSetup';
+} from '../hooks/_useAppPreferencesSetup';
+import { AppTheme, useAppThemeSetup } from '../hooks/_useAppThemeSetup';
 import { ConfirmProvider, ConfirmProviderProps } from './ConfirmProvider';
 import { CustomBottomSheetModal } from './CustomBottomSheetProvider';
 import { LanguageProvider } from './LanguageProvider';

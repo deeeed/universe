@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, ViewStyle } from 'react-native';
 import { Dialog } from 'react-native-paper';
-import { AppTheme } from '../../hooks/useAppThemeSetup';
+import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
 import { Button } from '../Button/Button';
 

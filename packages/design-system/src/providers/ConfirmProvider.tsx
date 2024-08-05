@@ -2,7 +2,7 @@ import type { FunctionComponent, ReactNode } from 'react';
 import React, { createContext, useMemo, useState } from 'react';
 import { Platform, StyleSheet, ViewStyle } from 'react-native';
 import { ConfirmDialog } from '../components/ConfirmDialog/ConfirmDialog';
-import { AppTheme } from '../hooks/useAppThemeSetup';
+import { AppTheme } from '../hooks/_useAppThemeSetup';
 import { useTheme } from './ThemeProvider';
 
 export interface ConfirmOptions {

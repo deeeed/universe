@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { Switch, Text } from 'react-native-paper';
-import { AppTheme } from '../../hooks/useAppThemeSetup';
+import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
 
 const getStyle = (theme: AppTheme) => {

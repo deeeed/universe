@@ -36,8 +36,8 @@ export * from './components/NumberAdjuster/NumberAdjuster';
 export * from './settings/ThemeConfig/ThemeConfig';
 export * from './settings/ThemeViewer/ThemeViewer';
 
-export * from './hooks/useAppPreferencesSetup';
-export * from './hooks/useAppThemeSetup';
+export * from './hooks/_useAppPreferencesSetup';
+export * from './hooks/_useAppThemeSetup';
 export * from './hooks/useScreenWidth';
 export * from './hooks/useConfirm';
 export * from './hooks/useToast';

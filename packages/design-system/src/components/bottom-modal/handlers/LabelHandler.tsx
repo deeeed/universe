@@ -1,5 +1,5 @@
 import { useTheme } from '../../../providers/ThemeProvider';
-import { AppTheme } from '../../../hooks/useAppThemeSetup';
+import { AppTheme } from '../../../hooks/_useAppThemeSetup';
 import {
   BottomSheetHandle,
   BottomSheetHandleProps,

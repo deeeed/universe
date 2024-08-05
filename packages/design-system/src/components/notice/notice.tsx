@@ -7,7 +7,7 @@ import {
   TextStyle,
   View,
 } from 'react-native';
-import { AppTheme } from '../../hooks/useAppThemeSetup';
+import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 

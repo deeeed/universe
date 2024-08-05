@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 import { HelperText, Searchbar } from 'react-native-paper';
-import { AppTheme } from '../../hooks/useAppThemeSetup';
+import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useScreenWidth } from '../../hooks/useScreenWidth';
 import { useTheme } from '../../providers/ThemeProvider';
 import { Button } from '../Button/Button';

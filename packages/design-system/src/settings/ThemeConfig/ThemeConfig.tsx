@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { SegmentedButtons } from 'react-native-paper';
 import { ColorPicker } from '../../components/Colors/ColorPicker/ColorPicker';
 import { LabelSwitch } from '../../components/LabelSwitch/LabelSwitch';
-import { AppTheme } from '../../hooks/useAppThemeSetup';
+import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme, useThemePreferences } from '../../providers/ThemeProvider';
 
 const getStyles = (theme: AppTheme) => {

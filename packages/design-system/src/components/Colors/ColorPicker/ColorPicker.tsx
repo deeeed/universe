@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
-import { AppTheme } from '../../../hooks/useAppThemeSetup';
+import { AppTheme } from '../../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../../providers/ThemeProvider';
 import { SelectOption } from '../../SelectButtons/SelectButtons';
 import { useBottomModal } from '../../../hooks/useBottomModal';

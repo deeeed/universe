@@ -12,7 +12,7 @@ import {
 import { ButtonProps, Text } from 'react-native-paper';
 import { Button } from '../Button/Button';
 import { useTheme } from '../../providers/ThemeProvider';
-import { AppTheme } from '../../hooks/useAppThemeSetup';
+import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const getStyles = ({ theme }: { theme: AppTheme }) => {

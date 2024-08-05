@@ -1,7 +1,7 @@
 import { getLogger } from '@siteed/react-native-logger';
 import { useEffect, useMemo, useState } from 'react';
 import { I18nextProviderProps } from 'react-i18next';
-import { AppTheme, SavedUserPreferences } from './useAppThemeSetup';
+import { AppTheme, SavedUserPreferences } from './_useAppThemeSetup';
 
 interface useThemePreferencesProps {
   theme: AppTheme;
