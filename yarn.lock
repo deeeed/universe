@@ -6206,7 +6206,7 @@ __metadata:
     "@rollup/plugin-json": "npm:^6.0.1"
     "@rollup/plugin-node-resolve": "npm:^13.3.0"
     "@rollup/plugin-typescript": "npm:^8.3.3"
-    "@siteed/react-native-logger": "workspace:^"
+    "@siteed/react-native-logger": "npm:^0.9.3"
     "@size-limit/preset-big-lib": "npm:^11.1.2"
     "@storybook/addon-essentials": "npm:^8.2.7"
     "@storybook/addon-interactions": "npm:^8.2.7"
@@ -6293,6 +6293,13 @@ __metadata:
     react-native-vector-icons: "*"
   languageName: unknown
   linkType: soft
+
+"@siteed/react-native-logger@npm:^0.9.3":
+  version: 0.9.3
+  resolution: "@siteed/react-native-logger@npm:0.9.3"
+  checksum: 10c0/fa8b3cf8a47480ca630993d1fe5abe6a4dc6e43b66b52783e228ddf89b59a5e5856d156fcf57a48d184230d9b3d82d1c8f2e685a5c2838ad1ee3309a2f1493c2
+  languageName: node
+  linkType: hard
 
 "@siteed/react-native-logger@workspace:^, @siteed/react-native-logger@workspace:packages/react-native-logger":
   version: 0.0.0-use.local

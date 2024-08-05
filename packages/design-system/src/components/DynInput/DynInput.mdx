@@ -1,25 +1,149 @@
-import { Canvas, Meta, Controls } from '@storybook/blocks';
-import { Story, ArgsTable } from '@storybook/addon-docs';
+# DynInput
 
-import * as Stories from './DynInput.stories';
-import { DynInput } from './DynInput';
+`DynInput` is a versatile input handler for React applications, supporting various input types like text, textarea, number, radio, select-button, and custom render types. It provides a flexible interface for handling different forms of user input.
 
-<Meta of={Stories} />
+## Important Usage Note
 
-# Definition
+The `DynInput` component is not intended to be used as a standalone component. It is designed to be used in conjunction with the `editProp` function from `useBottomModal` to quickly edit a value within a bottom sheet modal context.
 
-`DynInput` is a versatile input handler for React applications, supporting various input types like text, textarea, number, radio, select-button, and custom render types. 
-It provides a flexible interface for handling different forms of user input.
+## Usage with useBottomModal
 
+To use `DynInput` properly, you should utilize it with the `editProp` function from `useBottomModal`. Here's a basic example:
+
+```jsx
+import { useBottomModal } from '../path/to/useBottomModal';
+import { DynInput } from '../path/to/DynInput';
+
+function MyComponent() {
+  const { editProp } = useBottomModal();
+
+  const handleEdit = async () => {
+    const result = await editProp({
+      data: "Initial value",
+      inputType: "text",
+      // other DynInput props as needed
+    });
+    console.log("Edited value:", result);
+  };
+
+  return (
+    <Button onPress={handleEdit}>
+      Edit Value
+    </Button>
+  );
+}
+```
+
+In this setup, `DynInput` is rendered within a bottom sheet modal, providing a smooth editing experience for the user.
+
+## Examples
+
+While `DynInput` is not meant to be used standalone, here are some examples of how it might appear within the bottom sheet modal:
 
 ### Text Input
 
-Use the `DynInput` for basic text input:
+```jsx
+<DynInput data="Hello World" inputType="text" />
+```
 
-<Canvas>
-  <Story name="Text">
-    <DynInput data="Hello World" inputType="text" />
-  </Story>
-</Canvas>
-<Story of={Stories.Text} />
-<Controls />
+### Number Input
+
+```jsx
+<DynInput data={42} inputType="number" />
+```
+
+### Select Button
+
+```jsx
+<DynInput 
+  data={[
+    { label: "Option 1", value: 1, selected: false },
+    { label: "Option 2", value: 2, selected: true },
+    { label: "Option 3", value: 3, selected: false }
+  ]} 
+  inputType="select-button" 
+/>
+```
+
+Remember, these examples demonstrate the appearance of `DynInput` within the bottom sheet modal, not how you would use the component directly in your JSX.
+
+## Props
+
+<table>
+  <thead>
+    <tr>
+      <th>Prop</th>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>data</td>
+      <td>DynamicType</td>
+      <td>The initial data for the input</td>
+    </tr>
+    <tr>
+      <td>inputType</td>
+      <td>InputType</td>
+      <td>The type of input to render</td>
+    </tr>
+    <tr>
+      <td>min</td>
+      <td>number</td>
+      <td>Minimum value for number input</td>
+    </tr>
+    <tr>
+      <td>max</td>
+      <td>number</td>
+      <td>Maximum value for number input</td>
+    </tr>
+    <tr>
+      <td>multiSelect</td>
+      <td>boolean</td>
+      <td>Allow multiple selections for select-button</td>
+    </tr>
+    <tr>
+      <td>showSearch</td>
+      <td>boolean</td>
+      <td>Show search functionality for select-button</td>
+    </tr>
+    <tr>
+      <td>showFooter</td>
+      <td>boolean</td>
+      <td>Show footer with confirm/cancel buttons</td>
+    </tr>
+    <tr>
+      <td>label</td>
+      <td>string</td>
+      <td>Label for the input</td>
+    </tr>
+    <tr>
+      <td>numberOfLines</td>
+      <td>number</td>
+      <td>Number of lines for textarea</td>
+    </tr>
+    <tr>
+      <td>useFlatList</td>
+      <td>boolean</td>
+      <td>Use FlatList for rendering large lists</td>
+    </tr>
+    <tr>
+      <td>customRender</td>
+      <td>function</td>
+      <td>Custom render function for custom input types</td>
+    </tr>
+    <tr>
+      <td>onFinish</td>
+      <td>function</td>
+      <td>Callback when input is finished</td>
+    </tr>
+    <tr>
+      <td>onCancel</td>
+      <td>function</td>
+      <td>Callback when input is cancelled</td>
+    </tr>
+  </tbody>
+</table>
+
+For more detailed information on using `DynInput` with `useBottomModal`, refer to the `useBottomModal` documentation.

@@ -32,6 +32,7 @@ export interface DynInputProps {
   multiSelect?: boolean;
   showSearch?: boolean;
   showFooter?: boolean;
+  autoFocus?: boolean;
   label?: string;
   numberOfLines?: number;
   useFlatList?: boolean;
@@ -49,15 +50,9 @@ const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
       display: 'flex',
-      // flex: 1,
-      // height: 100,
-      // flexDirection: 'column',
       backgroundColor: theme.colors.surface,
     },
     footer: {
-      // borderTopWidth: 2,
-      // borderTopColor: theme.colors.outline,
-      // marginBottom: 20,
       display: 'flex',
       // alignSelf: 'flex-end',
       flexDirection: 'row',
@@ -77,6 +72,7 @@ export const DynInput = ({
   inputType,
   showSearch,
   showFooter = true,
+  autoFocus,
   label,
   numberOfLines,
   customRender,
@@ -94,13 +90,13 @@ export const DynInput = ({
   }, [data, logger]);
 
   useEffect(() => {
-    if (inputRef.current) {
+    if (inputRef.current && autoFocus) {
       setTimeout(() => {
         // adding the timeout prevents the input focus to break sizing
         inputRef.current?.focus();
       }, 100);
     }
-  }, []);
+  }, [autoFocus]);
 
   const handleChange = useCallback(
     (value: DynamicType) => {
