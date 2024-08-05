@@ -9,6 +9,9 @@ import { ThemeConfig } from '../src/settings/theme-config/theme-config';
 /** @type { import('@storybook/react').Preview } */
 const preview: Preview = {
   parameters: {
+    docs: {
+      toc: true,
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,
