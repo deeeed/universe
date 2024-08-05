@@ -150,6 +150,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       const newInputParams: DynInputProps = {
         ...props,
         useFlatList: false,
+        autoFocus: true,
         onCancel: () => {
           logger.debug('onCancel', bottomSheetModalRef.current);
           bottomSheetModalRef.current?.close();
