@@ -1,4 +1,3 @@
-import { useBottomSheetInternal } from '@gorhom/bottom-sheet';
 import { getLogger } from '@siteed/react-native-logger';
 import React, {
   useCallback,
@@ -9,9 +8,11 @@ import React, {
 } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { TextInput as RNGTextInput } from 'react-native-gesture-handler';
-import { MD3Theme, TextInput, useTheme } from 'react-native-paper';
+import { AppTheme } from '../../hooks/use-app-theme-setup';
+import { useTheme } from '../../providers/theme-provider';
 import { Button } from '../button/Button';
 import { SelectButtons, SelectOption } from '../select-buttons/select-buttons';
+import { TextInput } from '../text-input/text-input';
 
 type InputType =
   | 'text'
@@ -44,7 +45,7 @@ export interface DynInputProps {
 
 const logger = getLogger('DynInput');
 
-const getStyles = (theme: MD3Theme) => {
+const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
       display: 'flex',
@@ -86,7 +87,6 @@ export const DynInput = ({
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
   const inputRef = useRef<RNGTextInput>(null);
-  const { shouldHandleKeyboardEvents } = useBottomSheetInternal();
 
   useEffect(() => {
     setTemp(data);
@@ -100,7 +100,7 @@ export const DynInput = ({
         inputRef.current?.focus();
       }, 100);
     }
-  }, [shouldHandleKeyboardEvents.value]);
+  }, []);
 
   const handleChange = useCallback(
     (value: DynamicType) => {
@@ -122,11 +122,11 @@ export const DynInput = ({
   );
 
   const handleFocus = () => {
-    shouldHandleKeyboardEvents.value = true;
+    // shouldHandleKeyboardEvents.value = true;
   };
 
   const handleBlur = () => {
-    shouldHandleKeyboardEvents.value = false;
+    // shouldHandleKeyboardEvents.value = false;
   };
 
   const renderNumber = () => {

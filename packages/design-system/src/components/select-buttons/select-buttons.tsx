@@ -7,11 +7,13 @@ import {
   View,
 } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
-import { Button, HelperText, MD3Theme, Searchbar } from 'react-native-paper';
+import { HelperText, Searchbar } from 'react-native-paper';
+import { AppTheme } from '../../hooks/use-app-theme-setup';
 import { useScreenWidth } from '../../hooks/use-screen-width';
 import { useTheme } from '../../providers/theme-provider';
+import { Button } from '../button/Button';
 
-const getStyles = (theme: MD3Theme) => {
+const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
       display: 'flex',
@@ -81,6 +83,7 @@ export const SelectButtons = ({
   }, [screenWidth, cols]);
 
   const filteredOptions = useMemo(() => {
+    if (currentOptions.length === 0) return [];
     return (
       currentOptions
         // Filter options based on search query
@@ -133,7 +136,7 @@ export const SelectButtons = ({
 
   // Count of selected options
   const selectedOptionsCount = useMemo(() => {
-    return currentOptions.filter((option) => option.selected).length;
+    return currentOptions?.filter((option) => option.selected).length;
   }, [currentOptions]);
 
   // Determine if error should be visible
@@ -164,7 +167,6 @@ export const SelectButtons = ({
       key?: string;
     }) => (
       <View key={key} style={styles.buttonContainer}>
-        {/* Add padding here */}
         <Button
           key={`opt${index}`}
           testID={`buttons-opt-${index}`}

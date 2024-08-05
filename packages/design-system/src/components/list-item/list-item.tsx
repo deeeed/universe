@@ -21,7 +21,7 @@ const getStyle = (theme: AppTheme) => {
       alignItems: 'center',
       padding: 10,
       margin: 10,
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.surface,
     },
     textContainer: {
       flex: 1,

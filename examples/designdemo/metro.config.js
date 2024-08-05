@@ -76,14 +76,6 @@ config.resolver = {
         ),
         type: "sourceFile",
       };
-    } else if (moduleName === "react-native-safe-area-context") {
-      return {
-        filePath: path.resolve(
-          projectRoot,
-          `node_modules/${moduleName}/lib/module/index.js`,
-        ),
-        type: "sourceFile",
-      };
     }
     // Ensure you call the default resolver.
     return context.resolveRequest(context, moduleName, platform);

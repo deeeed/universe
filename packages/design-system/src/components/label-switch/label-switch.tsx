@@ -12,7 +12,7 @@ const getStyle = (theme: AppTheme) => {
       justifyContent: 'space-between' as const,
       alignItems: 'center' as const,
       padding: 10,
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.surface,
     },
     label: {
       paddingRight: 10,

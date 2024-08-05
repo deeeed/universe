@@ -30,18 +30,19 @@ export interface ToastAction {
 
 export const ToastContext = createContext<ToastMethods | null>(null);
 
-const reducer = (state: ToastProps, action: ToastAction) => {
-  switch (action.type) {
-    case ToastActionType.SHOW:
-      return { ...state, ...action.payload, visibility: true };
-    case ToastActionType.HIDE:
-      return { ...state, visibility: false };
-    case ToastActionType.HYDRATE:
-      return { ...state, ...action.payload };
-    default:
-      return state;
-  }
-};
+const reducer =
+  (initialState: ToastProps) => (state: ToastProps, action: ToastAction) => {
+    switch (action.type) {
+      case ToastActionType.SHOW:
+        return { ...initialState, ...action.payload, visibility: true };
+      case ToastActionType.HIDE:
+        return { ...state, visibility: false };
+      case ToastActionType.HYDRATE:
+        return { ...initialState, ...action.payload };
+      default:
+        return state;
+    }
+  };
 
 export const ToastProvider: React.FC<ToastProviderProps> = ({
   children,
@@ -59,7 +60,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
     [overrides]
   );
 
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer(initialState), initialState);
 
   const toastMethods = useMemo(
     () => ({
