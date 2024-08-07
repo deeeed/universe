@@ -131,6 +131,14 @@ export const setLoggerConfig = (newConfig: Partial<LoggerConfig>) => {
 };
 
 /**
+ * Retrieves the current logger configuration.
+ * @returns The logger configuration object.
+ */
+export const getLoggerConfig = () => {
+  return state.config;
+};
+
+/**
  * Retrieves or creates a logger for a given namespace.
  * @param namespace - The namespace for the logger.
  * @returns The logger methods.
