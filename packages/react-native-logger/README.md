@@ -1,6 +1,7 @@
 # @siteed/react-native-logger
 [![kandi X-Ray](https://kandi.openweaver.com/badges/xray.svg)](https://kandi.openweaver.com/typescript/siteed/react-native-logger)
 [![Version](https://img.shields.io/npm/v/@siteed/react-native-logger.svg)](https://www.npmjs.com/package/@siteed/react-native-logger)
+![Codecov](https://codecov.io/gh/deeeed/universe/branch/main/graph/badge.svg?flag=react-native-logger)
 [![Dependency Status](https://img.shields.io/npm/dt/@siteed/react-native-logger.svg)](https://www.npmjs.com/package/@siteed/react-native-logger)
 [![License](https://img.shields.io/npm/l/@siteed/react-native-logger.svg)](https://www.npmjs.com/package/@siteed/react-native-logger)
 

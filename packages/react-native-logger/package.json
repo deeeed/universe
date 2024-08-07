@@ -1,6 +1,6 @@
 {
   "name": "@siteed/react-native-logger",
-  "version": "0.9.4-beta.0",
+  "version": "0.10.0",
   "description": "A simple yet powerful logging library for cross platform applications, supporting persistent log history.",
   "main": "dist/logger.js",
   "module": "dist/logger.js",
@@ -18,7 +18,10 @@
     "build:clean": "yarn clean && yarn build",
     "build:tsc": "tsc",
     "typecheck": "tsc --noEmit",
+    "codecov": "codecov",
     "test": "jest",
+    "test:coverage": "jest --coverage",
+    "coverage:report": "jest --coverage && codecov -F react-native-logger",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "release": "yarn clean && yarn build && npm publish"
   },
@@ -46,6 +49,7 @@
     "@types/jest": "^29.5.12",
     "@typescript-eslint/eslint-plugin": "^7.17.0",
     "@typescript-eslint/parser": "^7.17.0",
+    "codecov": "^3.8.3",
     "commitlint": "^17.0.2",
     "del-cli": "^5.0.0",
     "eslint": "^8.4.1",
@@ -56,7 +60,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "prettier": "^2.0.5",
     "rimraf": "^6.0.1",
-    "ts-jest": "^29.2.3",
+    "ts-jest": "^29.2.4",
     "typescript": "^5.0.2"
   }
 }

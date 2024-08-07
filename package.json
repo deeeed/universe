@@ -10,12 +10,10 @@
     "**/react-native/**"
   ],
   "devDependencies": {
+    "jest": "^29.7.0",
     "lefthook": "^1.7.2",
     "prettier": "^3.2.5",
     "typescript": "^5.4.3"
   },
-  "packageManager": "yarn@4.3.1",
-  "dependencies": {
-    "@siteed/react-native-logger": "workspace:^"
-  }
+  "packageManager": "yarn@4.3.1"
 }
