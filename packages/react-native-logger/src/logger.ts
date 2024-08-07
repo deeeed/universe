@@ -1,25 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 // packages/react-native-logger/src/logger.tsx
-import {
-  clearLogs,
-  enabled,
-  getLogs,
-  initializeDebugSettings,
-  reset,
-  getLogger,
-  setLoggerConfig,
-  getLoggerConfig,
-} from './logger.core';
+import * as loggerCore from './logger.core';
 
 // Call the initialization function on library load
-initializeDebugSettings();
+loggerCore.initializeDebugSettings();
 
-export {
-  clearLogs,
-  enabled,
-  getLogs,
-  reset,
-  getLogger,
-  setLoggerConfig,
-  getLoggerConfig,
-} from './logger.core';
+// Re-export everything from logger.core
+export * from './logger.core';
