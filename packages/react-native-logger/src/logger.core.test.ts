@@ -187,6 +187,127 @@ describe('Logger Tests', () => {
       const logs = getLogs();
       expect(logs[logs.length - 1]?.message).toContain('Test error');
     });
+
+    it('should handle Error objects correctly', () => {
+      setLoggerConfig({ namespaces: 'test' });
+      const error = new Error('Test error');
+      error.stack = 'Error: Test error\n    at TestFunction (test.js:1:1)';
+
+      jest.spyOn(console, 'error').mockImplementation();
+      addLog({ namespace: 'test', level: 'error', params: [error] });
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '[test] Error: Test error\n    at TestFunction (test.js:1:1)'
+        )
+      );
+
+      const logs = getLogs();
+      expect(logs[logs.length - 1]?.message).toContain('Error: Test error');
+      expect(logs[logs.length - 1]?.message).toContain(
+        'at TestFunction (test.js:1:1)'
+      );
+
+      (console.error as jest.Mock).mockRestore();
+    });
+
+    it('should handle Error objects without stack trace', () => {
+      setLoggerConfig({ namespaces: 'test' });
+      const error = new Error('Test error without stack');
+      error.stack = undefined;
+
+      jest.spyOn(console, 'error').mockImplementation();
+      addLog({ namespace: 'test', level: 'error', params: [error] });
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('[test] Test error without stack')
+      );
+
+      const logs = getLogs();
+      expect(logs[logs.length - 1]?.message).toContain(
+        'Test error without stack'
+      );
+
+      (console.error as jest.Mock).mockRestore();
+    });
+
+    it('should handle non-string, non-Error messages', () => {
+      setLoggerConfig({ namespaces: 'test' });
+      const complexObject = { key: 'value', nested: { array: [1, 2, 3] } };
+
+      jest.spyOn(console, 'log').mockImplementation();
+      addLog({ namespace: 'test', level: 'log', params: [complexObject] });
+
+      expect(console.log).toHaveBeenCalledWith('[test] ', complexObject);
+
+      const logs = getLogs();
+      expect(logs[logs.length - 1]?.message).toContain('[test] ');
+      expect(logs[logs.length - 1]?.message).toContain(
+        JSON.stringify(complexObject)
+      );
+
+      (console.log as jest.Mock).mockRestore();
+    });
+
+    it('should handle multiple parameters correctly', () => {
+      setLoggerConfig({ namespaces: 'test' });
+      const message = 'Test message';
+      const additionalParam1 = { key: 'value' };
+      const additionalParam2 = [1, 2, 3];
+
+      jest.spyOn(console, 'log').mockImplementation();
+      addLog({
+        namespace: 'test',
+        level: 'log',
+        params: [message, additionalParam1, additionalParam2],
+      });
+
+      expect(console.log).toHaveBeenCalledWith(
+        '[test] Test message',
+        additionalParam1,
+        additionalParam2
+      );
+
+      const logs = getLogs();
+      expect(logs[logs.length - 1]?.message).toContain('[test] Test message');
+      expect(logs[logs.length - 1]?.message).toContain(
+        JSON.stringify(additionalParam1)
+      );
+      expect(logs[logs.length - 1]?.message).toContain(
+        JSON.stringify(additionalParam2)
+      );
+
+      (console.log as jest.Mock).mockRestore();
+    });
+
+    it('should handle null message correctly', () => {
+      setLoggerConfig({ namespaces: 'test' });
+
+      jest.spyOn(console, 'log').mockImplementation();
+      addLog({ namespace: 'test', level: 'log', params: [null] });
+
+      expect(console.log).toHaveBeenCalledWith('[test] ', null);
+
+      const logs = getLogs();
+      expect(logs[logs.length - 1]?.message).toContain('[test] ');
+      expect(logs[logs.length - 1]?.message).toContain('null');
+
+      (console.log as jest.Mock).mockRestore();
+    });
+
+    it('should handle addLog call without params', () => {
+      setLoggerConfig({ namespaces: 'test' });
+
+      jest.spyOn(console, 'log').mockImplementation();
+      addLog({ namespace: 'test', level: 'log' });
+
+      expect(console.log).toHaveBeenCalledWith('[test] ');
+
+      const logs = getLogs();
+      expect(logs[logs.length - 1]?.message).toContain('[test] ');
+
+      (console.log as jest.Mock).mockRestore();
+    });
   });
 
   describe('Logger Configuration', () => {
