@@ -172,29 +172,28 @@ export const LogViewer = (_: LogViewerProps) => {
 const getStyles = () =>
   StyleSheet.create({
     container: {
-      display: "flex",
       flex: 1,
-      gap: 10,
-      paddingBottom: 50,
       width: "100%",
       padding: 5,
     },
-    context: { fontSize: 10, fontWeight: "bold" },
-    logEntry: {},
-    message: { fontSize: 10 },
-    timestamp: { color: "grey", fontSize: 10 },
-    viewer: { borderWidth: 1, flex: 1, minHeight: 100 },
+    viewer: {
+      flex: 1,
+      borderWidth: 1,
+      marginBottom: 10,
+    },
+    controlsContainer: {
+      flexShrink: 0,
+    },
     buttonsContainer: {
       flexDirection: "row",
       justifyContent: "space-around",
-      marginVertical: 10,
+      marginBottom: 10,
     },
     pickerContainer: {
       flexDirection: "row",
       alignItems: "center",
-      marginVertical: 10,
-      zIndex: 10, // Ensure the picker is above other elements
-      flex: 1, // Ensure the picker container takes full width
+      marginBottom: 10,
+      zIndex: 10,
     },
     pickerLabel: {
       marginRight: 10,
@@ -207,7 +206,7 @@ const getStyles = () =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      marginVertical: 10,
+      marginBottom: 10,
       gap: 5,
     },
     maxLogsInput: {
@@ -221,6 +220,10 @@ const getStyles = () =>
     logCount: {
       flexDirection: "row",
       justifyContent: "space-between",
-      marginVertical: 10,
+      marginBottom: 10,
     },
+    context: { fontSize: 10, fontWeight: "bold" },
+    logEntry: {},
+    message: { fontSize: 10 },
+    timestamp: { color: "grey", fontSize: 10 },
   });
