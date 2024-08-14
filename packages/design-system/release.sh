@@ -46,6 +46,9 @@ yarn version $version_type
 new_version=$(node -p "require('./package.json').version")
 echo "New version: $new_version"
 
+# Release storybook
+yarn deploy:storybook
+
 # Add changes to git
 git add .
 
