@@ -22,12 +22,8 @@ TODO: Create script that
 
 ## Current Example with design system
 ```bash
-# cd packages/design-system
-yarn version patch
-version=$(node -p "require('./package.json').version")
-git add .
-git commit -m 'feat(design-system): bump version $version'
-yarn release
+cd packages/design-system
+./release.sh
 ```
 
 
@@ -36,6 +32,6 @@ yarn release
 # cd packages/react-native-logger
 version=$(node -p "require('./package.json').version")
 git add .
-git commit -m 'feat(react-native-logger): bump version $version'
+git commit -m "feat(react-native-logger): bump version $version"
 yarn release
 ```
