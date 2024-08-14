@@ -43,6 +43,6 @@ export const Editable: StoryFn<EditableInfoCardProps> = (args) => (
     label="Editable Item"
     value="Click to edit"
     editable={true}
-    onEdit={() => alert('Edit clicked!')}
+    onEdit={() => console.log('Edit clicked!')}
   />
 );
