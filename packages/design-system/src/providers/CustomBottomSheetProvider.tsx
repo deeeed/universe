@@ -29,9 +29,8 @@ import {
 } from '../components/DynInput/DynInput';
 import { SelectItemOption } from '../components/SelectItems/SelectItems';
 import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
-import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
-import { baseLogger } from '../utils/logger';
 import { AppTheme } from '../hooks/_useAppThemeSetup';
+import { baseLogger } from '../utils/logger';
 import { useTheme } from './ThemeProvider';
 
 export interface OpenDrawerProps {
@@ -234,12 +233,9 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   );
 
   const renderHandler = useCallback(
-    (props: BottomSheetHandleProps) =>
-      title ? (
-        <LabelHandler {...props} label={title} />
-      ) : (
-        <BottomSheetHandle {...props} />
-      ),
+    (props: BottomSheetHandleProps) => {
+      return <BottomSheetHandle {...props} />;
+    },
     [title]
   );
 
