@@ -1,6 +1,6 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { TestBottomSheet, TestBottomSheetProps } from './test-bottomsheet';
+import { TestBottomSheet, TestBottomSheetProps } from './TestBottomSheet';
 
 const TestBottomSheetMeta: Meta<TestBottomSheetProps> = {
   component: TestBottomSheet,

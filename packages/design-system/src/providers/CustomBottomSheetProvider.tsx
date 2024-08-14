@@ -16,6 +16,7 @@ import React, {
   createContext,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -27,9 +28,11 @@ import {
   DynamicType,
 } from '../components/DynInput/DynInput';
 import { SelectItemOption } from '../components/SelectItems/SelectItems';
-import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFoorter';
+import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
 import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import { baseLogger } from '../utils/logger';
+import { AppTheme } from '../hooks/_useAppThemeSetup';
+import { useTheme } from './ThemeProvider';
 
 export interface OpenDrawerProps {
   title?: string;
@@ -63,14 +66,16 @@ interface CustomBottomSheetModalProps {
   children: ReactNode;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    flexGrow: 1,
-    flexShrink: 1,
-    // paddingBottom: 40,
-  },
-});
+const getStyles = (theme: AppTheme) => {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      flexGrow: 1,
+      flexShrink: 1,
+      backgroundColor: theme.colors.background,
+    },
+  });
+};
 
 const defaultSnapPoints = ['40%', '80%'];
 
@@ -94,6 +99,8 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const [index, setIndex] = useState<number>(0);
   const initialInputParamsRef = useRef<string>();
   const latestInputParamsRef = useRef<unknown>();
+  const theme = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   // const { t } = useTranslation('bottom_modal');
   const [keyboardOpen, setKeyboardOpen] = useState(false);

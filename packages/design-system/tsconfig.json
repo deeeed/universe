@@ -34,7 +34,8 @@
     "noUnusedLocals": false,
     "strict": true,
     "target": "esnext",
-    "verbatimModuleSyntax": false
+    "verbatimModuleSyntax": false,
+    "types": ["jest", "node"]
   },
   "exclude": [
     "dist",

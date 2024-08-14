@@ -1,18 +1,21 @@
 // hooks/useAppTheme.ts
 import { useEffect, useMemo, useState } from 'react';
 import { MD3Theme, configureFonts } from 'react-native-paper';
+import { useScreenWidth } from './useScreenWidth';
 
-export interface AppTheme extends Omit<MD3Theme, 'colors'> {
-  // add fields for @react-navigation/native theme compatibility
+export interface CustomAppTheme extends Omit<MD3Theme, 'colors'> {
   dark: boolean;
   padding: {
-    // should adjust based on viewport
     s: number;
     m: number;
     l: number;
   };
   margin: {
-    // should adjust based on viewport
+    s: number;
+    m: number;
+    l: number;
+  };
+  gap: {
     s: number;
     m: number;
     l: number;
@@ -22,15 +25,21 @@ export interface AppTheme extends Omit<MD3Theme, 'colors'> {
     text: string;
     border: string;
     notification: string;
-    // notification related
     warning: string;
     warningContainer: string;
     success: string;
     successContainer: string;
     info: string;
     infoContainer: string;
-    // custom fields
     brand?: string;
+  };
+}
+
+export interface AppTheme extends CustomAppTheme {
+  spacing: {
+    margin: number;
+    padding: number;
+    gap: number;
   };
 }
 
@@ -48,11 +57,47 @@ export const useAppThemeSetup = ({
 }: {
   fontFamily?: string;
   savedPreferences?: SavedUserPreferences; // if set will override the theme
-  customLightTheme: AppTheme;
-  customDarkTheme: AppTheme;
+  customLightTheme: CustomAppTheme;
+  customDarkTheme: CustomAppTheme;
 }) => {
   const [darkMode, setDarkMode] = useState(savedPreferences?.darkMode ?? false);
   const [themeVersion, setThemeVersion] = useState<number>(3);
+  const screenWidth = useScreenWidth();
+
+  // Define initial state for dynamic spacing
+  const [dynamicSpacing, setDynamicSpacing] = useState({
+    padding: customLightTheme.padding.m,
+    margin: customLightTheme.margin.m,
+    gap: customLightTheme.gap.m,
+  });
+
+  // Update dynamic spacing based on screen width
+  useEffect(() => {
+    if (screenWidth < 600) {
+      setDynamicSpacing({
+        padding: customLightTheme.padding.s,
+        margin: customLightTheme.margin.s,
+        gap: customLightTheme.gap.s,
+      });
+    } else if (screenWidth < 1024) {
+      setDynamicSpacing({
+        padding: customLightTheme.padding.m,
+        margin: customLightTheme.margin.m,
+        gap: customLightTheme.gap.m,
+      });
+    } else {
+      setDynamicSpacing({
+        padding: customLightTheme.padding.l,
+        margin: customLightTheme.margin.l,
+        gap: customLightTheme.gap.l,
+      });
+    }
+  }, [
+    screenWidth,
+    customLightTheme.padding,
+    customLightTheme.margin,
+    customLightTheme.gap,
+  ]);
 
   useEffect(() => {
     if (savedPreferences) {
@@ -61,8 +106,12 @@ export const useAppThemeSetup = ({
   }, [savedPreferences]);
 
   const theme = useMemo(() => {
-    return darkMode ? customDarkTheme : customLightTheme;
-  }, [darkMode, customDarkTheme, customLightTheme]);
+    const baseTheme = darkMode ? customDarkTheme : customLightTheme;
+    return {
+      ...baseTheme,
+      spacing: dynamicSpacing, // Add the dynamic spacing to the theme
+    };
+  }, [darkMode, customDarkTheme, customLightTheme, dynamicSpacing]);
 
   const configuredFontTheme = {
     ...theme,

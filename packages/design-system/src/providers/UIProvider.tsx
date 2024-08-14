@@ -17,14 +17,18 @@ import {
   ThemePreferences,
   useAppPreferencesSetup,
 } from '../hooks/_useAppPreferencesSetup';
-import { AppTheme, useAppThemeSetup } from '../hooks/_useAppThemeSetup';
+import {
+  AppTheme,
+  CustomAppTheme,
+  useAppThemeSetup,
+} from '../hooks/_useAppThemeSetup';
 import { ConfirmProvider, ConfirmProviderProps } from './ConfirmProvider';
 import { CustomBottomSheetModal } from './CustomBottomSheetProvider';
 import { LanguageProvider } from './LanguageProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { ToastProvider, ToastProviderProps } from './ToastProvider';
 
-export const DefaultLightTheme: AppTheme = {
+export const DefaultLightTheme: CustomAppTheme = {
   ...MD3LightTheme,
   dark: false,
   padding: {
@@ -36,6 +40,11 @@ export const DefaultLightTheme: AppTheme = {
     s: 5,
     m: 10,
     l: 15,
+  },
+  gap: {
+    s: 5,
+    m: 8,
+    l: 8,
   },
   colors: {
     ...MD3LightTheme.colors,
@@ -50,7 +59,7 @@ export const DefaultLightTheme: AppTheme = {
   },
 };
 
-export const DefaultDarkTheme: AppTheme = {
+export const DefaultDarkTheme: CustomAppTheme = {
   ...MD3DarkTheme,
   dark: true,
   padding: {
@@ -62,6 +71,11 @@ export const DefaultDarkTheme: AppTheme = {
     s: 5,
     m: 10,
     l: 15,
+  },
+  gap: {
+    s: 5,
+    m: 8,
+    l: 8,
   },
   colors: {
     ...MD3DarkTheme.colors,
