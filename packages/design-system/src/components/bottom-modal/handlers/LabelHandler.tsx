@@ -11,7 +11,7 @@ import { Text } from 'react-native-paper';
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.surfaceVariant,
       paddingBottom: theme.padding.l,
       paddingHorizontal: theme.padding.l,
       borderBottomWidth: 1,
@@ -50,9 +50,11 @@ export const LabelHandler = ({ label = '', ...rest }: LabelHandlerProps) => {
       indicatorStyle={styles.indicator}
       style={styles.container}
     >
-      <View style={styles.titleContainer}>
-        <Text variant="headlineMedium">{label}</Text>
-      </View>
+      {label && (
+        <View style={styles.titleContainer}>
+          <Text variant="headlineMedium">{label}</Text>
+        </View>
+      )}
     </BottomSheetHandle>
   );
 };

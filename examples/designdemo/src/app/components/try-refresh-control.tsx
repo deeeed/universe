@@ -1,6 +1,6 @@
 import { RefreshControl } from "@siteed/design-system";
 import React, { useMemo, useState } from "react";
-import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 
 const getStyles = () => {
   return StyleSheet.create({

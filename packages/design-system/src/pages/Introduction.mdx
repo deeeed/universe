@@ -39,6 +39,7 @@ Quickly integrate the design system into your app by importing and using the pro
 import 'intl-pluralrules';
 // Keep polyfills on top
 import { LabelSwitch, ScreenWrapper, UIProvider, useThemePreferences, Picker, SelectOption } from "@siteed/design-system";
+
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -75,4 +76,48 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+```
+
+## Usage with Expo Router and React Navigation
+```tsx
+import { ThemeProvider } from "@react-navigation/native";
+import { UIProvider, useThemePreferences } from "@siteed/design-system";
+import { getLogger } from "@siteed/react-native-logger";
+import { Drawer } from "expo-router/drawer";
+import { useEffect } from "react";
+
+export const unstable_settings = {
+  initialRouteName: "(tabs)", // always go back to the tabs screen
+};
+
+const logger = getLogger("WithMainProviders");
+const WithMainProviders = () => {
+  const { theme } = useThemePreferences();
+
+  useEffect(() => {
+    logger.info("App started", theme);
+  }, [logger]);
+
+  return (
+    <ThemeProvider value={theme}>
+      <Drawer screenOptions={{ headerShown: true }}>
+        <Drawer.Screen name="(tabs)" />
+      </Drawer>
+    </ThemeProvider>
+  );
+};
+
+export default function HomeLayout() {
+  return (
+    <UIProvider
+      toastProviderProps={{
+        overrides: {
+          snackbarStyle: { marginBottom: 100 },
+        },
+      }}
+    >
+      <WithMainProviders />
+    </UIProvider>
+  );
+}
 ```

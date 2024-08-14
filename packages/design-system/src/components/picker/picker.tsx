@@ -295,7 +295,7 @@ export const Picker = ({
       </View>
       {activeOptions.length > 0 && (
         <Pressable onPress={handlePick} testID="picker-right-handle">
-          <AntDesign name="right" size={24} />
+          <AntDesign name="right" size={24} color={theme.colors.text} />
         </Pressable>
       )}
       <BottomSheetModal

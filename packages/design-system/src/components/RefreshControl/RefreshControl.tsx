@@ -44,6 +44,8 @@ const getStyles = ({
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: progressBackgroundColor,
+      height: maxTranslateY,
+      overflow: 'hidden',
     },
   });
 };

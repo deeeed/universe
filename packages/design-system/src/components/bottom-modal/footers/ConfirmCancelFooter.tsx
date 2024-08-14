@@ -12,7 +12,7 @@ import { Button } from '../../Button/Button';
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     footer: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.surfaceVariant,
       borderTopColor: theme.colors.outline,
       borderTopWidth: 1,
       display: 'flex',
@@ -20,8 +20,8 @@ const getStyles = (theme: AppTheme) => {
       justifyContent: 'space-around',
       padding: theme.padding.m,
     },
-    finishButton: {},
-    cancelButton: {},
+    finishButton: { paddingHorizontal: 20 },
+    cancelButton: { paddingHorizontal: 20 },
   });
 };
 

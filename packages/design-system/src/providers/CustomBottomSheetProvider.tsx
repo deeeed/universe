@@ -71,7 +71,7 @@ const getStyles = (theme: AppTheme) => {
       flex: 1,
       flexGrow: 1,
       flexShrink: 1,
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.surface,
     },
   });
 };
