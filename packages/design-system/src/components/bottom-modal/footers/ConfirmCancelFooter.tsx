@@ -2,25 +2,23 @@ import {
   BottomSheetFooter,
   BottomSheetFooterProps,
 } from '@gorhom/bottom-sheet';
-import { useTheme } from '../../../providers/ThemeProvider';
-import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { AppTheme } from '../../../hooks/_useAppThemeSetup';
-import { Button } from '../../Button/Button';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { StyleSheet } from 'react-native';
+import { AppTheme } from '../../../hooks/_useAppThemeSetup';
+import { useTheme } from '../../../providers/ThemeProvider';
+import { Button } from '../../Button/Button';
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     footer: {
-      borderTopWidth: 2,
-      backgroundColor: 'white',
+      backgroundColor: theme.colors.surface,
       borderTopColor: theme.colors.outline,
-      // marginBottom: 20,
+      borderTopWidth: 1,
       display: 'flex',
       flexDirection: 'row',
       justifyContent: 'space-around',
-      padding: 10,
+      padding: theme.padding.m,
     },
     finishButton: {},
     cancelButton: {},
@@ -38,19 +36,21 @@ export const ConfirmCancelFooter = (props: ConfirmCancelFooterProps) => {
   const { t } = useTranslation('confirm_cancel_footer');
 
   return (
-    <BottomSheetFooter {...props}>
-      <View style={styles.footer}>
-        <Button style={styles.cancelButton} onPress={props.onCancel}>
-          {t('cancel')}
-        </Button>
-        <Button
-          style={styles.finishButton}
-          mode="contained"
-          onPress={props.onFinish}
-        >
-          {t('finish')}
-        </Button>
-      </View>
+    <BottomSheetFooter {...props} style={styles.footer}>
+      <Button
+        mode="outlined"
+        style={styles.cancelButton}
+        onPress={props.onCancel}
+      >
+        {t('cancel')}
+      </Button>
+      <Button
+        style={styles.finishButton}
+        mode="contained"
+        onPress={props.onFinish}
+      >
+        {t('finish')}
+      </Button>
     </BottomSheetFooter>
   );
 };

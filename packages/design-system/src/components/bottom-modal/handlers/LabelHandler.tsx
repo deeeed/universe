@@ -38,9 +38,9 @@ const getStyles = (theme: AppTheme) => {
 };
 
 export interface LabelHandlerProps extends BottomSheetHandleProps {
-  label: string;
+  label?: string;
 }
-export const LabelHandler = ({ label, ...rest }: LabelHandlerProps) => {
+export const LabelHandler = ({ label = '', ...rest }: LabelHandlerProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
