@@ -25,14 +25,16 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
   StyleSheet.create({
     container: {
       display: 'flex',
-      flexDirection: 'column',
+      flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'flex-start',
       padding: 8,
       backgroundColor: theme.colors.background,
       borderWidth: 1,
       borderRadius: 8,
-      // width: '100%',
+    },
+    contentContainer: {
+      flex: 1,
     },
     label: {
       fontWeight: 'bold',
@@ -44,11 +46,12 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
       // whiteSpace: 'pre-wrap',
       maxWidth: '100%',
     },
-    icon: {
-      position: 'absolute',
-      right: 8,
-      top: 8,
+    iconContainer: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
+    icon: {},
   });
 
 export const EditableInfoCard = ({
@@ -66,27 +69,31 @@ export const EditableInfoCard = ({
 
   const content = (
     <View style={[styles.container, containerStyle]}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={[styles.content, contentStyle]}>
-        {processing ? (
-          <ActivityIndicator size="small" />
-        ) : (
-          <Text
-            style={{
-              color: error ? theme.colors.error : theme.colors.text,
-            }}
-          >
-            {value}
-          </Text>
-        )}
+      <View style={styles.contentContainer}>
+        <Text style={styles.label}>{label}</Text>
+        <View style={[styles.content, contentStyle]}>
+          {processing ? (
+            <ActivityIndicator size="small" />
+          ) : (
+            <Text
+              style={{
+                color: error ? theme.colors.error : theme.colors.text,
+              }}
+            >
+              {value}
+            </Text>
+          )}
+        </View>
       </View>
       {editable && (
-        <IconButton
-          icon="pencil"
-          size={20}
-          style={styles.icon}
-          onPress={onEdit}
-        />
+        <View style={styles.iconContainer}>
+          <IconButton
+            icon="pencil"
+            size={20}
+            style={styles.icon}
+            onPress={onEdit}
+          />
+        </View>
       )}
     </View>
   );
