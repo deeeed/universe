@@ -31,6 +31,11 @@ const links = [
     subLabel: "Explore Toast Components",
     path: "/components/try-toasts",
   },
+  {
+    label: "EditableInfoCard",
+    subLabel: "Explore EditableInfoCard Components",
+    path: "/components/try-editable-info-card",
+  },
 ];
 
 const logger = getLogger("TryItScreen");

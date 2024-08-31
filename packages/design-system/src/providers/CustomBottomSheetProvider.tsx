@@ -1,3 +1,4 @@
+// packages/design-system/src/providers/CustomBottomSheetProvider.tsx
 import {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
@@ -157,6 +158,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         ...props,
         useFlatList: false,
         autoFocus: true,
+        withinBottomSheet: true,
         onCancel: () => {
           logger.debug('onCancel', bottomSheetModalRef.current);
           bottomSheetModalRef.current?.close();
