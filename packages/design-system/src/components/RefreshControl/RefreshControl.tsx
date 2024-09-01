@@ -1,5 +1,11 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ColorValue,
   NativeScrollEvent,
@@ -147,6 +153,8 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
   const scrollPosition = useSharedValue(0);
   const initialTranslationY = useSharedValue(0);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
+  const [isPullingState, setIsPullingState] = useState(false);
+  const hasDragged = useSharedValue(false);
 
   useEffect(() => {
     if (!refreshing) {
@@ -156,7 +164,6 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
 
   const notifyPullState = useCallback(
     (pulling: boolean) => {
-      isPulling.value = pulling;
       onPullStateChange?.(pulling);
     },
     [onPullStateChange, isPulling]
@@ -178,7 +185,12 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     .onChange((e) => {
       if (!enabled) return;
 
-      if (!isPulling.value && !isScrolling.value && e.changeY !== 0) {
+      if (
+        !hasDragged.value &&
+        !isPulling.value &&
+        !isScrolling.value &&
+        e.changeY !== 0
+      ) {
         const downward = e.changeY > 0;
         // Determine if it's a pull or a scroll
         if (
@@ -188,11 +200,15 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
         ) {
           // Pull-to-refresh
           isPulling.value = true;
+          isScrolling.value = false;
         } else {
           // Normal scroll
           isScrolling.value = true;
+          isPulling.value = false;
         }
         runOnJS(notifyPullState)(true);
+        runOnJS(setIsPullingState)(isPulling.value);
+        hasDragged.value = true;
       }
 
       if (isPulling.value) {
@@ -205,6 +221,8 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
       }
     })
     .onEnd(() => {
+      console.log('onEnd', isPulling.value);
+      hasDragged.value = false;
       if (isPulling.value) {
         cursorOpacity.value = withTiming(0);
         cursorPositionY.value = withTiming(progressViewOffset);
@@ -221,6 +239,7 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
         runOnJS(notifyPullState)(false);
       }, pullResetDelay);
 
+      runOnJS(setIsPullingState)(false);
       // Reset pulling and scrolling state
       isPulling.value = false;
       isScrolling.value = false;
@@ -242,23 +261,31 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     [scrollPosition]
   );
 
+  useEffect(() => {
+    console.log('isPullingState updated:', isPullingState);
+  }, [isPullingState]);
+
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View style={[styles.container, animatedStyles]}>
-        <Animated.View style={[styles.pullingContainer]}>
-          {refreshing ? (
-            <RefreshingIndicator color={theme.colors.primary} size={size} />
-          ) : (
-            <PullingIndicator
-              color={theme.colors.primary}
-              size={size}
-              progress={translateY.value / maxTranslateY}
-            />
-          )}
-        </Animated.View>
-        <Animated.View style={[styles.cursor, cursorAnimatedStyles]}>
-          <Loader color={theme.colors.primary} size={size} />
-        </Animated.View>
+        {isPullingState && (
+          <>
+            <Animated.View style={[styles.pullingContainer]}>
+              {refreshing ? (
+                <RefreshingIndicator color={theme.colors.primary} size={size} />
+              ) : (
+                <PullingIndicator
+                  color={theme.colors.primary}
+                  size={size}
+                  progress={translateY.value / maxTranslateY}
+                />
+              )}
+            </Animated.View>
+            <Animated.View style={[styles.cursor, cursorAnimatedStyles]}>
+              <Loader color={theme.colors.primary} size={size} />
+            </Animated.View>
+          </>
+        )}
         <Animated.ScrollView
           style={styles.content}
           ref={scrollViewRef}
