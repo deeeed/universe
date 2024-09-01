@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { ColorValue, StyleSheet } from 'react-native';
+import { ColorValue, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -19,6 +19,11 @@ const getStyles = ({
   theme: AppTheme;
 }) =>
   StyleSheet.create({
+    container: {
+      // center the loader
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     loader: {
       height: size,
       width: size,
@@ -59,5 +64,9 @@ export const Loader = ({ color, size = 40 }: LoaderProps) => {
     rotateValue.value = withRepeat(withSpring(0.5), -1, true);
   }, []);
 
-  return <Animated.View style={[styles.loader, rotateStyles]} />;
+  return (
+    <View style={styles.container}>
+      <Animated.View style={[styles.loader, rotateStyles]} />
+    </View>
+  );
 };

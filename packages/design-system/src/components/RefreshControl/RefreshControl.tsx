@@ -49,6 +49,7 @@ const getStyles = ({
       top: -maxTranslateY,
       left: 0,
       right: 0,
+      zIndex: 99,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: progressBackgroundColor,
@@ -63,7 +64,7 @@ const getStyles = ({
       alignItems: 'center',
       justifyContent: 'center',
       height: maxTranslateY,
-      zIndex: 1,
+      zIndex: 99,
     },
   });
 };
