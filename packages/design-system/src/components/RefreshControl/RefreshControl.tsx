@@ -1,6 +1,6 @@
 // packages/design-system/src/components/refresh-control/refresh-control.tsx
 import { Feather } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ColorValue,
   Platform,
@@ -53,11 +53,14 @@ const getStyles = ({
 export interface RefreshControlProps extends RefreshControlPropsRN {
   PullingIndicator?: () => React.ReactNode;
   RefreshingIndicator?: () => React.ReactNode;
+  onPullStateChange?: (isPulling: boolean) => void;
+  pullResetDelay?: number;
 }
 
 const maxTranslateY = 50;
 const defaultProgressViewOffset = -maxTranslateY / 2;
 const defaultIndicatorSize = 24;
+const DEFAULT_PULL_RESET_DELAY = 300; // 300ms default delay
 
 interface PullingIndicatorProps {
   color?: string;
@@ -78,6 +81,8 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   PullingIndicator = DefaultPullingIndicator,
   RefreshingIndicator = DefaultRefreshingIndicator,
+  onPullStateChange,
+  pullResetDelay = DEFAULT_PULL_RESET_DELAY,
   ...rcProps
 }) => {
   if (Platform.OS !== 'web') {
@@ -102,6 +107,7 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     () => getStyles({ theme, progressBackgroundColor }),
     [theme, progressBackgroundColor]
   );
+  const isPulling = useSharedValue(false);
 
   useEffect(() => {
     if (!refreshing) {
@@ -109,9 +115,18 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     }
   }, [refreshing]);
 
+  const notifyPullState = useCallback(
+    (pulling: boolean) => {
+      isPulling.value = pulling;
+      onPullStateChange?.(pulling);
+    },
+    [onPullStateChange, isPulling]
+  );
+
   const tap = Gesture.Pan()
     .onStart((_e) => {
       initialTranslateY.current = translateY.value;
+      runOnJS(notifyPullState)(true);
     })
     .onChange((e) => {
       if (!enabled) return;
@@ -136,6 +151,9 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     .onEnd(() => {
       cursorOpacity.value = 0;
       cursorPositionY.value = progressViewOffset;
+      setTimeout(() => {
+        runOnJS(notifyPullState)(false);
+      }, pullResetDelay);
 
       runOnJS(logger.debug)(
         `end drag translateY.value=${translateY.value} progressViewOffset=${progressViewOffset} `,

@@ -1,7 +1,13 @@
 // packages/design-system/src/components/refresh-control/refresh-control.stories.tsx
 import type { Meta } from '@storybook/react';
-import React, { useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import {
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { Text } from 'react-native-paper';
 import { RefreshControl, RefreshControlProps } from './RefreshControl';
 
@@ -46,6 +52,7 @@ export const WithScrollView = (args: RefreshControlProps) => {
 
 export const WithFlatList = (args: RefreshControlProps) => {
   const [refreshing, setRefreshing] = useState(args.refreshing);
+  const [isPulling, setIsPulling] = useState(false);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -59,10 +66,23 @@ export const WithFlatList = (args: RefreshControlProps) => {
     text: `Scrollable content ${index + 1}`,
   }));
 
+  const handlePullStateChange = useCallback((pulling: boolean) => {
+    setIsPulling(pulling);
+  }, []);
+
   const renderItem = ({ item }: { item: { key: string; text: string } }) => (
-    <View style={styles.item}>
+    <Pressable
+      style={styles.item}
+      onPress={() => {
+        if (!isPulling) {
+          console.log('Item pressed:', item.text);
+        } else {
+          console.log('Press prevented due to pull gesture');
+        }
+      }}
+    >
       <Text>{item.text}</Text>
-    </View>
+    </Pressable>
   );
 
   return (
@@ -72,9 +92,42 @@ export const WithFlatList = (args: RefreshControlProps) => {
       keyExtractor={(item) => item.key}
       contentContainerStyle={styles.list}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          onPullStateChange={handlePullStateChange}
+        />
       }
     />
+  );
+};
+
+export const WithEmptyState = (args: RefreshControlProps) => {
+  const [refreshing, setRefreshing] = useState(args.refreshing);
+  const [hasData, setHasData] = useState(false);
+
+  const onRefresh = () => {
+    console.log('onRefresh');
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshing(false);
+      setHasData(true);
+    }, 2000); // simulate a refresh time of 2 seconds
+  };
+
+  return (
+    <ScrollView
+      contentContainerStyle={[styles.scrollView, styles.emptyStateContainer]}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      {hasData ? (
+        <Text>Data loaded after refresh</Text>
+      ) : (
+        <Text>Pull down to refresh and load data</Text>
+      )}
+    </ScrollView>
   );
 };
 
@@ -96,5 +149,10 @@ const styles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
+  },
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
