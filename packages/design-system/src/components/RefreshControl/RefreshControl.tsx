@@ -188,11 +188,11 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
         ) {
           // Pull-to-refresh
           isPulling.value = true;
-          runOnJS(notifyPullState)(true);
         } else {
           // Normal scroll
           isScrolling.value = true;
         }
+        runOnJS(notifyPullState)(true);
       }
 
       if (isPulling.value) {
@@ -208,9 +208,6 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
       if (isPulling.value) {
         cursorOpacity.value = withTiming(0);
         cursorPositionY.value = withTiming(progressViewOffset);
-        setTimeout(() => {
-          runOnJS(notifyPullState)(false);
-        }, pullResetDelay);
 
         if (translateY.value > progressViewOffset) {
           if (onRefresh) {
@@ -219,6 +216,10 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
         }
         translateY.value = withSpring(0);
       }
+
+      setTimeout(() => {
+        runOnJS(notifyPullState)(false);
+      }, pullResetDelay);
 
       // Reset pulling and scrolling state
       isPulling.value = false;
