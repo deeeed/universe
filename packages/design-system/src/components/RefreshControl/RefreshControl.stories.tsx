@@ -153,6 +153,7 @@ const styles = StyleSheet.create({
   emptyStateContainer: {
     flex: 1,
     alignItems: 'center',
+    minHeight: 100,
     justifyContent: 'center',
   },
 });

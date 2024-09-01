@@ -1,13 +1,12 @@
 // packages/design-system/src/components/refresh-control/refresh-control.tsx
 import { Feather } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   ColorValue,
   Platform,
   RefreshControlProps as RefreshControlPropsRN,
   RefreshControl as RefreshControlRN,
   StyleSheet,
-  View,
   ViewStyle,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -21,10 +20,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
-import { baseLogger } from '../../utils/logger';
 import { Loader } from './Loader';
-
-const logger = baseLogger.extend('RefreshControl');
 
 const getStyles = ({
   progressBackgroundColor,
@@ -35,17 +31,38 @@ const getStyles = ({
   return StyleSheet.create({
     container: {
       ...((Platform.OS === 'web'
-        ? { overflow: 'auto', height: '100%' }
+        ? {
+            overflow: 'hidden',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+          }
         : {}) as ViewStyle),
       flex: 1,
       width: '100%',
     },
+    content: {
+      flex: 1,
+    },
     pullingContainer: {
+      position: 'absolute',
+      top: -maxTranslateY,
+      left: 0,
+      right: 0,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: progressBackgroundColor,
       height: maxTranslateY,
       overflow: 'hidden',
+    },
+    cursor: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: maxTranslateY,
     },
   });
 };
@@ -98,7 +115,6 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     onRefresh,
     children,
   } = rcProps;
-  const initialTranslateY = useRef(0);
   const translateY = useSharedValue(0);
   const cursorOpacity = useSharedValue(0);
   const cursorPositionY = useSharedValue(0);
@@ -123,48 +139,38 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     [onPullStateChange, isPulling]
   );
 
+  const animateValues = (newTranslateY: number) => {
+    'worklet';
+    translateY.value = newTranslateY;
+    cursorPositionY.value = Math.min(10, newTranslateY);
+    cursorOpacity.value = 0.5 + (newTranslateY / maxTranslateY) * 0.5;
+  };
+
   const tap = Gesture.Pan()
     .onStart((_e) => {
-      initialTranslateY.current = translateY.value;
       runOnJS(notifyPullState)(true);
     })
     .onChange((e) => {
       if (!enabled) return;
-
-      let newTranslateY = translateY.value + e.changeY;
-      // const distance = newTranslateY - initialTranslateY.current;
-      if (newTranslateY < 0) {
-        newTranslateY = 0;
-      } else if (newTranslateY >= maxTranslateY) {
-        newTranslateY = maxTranslateY;
-      }
-
-      cursorPositionY.value = Math.min(10, newTranslateY);
-      cursorOpacity.value = 0.5 + (newTranslateY / maxTranslateY) * 0.5;
-
-      // runOnJS(logger.debug)(
-      //   'drag',
-      //   `distance: ${distance}, newTranslateY: ${newTranslateY} ==> translateY: ${translateY.value}`
-      // );
-      translateY.value = newTranslateY;
+      const newTranslateY = Math.max(
+        0,
+        Math.min(translateY.value + e.changeY, maxTranslateY)
+      );
+      animateValues(newTranslateY);
     })
     .onEnd(() => {
-      cursorOpacity.value = 0;
-      cursorPositionY.value = progressViewOffset;
+      cursorOpacity.value = withTiming(0);
+      cursorPositionY.value = withTiming(progressViewOffset);
       setTimeout(() => {
         runOnJS(notifyPullState)(false);
       }, pullResetDelay);
 
-      runOnJS(logger.debug)(
-        `end drag translateY.value=${translateY.value} progressViewOffset=${progressViewOffset} `,
-        translateY.value
-      );
       if (translateY.value > progressViewOffset) {
-        translateY.value = withSpring(0);
         if (onRefresh) {
           runOnJS(onRefresh)();
         }
       }
+      translateY.value = withSpring(0);
     });
 
   const animatedStyles = useAnimatedStyle(() => ({
@@ -179,22 +185,17 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
   return (
     <GestureDetector gesture={tap}>
       <Animated.View style={[styles.container, animatedStyles]}>
-        <>
+        <Animated.View style={[styles.pullingContainer]}>
           {refreshing ? (
             <RefreshingIndicator />
           ) : (
-            <View>
-              <Animated.View
-                style={[styles.pullingContainer, cursorAnimatedStyles]}
-              >
-                {}
-                {/* <PullingIndicator color={theme.colors.primary} size={size} /> */}
-                <Loader color={theme.colors.primary} size={size} />
-              </Animated.View>
-              {children}
-            </View>
+            <PullingIndicator color={theme.colors.primary} size={size} />
           )}
-        </>
+        </Animated.View>
+        <Animated.View style={[styles.cursor, cursorAnimatedStyles]}>
+          <Loader color={theme.colors.primary} size={size} />
+        </Animated.View>
+        <Animated.View style={styles.content}>{children}</Animated.View>
       </Animated.View>
     </GestureDetector>
   );
