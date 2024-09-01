@@ -1,14 +1,15 @@
+// examples/designdemo/src/app/(tabs)/bottom.tsx
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import {
   Accordion,
   AccordionItemProps,
   Button,
   Picker,
-  TextInput,
   useBottomModal,
 } from "@siteed/design-system";
 import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { TestHook } from "testingui";
 
 const getStyles = () => {
   return StyleSheet.create({
@@ -156,6 +157,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
       <View>
         <Button onPress={handleEditProp}>Edit PRops (string)</Button>
       </View>
+
       <View>
         <Text>Within Provider</Text>
         <Button onPress={handlePresentModalPress}>Present Modal</Button>
@@ -171,7 +173,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
           onChange={handleSheetChanges}
         >
           <BottomSheetView style={styles.contentContainer}>
-            <TextInput placeholder="Type here" />
+            <TestHook />
           </BottomSheetView>
         </BottomSheetModal>
       </View>

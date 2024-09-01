@@ -50,11 +50,11 @@ export const LabelHandler = ({ label = '', ...rest }: LabelHandlerProps) => {
       indicatorStyle={styles.indicator}
       style={styles.container}
     >
-      {label && (
+      {label ? (
         <View style={styles.titleContainer}>
           <Text variant="headlineMedium">{label}</Text>
         </View>
-      )}
+      ) : undefined}
     </BottomSheetHandle>
   );
 };

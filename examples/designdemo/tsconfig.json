@@ -4,7 +4,9 @@
     "strict": true,
     "paths": {
       "@siteed/design-system": ["../../packages/design-system/src/index"],
-      "@siteed/design-system/*": ["../../packages/design-system/src/*"]
+      "@siteed/design-system/*": ["../../packages/design-system/src/*"],
+      "@siteed/testingui": ["../../packages/testingui/src/index"],
+      "@siteed/testingui/*": ["../../packages/testingui/src/*"]
     }
   }
 }

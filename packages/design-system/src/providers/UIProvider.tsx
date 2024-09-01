@@ -1,3 +1,4 @@
+// packages/design-system/src/providers/UIProvider.tsx
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';

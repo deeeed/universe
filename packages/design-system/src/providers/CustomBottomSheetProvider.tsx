@@ -9,6 +9,7 @@ import {
   BottomSheetModalProps,
   BottomSheetModalProvider,
   BottomSheetScrollView,
+  BottomSheetView,
   useBottomSheetModal,
 } from '@gorhom/bottom-sheet';
 import React, {
@@ -34,10 +35,13 @@ import { AppTheme } from '../hooks/_useAppThemeSetup';
 import { baseLogger } from '../utils/logger';
 import { useTheme } from './ThemeProvider';
 
+export type BottomSheetContainerType = 'scroll' | 'view';
+
 export interface OpenDrawerProps {
   title?: string;
   footerType?: 'confirm_cancel';
   initialData?: unknown;
+  containerType?: BottomSheetContainerType;
   bottomSheetProps?: Partial<BottomSheetModalProps>;
   render: (props: {
     resolve?: (value: unknown) => void;
@@ -101,6 +105,8 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const latestInputParamsRef = useRef<unknown>();
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
+  const [containerType, setContainerType] =
+    useState<BottomSheetContainerType>('scroll');
 
   // const { t } = useTranslation('bottom_modal');
   const [keyboardOpen, setKeyboardOpen] = useState(false);
@@ -255,8 +261,14 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
 
   const openDrawer = useCallback(
     async (props: OpenDrawerProps) => {
-      const { bottomSheetProps, footerType, title, initialData, render } =
-        props;
+      const {
+        bottomSheetProps,
+        footerType,
+        title,
+        containerType = 'scroll',
+        initialData,
+        render,
+      } = props;
       const { snapPoints, index, enableDynamicSizing } = bottomSheetProps || {};
 
       if (_snapPoints) {
@@ -283,6 +295,8 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       if (title) {
         setTitle(title);
       }
+
+      setContainerType(containerType);
 
       initialInputParamsRef.current = JSON.stringify(initialData);
 
@@ -348,6 +362,24 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     }
   }, []);
 
+  const renderContent = useCallback(() => {
+    switch (containerType) {
+      case 'view':
+        return (
+          <BottomSheetView style={styles.container}>
+            {drawerContent}
+          </BottomSheetView>
+        );
+      case 'scroll':
+      default:
+        return (
+          <BottomSheetScrollView style={styles.container}>
+            {drawerContent}
+          </BottomSheetScrollView>
+        );
+    }
+  }, [containerType, drawerContent, styles.container]);
+
   return (
     <CustomBottomSheetModalContext.Provider
       value={{
@@ -374,9 +406,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         handleComponent={renderHandler}
         backdropComponent={renderBackdrop}
       >
-        <BottomSheetScrollView style={styles.container}>
-          {drawerContent}
-        </BottomSheetScrollView>
+        {renderContent()}
       </BottomSheetModal>
     </CustomBottomSheetModalContext.Provider>
   );

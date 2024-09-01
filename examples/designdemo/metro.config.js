@@ -64,6 +64,13 @@ config.resolver = {
         filePath: designSystem + "/src/index.ts",
         type: "sourceFile",
       };
+    } else if (moduleName.startsWith("testingui")) {
+      // Logic to resolve the module name to a file path...
+      // NOTE: Throw an error if there is no resolution.
+      return {
+        filePath: monorepoRoot + "/packages/testingui/src/index.tsx",
+        type: "sourceFile",
+      };
     } else if (moduleName === "react" || moduleName === "react-dom") {
       // console.log(
       //   `Resolving ${moduleName} to ${path.resolve(projectRoot, `node_modules/${moduleName}`)}`,
