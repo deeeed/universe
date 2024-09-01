@@ -7,6 +7,9 @@ import {
   RefreshControl as RefreshControlRN,
   StyleSheet,
   ViewStyle,
+  ScrollView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { ActivityIndicator } from 'react-native-paper';
@@ -84,6 +87,7 @@ const DEFAULT_PULL_RESET_DELAY = 300; // 300ms default delay
 interface PullingIndicatorProps {
   color?: ColorValue;
   size?: number;
+  progress: number;
 }
 
 interface RefreshingIndicatorProps {
@@ -94,12 +98,21 @@ interface RefreshingIndicatorProps {
 const DefaultPullingIndicator = ({
   color,
   size = defaultIndicatorSize,
+  progress,
 }: PullingIndicatorProps) => {
-  return <Feather name="arrow-down" size={size} color={color as string} />;
+  const rotation = progress * 180;
+  return (
+    <Animated.View style={{ transform: [{ rotate: `${rotation}deg` }] }}>
+      <Feather name="arrow-down" size={size} color={color as string} />
+    </Animated.View>
+  );
 };
 
-const DefaultRefreshingIndicator = () => {
-  return <ActivityIndicator />;
+const DefaultRefreshingIndicator = ({
+  color,
+  size,
+}: RefreshingIndicatorProps) => {
+  return <ActivityIndicator color={color as string} size={size} />;
 };
 
 export const RefreshControl: React.FC<RefreshControlProps> = ({
@@ -131,6 +144,7 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     [theme, progressBackgroundColor]
   );
   const isPulling = useSharedValue(false);
+  const scrollPosition = useSharedValue(0);
 
   useEffect(() => {
     if (!refreshing) {
@@ -153,12 +167,14 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     cursorOpacity.value = 0.5 + (newTranslateY / maxTranslateY) * 0.5;
   };
 
-  const tap = Gesture.Pan()
+  const gesture = Gesture.Pan()
     .onStart((_e) => {
-      runOnJS(notifyPullState)(true);
+      if (scrollPosition.value <= 0) {
+        runOnJS(notifyPullState)(true);
+      }
     })
     .onChange((e) => {
-      if (!enabled) return;
+      if (!enabled || scrollPosition.value > 0) return;
       const newTranslateY = Math.max(
         0,
         Math.min(translateY.value + e.changeY, maxTranslateY)
@@ -189,20 +205,37 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     transform: [{ translateY: cursorPositionY.value }],
   }));
 
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollPosition.value = event.nativeEvent.contentOffset.y;
+    },
+    [scrollPosition]
+  );
+
   return (
-    <GestureDetector gesture={tap}>
+    <GestureDetector gesture={gesture}>
       <Animated.View style={[styles.container, animatedStyles]}>
         <Animated.View style={[styles.pullingContainer]}>
           {refreshing ? (
-            <RefreshingIndicator />
+            <RefreshingIndicator color={theme.colors.primary} size={size} />
           ) : (
-            <PullingIndicator color={theme.colors.primary} size={size} />
+            <PullingIndicator
+              color={theme.colors.primary}
+              size={size}
+              progress={translateY.value / maxTranslateY}
+            />
           )}
         </Animated.View>
         <Animated.View style={[styles.cursor, cursorAnimatedStyles]}>
           <Loader color={theme.colors.primary} size={size} />
         </Animated.View>
-        <Animated.View style={styles.content}>{children}</Animated.View>
+        <ScrollView
+          style={styles.content}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
+          {children}
+        </ScrollView>
       </Animated.View>
     </GestureDetector>
   );
