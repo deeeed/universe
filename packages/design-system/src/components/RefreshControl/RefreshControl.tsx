@@ -221,7 +221,6 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
       }
     })
     .onEnd(() => {
-      console.log('onEnd', isPulling.value);
       hasDragged.value = false;
       if (isPulling.value) {
         cursorOpacity.value = withTiming(0);
@@ -260,10 +259,6 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     },
     [scrollPosition]
   );
-
-  useEffect(() => {
-    console.log('isPullingState updated:', isPullingState);
-  }, [isPullingState]);
 
   return (
     <GestureDetector gesture={gesture}>
