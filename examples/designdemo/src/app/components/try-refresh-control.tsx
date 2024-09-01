@@ -8,7 +8,7 @@ const getStyles = () => {
       flex: 1,
     },
     scrollView: {
-      flexGrow: 1,
+      // flexGrow: 1,
     },
     content: {
       alignItems: "center",
@@ -22,6 +22,7 @@ const getStyles = () => {
       alignItems: "center",
       justifyContent: "center",
       padding: 10,
+      height: 150,
       borderBottomWidth: 1,
       borderBottomColor: "#ccc",
     },
@@ -44,14 +45,14 @@ export const TryRefreshControl = () => {
     text: `Scrollable content ${index + 1}`,
   }));
 
-  const renderItem = ({ item }: any) => (
+  const renderItem = ({ item }: { item: { key: string; text: string } }) => (
     <View style={styles.item}>
       <Text>{item.text}</Text>
     </View>
   );
 
   return (
-    <View>
+    <View style={{ flex: 1 }}>
       <FlatList
         data={data}
         renderItem={renderItem}
