@@ -171,26 +171,15 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
 
   const gesture = Gesture.Pan()
     .onStart((e) => {
-      // if (scrollPosition.value <= 0) {
-      //   runOnJS(notifyPullState)(true);
-      // }
-      // Reset states
       isPulling.value = false;
       isScrolling.value = false;
       initialTranslationY.value = e.translationY; // Capture initial translationY
-      console.log('initialTranslationY', initialTranslationY.value);
     })
     .onChange((e) => {
       if (!enabled) return;
 
       if (!isPulling.value && !isScrolling.value && e.changeY !== 0) {
-        console.log('scrollPosition', scrollPosition.value);
-        console.log('e.translationY', e.translationY);
-        console.log('initialTranslationY', initialTranslationY.value);
-        console.log('translateY', translateY.value);
         const downward = e.changeY > 0;
-        console.log('downward', downward);
-        console.log(`e`, e);
         // Determine if it's a pull or a scroll
         if (
           initialTranslationY.value === 0 &&
@@ -204,8 +193,6 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
           // Normal scroll
           isScrolling.value = true;
         }
-        console.log('isPulling', isPulling.value);
-        console.log('isScrolling', isScrolling.value);
       }
 
       if (isPulling.value) {
