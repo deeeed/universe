@@ -1,4 +1,3 @@
-// packages/design-system/src/components/refresh-control/refresh-control.tsx
 import { Feather } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import {
@@ -60,16 +59,18 @@ const getStyles = ({
       position: 'absolute',
       left: 0,
       right: 0,
+      top: 0,
       alignItems: 'center',
       justifyContent: 'center',
       height: maxTranslateY,
+      zIndex: 1,
     },
   });
 };
 
 export interface RefreshControlProps extends RefreshControlPropsRN {
-  PullingIndicator?: () => React.ReactNode;
-  RefreshingIndicator?: () => React.ReactNode;
+  PullingIndicator?: React.FC<PullingIndicatorProps>;
+  RefreshingIndicator?: React.FC<RefreshingIndicatorProps>;
   onPullStateChange?: (isPulling: boolean) => void;
   pullResetDelay?: number;
 }
@@ -80,14 +81,20 @@ const defaultIndicatorSize = 24;
 const DEFAULT_PULL_RESET_DELAY = 300; // 300ms default delay
 
 interface PullingIndicatorProps {
-  color?: string;
+  color?: ColorValue;
   size?: number;
 }
+
+interface RefreshingIndicatorProps {
+  color?: ColorValue;
+  size?: number;
+}
+
 const DefaultPullingIndicator = ({
   color,
   size = defaultIndicatorSize,
 }: PullingIndicatorProps) => {
-  return <Feather name="arrow-down" size={size} color={color} />;
+  return <Feather name="arrow-down" size={size} color={color as string} />;
 };
 
 const DefaultRefreshingIndicator = () => {
@@ -95,7 +102,6 @@ const DefaultRefreshingIndicator = () => {
 };
 
 export const RefreshControl: React.FC<RefreshControlProps> = ({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   PullingIndicator = DefaultPullingIndicator,
   RefreshingIndicator = DefaultRefreshingIndicator,
   onPullStateChange,
@@ -111,7 +117,7 @@ export const RefreshControl: React.FC<RefreshControlProps> = ({
     enabled = true,
     progressBackgroundColor,
     progressViewOffset = -defaultProgressViewOffset,
-    size = defaultIndicatorSize, // size of the indicator
+    size = defaultIndicatorSize,
     onRefresh,
     children,
   } = rcProps;
