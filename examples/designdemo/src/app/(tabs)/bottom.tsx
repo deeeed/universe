@@ -1,15 +1,19 @@
 // examples/designdemo/src/app/(tabs)/bottom.tsx
-import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import {
   Accordion,
   AccordionItemProps,
   Button,
+  DynInput,
   Picker,
   useBottomModal,
 } from "@siteed/design-system";
 import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { TestHook } from "testingui";
 
 const getStyles = () => {
   return StyleSheet.create({
@@ -130,8 +134,9 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     try {
       const result = await editProp({
         bottomSheetProps: {
-          enableDynamicSizing: true,
-          snapPoints: ["10%", "20%"],
+          enableDynamicSizing: false,
+
+          snapPoints: ["40%", "80%"],
           index: 0,
         },
         data: "Hello",
@@ -162,18 +167,32 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
         <Text>Within Provider</Text>
         <Button onPress={handlePresentModalPress}>Present Modal</Button>
         <BottomSheetModal
-          // enableDynamicSizing
           ref={bottomSheetModalRef}
           android_keyboardInputMode="adjustResize"
           enablePanDownToClose
+          backdropComponent={(props) => <BottomSheetBackdrop {...props} />}
           // index={0}
           // snapPoints={snapPoints}
           enableDynamicSizing
-          // containerStyle={{ backgroundColor: 'transparent' }}
+          containerStyle={{ backgroundColor: "transparent" }}
           onChange={handleSheetChanges}
         >
           <BottomSheetView style={styles.contentContainer}>
-            <TestHook />
+            <DynInput
+              data="Hello"
+              inputType="text"
+              autoFocus
+              showFooter
+              withinBottomSheet
+              onCancel={() => {
+                console.log("onCancel");
+                bottomSheetModalRef.current?.close();
+              }}
+              onFinish={(value) => {
+                console.log("onFinish", value);
+                bottomSheetModalRef.current?.close();
+              }}
+            />
           </BottomSheetView>
         </BottomSheetModal>
       </View>

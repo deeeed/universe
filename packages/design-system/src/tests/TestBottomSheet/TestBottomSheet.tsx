@@ -1,5 +1,5 @@
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button/Button';
 import { useBottomModal } from '../../hooks/useBottomModal';
@@ -27,7 +27,9 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
   // variables
   const snapPoints = useMemo(() => ['20%', '50%'], []);
 
-  const { openDrawer } = useBottomModal();
+  const { openDrawer, editProp } = useBottomModal();
+
+  const [editableValue, setEditableValue] = useState('Initial Value');
 
   // callbacks
   const handlePresentModalPress = useCallback(() => {
@@ -35,6 +37,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     bottomSheetModalRef.current?.present();
     bottomSheetModalRef.current?.expand();
   }, []);
+
   const handleSheetChanges = useCallback((index: number) => {
     console.log('handleSheetChanges', index);
   }, []);
@@ -90,25 +93,40 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleOpenDrawer result`, result);
   }, [accordionData, openDrawer]);
 
+  const handleEditProp = useCallback(async () => {
+    console.log(`handleEditProp`, editProp);
+    const result = await editProp({
+      inputType: 'text',
+      bottomSheetProps: {
+        enableDynamicSizing: true,
+      },
+      data: editableValue,
+    });
+    console.log(`handleEditProp result`, result);
+    if (result) {
+      setEditableValue(result as string);
+    }
+  }, [editProp, editableValue]);
+
   return (
     <View style={styles.container}>
       <View>
         <Text>Single use</Text>
         <Button onPress={handleOpenDrawer}>open drawer</Button>
         <Button onPress={handleDynamicDrawer}>
-          open drawer (with according inside)
+          open drawer (with accordion inside)
         </Button>
+        <Button onPress={handleEditProp}>Edit Property</Button>
+        <Text>Editable Value: {editableValue}</Text>
       </View>
       <View>
         <Text>Within Provider</Text>
         <Button onPress={handlePresentModalPress}>Present Modal</Button>
         <BottomSheetModal
-          // enableDynamicSizing
           ref={bottomSheetModalRef}
           enablePanDownToClose
           index={0}
           snapPoints={snapPoints}
-          // containerStyle={{ backgroundColor: 'transparent' }}
           onChange={handleSheetChanges}
         >
           <BottomSheetView style={styles.contentContainer}>

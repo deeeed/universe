@@ -51,11 +51,11 @@ const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
       display: 'flex',
+      width: '100%',
       backgroundColor: theme.colors.surface,
     },
     footer: {
       display: 'flex',
-      // alignSelf: 'flex-end',
       flexDirection: 'row',
       justifyContent: 'space-around',
       padding: 10,
@@ -92,12 +92,18 @@ export const DynInput = ({
   }, [data, logger]);
 
   useEffect(() => {
+    let timeout: NodeJS.Timeout;
     if (inputRef.current && autoFocus) {
-      setTimeout(() => {
+      timeout = setTimeout(() => {
         // adding the timeout prevents the input focus to break sizing
         inputRef.current?.focus();
       }, 100);
+      return () => clearTimeout(timeout);
     }
+
+    return () => {
+      timeout && clearTimeout(timeout);
+    };
   }, [autoFocus]);
 
   const handleChange = useCallback(
@@ -149,8 +155,6 @@ export const DynInput = ({
         numberOfLines={numberOfLines}
         label={label}
         withinBottomSheet={withinBottomSheet}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
         value={temp as string}
         onChangeText={handleChange}
       />

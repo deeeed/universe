@@ -5,6 +5,7 @@ import { colorOptions } from '../src/_mocks/mock_data';
 import { ScreenWrapper } from '../src/components/ScreenWrapper/ScreenWrapper';
 import { UIProvider } from '../src/providers/UIProvider';
 import { ThemeConfig } from '../src/settings/ThemeConfig/ThemeConfig';
+import { setLoggerConfig } from '@siteed/react-native-logger';
 
 /** @type { import('@storybook/react').Preview } */
 const preview: Preview = {
@@ -22,6 +23,10 @@ const preview: Preview = {
 };
 
 const colors = colorOptions.map((colorOption) => colorOption.value);
+
+setLoggerConfig({
+  namespaces: '*',
+});
 
 export const decorators: Decorator[] = [
   // Using a decorator to apply padding for every story
