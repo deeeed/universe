@@ -87,7 +87,7 @@ const defaultModalProps: Partial<BottomSheetModalProps> = {
   enableDynamicSizing: true,
   snapPoints: defaultSnapPoints,
   android_keyboardInputMode: 'adjustResize',
-  keyboardBehavior: undefined,
+  keyboardBehavior: 'interactive',
   keyboardBlurBehavior: 'restore',
   enablePanDownToClose: true,
   enableDismissOnClose: true,
