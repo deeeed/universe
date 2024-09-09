@@ -1,9 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  LayoutAnimation,
-  Platform,
   StyleProp,
   TextStyle,
+  ViewStyle,
+  LayoutAnimation,
+  Platform,
   UIManager,
 } from 'react-native';
 import {
@@ -21,22 +22,33 @@ if (
 export interface AccordionProps {
   data: AccordionItemProps[];
   titleStyle?: StyleProp<TextStyle>;
+  contentContainerStyle?: StyleProp<ViewStyle>;
   animationConfig?: typeof LayoutAnimation.Presets.spring;
-  singleExpand?: boolean; // New prop for single expand functionality
+  singleExpand?: boolean;
 }
 
 export const Accordion = ({
   data,
+  titleStyle,
+  contentContainerStyle,
   animationConfig,
-  singleExpand,
+  singleExpand = false,
 }: AccordionProps) => {
-  const [expandedIndices, setExpandedIndices] = useState<number[]>([]);
+  const [expandedIndices, setExpandedIndices] = useState<number[]>(
+    data.reduce<number[]>(
+      (acc, item, index) => (item.expanded ? [...acc, index] : acc),
+      []
+    )
+  );
 
   const handleHeaderPress = useCallback(
     (index: number) => {
-      LayoutAnimation.configureNext(
-        animationConfig || LayoutAnimation.Presets.easeInEaseOut
-      );
+      if (animationConfig) {
+        LayoutAnimation.configureNext(
+          animationConfig || LayoutAnimation.Presets.easeInEaseOut
+        );
+      }
+
       setExpandedIndices((prevIndices) => {
         const isExpanded = prevIndices.includes(index);
 
@@ -48,8 +60,11 @@ export const Accordion = ({
           ? prevIndices.filter((i) => i !== index)
           : [...prevIndices, index];
       });
+
+      // Call the original onHeaderPress if provided
+      data[index]?.onHeaderPress?.();
     },
-    [animationConfig, singleExpand]
+    [animationConfig, singleExpand, data]
   );
 
   return (
@@ -57,13 +72,15 @@ export const Accordion = ({
       {data.map((item, index) => (
         <AccordionItem
           key={index}
-          title={item.title}
+          {...item}
+          titleStyle={[titleStyle, item.titleStyle]}
+          contentContainerStyle={[
+            contentContainerStyle,
+            item.contentContainerStyle,
+          ]}
           expanded={expandedIndices.includes(index)}
-          titleStyle={item.titleStyle}
           onHeaderPress={() => handleHeaderPress(index)}
-        >
-          {item.children}
-        </AccordionItem>
+        />
       ))}
     </>
   );

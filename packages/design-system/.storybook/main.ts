@@ -49,6 +49,7 @@ const config: StorybookConfig = {
     options: {},
   },
   docs: {},
+
   webpackFinal: (config: Configuration) => {
     if (!config.resolve) config.resolve = {};
     config.resolve.alias = {
@@ -99,4 +100,20 @@ const config: StorybookConfig = {
     return config;
   },
 };
+
+// Add Jest configuration separately
+if (config.framework && typeof config.framework === 'object') {
+  config.framework.options = {
+    ...config.framework.options,
+    jest: {
+      configure: (jestConfig) => {
+        jestConfig.transformIgnorePatterns = [
+          'node_modules/(?!(@storybook/.*|react-native|react-native-reanimated)/)',
+        ];
+        return jestConfig;
+      },
+    },
+  };
+}
+
 export default config;

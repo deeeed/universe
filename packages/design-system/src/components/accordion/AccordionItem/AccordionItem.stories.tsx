@@ -1,30 +1,50 @@
-import type { Meta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
 import { AccordionItem, AccordionItemProps } from './AccordionItem';
 import { Text } from 'react-native-paper';
 
-const AccordionItemMeta: Meta<AccordionItemProps> = {
+const meta: Meta<AccordionItemProps> = {
   component: AccordionItem,
   tags: ['autodocs'],
-  argTypes: {},
+  argTypes: {
+    expanded: {
+      control: 'boolean',
+    },
+    title: {
+      control: 'text',
+    },
+    onHeaderPress: { action: 'headerPressed' },
+  },
   args: {
-    expanded: true,
     title: 'Accordion Item',
-    children: <Text>this is the content</Text>,
+    children: <Text>This is the content</Text>,
   },
 };
 
-export default AccordionItemMeta;
+export default meta;
 
-export const Primary = (args: AccordionItemProps) => {
-  const [selected, setSelected] = React.useState<boolean>(false);
-  return (
-    <AccordionItem
-      {...args}
-      expanded={selected}
-      onHeaderPress={() => {
-        setSelected(!selected);
-      }}
-    />
-  );
+type Story = StoryObj<AccordionItemProps>;
+
+export const Primary: Story = {
+  render: ({ expanded: initialExpanded, ...args }) => {
+    const [expanded, setExpanded] = React.useState(initialExpanded);
+
+    React.useEffect(() => {
+      setExpanded(initialExpanded);
+    }, [initialExpanded]);
+
+    return (
+      <AccordionItem
+        {...args}
+        expanded={expanded}
+        onHeaderPress={() => {
+          setExpanded(!expanded);
+          args.onHeaderPress?.();
+        }}
+      />
+    );
+  },
+  args: {
+    expanded: false,
+  },
 };

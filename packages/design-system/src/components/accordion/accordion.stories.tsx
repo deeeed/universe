@@ -14,6 +14,7 @@ const sampleData: AccordionItemProps[] = [
   {
     title: 'Item 2',
     children: <Text>Details for item 2</Text>,
+    expanded: true,
     titleStyle: {},
   },
   {
