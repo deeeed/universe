@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback } from 'react';
 import {
   Pressable,
   StyleProp,
@@ -6,17 +6,15 @@ import {
   TextStyle,
   View,
   ViewStyle,
-  LayoutChangeEvent,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withTiming,
-  runOnUI,
-  measure,
-  useAnimatedRef,
+  WithTimingConfig,
+  Easing,
 } from 'react-native-reanimated';
 import { useTheme } from '../../../providers/ThemeProvider';
 import { AppTheme } from '../../../hooks/_useAppThemeSetup';
@@ -56,6 +54,11 @@ export interface AccordionItemProps extends AccordionItemData {
   contentContainerStyle?: StyleProp<ViewStyle>;
 }
 
+const animationConfig: WithTimingConfig = {
+  duration: 300,
+  easing: Easing.bezier(0.4, 0.0, 0.2, 1),
+};
+
 export const AccordionItem: React.FC<AccordionItemProps> = ({
   title,
   titleStyle,
@@ -67,52 +70,26 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
   const theme = useTheme();
   const styles = getStyles({ theme });
 
-  const contentHeight = useSharedValue(0);
-  const animatedHeight = useSharedValue(0);
-  const animatedRef = useAnimatedRef<Animated.View>();
-
-  useEffect(() => {
-    runOnUI(() => {
-      'worklet';
-      const measuredHeight = measure(animatedRef)?.height ?? 0;
-      contentHeight.value = measuredHeight;
-      if (expanded) {
-        animatedHeight.value = withTiming(measuredHeight, {
-          duration: 300,
-        });
-      }
-    })();
-  }, [expanded, children]);
-
-  useEffect(() => {
-    animatedHeight.value = withTiming(expanded ? contentHeight.value : 0, {
-      duration: 300,
-    });
-  }, [expanded, contentHeight.value]);
-
-  const iconAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { rotate: withTiming(expanded ? '90deg' : '0deg', { duration: 300 }) },
-    ],
-  }));
+  const animationProgress = useSharedValue(expanded ? 1 : 0);
 
   const contentAnimatedStyle = useAnimatedStyle(() => ({
-    height: animatedHeight.value,
+    opacity: animationProgress.value,
+    height: animationProgress.value === 0 ? 0 : 'auto',
   }));
 
-  const handleContentLayout = (event: LayoutChangeEvent) => {
-    const { height } = event.nativeEvent.layout;
-    contentHeight.value = height;
-    if (expanded) {
-      animatedHeight.value = withTiming(height, { duration: 300 });
-    }
-  };
+  const iconAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${animationProgress.value * 90}deg` }],
+  }));
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     if (onHeaderPress) {
       onHeaderPress();
     }
-  };
+    animationProgress.value = withTiming(
+      animationProgress.value === 0 ? 1 : 0,
+      animationConfig
+    );
+  }, [onHeaderPress]);
 
   return (
     <View style={styles.container}>
@@ -126,14 +103,14 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
           />
         </Animated.View>
       </Pressable>
-      <Animated.View style={[styles.contentContainer, contentAnimatedStyle]}>
-        <Animated.View
-          ref={animatedRef}
-          style={[styles.content, contentContainerStyle]}
-          onLayout={handleContentLayout}
-        >
-          {children}
-        </Animated.View>
+      <Animated.View
+        style={[
+          styles.contentContainer,
+          contentAnimatedStyle,
+          contentContainerStyle,
+        ]}
+      >
+        <View style={styles.content}>{children}</View>
       </Animated.View>
     </View>
   );
