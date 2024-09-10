@@ -5,17 +5,21 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import {
+  NativeSyntheticEvent,
+  TextInput as RNGTextInput,
+  StyleSheet,
+  TextInputKeyPressEventData,
+  View,
+} from 'react-native';
 import { Button } from 'react-native-paper';
 import { DatePickerModal, TimePickerModal } from 'react-native-paper-dates';
-import { StyleSheet, TextInput as RNGTextInput } from 'react-native';
-import { baseLogger } from '../../utils/logger';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
+import { baseLogger } from '../../utils/logger';
 import { SelectButtons, SelectOption } from '../SelectButtons/SelectButtons';
 import { TextInput } from '../TextInput/TextInput';
-import { useTranslation } from 'react-i18next';
-import { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
 
 type InputType =
   | 'text'
@@ -33,7 +37,7 @@ export type DynamicType =
   | SelectOption
   | Date;
 
-import { registerTranslation, en } from 'react-native-paper-dates';
+import { en, registerTranslation } from 'react-native-paper-dates';
 
 export interface DynInputProps {
   data: DynamicType;

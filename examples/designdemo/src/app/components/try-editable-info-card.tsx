@@ -3,6 +3,7 @@ import {
   ScreenWrapper,
   SelectOption,
   useModal,
+  useTheme,
 } from "@siteed/design-system";
 import React, { useState } from "react";
 import { Card, Text } from "react-native-paper";
@@ -11,6 +12,7 @@ type EditValue = string | number | SelectOption[];
 
 const TryEditableInfoCard = () => {
   const { editProp } = useModal();
+  const theme = useTheme();
   const [name, setName] = useState("John Doe");
   const [age, setAge] = useState(30);
   const [bio, setBio] = useState("A short bio about John Doe.");
@@ -41,7 +43,9 @@ const TryEditableInfoCard = () => {
 
   return (
     <ScreenWrapper>
-      <Card>
+      <Card
+        contentStyle={{ gap: theme.spacing.gap, padding: theme.spacing.gap }}
+      >
         <Text variant="titleLarge">EditableInfoCard Examples</Text>
 
         <EditableInfoCard

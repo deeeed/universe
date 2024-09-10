@@ -1,6 +1,3 @@
-import { Modal, ModalProps } from 'react-native-paper';
-
-// packages/design-system/src/providers/CustomBottomSheetProvider.tsx
 import {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
@@ -25,7 +22,7 @@ import React, {
   useState,
 } from 'react';
 import { Keyboard, Platform, StyleSheet } from 'react-native';
-import { Portal } from 'react-native-paper';
+import { Modal, ModalProps, Portal } from 'react-native-paper';
 import {
   DynInput,
   DynInputProps,
@@ -35,7 +32,7 @@ import { SelectItemOption } from '../components/SelectItems/SelectItems';
 import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
 import { AppTheme } from '../hooks/_useAppThemeSetup';
 import { baseLogger } from '../utils/logger';
-import { useTheme } from './ThemeProvider';
+import { ThemeProvider, useTheme, useThemePreferences } from './ThemeProvider';
 
 export type BottomSheetContainerType = 'scroll' | 'view';
 
@@ -117,6 +114,8 @@ type SafeModalProps = Omit<
 const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   children,
 }) => {
+  const themePreferences = useThemePreferences();
+  const theme = useTheme();
   const { dismiss, dismissAll } = useBottomSheetModal();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const onFinishResolveRef = useRef<(values: DynInputProps['data']) => void>();
@@ -126,7 +125,6 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const [footerType, setFooterType] = useState<'confirm_cancel'>();
   const initialInputParamsRef = useRef<string>();
   const latestInputParamsRef = useRef<unknown>();
-  const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [title, setTitle] = useState<string>();
   const [containerType, setContainerType] =
@@ -488,21 +486,43 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       >
         {renderContent()}
       </BottomSheetModal>
-      <Portal>
-        <Modal
-          visible={modalVisible}
-          onDismiss={handleModalDismiss}
-          contentContainerStyle={{
-            backgroundColor: theme.colors.surface,
-            padding: 20,
-            borderRadius: 8,
-            margin: 20,
-          }}
-          {...(modalProps as SafeModalProps)}
-        >
-          {modalContent}
-        </Modal>
-      </Portal>
+      {Platform.OS === 'web' ? (
+        <Portal>
+          <Modal
+            visible={modalVisible}
+            onDismiss={handleModalDismiss}
+            contentContainerStyle={{
+              backgroundColor: theme.colors.surface,
+              padding: 20,
+              borderRadius: 8,
+              margin: 20,
+            }}
+            {...(modalProps as SafeModalProps)}
+          >
+            <ThemeProvider preferences={themePreferences}>
+              {modalContent}
+            </ThemeProvider>
+          </Modal>
+        </Portal>
+      ) : (
+        <Portal>
+          <ThemeProvider preferences={themePreferences}>
+            <Modal
+              visible={modalVisible}
+              onDismiss={handleModalDismiss}
+              contentContainerStyle={{
+                backgroundColor: theme.colors.surface,
+                padding: 20,
+                borderRadius: 8,
+                margin: 20,
+              }}
+              {...(modalProps as SafeModalProps)}
+            >
+              {modalContent}
+            </Modal>
+          </ThemeProvider>
+        </Portal>
+      )}
     </CustomModalContext.Provider>
   );
 };

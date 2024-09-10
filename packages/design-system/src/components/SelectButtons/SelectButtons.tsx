@@ -22,7 +22,12 @@ const getStyles = (theme: AppTheme) => {
       flexShrink: 1,
       backgroundColor: theme.colors.surface,
     },
-    buttonContainer: { flex: 1, padding: 8 },
+    buttonContainer: {
+      display: 'flex',
+      // flexDirection: 'row',
+      // flexWrap: 'wrap',
+      gap: theme.spacing.gap,
+    },
     button: {},
     buttonSelected: {
       backgroundColor: theme.colors.secondaryContainer,
@@ -166,16 +171,15 @@ export const SelectButtons = ({
       index: number;
       key?: string;
     }) => (
-      <View key={key} style={styles.buttonContainer}>
-        <Button
-          key={`opt${index}`}
-          testID={`buttons-opt-${index}`}
-          style={[styles.button, item.selected && styles.buttonSelected]}
-          onPress={() => handleButtonPress(index)}
-        >
-          {item.label}
-        </Button>
-      </View>
+      <Button
+        key={key ?? `opt${index}`}
+        mode="outlined"
+        testID={`buttons-opt-${index}`}
+        style={[styles.button, item.selected && styles.buttonSelected]}
+        onPress={() => handleButtonPress(index)}
+      >
+        {item.label}
+      </Button>
     ),
     [handleButtonPress, styles]
   );
@@ -216,7 +220,7 @@ export const SelectButtons = ({
           key={`flatlist-${numColumns}`} // force re-render when numColumns changes
         />
       ) : (
-        <View>
+        <View style={styles.buttonContainer}>
           {filteredOptions.map((item, index) =>
             renderButton({ item, index, key: `opt${index}` })
           )}
