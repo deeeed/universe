@@ -15,6 +15,7 @@ import { useTheme } from '../../providers/ThemeProvider';
 import { SelectButtons, SelectOption } from '../SelectButtons/SelectButtons';
 import { TextInput } from '../TextInput/TextInput';
 import { useTranslation } from 'react-i18next';
+import { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
 
 type InputType =
   | 'text'
@@ -54,6 +55,9 @@ export interface DynInputProps {
   onFinish?: (value: DynamicType) => void;
   onCancel?: () => void;
   dateMode?: 'date' | 'time' | 'datetime';
+  selectTextOnFocus?: boolean;
+  finishOnEnter?: boolean;
+  cancelOnEscape?: boolean;
 }
 
 const logger = baseLogger.extend('DynInput');
@@ -92,6 +96,9 @@ export const DynInput = ({
   onCancel,
   onFinish,
   dateMode = 'date',
+  selectTextOnFocus,
+  finishOnEnter,
+  cancelOnEscape,
 }: DynInputProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -154,6 +161,16 @@ export const DynInput = ({
     // shouldHandleKeyboardEvents.value = false;
   };
 
+  const handleKeyPress = (
+    e: NativeSyntheticEvent<TextInputKeyPressEventData>
+  ) => {
+    if (finishOnEnter && e.nativeEvent.key === 'Enter') {
+      onFinish?.(temp);
+    } else if (cancelOnEscape && e.nativeEvent.key === 'Escape') {
+      onCancel?.();
+    }
+  };
+
   const renderNumber = () => {
     return (
       <TextInput
@@ -164,6 +181,11 @@ export const DynInput = ({
         onBlur={handleBlur}
         value={temp as string}
         onChangeText={handleChange}
+        selectTextOnFocus={selectTextOnFocus}
+        onKeyPress={
+          finishOnEnter || cancelOnEscape ? handleKeyPress : undefined
+        }
+        blurOnSubmit={finishOnEnter}
       />
     );
   };
@@ -178,6 +200,11 @@ export const DynInput = ({
         withinBottomSheet={withinBottomSheet}
         value={temp as string}
         onChangeText={handleChange}
+        selectTextOnFocus={selectTextOnFocus}
+        onKeyPress={
+          finishOnEnter || cancelOnEscape ? handleKeyPress : undefined
+        }
+        blurOnSubmit={finishOnEnter}
       />
     );
   };

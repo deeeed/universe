@@ -411,15 +411,17 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         return openModal({
           initialData: data,
           modalProps: modalProps,
-          render: ({ resolve, reject }) => (
+          render: ({ resolve }) => (
             <DynInput
               {...restProps}
               data={data}
               useFlatList={false}
               autoFocus={true}
+              finishOnEnter={true}
+              selectTextOnFocus={true}
               withinBottomSheet={false}
               onCancel={() => {
-                reject(new Error('Cancelled'));
+                resolve(data); // restore initial data
               }}
               onFinish={(values: DynamicType) => {
                 resolve(values);
@@ -430,50 +432,37 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       }
 
       // Drawer logic
-      setContainerType('view');
-
-      setModalProps((prev) => ({
-        ...prev,
-        ...bottomSheetProps,
-        enableDynamicSizing: bottomSheetProps?.enableDynamicSizing ?? false,
-        snapPoints: bottomSheetProps?.enableDynamicSizing
-          ? []
-          : bottomSheetProps?.snapPoints || prev.snapPoints,
-        index: bottomSheetProps?.index ?? 0,
-      }));
-
-      const newInputParams: DynInputProps = {
-        ...restProps,
-        data,
-        useFlatList: false,
-        autoFocus: true,
-        withinBottomSheet: true,
-        onCancel: () => {
-          logger.debug('onCancel', bottomSheetModalRef.current);
-          bottomSheetModalRef.current?.close();
-          onFinishResolveRef.current?.(data);
-          onFinishResolveRef.current = undefined;
-          setDrawerContent(null);
+      return openDrawer({
+        bottomSheetProps: {
+          ...bottomSheetProps,
+          enableDynamicSizing: bottomSheetProps?.enableDynamicSizing ?? false,
+          snapPoints: bottomSheetProps?.enableDynamicSizing
+            ? []
+            : bottomSheetProps?.snapPoints || defaultSnapPoints,
+          index: bottomSheetProps?.index ?? 0,
         },
-        onFinish: (values: DynamicType) => {
-          logger.debug('onFinish', values);
-          bottomSheetModalRef.current?.close();
-          onFinishResolveRef.current?.(values);
-          onFinishResolveRef.current = undefined;
-          setDrawerContent(null);
-        },
-      };
-
-      logger.debug('newInputParams', newInputParams);
-      setDrawerContent(<DynInput {...newInputParams} />);
-
-      bottomSheetModalRef.current?.present();
-
-      return new Promise((resolve) => {
-        onFinishResolveRef.current = resolve;
-      });
+        containerType: 'view',
+        initialData: data,
+        render: ({ resolve }) => (
+          <DynInput
+            {...restProps}
+            data={data}
+            useFlatList={false}
+            autoFocus={true}
+            withinBottomSheet={true}
+            selectTextOnFocus={true}
+            finishOnEnter={true}
+            onCancel={() => {
+              resolve?.(data); // restore initial data
+            }}
+            onFinish={(values) => {
+              resolve?.(values);
+            }}
+          />
+        ),
+      }) as Promise<DynamicType>;
     },
-    [logger, openModal]
+    [logger, openModal, openDrawer]
   );
 
   return (
