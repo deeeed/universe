@@ -17,13 +17,15 @@ While the design system provides good defaults to get started quickly, users hav
 
 ## Key Features
 
-- **Opinionated Library Choices**: Includes essential libraries such as `react-native-paper`, `react-native-safe-area-context`, `react-native-reanimated`, ensuring compatibility and functionality.
+- **Opinionated Library Choices**: Includes essential libraries such as `react-native-paper`, `react-native-safe-area-context`, `react-native-reanimated`, `react-native-paper-dates`, ensuring compatibility and functionality.
 - **Ready-to-Use Components**: From typography to modals, get access to a variety of UI components that are production-ready and customizable.
 - **Streamlined Configuration**: Pre-configured settings and integrations to speed up the development process, making it ideal for rapid prototyping and production projects.
 
 ## Installation
 ```bash
 npx expo install @siteed/design-system @siteed/react-native-logger react-native-paper react-native-safe-area-context @gorhom/bottom-sheet@5.0.0-alpha.11 react-native-gesture-handler @expo/vector-icons expo-localization react-native-reanimated react-native-screens react-native-vector-icons @react-navigation/native
+# we also use react-native-paper-dates for date pickers
+yarn expo install react-native-paper-dates react-native-localize @formatjs/intl-pluralrules @formatjs/intl-getcanonicallocales @formatjs/intl-listformat @formatjs/intl-displaynames @formatjs/intl-locale @formatjs/intl-datetimeformat @formatjs/intl-numberformat @formatjs/intl-relativetimeformat 
 ```
 
 ### with web support

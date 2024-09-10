@@ -1,39 +1,23 @@
 import React, { useState, useCallback } from 'react';
-import {
-  StyleProp,
-  TextStyle,
-  ViewStyle,
-  LayoutAnimation,
-  Platform,
-  UIManager,
-} from 'react-native';
+import { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import {
   AccordionItem,
   AccordionItemProps,
 } from './AccordionItem/AccordionItem';
 
-if (
-  Platform.OS === 'android' &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
 export interface AccordionProps {
   data: AccordionItemProps[];
   titleStyle?: StyleProp<TextStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
-  animationConfig?: typeof LayoutAnimation.Presets.spring;
   singleExpand?: boolean;
 }
 
-export const Accordion = ({
+export const Accordion: React.FC<AccordionProps> = ({
   data,
   titleStyle,
   contentContainerStyle,
-  animationConfig,
   singleExpand = false,
-}: AccordionProps) => {
+}) => {
   const [expandedIndices, setExpandedIndices] = useState<number[]>(
     data.reduce<number[]>(
       (acc, item, index) => (item.expanded ? [...acc, index] : acc),
@@ -43,12 +27,6 @@ export const Accordion = ({
 
   const handleHeaderPress = useCallback(
     (index: number) => {
-      if (animationConfig) {
-        LayoutAnimation.configureNext(
-          animationConfig || LayoutAnimation.Presets.easeInEaseOut
-        );
-      }
-
       setExpandedIndices((prevIndices) => {
         const isExpanded = prevIndices.includes(index);
 
@@ -64,7 +42,7 @@ export const Accordion = ({
       // Call the original onHeaderPress if provided
       data[index]?.onHeaderPress?.();
     },
-    [animationConfig, singleExpand, data]
+    [singleExpand, data]
   );
 
   return (

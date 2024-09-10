@@ -1,16 +1,16 @@
 import { Meta, Story, Canvas } from '@storybook/addon-docs';
 
-<Meta title="Hooks/useBottomModal" />
+<Meta title="Hooks/useModal" />
 
-# useBottomModal
+# useModal
 
-The `useBottomModal` hook provides methods to manage custom bottom sheet modals. It is designed to be used within a `CustomBottomSheetModalProvider`.
+The `useModal` hook provides methods to manage custom modals, including bottom sheet modals and regular modals. It is designed to be used within a `CustomModalProvider`.
 
 ## API
 
 ### `dismiss`
 
-Dismiss a specific bottom sheet modal.
+Dismiss a specific modal.
 
 - **Type**: `(key?: string) => boolean`
 - **Parameters**:
@@ -19,11 +19,11 @@ Dismiss a specific bottom sheet modal.
 
 ### `editProp`
 
-Open a bottom sheet modal for editing a property.
+Open a modal for editing a property.
 
 - **Type**: `(props: EditPropProps) => Promise<DynInputProps['data']>`
 - **Parameters**:
-  - `props`: Properties for the bottom sheet modal and the data to be edited.
+  - `props`: Properties for the modal and the data to be edited.
 - **Returns**: `Promise<DynInputProps['data']>`
 
 ### `openDrawer`
@@ -35,9 +35,18 @@ Open a custom bottom sheet modal drawer.
   - `props`: Properties for the bottom sheet modal drawer.
 - **Returns**: `Promise<unknown>`
 
+### `openModal`
+
+Open a custom modal.
+
+- **Type**: `(props: OpenModalProps) => Promise<DynamicType>`
+- **Parameters**:
+  - `props`: Properties for the modal.
+- **Returns**: `Promise<DynamicType>`
+
 ### `dismissAll`
 
-Dismiss all open bottom sheet modals.
+Dismiss all open modals.
 
 - **Type**: `() => void`
 
@@ -49,15 +58,15 @@ Ref object for the `BottomSheetModal`.
 
 ## Example
 
-Customize the bottom sheet modals by using the `openDrawer` or `editProp` methods provided by the `useBottomModal` hook.
+Customize the modals by using the `openDrawer`, `openModal`, or `editProp` methods provided by the `useModal` hook.
 
 ```tsx
 import React from 'react';
-import { useBottomModal } from '@siteed/design-system/hooks/useBottomModal';
+import { useModal } from '@siteed/design-system/hooks/useModal';
 import { Button, View, Text } from 'react-native';
 
 const App = () => {
-  const { openDrawer } = useBottomModal();
+  const { openDrawer, openModal } = useModal();
 
   const handleOpenDrawer = async () => {
     const result = await openDrawer({
@@ -76,10 +85,26 @@ const App = () => {
     console.log('Drawer Result:', result);
   };
 
+  const handleOpenModal = async () => {
+    const result = await openModal({
+      initialData: { age: 30 },
+      render: ({ resolve, reject }) => (
+        <View>
+          <Text>Modal Content</Text>
+          <Button title="Confirm" onPress={() => resolve({ age: 31 })} />
+          <Button title="Cancel" onPress={() => reject(new Error('Canceled'))} />
+        </View>
+      ),
+    });
+
+    console.log('Modal Result:', result);
+  };
+
   return (
     <View>
       <Text>Hello World</Text>
       <Button title="Open Drawer" onPress={handleOpenDrawer} />
+      <Button title="Open Modal" onPress={handleOpenModal} />
     </View>
   );
 };
@@ -87,4 +112,4 @@ const App = () => {
 export default App;
 ```
 
-For more details on the CustomBottomSheetModalProvider, refer to the [CustomBottomSheetModalProvider](?path=/docs/providers--docs#custombottomsheetmodal) documentation.
+For more details on the CustomModalProvider, refer to the [CustomModalProvider](?path=/docs/providers--docs#custommodal) documentation.

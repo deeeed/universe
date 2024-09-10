@@ -41,9 +41,9 @@ export * from './hooks/_useAppThemeSetup';
 export * from './hooks/useScreenWidth';
 export * from './hooks/useConfirm';
 export * from './hooks/useToast';
-export * from './hooks/useBottomModal';
+export * from './hooks/useModal';
 
-export * from './providers/CustomBottomSheetProvider';
+export * from './providers/CustomModalProvider';
 export * from './providers/LanguageProvider';
 export * from './providers/ThemeProvider';
 export * from './providers/UIProvider';

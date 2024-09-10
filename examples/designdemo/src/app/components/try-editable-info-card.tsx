@@ -2,7 +2,7 @@ import {
   EditableInfoCard,
   ScreenWrapper,
   SelectOption,
-  useBottomModal,
+  useModal,
 } from "@siteed/design-system";
 import React, { useState } from "react";
 import { Card, Text } from "react-native-paper";
@@ -10,7 +10,7 @@ import { Card, Text } from "react-native-paper";
 type EditValue = string | number | SelectOption[];
 
 const TryEditableInfoCard = () => {
-  const { editProp } = useBottomModal();
+  const { editProp } = useModal();
   const [name, setName] = useState("John Doe");
   const [age, setAge] = useState(30);
   const [bio, setBio] = useState("A short bio about John Doe.");

@@ -5,12 +5,15 @@ import {
   ConfirmCancelFooter,
   ConfirmCancelFooterProps,
 } from './ConfirmCancelFooter';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 // Create a decorator to provide the mocked context
 const withMockedBottomSheet = (Story: React.ComponentType) => {
   return (
     <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
-      <Story />
+      <BottomSheetModal>
+        <Story />
+      </BottomSheetModal>
     </View>
   );
 };
@@ -32,13 +35,4 @@ type Story = StoryObj<ConfirmCancelFooterProps>;
 
 export const Primary: Story = {
   args: {},
-};
-
-export const WithCustomLabels: Story = {
-  args: {
-    // Add custom labels here if your component supports them
-    // For example:
-    // cancelLabel: 'Go Back',
-    // finishLabel: 'Confirm',
-  },
 };

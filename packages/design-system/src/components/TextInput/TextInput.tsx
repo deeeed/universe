@@ -1,27 +1,75 @@
-import React, { forwardRef, useRef, useImperativeHandle } from 'react';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import React, {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from 'react';
+import {
+  NativeSyntheticEvent,
+  TextInput as RNTextInput,
+  StyleSheet,
+  TextInputFocusEventData,
+} from 'react-native';
+import { TextInput as GHTextInput } from 'react-native-gesture-handler';
 import {
   TextInput as PTextInput,
   TextInputProps as PTextInputProps,
   Text,
 } from 'react-native-paper';
-import { TextInput as RNTextInput } from 'react-native';
-import { TextInput as GestureHandlerTextInput } from 'react-native-gesture-handler';
+import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
-import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
 export interface TextInputProps extends PTextInputProps {
   mandatory?: boolean;
   withinBottomSheet?: boolean;
 }
 
-type InputRef = RNTextInput | GestureHandlerTextInput;
+export interface InputRefMethods {
+  focus: () => void;
+  blur: () => void;
+}
 
-export const TextInput = forwardRef<InputRef, TextInputProps>(
-  ({ mandatory, label, withinBottomSheet, ...rest }, ref) => {
-    const { colors } = useTheme();
-    const inputRef = useRef<InputRef>(null);
+const getStyles = ({ theme }: { theme: AppTheme }) =>
+  StyleSheet.create({
+    bottomSheetInput: {
+      fontSize: 16,
+      color: theme.colors.text,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      backgroundColor: theme.colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.surfaceDisabled,
+      minHeight: 48, // Ensure a minimum height
+      width: '100%',
+      borderWidth: 1,
+    },
+  });
 
-    useImperativeHandle(ref, () => inputRef.current!);
+export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
+  ({ mandatory, label, withinBottomSheet, onFocus, onBlur, ...rest }, ref) => {
+    const theme = useTheme();
+    const styles = useMemo(() => getStyles({ theme }), [theme]);
+    const inputRef = useRef<RNTextInput>(null);
+    const bottomSheetInputRef = useRef<GHTextInput>(null);
+
+    useImperativeHandle(ref, () => ({
+      focus: () => {
+        if (withinBottomSheet) {
+          bottomSheetInputRef.current?.focus();
+        } else {
+          inputRef.current?.focus();
+        }
+      },
+      blur: () => {
+        if (withinBottomSheet) {
+          bottomSheetInputRef.current?.blur();
+        } else {
+          inputRef.current?.blur();
+        }
+      },
+    }));
 
     const renderLabel = () => {
       if (mandatory) {
@@ -35,18 +83,29 @@ export const TextInput = forwardRef<InputRef, TextInputProps>(
       return label;
     };
 
+    const handleFocus = useCallback(
+      (event: NativeSyntheticEvent<TextInputFocusEventData>) => {
+        onFocus?.(event);
+      },
+      [onFocus]
+    );
+
+    const handleBlur = useCallback(
+      (event: NativeSyntheticEvent<TextInputFocusEventData>) => {
+        onBlur?.(event);
+      },
+      [onBlur]
+    );
+
     if (withinBottomSheet) {
       return (
-        <PTextInput
+        <BottomSheetTextInput
           {...rest}
-          render={(props) => (
-            <BottomSheetTextInput
-              {...props}
-              ref={inputRef as React.Ref<GestureHandlerTextInput>}
-              style={[{ color: colors.text }, props.style, rest.style]}
-            />
-          )}
-          label={renderLabel()}
+          ref={bottomSheetInputRef}
+          style={styles.bottomSheetInput}
+          placeholder={label as string}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
         />
       );
     }
@@ -54,9 +113,10 @@ export const TextInput = forwardRef<InputRef, TextInputProps>(
     return (
       <PTextInput
         {...rest}
-        ref={ref as React.Ref<RNTextInput>}
-        style={[{ color: colors.text }, rest.style]}
+        ref={inputRef}
         label={renderLabel()}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
       />
     );
   }

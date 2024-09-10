@@ -1,8 +1,8 @@
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button/Button';
-import { useBottomModal } from '../../hooks/useBottomModal';
+import { useModal } from '../../hooks/useModal';
 import { AccordionItemProps } from '../../components/Accordion/AccordionItem/AccordionItem';
 import { Accordion } from '../../components/Accordion/Accordion';
 
@@ -18,16 +18,20 @@ const getStyles = () => {
   });
 };
 
-export interface TestBottomSheetProps {}
-export const TestBottomSheet = (_: TestBottomSheetProps) => {
+export interface TestModalsProps {}
+export const TestModals = (_: TestModalsProps) => {
   const styles = useMemo(() => getStyles(), []);
+  const { openDrawer, editProp, openModal } = useModal();
+
+  const [editableValue, setEditableValue] = useState('Initial Value');
+  const [numberValue, setNumberValue] = useState(0);
+  const [dateValue, setDateValue] = useState(new Date());
+
   // ref
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   // variables
   const snapPoints = useMemo(() => ['20%', '50%'], []);
-
-  const { openDrawer } = useBottomModal();
 
   // callbacks
   const handlePresentModalPress = useCallback(() => {
@@ -35,6 +39,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     bottomSheetModalRef.current?.present();
     bottomSheetModalRef.current?.expand();
   }, []);
+
   const handleSheetChanges = useCallback((index: number) => {
     console.log('handleSheetChanges', index);
   }, []);
@@ -90,25 +95,104 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleOpenDrawer result`, result);
   }, [accordionData, openDrawer]);
 
+  const handleEditProp = useCallback(async () => {
+    console.log(`handleEditProp`, editProp);
+    const result = await editProp({
+      inputType: 'text',
+      bottomSheetProps: {
+        enableDynamicSizing: true,
+      },
+      data: editableValue,
+    });
+    console.log(`handleEditProp result`, result);
+    if (result) {
+      setEditableValue(result as string);
+    }
+  }, [editProp, editableValue]);
+
+  const handleOpenModal = useCallback(async () => {
+    const result = await openModal({
+      initialData: 'Modal content',
+      modalProps: {
+        dismissable: true,
+      },
+      render: ({ resolve, reject }) => (
+        <View>
+          <Text>This is a modal</Text>
+          <Button onPress={() => resolve('Modal closed')}>Close Modal</Button>
+          <Button onPress={() => reject(new Error('Modal cancelled'))}>
+            Cancel
+          </Button>
+        </View>
+      ),
+    });
+    console.log('Modal result:', result);
+  }, [openModal]);
+
+  const handleEditNumber = useCallback(async () => {
+    const result = await editProp({
+      inputType: 'number',
+      data: numberValue,
+      modalType: 'drawer',
+      bottomSheetProps: {
+        snapPoints: ['25%', '50%'],
+      },
+    });
+    if (result !== undefined) {
+      setNumberValue(result as number);
+    }
+  }, [editProp, numberValue]);
+
+  const handleEditDate = useCallback(async () => {
+    const result = await editProp({
+      inputType: 'date',
+      data: dateValue,
+      modalType: 'modal',
+      modalProps: {
+        dismissable: true,
+      },
+    });
+    if (result !== undefined) {
+      setDateValue(result as Date);
+    }
+  }, [editProp, dateValue]);
+
   return (
     <View style={styles.container}>
+      <View>
+        <Text>Modal Examples</Text>
+        <Button onPress={handleOpenDrawer}>Open Drawer</Button>
+        <Button onPress={handleOpenModal}>Open Modal</Button>
+        <Button onPress={handleDynamicDrawer}>
+          Open Drawer (with accordion)
+        </Button>
+      </View>
+      <View>
+        <Text>Edit Property Examples</Text>
+        <Button onPress={handleEditProp}>Edit Text Property</Button>
+        <Text>Editable Text Value: {editableValue}</Text>
+        <Button onPress={handleEditNumber}>Edit Number Property</Button>
+        <Text>Editable Number Value: {numberValue}</Text>
+        <Button onPress={handleEditDate}>Edit Date Property</Button>
+        <Text>Editable Date Value: {dateValue.toLocaleDateString()}</Text>
+      </View>
       <View>
         <Text>Single use</Text>
         <Button onPress={handleOpenDrawer}>open drawer</Button>
         <Button onPress={handleDynamicDrawer}>
-          open drawer (with according inside)
+          open drawer (with accordion inside)
         </Button>
+        <Button onPress={handleEditProp}>Edit Property</Button>
+        <Text>Editable Value: {editableValue}</Text>
       </View>
       <View>
         <Text>Within Provider</Text>
         <Button onPress={handlePresentModalPress}>Present Modal</Button>
         <BottomSheetModal
-          // enableDynamicSizing
           ref={bottomSheetModalRef}
           enablePanDownToClose
           index={0}
           snapPoints={snapPoints}
-          // containerStyle={{ backgroundColor: 'transparent' }}
           onChange={handleSheetChanges}
         >
           <BottomSheetView style={styles.contentContainer}>

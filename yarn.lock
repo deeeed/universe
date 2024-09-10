@@ -4418,6 +4418,121 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@formatjs/ecma402-abstract@npm:2.0.0":
+  version: 2.0.0
+  resolution: "@formatjs/ecma402-abstract@npm:2.0.0"
+  dependencies:
+    "@formatjs/intl-localematcher": "npm:0.5.4"
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/94cba291aeadffa3ca416087c2c2352c8a741bb4dcb7f47f15c247b1f043ffcef1af5b20a1b7578fbba9e704fc5f1c079923f3537a273d50162be62f8037625c
+  languageName: node
+  linkType: hard
+
+"@formatjs/intl-datetimeformat@npm:^6.12.5":
+  version: 6.12.5
+  resolution: "@formatjs/intl-datetimeformat@npm:6.12.5"
+  dependencies:
+    "@formatjs/ecma402-abstract": "npm:2.0.0"
+    "@formatjs/intl-localematcher": "npm:0.5.4"
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/6dc78a8e159d7056ae768db6693f5d09c6ee8ec9dbaacf229f7d4f5b8b4b1cc5cfd9132b848726f9c9bec5ad1f04428e1d9ff294bb1dcbd8954e35c4e9e29a6c
+  languageName: node
+  linkType: hard
+
+"@formatjs/intl-displaynames@npm:^6.6.8":
+  version: 6.6.8
+  resolution: "@formatjs/intl-displaynames@npm:6.6.8"
+  dependencies:
+    "@formatjs/ecma402-abstract": "npm:2.0.0"
+    "@formatjs/intl-localematcher": "npm:0.5.4"
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/1a03e7644022741c1bcf10fcd07da88c434416a13603ace693a038114010463307b4130d3a3f53ad5665bd27fca9a6b19ac8e5bf58e17598b1ea84db173fdfbb
+  languageName: node
+  linkType: hard
+
+"@formatjs/intl-enumerator@npm:1.4.7":
+  version: 1.4.7
+  resolution: "@formatjs/intl-enumerator@npm:1.4.7"
+  dependencies:
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/86265395cd705a16edbddac7c02fb465a9045e7cc3822db5ef66d8839b1a8f8fb5234b3587c0c267291b21e46bcf87888b30301f6a7a00834901606bd40d200e
+  languageName: node
+  linkType: hard
+
+"@formatjs/intl-getcanonicallocales@npm:2.3.0, @formatjs/intl-getcanonicallocales@npm:^2.3.0":
+  version: 2.3.0
+  resolution: "@formatjs/intl-getcanonicallocales@npm:2.3.0"
+  dependencies:
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/c948ccd5cc13cee9bd42f15bf7797753b4fcf1c814105b876bb49b80168bbd4921876b0b4b3c076839c6d8c35d158f5f41584b02c55fea7582e0ee74a9dbc5df
+  languageName: node
+  linkType: hard
+
+"@formatjs/intl-listformat@npm:^7.5.7":
+  version: 7.5.7
+  resolution: "@formatjs/intl-listformat@npm:7.5.7"
+  dependencies:
+    "@formatjs/ecma402-abstract": "npm:2.0.0"
+    "@formatjs/intl-localematcher": "npm:0.5.4"
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/5d0478752d669d87c82aa80880df464d64a1c8974fcb6136bc854567f570a1696e5468005ffa266cfcb623adb7c7299b839c06ea33897f55d35dab6a7575cc84
+  languageName: node
+  linkType: hard
+
+"@formatjs/intl-locale@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "@formatjs/intl-locale@npm:4.0.0"
+  dependencies:
+    "@formatjs/ecma402-abstract": "npm:2.0.0"
+    "@formatjs/intl-enumerator": "npm:1.4.7"
+    "@formatjs/intl-getcanonicallocales": "npm:2.3.0"
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/4b998a59d2f8c923cd88404182415b09da4af9b79994c97cb27d77947776f3e5188d0ed116ba1f9734ca02e1033cba0349bd2baed6a04a39638068f1f844f566
+  languageName: node
+  linkType: hard
+
+"@formatjs/intl-localematcher@npm:0.5.4":
+  version: 0.5.4
+  resolution: "@formatjs/intl-localematcher@npm:0.5.4"
+  dependencies:
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/c9ff5d34ca8b6fe59f8f303a3cc31a92d343e095a6987e273e5cc23f0fe99feb557a392a05da95931c7d24106acb6988e588d00ddd05b0934005aafd7fdbafe6
+  languageName: node
+  linkType: hard
+
+"@formatjs/intl-numberformat@npm:^8.10.3":
+  version: 8.10.3
+  resolution: "@formatjs/intl-numberformat@npm:8.10.3"
+  dependencies:
+    "@formatjs/ecma402-abstract": "npm:2.0.0"
+    "@formatjs/intl-localematcher": "npm:0.5.4"
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/5ee2acd05835ca5de98de608ae4217fa9fe51696bd5663c2f27ecc9005071e7cec4a2aa4d63702b188844ef88970a9c32969562cd8a8ae0083c0c1b012fe0f58
+  languageName: node
+  linkType: hard
+
+"@formatjs/intl-pluralrules@npm:^5.2.14":
+  version: 5.2.14
+  resolution: "@formatjs/intl-pluralrules@npm:5.2.14"
+  dependencies:
+    "@formatjs/ecma402-abstract": "npm:2.0.0"
+    "@formatjs/intl-localematcher": "npm:0.5.4"
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/3c00109c8d4c8b221c2b9af38a38d31cd6293a0a412a1f2cdae2b8ef81bd71626c9ff4a647389682cb27ae5c223bd6f64ef54d03e3f6f19c372e0c6194b76b38
+  languageName: node
+  linkType: hard
+
+"@formatjs/intl-relativetimeformat@npm:^11.2.14":
+  version: 11.2.14
+  resolution: "@formatjs/intl-relativetimeformat@npm:11.2.14"
+  dependencies:
+    "@formatjs/ecma402-abstract": "npm:2.0.0"
+    "@formatjs/intl-localematcher": "npm:0.5.4"
+    tslib: "npm:^2.4.0"
+  checksum: 10c0/a3c2e8c86951f6bab283fc1e1ea749eb787835b002d1e5579979b27bff9c30634309b61718de33fbb0a2b3a1f655f1d1f1b438e59f2ec1d5af9f4def3a770bf6
+  languageName: node
+  linkType: hard
+
 "@gorhom/bottom-sheet@npm:5.0.0-alpha.11, @gorhom/bottom-sheet@npm:^5.0.0-alpha.11":
   version: 5.0.0-alpha.11
   resolution: "@gorhom/bottom-sheet@npm:5.0.0-alpha.11"
@@ -7042,6 +7157,7 @@ __metadata:
     react-native-gesture-handler: "npm:~2.16.1"
     react-native-jazzicon: "npm:^0.1.2"
     react-native-paper: "npm:^5.12.5"
+    react-native-paper-dates: "npm:^0.22.25"
     react-native-reanimated: "npm:~3.10.1"
     react-native-safe-area-context: "npm:4.10.5"
     react-native-svg: "npm:^15.1.0"
@@ -7076,6 +7192,7 @@ __metadata:
     react-native: "*"
     react-native-gesture-handler: "*"
     react-native-paper: "*"
+    react-native-paper-dates: "*"
     react-native-vector-icons: "*"
   languageName: unknown
   linkType: soft
@@ -13422,6 +13539,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"date-fns@npm:^3.6.0":
+  version: 3.6.0
+  resolution: "date-fns@npm:3.6.0"
+  checksum: 10c0/0b5fb981590ef2f8e5a3ba6cd6d77faece0ea7f7158948f2eaae7bbb7c80a8f63ae30b01236c2923cf89bb3719c33aeb150c715ea4fe4e86e37dcf06bed42fb6
+  languageName: node
+  linkType: hard
+
 "dayjs@npm:^1.8.15":
   version: 1.11.10
   resolution: "dayjs@npm:1.11.10"
@@ -13811,6 +13935,14 @@ __metadata:
   dependencies:
     "@babel/core": "npm:^7.20.0"
     "@babel/plugin-proposal-export-namespace-from": "npm:^7.18.9"
+    "@formatjs/intl-datetimeformat": "npm:^6.12.5"
+    "@formatjs/intl-displaynames": "npm:^6.6.8"
+    "@formatjs/intl-getcanonicallocales": "npm:^2.3.0"
+    "@formatjs/intl-listformat": "npm:^7.5.7"
+    "@formatjs/intl-locale": "npm:^4.0.0"
+    "@formatjs/intl-numberformat": "npm:^8.10.3"
+    "@formatjs/intl-pluralrules": "npm:^5.2.14"
+    "@formatjs/intl-relativetimeformat": "npm:^11.2.14"
     "@gorhom/bottom-sheet": "npm:^5.0.0-alpha.11"
     "@react-navigation/drawer": "npm:^6.6.15"
     "@siteed/design-system": "workspace:^"
@@ -13818,6 +13950,7 @@ __metadata:
     "@types/gh-pages": "npm:^6"
     "@types/react": "npm:~18.2.45"
     babel-plugin-module-resolver: "npm:^5.0.2"
+    date-fns: "npm:^3.6.0"
     eslint: "npm:^8.56.0"
     eslint-config-universe: "npm:^12.0.0"
     expo: "npm:^51.0.31"
@@ -13834,7 +13967,9 @@ __metadata:
     react-dom: "npm:18.2.0"
     react-native: "npm:0.74.5"
     react-native-gesture-handler: "npm:~2.16.1"
+    react-native-localize: "npm:^3.2.1"
     react-native-paper: "npm:^5.12.3"
+    react-native-paper-dates: "npm:^0.22.25"
     react-native-reanimated: "npm:~3.10.1"
     react-native-safe-area-context: "npm:4.10.5"
     react-native-screens: "npm:3.31.1"
@@ -24233,6 +24368,34 @@ __metadata:
     react-native: ^0.56.0
     react-native-svg: ^6.5.2
   checksum: 10c0/6f019ddc9137a0558390cddae64e31cfd5eec6fad19d2f73f11c0ebd71fffd4db3c276018a44e79683eb7265d12a9698676872843264e6f3b4c1e12de0ca0ba5
+  languageName: node
+  linkType: hard
+
+"react-native-localize@npm:^3.2.1":
+  version: 3.2.1
+  resolution: "react-native-localize@npm:3.2.1"
+  peerDependencies:
+    react: ">=18.1.0"
+    react-native: ">=0.70.0"
+    react-native-macos: ">=0.70.0"
+  peerDependenciesMeta:
+    react-native-macos:
+      optional: true
+  checksum: 10c0/75785a5d24d4e34b7cd4ac48c300bb0a8abd279b056480268bb8df4860511bee741d870f1e7d4725cd0c82de8984b2c044c69edf356ae83b8af84a438537ea7a
+  languageName: node
+  linkType: hard
+
+"react-native-paper-dates@npm:^0.22.25":
+  version: 0.22.25
+  resolution: "react-native-paper-dates@npm:0.22.25"
+  dependencies:
+    color: "npm:^4.2.3"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+    react-native-paper: "*"
+    react-native-vector-icons: "*"
+  checksum: 10c0/d5a100056c5e5a6422dcd3502f6ba43139da960432d690fd5992203d99f45fb0da8a75daa0c264e9213a94567fa662899cb38390b2d11864844856804f0309bd
   languageName: node
   linkType: hard
 

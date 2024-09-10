@@ -1,15 +1,19 @@
 // examples/designdemo/src/app/(tabs)/bottom.tsx
-import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import {
   Accordion,
   AccordionItemProps,
   Button,
+  DynInput,
   Picker,
-  useBottomModal,
+  useModal,
 } from "@siteed/design-system";
 import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { TestHook } from "testingui";
 
 const getStyles = () => {
   return StyleSheet.create({
@@ -56,8 +60,7 @@ const options = [
   },
 ];
 
-export interface TestBottomSheetProps {}
-export const TestBottomSheet = (_: TestBottomSheetProps) => {
+export const TestModals = () => {
   const styles = useMemo(() => getStyles(), []);
   // ref
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -65,7 +68,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
   // variables
   const _snapPoints = useMemo(() => ["20%", "50%"], []);
 
-  const { openDrawer, editProp } = useBottomModal();
+  const { openDrawer, editProp, openModal } = useModal();
 
   // callbacks
   const handlePresentModalPress = useCallback(() => {
@@ -129,9 +132,11 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleEditProp`);
     try {
       const result = await editProp({
+        modalType: "modal",
         bottomSheetProps: {
-          enableDynamicSizing: true,
-          snapPoints: ["10%", "20%"],
+          enableDynamicSizing: false,
+
+          snapPoints: ["40%", "80%"],
           index: 0,
         },
         data: "Hello",
@@ -143,6 +148,30 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
       console.log(`error`, error);
     }
   }, []);
+
+  const handleOpenModal = useCallback(async () => {
+    console.log(`handleOpenModal`, openModal);
+    try {
+      const result = await openModal({
+        initialData: "Initial modal data",
+        modalProps: {
+          // You can add custom modal props here if needed
+        },
+        render: ({ resolve, reject }) => (
+          <View>
+            <Text>This is a test modal content.</Text>
+            <Button onPress={() => resolve("Confirmed")}>Confirm</Button>
+            <Button onPress={() => reject(new Error("Cancelled"))}>
+              Cancel
+            </Button>
+          </View>
+        ),
+      });
+      console.log(`handleOpenModal result`, result);
+    } catch (error) {
+      console.log(`error`, error);
+    }
+  }, [openModal]);
 
   return (
     <View style={styles.container}>
@@ -162,23 +191,40 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
         <Text>Within Provider</Text>
         <Button onPress={handlePresentModalPress}>Present Modal</Button>
         <BottomSheetModal
-          // enableDynamicSizing
           ref={bottomSheetModalRef}
           android_keyboardInputMode="adjustResize"
           enablePanDownToClose
+          backdropComponent={(props) => <BottomSheetBackdrop {...props} />}
           // index={0}
           // snapPoints={snapPoints}
           enableDynamicSizing
-          // containerStyle={{ backgroundColor: 'transparent' }}
+          containerStyle={{ backgroundColor: "transparent" }}
           onChange={handleSheetChanges}
         >
           <BottomSheetView style={styles.contentContainer}>
-            <TestHook />
+            <DynInput
+              data="Hello"
+              inputType="text"
+              autoFocus
+              showFooter
+              withinBottomSheet
+              onCancel={() => {
+                console.log("onCancel");
+                bottomSheetModalRef.current?.close();
+              }}
+              onFinish={(value) => {
+                console.log("onFinish", value);
+                bottomSheetModalRef.current?.close();
+              }}
+            />
           </BottomSheetView>
         </BottomSheetModal>
+      </View>
+      <View>
+        <Button onPress={handleOpenModal}>Open Modal</Button>
       </View>
     </View>
   );
 };
 
-export default TestBottomSheet;
+export default TestModals;
