@@ -10,7 +10,7 @@ import {
   Button,
   DynInput,
   Picker,
-  useBottomModal,
+  useModal,
 } from "@siteed/design-system";
 import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -69,7 +69,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
   // variables
   const _snapPoints = useMemo(() => ["20%", "50%"], []);
 
-  const { openDrawer, editProp } = useBottomModal();
+  const { openDrawer, editProp } = useModal();
 
   // callbacks
   const handlePresentModalPress = useCallback(() => {

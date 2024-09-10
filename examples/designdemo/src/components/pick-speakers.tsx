@@ -1,6 +1,6 @@
 import { AntDesign } from "@expo/vector-icons";
 import {
-  useBottomModal,
+  useModal,
   useTheme,
   type AppTheme,
   type SelectOption,
@@ -54,13 +54,12 @@ export interface PickSpeakersProps {
 export const PickSpeakers = ({
   onFinish,
   options,
-  loading = false,
   multi = false,
   label,
 }: PickSpeakersProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
-  const { editProp } = useBottomModal();
+  const { editProp } = useModal();
   const [activeOptions, setActiveOptions] = useState<SelectOption[]>(options);
   const selectedOptions = activeOptions.filter((option) => option.selected);
 

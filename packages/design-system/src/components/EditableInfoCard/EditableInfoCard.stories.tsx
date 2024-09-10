@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { EditableInfoCard, EditableInfoCardProps } from './EditableInfoCard';
 import { Meta, StoryFn } from '@storybook/react';
-import { useBottomModal } from '../../hooks/useBottomModal';
+import { useModal } from '../../hooks/useModal';
 
 const ItemViewMeta: Meta<EditableInfoCardProps> = {
   component: EditableInfoCard,
@@ -39,7 +39,7 @@ export const Error: StoryFn<EditableInfoCardProps> = (args) => (
 );
 
 export const Editable: StoryFn<EditableInfoCardProps> = (args) => {
-  const { editProp } = useBottomModal();
+  const { editProp } = useModal();
   const [value, setValue] = useState('Click to edit');
   return (
     <EditableInfoCard

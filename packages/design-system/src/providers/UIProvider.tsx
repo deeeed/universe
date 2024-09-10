@@ -24,7 +24,7 @@ import {
   useAppThemeSetup,
 } from '../hooks/_useAppThemeSetup';
 import { ConfirmProvider, ConfirmProviderProps } from './ConfirmProvider';
-import { CustomBottomSheetModal } from './CustomBottomSheetProvider';
+import { CustomBottomSheetModal } from './CustomModalProvider';
 import { LanguageProvider } from './LanguageProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { ToastProvider, ToastProviderProps } from './ToastProvider';

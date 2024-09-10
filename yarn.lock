@@ -7042,6 +7042,7 @@ __metadata:
     react-native-gesture-handler: "npm:~2.16.1"
     react-native-jazzicon: "npm:^0.1.2"
     react-native-paper: "npm:^5.12.5"
+    react-native-paper-dates: "npm:^0.22.25"
     react-native-reanimated: "npm:~3.10.1"
     react-native-safe-area-context: "npm:4.10.5"
     react-native-svg: "npm:^15.1.0"
@@ -7076,6 +7077,7 @@ __metadata:
     react-native: "*"
     react-native-gesture-handler: "*"
     react-native-paper: "*"
+    react-native-paper-dates: "*"
     react-native-vector-icons: "*"
   languageName: unknown
   linkType: soft
@@ -13835,6 +13837,7 @@ __metadata:
     react-native: "npm:0.74.5"
     react-native-gesture-handler: "npm:~2.16.1"
     react-native-paper: "npm:^5.12.3"
+    react-native-paper-dates: "npm:^0.22.25"
     react-native-reanimated: "npm:~3.10.1"
     react-native-safe-area-context: "npm:4.10.5"
     react-native-screens: "npm:3.31.1"
@@ -24233,6 +24236,20 @@ __metadata:
     react-native: ^0.56.0
     react-native-svg: ^6.5.2
   checksum: 10c0/6f019ddc9137a0558390cddae64e31cfd5eec6fad19d2f73f11c0ebd71fffd4db3c276018a44e79683eb7265d12a9698676872843264e6f3b4c1e12de0ca0ba5
+  languageName: node
+  linkType: hard
+
+"react-native-paper-dates@npm:^0.22.25":
+  version: 0.22.25
+  resolution: "react-native-paper-dates@npm:0.22.25"
+  dependencies:
+    color: "npm:^4.2.3"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+    react-native-paper: "*"
+    react-native-vector-icons: "*"
+  checksum: 10c0/d5a100056c5e5a6422dcd3502f6ba43139da960432d690fd5992203d99f45fb0da8a75daa0c264e9213a94567fa662899cb38390b2d11864844856804f0309bd
   languageName: node
   linkType: hard
 

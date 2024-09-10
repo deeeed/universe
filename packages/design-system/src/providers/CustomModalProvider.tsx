@@ -1,3 +1,5 @@
+import { Modal, ModalProps } from 'react-native-paper';
+
 // packages/design-system/src/providers/CustomBottomSheetProvider.tsx
 import {
   BottomSheetBackdrop,
@@ -23,6 +25,7 @@ import React, {
   useState,
 } from 'react';
 import { Keyboard, Platform, StyleSheet } from 'react-native';
+import { Portal } from 'react-native-paper';
 import {
   DynInput,
   DynInputProps,
@@ -51,6 +54,18 @@ export interface OpenDrawerProps {
 
 export interface EditPropProps extends DynInputProps {
   bottomSheetProps?: Partial<BottomSheetModalProps>;
+  modalProps?: Partial<ModalProps>;
+  modalType?: 'drawer' | 'modal';
+}
+
+export interface OpenModalProps {
+  initialData?: DynamicType;
+  modalProps?: Partial<ModalProps>;
+  render: (props: {
+    resolve: (value: DynamicType) => void;
+    reject: (error: Error) => void;
+    onChange: (value: DynamicType) => void;
+  }) => ReactNode;
 }
 
 export interface CustomBottomSheetModalProviderProps {
@@ -59,9 +74,10 @@ export interface CustomBottomSheetModalProviderProps {
   openDrawer: (props: OpenDrawerProps) => Promise<unknown>;
   dismissAll: () => void;
   bottomSheetModalRef: React.RefObject<BottomSheetModal>;
+  openModal: (props: OpenModalProps) => Promise<DynamicType>;
 }
 
-export const CustomBottomSheetModalContext = createContext<
+export const CustomModalContext = createContext<
   CustomBottomSheetModalProviderProps | undefined
 >(undefined);
 
@@ -83,7 +99,7 @@ const getStyles = (theme: AppTheme) => {
 const logger = baseLogger.extend('CustomBottomSheetModal');
 
 const defaultSnapPoints = ['40%', '80%'];
-const defaultModalProps: Partial<BottomSheetModalProps> = {
+const defaultBottomSheetModalProps: Partial<BottomSheetModalProps> = {
   enableDynamicSizing: true,
   snapPoints: defaultSnapPoints,
   android_keyboardInputMode: 'adjustResize',
@@ -92,6 +108,11 @@ const defaultModalProps: Partial<BottomSheetModalProps> = {
   enablePanDownToClose: true,
   enableDismissOnClose: true,
 };
+
+type SafeModalProps = Omit<
+  ModalProps,
+  'visible' | 'onDismiss' | 'contentContainerStyle'
+>;
 
 const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   children,
@@ -110,11 +131,17 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const [title, setTitle] = useState<string>();
   const [containerType, setContainerType] =
     useState<BottomSheetContainerType>('scroll');
-  const [modalProps, setModalProps] =
-    useState<Partial<BottomSheetModalProps>>(defaultModalProps);
+  const [modalProps, setModalProps] = useState<Partial<BottomSheetModalProps>>(
+    defaultBottomSheetModalProps
+  );
 
   // const { t } = useTranslation('bottom_modal');
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalContent, setModalContent] = useState<ReactNode>();
+  const onModalResolveRef = useRef<(value: DynamicType) => void>();
+  const onModalRejectRef = useRef<(error: Error) => void>();
+  const latestModalDataRef = useRef<DynamicType>();
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -146,56 +173,6 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       }, 10);
     }
   }, [modalProps.enableDismissOnClose, keyboardOpen]);
-
-  const editProp = useCallback(
-    async (props: EditPropProps): Promise<DynInputProps['data']> => {
-      logger.debug('editProp', props);
-      const { bottomSheetProps } = props;
-
-      setContainerType('view');
-
-      setModalProps((prev) => ({
-        ...prev,
-        ...bottomSheetProps,
-        enableDynamicSizing: bottomSheetProps?.enableDynamicSizing ?? false,
-        snapPoints: bottomSheetProps?.enableDynamicSizing
-          ? []
-          : bottomSheetProps?.snapPoints || prev.snapPoints,
-        index: bottomSheetProps?.index ?? 0,
-      }));
-
-      const newInputParams: DynInputProps = {
-        ...props,
-        useFlatList: false,
-        autoFocus: true,
-        withinBottomSheet: true,
-        onCancel: () => {
-          logger.debug('onCancel', bottomSheetModalRef.current);
-          bottomSheetModalRef.current?.close();
-          onFinishResolveRef.current?.(props.data);
-          onFinishResolveRef.current = undefined;
-          setDrawerContent(null);
-        },
-        onFinish: (values: DynamicType) => {
-          logger.debug('onFinish', values);
-          bottomSheetModalRef.current?.close();
-          onFinishResolveRef.current?.(values);
-          onFinishResolveRef.current = undefined;
-          setDrawerContent(null);
-        },
-      };
-
-      logger.debug('newInputParams', newInputParams);
-      setDrawerContent(<DynInput {...newInputParams} />);
-
-      bottomSheetModalRef.current?.present();
-
-      return new Promise((resolve) => {
-        onFinishResolveRef.current = resolve;
-      });
-    },
-    [logger]
-  );
 
   const handleCancelFooter = useCallback(() => {
     if (bottomSheetModalRef.current) {
@@ -265,7 +242,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   }, []);
 
   const openDrawer = useCallback(
-    async (props: OpenDrawerProps) => {
+    async (props: OpenDrawerProps): Promise<unknown> => {
       const {
         bottomSheetProps,
         footerType,
@@ -338,6 +315,50 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     [logger]
   );
 
+  const openModal = useCallback(
+    async (props: OpenModalProps): Promise<DynamicType> => {
+      const { initialData, modalProps: modalProperties, render } = props;
+
+      latestModalDataRef.current = initialData;
+
+      return new Promise<DynamicType>((resolve, reject) => {
+        const wrapResolve = (value: DynamicType) => {
+          logger.debug('modal wrapResolve', value);
+          resolve(value);
+          setModalVisible(false);
+        };
+        const wrapReject = (error: Error) => {
+          logger.debug('modal wrapReject', error);
+          reject(error);
+          setModalVisible(false);
+        };
+        const wrapOnChange = (value: DynamicType) => {
+          logger.debug('modal onChange', value);
+          latestModalDataRef.current = value;
+        };
+
+        onModalResolveRef.current = wrapResolve;
+        onModalRejectRef.current = wrapReject;
+
+        setModalContent(
+          render({
+            resolve: wrapResolve,
+            reject: wrapReject,
+            onChange: wrapOnChange,
+          })
+        );
+        setModalProps(modalProperties || {});
+        setModalVisible(true);
+      });
+    },
+    [logger]
+  );
+
+  const handleModalDismiss = useCallback(() => {
+    setModalVisible(false);
+    onModalRejectRef.current?.(new Error('Modal dismissed'));
+  }, []);
+
   const handleDismiss = useCallback(() => {
     logger.debug(`handleDismiss called`);
   }, []);
@@ -375,13 +396,94 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     }
   }, [containerType, drawerContent, styles.container]);
 
+  const editProp = useCallback(
+    async (props: EditPropProps): Promise<DynamicType> => {
+      logger.debug('editProp', props);
+      const {
+        bottomSheetProps,
+        modalProps,
+        modalType = 'drawer',
+        data,
+        ...restProps
+      } = props;
+
+      if (modalType === 'modal') {
+        return openModal({
+          initialData: data,
+          modalProps: modalProps,
+          render: ({ resolve, reject }) => (
+            <DynInput
+              {...restProps}
+              data={data}
+              useFlatList={false}
+              autoFocus={true}
+              withinBottomSheet={false}
+              onCancel={() => {
+                reject(new Error('Cancelled'));
+              }}
+              onFinish={(values: DynamicType) => {
+                resolve(values);
+              }}
+            />
+          ),
+        });
+      }
+
+      // Drawer logic
+      setContainerType('view');
+
+      setModalProps((prev) => ({
+        ...prev,
+        ...bottomSheetProps,
+        enableDynamicSizing: bottomSheetProps?.enableDynamicSizing ?? false,
+        snapPoints: bottomSheetProps?.enableDynamicSizing
+          ? []
+          : bottomSheetProps?.snapPoints || prev.snapPoints,
+        index: bottomSheetProps?.index ?? 0,
+      }));
+
+      const newInputParams: DynInputProps = {
+        ...restProps,
+        data,
+        useFlatList: false,
+        autoFocus: true,
+        withinBottomSheet: true,
+        onCancel: () => {
+          logger.debug('onCancel', bottomSheetModalRef.current);
+          bottomSheetModalRef.current?.close();
+          onFinishResolveRef.current?.(data);
+          onFinishResolveRef.current = undefined;
+          setDrawerContent(null);
+        },
+        onFinish: (values: DynamicType) => {
+          logger.debug('onFinish', values);
+          bottomSheetModalRef.current?.close();
+          onFinishResolveRef.current?.(values);
+          onFinishResolveRef.current = undefined;
+          setDrawerContent(null);
+        },
+      };
+
+      logger.debug('newInputParams', newInputParams);
+      setDrawerContent(<DynInput {...newInputParams} />);
+
+      bottomSheetModalRef.current?.present();
+
+      return new Promise((resolve) => {
+        onFinishResolveRef.current = resolve;
+      });
+    },
+    [logger, openModal]
+  );
+
   return (
-    <CustomBottomSheetModalContext.Provider
+    <CustomModalContext.Provider
       value={{
         dismiss,
         dismissAll,
         editProp,
         openDrawer,
+        openModal,
         bottomSheetModalRef: bottomSheetModalRef,
       }}
     >
@@ -397,7 +499,22 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       >
         {renderContent()}
       </BottomSheetModal>
-    </CustomBottomSheetModalContext.Provider>
+      <Portal>
+        <Modal
+          visible={modalVisible}
+          onDismiss={handleModalDismiss}
+          contentContainerStyle={{
+            backgroundColor: theme.colors.surface,
+            padding: 20,
+            borderRadius: 8,
+            margin: 20,
+          }}
+          {...(modalProps as SafeModalProps)}
+        >
+          {modalContent}
+        </Modal>
+      </Portal>
+    </CustomModalContext.Provider>
   );
 };
 

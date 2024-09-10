@@ -4,7 +4,7 @@ import { Text } from 'react-native-paper';
 import { AppTheme } from '../../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../../providers/ThemeProvider';
 import { SelectOption } from '../../SelectButtons/SelectButtons';
-import { useBottomModal } from '../../../hooks/useBottomModal';
+import { useModal } from '../../../hooks/useModal';
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
@@ -40,7 +40,7 @@ export const ColorPicker = ({
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [activeColor, setActiveColor] = React.useState(color);
-  const { editProp } = useBottomModal();
+  const { editProp } = useModal();
 
   useEffect(() => {
     setActiveColor(color);

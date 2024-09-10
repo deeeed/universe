@@ -1,8 +1,8 @@
 import { useContext } from 'react';
-import { CustomBottomSheetModalContext } from '../providers/CustomBottomSheetProvider';
+import { CustomModalContext } from '../providers/CustomModalProvider';
 
-export const useBottomModal = () => {
-  const context = useContext(CustomBottomSheetModalContext);
+export const useModal = () => {
+  const context = useContext(CustomModalContext);
   if (!context) {
     throw new Error(
       'useCustomBottomSheetModal must be used within a CustomBottomSheetModalProvider'

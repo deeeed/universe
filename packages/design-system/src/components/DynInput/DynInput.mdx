@@ -4,18 +4,17 @@
 
 ## Important Usage Note
 
-The `DynInput` component is not intended to be used as a standalone component. It is designed to be used in conjunction with the `editProp` function from `useBottomModal` to quickly edit a value within a bottom sheet modal context.
+The `DynInput` component is not intended to be used as a standalone component. It is designed to be used in conjunction with the `editProp` function from `useModal` to quickly edit a value within a bottom sheet modal context.
 
 ## Usage with useBottomModal
 
-To use `DynInput` properly, you should utilize it with the `editProp` function from `useBottomModal`. Here's a basic example:
+To use `DynInput` properly, you should utilize it with the `editProp` function from `useModal`. Here's a basic example:
 
 ```jsx
-import { useBottomModal } from '../path/to/useBottomModal';
-import { DynInput } from '../path/to/DynInput';
+import { useModal, DynInput } from '@siteed/design-system';
 
 function MyComponent() {
-  const { editProp } = useBottomModal();
+  const { editProp } = useModal();
 
   const handleEdit = async () => {
     const result = await editProp({
@@ -146,4 +145,4 @@ Remember, these examples demonstrate the appearance of `DynInput` within the bot
   </tbody>
 </table>
 
-For more detailed information on using `DynInput` with `useBottomModal`, refer to the `useBottomModal` documentation.
+For more detailed information on using `DynInput` with `useModal`, refer to the `useModal` documentation.

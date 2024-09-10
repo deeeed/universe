@@ -120,3 +120,47 @@ export const Custom: StoryObj<DynInputProps> = {
     },
   },
 };
+
+export const DateInput: StoryObj<DynInputProps> = {
+  args: {
+    data: new Date(),
+    inputType: 'date',
+  },
+  parameters: {
+    docs: {
+      source: {
+        code: '<DynInput data={new Date()} inputType="date" onFinish={(selectedDate) => console.log("Selected date:", selectedDate)} />',
+      },
+    },
+  },
+};
+
+export const DateTimeInput: StoryObj<DynInputProps> = {
+  args: {
+    data: new Date(),
+    inputType: 'date',
+    dateMode: 'datetime',
+  },
+  parameters: {
+    docs: {
+      source: {
+        code: '<DynInput data={new Date()} inputType="date" dateMode="datetime" onFinish={(selectedDateTime) => console.log("Selected date and time:", selectedDateTime)} />',
+      },
+    },
+  },
+};
+
+export const TimeInput: StoryObj<DynInputProps> = {
+  args: {
+    data: new Date(),
+    inputType: 'date',
+    dateMode: 'time',
+  },
+  parameters: {
+    docs: {
+      source: {
+        code: '<DynInput data={new Date()} inputType="date" dateMode="time" onFinish={(selectedTime) => console.log("Selected time:", selectedTime)} />',
+      },
+    },
+  },
+};

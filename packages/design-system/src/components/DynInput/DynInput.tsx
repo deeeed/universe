@@ -5,14 +5,16 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { TextInput as RNGTextInput } from 'react-native-gesture-handler';
+import { View } from 'react-native';
+import { Button } from 'react-native-paper';
+import { DatePickerModal, TimePickerModal } from 'react-native-paper-dates';
+import { StyleSheet, TextInput as RNGTextInput } from 'react-native';
+import { baseLogger } from '../../utils/logger';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
-import { baseLogger } from '../../utils/logger';
-import { Button } from '../Button/Button';
 import { SelectButtons, SelectOption } from '../SelectButtons/SelectButtons';
 import { TextInput } from '../TextInput/TextInput';
+import { useTranslation } from 'react-i18next';
 
 type InputType =
   | 'text'
@@ -20,9 +22,15 @@ type InputType =
   | 'number'
   | 'radio'
   | 'select-button'
+  | 'date'
   | 'custom';
 
-export type DynamicType = string | number | SelectOption[] | SelectOption;
+export type DynamicType =
+  | string
+  | number
+  | SelectOption[]
+  | SelectOption
+  | Date;
 
 export interface DynInputProps {
   data: DynamicType;
@@ -43,6 +51,7 @@ export interface DynInputProps {
   ) => React.ReactNode;
   onFinish?: (value: DynamicType) => void;
   onCancel?: () => void;
+  dateMode?: 'date' | 'time' | 'datetime';
 }
 
 const logger = baseLogger.extend('DynInput');
@@ -80,11 +89,17 @@ export const DynInput = ({
   customRender,
   onCancel,
   onFinish,
+  dateMode = 'date',
 }: DynInputProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
   const inputRef = useRef<RNGTextInput>(null);
+  const [visible, setVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    data as Date
+  );
+  const { i18n } = useTranslation();
 
   useEffect(() => {
     setTemp(data);
@@ -161,6 +176,53 @@ export const DynInput = ({
     );
   };
 
+  const renderDatePicker = () => {
+    if (dateMode === 'time') {
+      return (
+        <>
+          <Button onPress={() => setVisible(true)}>
+            {selectedDate ? selectedDate.toLocaleTimeString() : 'Pick time'}
+          </Button>
+          <TimePickerModal
+            visible={visible}
+            onDismiss={() => setVisible(false)}
+            onConfirm={({ hours, minutes }) => {
+              const newDate = new Date();
+              newDate.setHours(hours, minutes);
+              setSelectedDate(newDate);
+              onFinish?.(newDate);
+              setVisible(false);
+            }}
+            hours={selectedDate?.getHours() || 0}
+            minutes={selectedDate?.getMinutes() || 0}
+          />
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Button onPress={() => setVisible(true)}>
+          {selectedDate ? selectedDate.toLocaleDateString() : 'Pick date'}
+        </Button>
+        <DatePickerModal
+          mode="single"
+          visible={visible}
+          locale={i18n.language}
+          onDismiss={() => setVisible(false)}
+          date={selectedDate}
+          onConfirm={(params) => {
+            setVisible(false);
+            if (params.date) {
+              setSelectedDate(params.date);
+              onFinish?.(params.date);
+            }
+          }}
+        />
+      </>
+    );
+  };
+
   const handleCancel = useCallback(() => {
     setTemp(data); // restore initial value
     onCancel?.();
@@ -175,6 +237,7 @@ export const DynInput = ({
       <View style={{}}>
         {inputType === 'text' && renderText()}
         {inputType === 'number' && renderNumber()}
+        {inputType === 'date' && renderDatePicker()}
         {inputType === 'custom' && customRender?.(data, handleChange)}
         {inputType === 'select-button' && (
           <SelectButtons

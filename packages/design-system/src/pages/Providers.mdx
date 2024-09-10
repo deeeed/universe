@@ -308,65 +308,26 @@ export default App;
 
 See the [ConfirmDialog documentation](?path=/docs/components-confirmdialog--docs) for more details.
 
-### CustomBottomSheetModal
+### CustomModalProvider
 
-The `CustomBottomSheetModalProvider` wraps the `@gorhom/bottom-sheet` package to manage custom bottom sheet modals within the application. It allows for highly customizable bottom sheet modals to enhance user interaction and display various content dynamically. Integrated within the `UIProvider`, it provides a consistent and flexible way to handle bottom sheet modals across the app.
-
+The `CustomModalProvider` wraps both bottom sheet modals and regular modals to manage custom modals within the application. It allows for highly customizable modals to enhance user interaction and display various content dynamically. Integrated within the `UIProvider`, it provides a consistent and flexible way to handle modals across the app.
 
 #### API
 
 - **Props**:
-  - `dismiss`: Function to dismiss a specific bottom sheet modal.
+  - `dismiss`: Function to dismiss a specific modal.
     - **Type**: `(key?: string) => boolean`
-  - `editProp`: Function to open a bottom sheet modal for editing a property.
+  - `editProp`: Function to open a modal for editing a property.
     - **Type**: `(props: EditPropProps) => Promise<DynInputProps['data']>`
   - `openDrawer`: Function to open a custom bottom sheet modal drawer.
     - **Type**: `(props: OpenDrawerProps) => Promise<unknown>`
-  - `dismissAll`: Function to dismiss all open bottom sheet modals.
+  - `openModal`: Function to open a custom modal.
+    - **Type**: `(props: OpenModalProps) => Promise<DynamicType>`
+  - `dismissAll`: Function to dismiss all open modals.
     - **Type**: `() => void`
   - `bottomSheetModalRef`: Ref object for the `BottomSheetModal`.
     - **Type**: `React.RefObject<BottomSheetModal>`
 
-
 #### Example
 
-Customize the bottom sheet modals by using the `openDrawer` or `editProp` methods provided by the `CustomBottomSheetModalProvider`.
-
-```tsx
-import React from 'react';
-import { UIProvider } from '@siteed/design-system';
-import { View, Text, Button } from 'react-native';
-import { useCustomBottomSheet } from '@siteed/design-system/hooks/useCustomBottomSheet';
-
-const App = () => {
-  const { openDrawer, editProp } = useCustomBottomSheet();
-
-  const handleOpenDrawer = async () => {
-    const result = await openDrawer({
-      title: 'Custom Drawer',
-      footerType: 'confirm_cancel',
-      initialData: { name: 'John Doe' },
-      render: ({ resolve, reject }) => (
-        <View>
-          <Text>Drawer Content</Text>
-          <Button title="Confirm" onPress={() => resolve('Confirmed')} />
-          <Button title="Cancel" onPress={() => reject('Canceled')} />
-        </View>
-      ),
-    });
-
-    console.log('Drawer Result:', result);
-  };
-
-  return (
-    <UIProvider>
-      <View>
-        <Text>Hello World</Text>
-        <Button title="Open Drawer" onPress={handleOpenDrawer} />
-      </View>
-    </UIProvider>
-  );
-};
-
-export default App;
-```
+Customize the modals by using the `openDrawer`, `openModal`, or `editProp` methods provided by the `CustomModalProvider`.
