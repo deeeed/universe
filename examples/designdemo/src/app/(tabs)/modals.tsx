@@ -60,8 +60,7 @@ const options = [
   },
 ];
 
-export interface TestBottomSheetProps {}
-export const TestBottomSheet = (_: TestBottomSheetProps) => {
+export const TestModals = () => {
   const styles = useMemo(() => getStyles(), []);
   // ref
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -69,7 +68,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
   // variables
   const _snapPoints = useMemo(() => ["20%", "50%"], []);
 
-  const { openDrawer, editProp } = useModal();
+  const { openDrawer, editProp, openModal } = useModal();
 
   // callbacks
   const handlePresentModalPress = useCallback(() => {
@@ -133,6 +132,7 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
     console.log(`handleEditProp`);
     try {
       const result = await editProp({
+        modalType: "modal",
         bottomSheetProps: {
           enableDynamicSizing: false,
 
@@ -148,6 +148,30 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
       console.log(`error`, error);
     }
   }, []);
+
+  const handleOpenModal = useCallback(async () => {
+    console.log(`handleOpenModal`, openModal);
+    try {
+      const result = await openModal({
+        initialData: "Initial modal data",
+        modalProps: {
+          // You can add custom modal props here if needed
+        },
+        render: ({ resolve, reject }) => (
+          <View>
+            <Text>This is a test modal content.</Text>
+            <Button onPress={() => resolve("Confirmed")}>Confirm</Button>
+            <Button onPress={() => reject(new Error("Cancelled"))}>
+              Cancel
+            </Button>
+          </View>
+        ),
+      });
+      console.log(`handleOpenModal result`, result);
+    } catch (error) {
+      console.log(`error`, error);
+    }
+  }, [openModal]);
 
   return (
     <View style={styles.container}>
@@ -196,8 +220,11 @@ export const TestBottomSheet = (_: TestBottomSheetProps) => {
           </BottomSheetView>
         </BottomSheetModal>
       </View>
+      <View>
+        <Button onPress={handleOpenModal}>Open Modal</Button>
+      </View>
     </View>
   );
 };
 
-export default TestBottomSheet;
+export default TestModals;

@@ -402,7 +402,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       const {
         bottomSheetProps,
         modalProps,
-        modalType = 'drawer',
+        modalType = 'modal',
         data,
         ...restProps
       } = props;

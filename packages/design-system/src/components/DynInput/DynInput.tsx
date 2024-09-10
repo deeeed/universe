@@ -32,6 +32,8 @@ export type DynamicType =
   | SelectOption
   | Date;
 
+import { registerTranslation, en } from 'react-native-paper-dates';
+
 export interface DynInputProps {
   data: DynamicType;
   inputType: InputType;
@@ -100,6 +102,10 @@ export const DynInput = ({
     data as Date
   );
   const { i18n } = useTranslation();
+
+  useEffect(() => {
+    registerTranslation(i18n.language, en);
+  }, [i18n.language]);
 
   useEffect(() => {
     setTemp(data);
@@ -208,7 +214,7 @@ export const DynInput = ({
         <DatePickerModal
           mode="single"
           visible={visible}
-          locale={i18n.language}
+          locale={'en'} // TODO: make this dynamic
           onDismiss={() => setVisible(false)}
           date={selectedDate}
           onConfirm={(params) => {
