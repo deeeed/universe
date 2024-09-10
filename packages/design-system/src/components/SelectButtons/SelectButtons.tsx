@@ -20,6 +20,8 @@ const getStyles = (theme: AppTheme) => {
       flexDirection: 'column',
       flexGrow: 1,
       flexShrink: 1,
+      padding: theme.spacing.gap,
+      marginBottom: theme.spacing.margin,
       backgroundColor: theme.colors.surface,
     },
     buttonContainer: {

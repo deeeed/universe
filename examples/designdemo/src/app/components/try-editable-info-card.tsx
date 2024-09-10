@@ -30,8 +30,10 @@ const TryEditableInfoCard = () => {
   ) => {
     const newValue = await editProp({
       data: currentValue,
+      modalType: "drawer",
       bottomSheetProps: {
         enableDynamicSizing: true,
+        keyboardBehavior: "interactive",
       },
       inputType,
     });

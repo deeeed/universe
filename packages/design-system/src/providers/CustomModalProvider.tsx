@@ -85,9 +85,6 @@ interface CustomBottomSheetModalProps {
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
-      flex: 1,
-      flexGrow: 1,
-      flexShrink: 1,
       backgroundColor: theme.colors.surface,
     },
   });
@@ -400,7 +397,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       const {
         bottomSheetProps,
         modalProps,
-        modalType = 'modal',
+        modalType = Platform.OS === 'web' ? 'modal' : 'drawer',
         data,
         ...restProps
       } = props;
@@ -486,7 +483,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       >
         {renderContent()}
       </BottomSheetModal>
-      {Platform.OS === 'web' ? (
+      {Platform.OS === 'web' || Platform.OS === 'ios' ? (
         <Portal>
           <Modal
             visible={modalVisible}
