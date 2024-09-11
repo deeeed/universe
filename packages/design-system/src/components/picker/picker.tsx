@@ -260,37 +260,46 @@ export const Picker = ({
         {selectedOptions.length === 0 ? (
           <Text style={styles.emptyText}>{emptyLabel}</Text>
         ) : (
-          <ScrollView
-            horizontal={true}
-            showsHorizontalScrollIndicator={false}
-            style={styles.scrollview}
-            contentContainerStyle={styles.scrollContainer}
-          >
-            {selectedOptions.map((option, index) => (
-              <Chip
-                key={`option-${index}`}
-                style={{ backgroundColor: option.color }}
-                compact={true}
-                onPress={() => onItemPress?.(option)}
-                onClose={
-                  closable
-                    ? () => {
-                        setActiveOptions((prev) =>
-                          prev.map((o) =>
-                            o.value === option.value
-                              ? { ...o, selected: false }
-                              : o
-                          )
-                        );
-                      }
-                    : undefined
-                }
-                mode={'flat'}
-              >
-                {option.label}
-              </Chip>
-            ))}
-          </ScrollView>
+          <Pressable onPress={handlePick}>
+            <ScrollView
+              horizontal={true}
+              showsHorizontalScrollIndicator={false}
+              style={styles.scrollview}
+              contentContainerStyle={styles.scrollContainer}
+            >
+              {selectedOptions.map((option, index) => (
+                <Chip
+                  key={`option-${index}`}
+                  style={{ backgroundColor: option.color }}
+                  compact={true}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    if (onItemPress) {
+                      onItemPress?.(option);
+                    } else {
+                      handlePick();
+                    }
+                  }}
+                  onClose={
+                    closable
+                      ? () => {
+                          setActiveOptions((prev) =>
+                            prev.map((o) =>
+                              o.value === option.value
+                                ? { ...o, selected: false }
+                                : o
+                            )
+                          );
+                        }
+                      : undefined
+                  }
+                  mode={'flat'}
+                >
+                  {option.label}
+                </Chip>
+              ))}
+            </ScrollView>
+          </Pressable>
         )}
       </View>
       {activeOptions.length > 0 && (
