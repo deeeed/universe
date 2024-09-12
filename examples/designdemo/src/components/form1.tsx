@@ -1,6 +1,7 @@
-import { Button, useModal } from "@siteed/design-system";
+import { Button, useModal, useThemePreferences } from "@siteed/design-system";
 import React, { useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text } from "react-native-paper";
 
 import { Form2 } from "./form2";
 
@@ -16,6 +17,7 @@ export interface Form1Props {
 export const Form1 = ({ label }: Form1Props) => {
   const styles = useMemo(() => getStyles(), []);
   const { openDrawer, dismissAll } = useModal();
+  const { toggleDarkMode } = useThemePreferences();
 
   const handlePress = () => {
     console.log("pressed");
@@ -34,8 +36,10 @@ export const Form1 = ({ label }: Form1Props) => {
   return (
     <View style={styles.container}>
       <Text>{label}</Text>
+
       <Button onPress={handlePress}>Call form2</Button>
       <Button onPress={handleDismiss}>Close</Button>
+      <Button onPress={toggleDarkMode}>Toggle Dark Mode</Button>
     </View>
   );
 };

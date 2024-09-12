@@ -1,4 +1,8 @@
-import { useModal } from "@siteed/design-system/src";
+import {
+  ThemeConfig,
+  useModal,
+  useThemePreferences,
+} from "@siteed/design-system/src";
 import React, { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button } from "react-native-paper";
@@ -13,10 +17,18 @@ const getStyles = () => {
 
 export const Bug = () => {
   const styles = useMemo(() => getStyles(), []);
+  const { theme } = useThemePreferences();
+  const colors = [
+    theme.colors.primary,
+    theme.colors.secondary,
+    theme.colors.tertiary,
+  ];
+
   const { openDrawer } = useModal();
 
   return (
     <View style={styles.container}>
+      <ThemeConfig colors={colors} />
       {/* <Form1 label="Form 1" /> */}
       <Button
         onPress={() => {

@@ -13,7 +13,6 @@ import {
 import { useMemo } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { Text } from "react-native-paper";
-import { View } from "react-native-reanimated/lib/typescript/Animated";
 
 const getStyles = () => {
   return StyleSheet.create({
