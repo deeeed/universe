@@ -23,7 +23,6 @@ import React, {
 } from 'react';
 import { Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { Modal, ModalProps, Portal } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   DynInput,
   DynInputProps,
@@ -51,7 +50,7 @@ export interface OpenDrawerProps<T = unknown> {
   renderFooter?: (props: {
     resolve: (value: T) => void;
     reject: (error: Error) => void;
-    onChange: (value: T) => void;
+    data: T;
     footerComponent?: ReactNode;
   }) => ReactNode;
 }
@@ -92,7 +91,9 @@ interface CustomBottomSheetModalProps {
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
+      flex: 1,
       backgroundColor: theme.colors.surface,
+      padding: 20,
     },
   });
 };
@@ -136,11 +137,11 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       content: ReactNode;
       props: OpenDrawerProps;
       resolve: (value: unknown) => void;
-      reject: (error: unknown) => void;
+      reject: (error: Error) => void;
       renderFooter?: (props: {
+        data: unknown;
         resolve: (value: unknown) => void;
         reject: (error: Error) => void;
-        onChange: (value: unknown) => void;
         footerComponent?: ReactNode;
       }) => ReactNode;
     }>
@@ -153,11 +154,6 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const onModalResolveRef = useRef<(value: DynamicType) => void>();
   const onModalRejectRef = useRef<(error: Error) => void>();
   const latestModalDataRef = useRef<DynamicType>();
-  const insets = useSafeAreaInsets();
-
-  useEffect(() => {
-    logger.debug(`Modal stack updated, length: ${modalStack.length}`);
-  }, [modalStack]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -221,9 +217,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         return customRenderFooter({
           resolve: currentModal.resolve,
           reject: currentModal.reject,
-          onChange: (value) => {
-            latestInputParamsRef.current = value;
-          },
+          data: latestInputParamsRef.current,
           footerComponent: (
             <View
               onLayout={(event) =>
@@ -584,6 +578,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         onChange={handleSheetChanges}
         enableDynamicSizing
         footerComponent={renderFooter}
+        // footerComponent={modalProps.footerComponent}
         handleComponent={
           modalProps.handleComponent !== undefined
             ? modalProps.handleComponent
@@ -594,10 +589,6 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
             ? modalProps.backdropComponent
             : renderBackdrop
         }
-        containerStyle={{
-          paddingBottom: footerHeight,
-          marginBottom: insets.bottom,
-        }}
         // bottomInset={insets.bottom}
       >
         {renderContent()}

@@ -8,7 +8,7 @@ export interface Form2Props {
 }
 export const Form2 = ({ label }: Form2Props) => {
   const { openDrawer, dismiss, dismissAll } = useModal();
-  const { toggleDarkMode, darkMode, theme } = useThemePreferences();
+  const { toggleDarkMode, darkMode } = useThemePreferences();
 
   const handlePress = () => {
     openDrawer({
@@ -32,7 +32,7 @@ export const Form2 = ({ label }: Form2Props) => {
   };
 
   return (
-    <View style={{ backgroundColor: theme.colors.background }}>
+    <View style={{ backgroundColor: "blue", paddingBottom: 200 }}>
       <Text>Form2 {label}</Text>
       <Text>{darkMode ? "Dark Mode" : "Light Mode"}</Text>
       <Button onPress={handlePress}>Open</Button>

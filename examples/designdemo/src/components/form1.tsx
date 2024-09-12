@@ -16,6 +16,7 @@ const getStyles = ({ theme }: { theme: AppTheme; insets: EdgeInsets }) => {
   return StyleSheet.create({
     container: {
       backgroundColor: theme.colors.background,
+      flex: 1,
     },
   });
 };
@@ -37,6 +38,7 @@ export const Form1 = ({ label, onChange }: Form1Props) => {
     openDrawer({
       // title: "Form 1",
       bottomSheetProps: {
+        enableDynamicSizing: false,
         // stackBehavior: "replace",
       },
       render: () => <Form2 label="this is form 2" />,

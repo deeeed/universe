@@ -40,15 +40,13 @@ export const Bug = () => {
           openDrawer({
             bottomSheetProps: {
               index: 0,
-              enableDynamicSizing: true,
+              enableDynamicSizing: false,
               backdropComponent: undefined,
             },
-            renderFooter: ({ onChange, footerComponent }) => (
+            renderFooter: ({ data, footerComponent }) => (
               <View>
                 {footerComponent}
-                <Button onPress={() => onChange({ someValue: "updated" })}>
-                  Update Value
-                </Button>
+                <Text>data: {JSON.stringify(data)}</Text>
               </View>
             ),
             render: ({ onChange }) => (
@@ -68,7 +66,7 @@ export const Bug = () => {
       </Button>
       <BottomSheetModal
         ref={bottomSheetModalRef}
-        enableDynamicSizing={false}
+        enableDynamicSizing
         snapPoints={["20%", "60%"]}
         backdropComponent={(props) => <BottomSheetBackdrop {...props} />}
         footerComponent={() => (
@@ -82,7 +80,7 @@ export const Bug = () => {
           </View>
         )}
       >
-        <BottomSheetView>
+        <BottomSheetView style={{ flex: 1 }}>
           <Form1 label="Form 1" />
         </BottomSheetView>
       </BottomSheetModal>
