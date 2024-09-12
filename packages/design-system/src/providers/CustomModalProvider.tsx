@@ -9,6 +9,7 @@ import {
   BottomSheetModalProvider,
   BottomSheetScrollView,
   BottomSheetView,
+  SNAP_POINT_TYPE,
 } from '@gorhom/bottom-sheet';
 import React, {
   FunctionComponent,
@@ -20,31 +21,38 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Keyboard, Platform, StyleSheet } from 'react-native';
-import { Modal, ModalProps, Portal, Text } from 'react-native-paper';
+import { Keyboard, Platform, StyleSheet, View } from 'react-native';
+import { Modal, ModalProps, Portal } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   DynInput,
   DynInputProps,
   DynamicType,
 } from '../components/DynInput/DynInput';
-import { SelectItemOption } from '../components/SelectItems/SelectItems';
 import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
+import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import { AppTheme } from '../hooks/_useAppThemeSetup';
 import { baseLogger } from '../utils/logger';
 import { ThemeProvider, useTheme, useThemePreferences } from './ThemeProvider';
 
 export type BottomSheetContainerType = 'scroll' | 'view';
 
-export interface OpenDrawerProps {
+export interface OpenDrawerProps<T = unknown> {
   title?: string;
   footerType?: 'confirm_cancel';
   initialData?: unknown;
   containerType?: BottomSheetContainerType;
   bottomSheetProps?: Partial<BottomSheetModalProps>;
   render: (props: {
-    resolve?: (value: unknown) => void;
-    onChange?: (value: unknown) => void;
-    reject?: (error: unknown) => void;
+    resolve?: (value: T) => void;
+    onChange?: (value: T) => void;
+    reject?: (error: Error) => void;
+  }) => ReactNode;
+  renderFooter?: (props: {
+    resolve: (value: T) => void;
+    reject: (error: Error) => void;
+    onChange: (value: T) => void;
+    footerComponent?: ReactNode;
   }) => ReactNode;
 }
 
@@ -115,11 +123,10 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const onCustomDrawerResolveRef = useRef<(values: unknown) => void>();
   const onCustomDrawerRejectRef = useRef<(error: unknown) => void>();
-  const [footerType, setFooterType] = useState<'confirm_cancel'>();
   const initialInputParamsRef = useRef<string>();
   const latestInputParamsRef = useRef<unknown>();
   const styles = useMemo(() => getStyles(theme), [theme]);
-  const [title, setTitle] = useState<string>();
+  const [footerHeight, setFooterHeight] = useState(0);
   const [modalProps, setModalProps] = useState<Partial<BottomSheetModalProps>>(
     defaultBottomSheetModalProps
   );
@@ -130,6 +137,12 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
       props: OpenDrawerProps;
       resolve: (value: unknown) => void;
       reject: (error: unknown) => void;
+      renderFooter?: (props: {
+        resolve: (value: unknown) => void;
+        reject: (error: Error) => void;
+        onChange: (value: unknown) => void;
+        footerComponent?: ReactNode;
+      }) => ReactNode;
     }>
   >([]);
 
@@ -140,6 +153,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
   const onModalResolveRef = useRef<(value: DynamicType) => void>();
   const onModalRejectRef = useRef<(error: Error) => void>();
   const latestModalDataRef = useRef<DynamicType>();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     logger.debug(`Modal stack updated, length: ${modalStack.length}`);
@@ -197,68 +211,96 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
 
   const renderFooter = useCallback(
     (props: BottomSheetFooterProps) => {
-      logger.debug(`renderFooter type=${footerType}`);
-      if (footerType === 'confirm_cancel') {
-        return (
-          <ConfirmCancelFooter
-            {...props}
-            onCancel={handleCancelFooter}
-            onFinish={handleFinishFooter}
-          />
-        );
+      const currentModal = modalStack[modalStack.length - 1];
+      if (!currentModal) return null;
+
+      const { renderFooter: customRenderFooter, footerType } =
+        currentModal.props;
+
+      if (customRenderFooter) {
+        return customRenderFooter({
+          resolve: currentModal.resolve,
+          reject: currentModal.reject,
+          onChange: (value) => {
+            latestInputParamsRef.current = value;
+          },
+          footerComponent: (
+            <View
+              onLayout={(event) =>
+                setFooterHeight(event.nativeEvent.layout.height)
+              }
+            >
+              {footerType === 'confirm_cancel' ? (
+                <ConfirmCancelFooter
+                  {...props}
+                  onCancel={handleCancelFooter}
+                  onFinish={handleFinishFooter}
+                />
+              ) : null}
+            </View>
+          ),
+        });
       }
 
-      return undefined;
+      return null;
     },
-    [footerType, handleCancelFooter, handleFinishFooter, logger]
+    [modalStack, handleCancelFooter, handleFinishFooter]
   );
 
   const renderHandler = useCallback(
     (props: BottomSheetHandleProps) => {
-      return <BottomSheetHandle {...props} />;
+      // get title from modalStack
+      const currentModal = modalStack[modalStack.length - 1];
+      const title = currentModal?.props.title;
+      if (title) {
+        return <LabelHandler {...props} label={title} />;
+      }
+      return (
+        <BottomSheetHandle
+          {...props}
+          // style={{ backgroundColor: theme.colors.surfaceVariant }}
+          // indicatorStyle={{ backgroundColor: theme.colors.text }}
+        />
+      );
     },
-    [title]
+    [modalStack]
   );
 
-  const renderBackdrop = useCallback((props: BottomSheetBackdropProps) => {
-    return (
-      <BottomSheetBackdrop
-        {...props}
-        pressBehavior={'close'}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.6}
-      />
-    );
-  }, []);
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => {
+      return (
+        <BottomSheetBackdrop
+          {...props}
+          pressBehavior={'close'}
+          disappearsOnIndex={-1}
+          appearsOnIndex={0}
+          opacity={0.6}
+        />
+      );
+    },
+    [modalStack]
+  );
 
   const openDrawer = useCallback(
     async (props: OpenDrawerProps): Promise<unknown> => {
-      const { bottomSheetProps, footerType, title, initialData, render } =
-        props;
+      const { bottomSheetProps, initialData, render } = props;
 
+      const enableDynamicSizing = bottomSheetProps?.enableDynamicSizing ?? true;
       setModalProps((prev) => ({
         ...prev,
         ...bottomSheetProps,
-        snapPoints: bottomSheetProps?.snapPoints || prev.snapPoints,
+        snapPoints: enableDynamicSizing
+          ? []
+          : bottomSheetProps?.snapPoints || prev.snapPoints,
         index: bottomSheetProps?.index ?? 0,
-        enableDynamicSizing:
-          bottomSheetProps?.enableDynamicSizing ?? prev.enableDynamicSizing,
+        enableDynamicSizing,
       }));
-
-      if (footerType) {
-        setFooterType(footerType);
-      }
-
-      if (title) {
-        setTitle(title);
-      }
 
       initialInputParamsRef.current = JSON.stringify(initialData);
 
       return new Promise((resolve, reject) => {
         const wrapResolve = (value: unknown) => {
-          logger.debug('wrapResolve', value);
+          logger.debug('openDrawer wrapResolve', value);
           setModalStack((prevStack) => {
             const newStack = prevStack.slice(0, -1);
             if (newStack.length > 0) {
@@ -269,6 +311,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
           resolve(value);
         };
         const wrapReject = (error: unknown) => {
+          logger.debug('openDrawer wrapReject', error);
           setModalStack((prevStack) => {
             const newStack = prevStack.slice(0, -1);
             if (newStack.length > 0) {
@@ -283,34 +326,42 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         onCustomDrawerRejectRef.current = wrapReject;
 
         const content = (
-          <CustomModalContext.Provider
-            value={{
-              dismiss,
-              dismissAll,
-              editProp,
-              openDrawer,
-              openModal,
-              bottomSheetModalRef: bottomSheetModalRef,
+          <View
+            style={{
+              // marginBottom: insets.bottom,
+              backgroundColor: 'red',
             }}
           >
-            {render({
-              resolve: wrapResolve,
-              onChange: (newValue) => {
-                logger.debug(
-                  'onChange',
-                  (newValue as SelectItemOption<unknown>[])
-                    .filter((o) => o.selected)
-                    .map((o) => o.label)
-                );
-                latestInputParamsRef.current = newValue;
-              },
-              reject: wrapReject,
-            })}
-          </CustomModalContext.Provider>
+            <CustomModalContext.Provider
+              value={{
+                dismiss,
+                dismissAll,
+                editProp,
+                openDrawer,
+                openModal,
+                bottomSheetModalRef: bottomSheetModalRef,
+              }}
+            >
+              {render({
+                resolve: wrapResolve,
+                onChange: (newValue) => {
+                  logger.debug('onChange', newValue);
+                  latestInputParamsRef.current = newValue;
+                },
+                reject: wrapReject,
+              })}
+            </CustomModalContext.Provider>
+          </View>
         );
         setModalStack((prevStack) => [
           ...prevStack,
-          { content, props, resolve: wrapResolve, reject: wrapReject },
+          {
+            content,
+            props,
+            resolve: wrapResolve,
+            reject: wrapReject,
+            renderFooter: props.renderFooter,
+          },
         ]);
 
         if (bottomSheetModalRef.current) {
@@ -319,7 +370,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         }
       });
     },
-    [logger]
+    [footerHeight]
   );
 
   const openModal = useCallback(
@@ -365,29 +416,6 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     setModalVisible(false);
     onModalRejectRef.current?.(new Error('Modal dismissed'));
   }, []);
-
-  const handleSheetChanges = useCallback(
-    (index: number) => {
-      logger.debug(
-        `handleSheetChanges index=${index} modalStack=${modalStack.length}`
-      );
-      if (index === -1 && modalStack.length > 0) {
-        const currentModal = modalStack[modalStack.length];
-        currentModal?.resolve(undefined);
-        setModalStack((prevStack) => {
-          const newStack = prevStack.slice(0, -1);
-          if (newStack.length > 0) {
-            // Present the previous modal
-            setTimeout(() => {
-              bottomSheetModalRef.current?.present();
-            }, 0);
-          }
-          return newStack;
-        });
-      }
-    },
-    [modalStack]
-  );
 
   const editProp = useCallback(
     async (props: EditPropProps): Promise<DynamicType> => {
@@ -477,7 +505,7 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         {content}
       </ContainerComponent>
     );
-  }, [modalStack]);
+  }, [modalStack, footerHeight]);
 
   const dismiss = useCallback(() => {
     logger.debug(
@@ -521,6 +549,23 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
     bottomSheetModalRef.current?.dismiss();
   }, [modalStack]);
 
+  const handleSheetChanges = useCallback(
+    (index: number, position: number, type: SNAP_POINT_TYPE) => {
+      logger.debug(
+        `handleSheetChanges index=${index} modalStack=${modalStack.length}`
+      );
+      const currentModal = modalStack[modalStack.length];
+
+      // Propagate the event if it exists
+      currentModal?.props.bottomSheetProps?.onChange?.(index, position, type);
+
+      if (index === -1) {
+        dismissAll();
+      }
+    },
+    [modalStack, dismissAll]
+  );
+
   return (
     <CustomModalContext.Provider
       value={{
@@ -537,11 +582,24 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         ref={bottomSheetModalRef}
         {...modalProps}
         onChange={handleSheetChanges}
+        enableDynamicSizing
         footerComponent={renderFooter}
-        handleComponent={renderHandler}
-        backdropComponent={renderBackdrop}
+        handleComponent={
+          modalProps.handleComponent !== undefined
+            ? modalProps.handleComponent
+            : renderHandler
+        }
+        backdropComponent={
+          modalProps.backdropComponent !== undefined
+            ? modalProps.backdropComponent
+            : renderBackdrop
+        }
+        containerStyle={{
+          paddingBottom: footerHeight,
+          marginBottom: insets.bottom,
+        }}
+        // bottomInset={insets.bottom}
       >
-        <Text>Stack: {modalStack.length}</Text>
         {renderContent()}
       </BottomSheetModal>
       {Platform.OS === 'web' || Platform.OS === 'ios' ? (
