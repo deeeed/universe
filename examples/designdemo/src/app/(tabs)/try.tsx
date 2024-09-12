@@ -36,6 +36,11 @@ const links = [
     subLabel: "Explore EditableInfoCard Components",
     path: "/components/try-editable-info-card",
   },
+  {
+    label: "Pickers",
+    subLabel: "Explore Picker Components",
+    path: "/components/try-pickers",
+  },
 ];
 
 const logger = getLogger("TryItScreen");

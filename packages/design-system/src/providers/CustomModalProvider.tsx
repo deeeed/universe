@@ -287,19 +287,30 @@ const WithProvider: FunctionComponent<{ children: ReactNode }> = ({
         onCustomDrawerRejectRef.current = wrapReject;
 
         setDrawerContent(
-          render({
-            resolve: wrapResolve,
-            onChange: (newValue) => {
-              logger.debug(
-                'onChange',
-                (newValue as SelectItemOption<unknown>[])
-                  .filter((o) => o.selected)
-                  .map((o) => o.label)
-              );
-              latestInputParamsRef.current = newValue;
-            },
-            reject: wrapReject,
-          })
+          <CustomModalContext.Provider
+            value={{
+              dismiss,
+              dismissAll,
+              editProp,
+              openDrawer,
+              openModal,
+              bottomSheetModalRef: bottomSheetModalRef,
+            }}
+          >
+            {render({
+              resolve: wrapResolve,
+              onChange: (newValue) => {
+                logger.debug(
+                  'onChange',
+                  (newValue as SelectItemOption<unknown>[])
+                    .filter((o) => o.selected)
+                    .map((o) => o.label)
+                );
+                latestInputParamsRef.current = newValue;
+              },
+              reject: wrapReject,
+            })}
+          </CustomModalContext.Provider>
         );
         if (bottomSheetModalRef.current) {
           bottomSheetModalRef.current.present();

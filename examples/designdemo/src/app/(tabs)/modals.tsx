@@ -15,6 +15,8 @@ import {
 import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { Form1 } from "../../components/form1";
+
 const getStyles = () => {
   return StyleSheet.create({
     container: {},
@@ -173,6 +175,21 @@ export const TestModals = () => {
     }
   }, [openModal]);
 
+  const checkBug = useCallback(async () => {
+    console.log(`checkBug`);
+    try {
+      const result = await openDrawer({
+        render: () => <Form1 label="this is form 1" />,
+        bottomSheetProps: {
+          stackBehavior: "replace",
+        },
+      });
+      console.log(`result`, result);
+    } catch (error) {
+      console.log(`error`, error);
+    }
+  }, []);
+
   return (
     <View style={styles.container}>
       <View>
@@ -185,6 +202,11 @@ export const TestModals = () => {
       </View>
       <View>
         <Button onPress={handleEditProp}>Edit PRops (string)</Button>
+      </View>
+
+      <View>
+        <Text>BUGs</Text>
+        <Button onPress={checkBug}>BOOM Modal</Button>
       </View>
 
       <View>
