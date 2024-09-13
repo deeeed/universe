@@ -369,7 +369,10 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
                 type,
               })
             }
-            stackBehavior="push"
+            stackBehavior={
+              // change default stack behavior to 'push'
+              modal.props.bottomSheetProps?.stackBehavior || 'push'
+            }
             footerComponent={(props) =>
               renderFooter({ modalIndex: index, footerProps: props })
             }
