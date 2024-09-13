@@ -1,4 +1,3 @@
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import {
   AppTheme,
   Button,

@@ -1,7 +1,6 @@
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
-  BottomSheetScrollView,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import {
@@ -50,7 +49,6 @@ export const Bug = () => {
             footerType: "confirm_cancel",
             containerType: viewType === "view" ? "view" : "scrollview",
             bottomSheetProps: {
-              // index: 0,
               enableDynamicSizing: true,
               snapPoints: [],
               backdropComponent: undefined,

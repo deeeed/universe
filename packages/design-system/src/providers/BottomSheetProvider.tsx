@@ -22,6 +22,7 @@ import { View } from 'react-native';
 import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
 import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import { baseLogger } from '../utils/logger';
+import { Text } from 'react-native-paper';
 
 export interface ModalStackItem<T = unknown> {
   id: number;
@@ -236,19 +237,30 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
       position: number;
       type: SNAP_POINT_TYPE;
     }) => {
+      const currentModal = modalStack[modalIndex];
+      if (!currentModal) return;
+
       if (index === -1) {
         // Modal is dismissed
         setModalStack((prevStack) => {
-          const modalToRemove = prevStack[modalIndex];
-          if (!modalToRemove) return prevStack;
-
-          const newStack = prevStack.filter((_, idx) => idx !== modalIndex);
+          // Determine the new stack based on stackBehavior
+          let newStack = [...prevStack];
+          if (
+            currentModal.props.bottomSheetProps?.stackBehavior === 'replace'
+          ) {
+            // For 'replace', remove all modals up to the current one
+            newStack = newStack.slice(0, modalIndex);
+          } else {
+            // For 'push', remove only the current modal
+            newStack.splice(modalIndex, 1);
+          }
 
           // Resolve the promise for the dismissed modal
           setTimeout(() => {
-            modalToRemove.resolve(modalToRemove.latestData);
+            currentModal.resolve(currentModal.latestData);
           }, 300); // Adjust this delay if needed
 
+          // Present the next modal if available
           if (newStack.length > 0) {
             setTimeout(() => {
               newStack[newStack.length - 1]?.bottomSheetRef.current?.present();
@@ -259,8 +271,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
         });
       } else {
         // Handle other changes if necessary
-        const currentModal = modalStack[modalIndex];
-        currentModal?.props.bottomSheetProps?.onChange?.(index, position, type);
+        currentModal.props.bottomSheetProps?.onChange?.(index, position, type);
       }
     },
     [modalStack, setModalStack]
@@ -301,7 +312,12 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
         reject: currentModal.reject,
       });
 
-      return <Container>{content}</Container>;
+      return (
+        <Container>
+          <Text>stackLength: {modalStack.length}</Text>
+          {content}
+        </Container>
+      );
     },
     [modalStack, footerHeight]
   );
