@@ -13,7 +13,8 @@ export const Form2 = ({ label }: Form2Props) => {
   const handlePress = () => {
     openDrawer({
       bottomSheetProps: {
-        index: 0,
+        enableDynamicSizing: true,
+        snapPoints: [],
       },
       render: () => <Form2 label={Date.now().toString()} />,
     });
@@ -32,7 +33,7 @@ export const Form2 = ({ label }: Form2Props) => {
   };
 
   return (
-    <View style={{ backgroundColor: "blue", paddingBottom: 200 }}>
+    <View style={{ backgroundColor: "blue", flex: 1 }}>
       <Text>Form2 {label}</Text>
       <Text>{darkMode ? "Dark Mode" : "Light Mode"}</Text>
       <Button onPress={handlePress}>Open</Button>

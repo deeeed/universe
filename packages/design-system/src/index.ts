@@ -43,7 +43,8 @@ export * from './hooks/useConfirm';
 export * from './hooks/useToast';
 export * from './hooks/useModal';
 
-export * from './providers/CustomModalProvider';
+export * from './providers/BottomSheetProvider';
+export * from './providers/ModalProvider';
 export * from './providers/LanguageProvider';
 export * from './providers/ThemeProvider';
 export * from './providers/UIProvider';

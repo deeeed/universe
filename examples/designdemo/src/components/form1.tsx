@@ -1,3 +1,4 @@
+import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import {
   AppTheme,
   Button,
@@ -16,7 +17,6 @@ const getStyles = ({ theme }: { theme: AppTheme; insets: EdgeInsets }) => {
   return StyleSheet.create({
     container: {
       backgroundColor: theme.colors.background,
-      flex: 1,
     },
   });
 };
@@ -37,11 +37,22 @@ export const Form1 = ({ label, onChange }: Form1Props) => {
     console.log("pressed");
     openDrawer({
       // title: "Form 1",
+      containerType: "scrollview",
       bottomSheetProps: {
-        enableDynamicSizing: false,
-        // stackBehavior: "replace",
+        enableDynamicSizing: true,
+        snapPoints: [],
       },
-      render: () => <Form2 label="this is form 2" />,
+      render: ({ footerHeight }) => {
+        console.log("renderfooterHeight", footerHeight);
+        return (
+          <>
+            <Form2 label="this is form 2" />
+            <View style={{ backgroundColor: "green", padding: 20 }}>
+              <Text>FOOTER here</Text>
+            </View>
+          </>
+        );
+      },
     });
   };
 

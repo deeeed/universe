@@ -48,6 +48,7 @@ module.exports = {
         useTabs: false,
       },
     ],
+    'react/prop-types': 'off',
     // "indent": ["error", 2],
     // "linebreak-style": ["error", "unix"],
     // "quotes": ["error", "double"],

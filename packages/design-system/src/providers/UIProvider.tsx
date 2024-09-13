@@ -24,10 +24,11 @@ import {
   useAppThemeSetup,
 } from '../hooks/_useAppThemeSetup';
 import { ConfirmProvider, ConfirmProviderProps } from './ConfirmProvider';
-import { CustomBottomSheetModal } from './CustomModalProvider';
 import { LanguageProvider } from './LanguageProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { ToastProvider, ToastProviderProps } from './ToastProvider';
+import { ModalProvider } from './ModalProvider';
+import { BottomSheetProvider } from './BottomSheetProvider';
 
 export const DefaultLightTheme: CustomAppTheme = {
   ...MD3LightTheme,
@@ -164,7 +165,9 @@ const UIProviderWithLanguageReady = ({
       <ThemeProvider preferences={defaultPreferences}>
         <ToastProvider {...toastProviderProps}>
           <ConfirmProvider {...confirmProviderProps}>
-            <CustomBottomSheetModal>{children}</CustomBottomSheetModal>
+            <BottomSheetProvider>
+              <ModalProvider>{children}</ModalProvider>
+            </BottomSheetProvider>
           </ConfirmProvider>
         </ToastProvider>
       </ThemeProvider>

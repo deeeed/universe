@@ -1,6 +1,7 @@
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
+  BottomSheetScrollView,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import {
@@ -8,7 +9,7 @@ import {
   useModal,
   useThemePreferences,
 } from "@siteed/design-system/src";
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Text } from "react-native-paper";
 
@@ -30,6 +31,7 @@ export const Bug = () => {
   ];
 
   const { openDrawer } = useModal();
+  const [viewType, setViewType] = useState<"view" | "scroll">("view");
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   return (
@@ -37,20 +39,31 @@ export const Bug = () => {
       <ThemeConfig colors={colors} />
       <Button
         onPress={() => {
+          setViewType(viewType === "view" ? "scroll" : "view");
+        }}
+      >
+        {viewType}
+      </Button>
+      <Button
+        onPress={() => {
           openDrawer({
+            footerType: "confirm_cancel",
+            containerType: viewType === "view" ? "view" : "scrollview",
             bottomSheetProps: {
-              index: 0,
-              enableDynamicSizing: false,
+              // index: 0,
+              enableDynamicSizing: true,
+              snapPoints: [],
               backdropComponent: undefined,
             },
-            renderFooter: ({ data, footerComponent }) => (
-              <View>
-                {footerComponent}
-                <Text>data: {JSON.stringify(data)}</Text>
-              </View>
-            ),
             render: ({ onChange }) => (
-              <Form1 label="Form 1" onChange={onChange} />
+              <>
+                <Form1 label="Form 1" onChange={onChange} />
+                <View
+                  style={{ backgroundColor: "green", padding: 20, flex: 1 }}
+                >
+                  <Text>FOOTER here</Text>
+                </View>
+              </>
             ),
           });
         }}
@@ -67,20 +80,15 @@ export const Bug = () => {
       <BottomSheetModal
         ref={bottomSheetModalRef}
         enableDynamicSizing
-        snapPoints={["20%", "60%"]}
+        // snapPoints={["20%", "60%"]}
         backdropComponent={(props) => <BottomSheetBackdrop {...props} />}
         footerComponent={() => (
-          <View
-            style={{
-              backgroundColor: "blue",
-              padding: 30,
-            }}
-          >
+          <View style={{ backgroundColor: "green", padding: 20 }}>
             <Text>FOOTER here</Text>
           </View>
         )}
       >
-        <BottomSheetView style={{ flex: 1 }}>
+        <BottomSheetView>
           <Form1 label="Form 1" />
         </BottomSheetView>
       </BottomSheetModal>
