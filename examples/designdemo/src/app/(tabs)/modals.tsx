@@ -229,7 +229,6 @@ export const TestModals = () => {
               inputType="text"
               autoFocus
               showFooter
-              withinBottomSheet
               onCancel={() => {
                 console.log("onCancel");
                 bottomSheetModalRef.current?.close();

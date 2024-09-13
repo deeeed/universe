@@ -49,7 +49,6 @@ export interface DynInputProps {
   showFooter?: boolean;
   autoFocus?: boolean;
   label?: string;
-  withinBottomSheet?: boolean;
   numberOfLines?: number;
   useFlatList?: boolean;
   customRender?: (
@@ -92,7 +91,6 @@ export const DynInput = ({
   inputType,
   showSearch,
   showFooter = true,
-  withinBottomSheet = false,
   autoFocus,
   label,
   numberOfLines,
@@ -181,7 +179,6 @@ export const DynInput = ({
         ref={inputRef}
         inputMode="numeric"
         onFocus={handleFocus}
-        withinBottomSheet={withinBottomSheet}
         onBlur={handleBlur}
         value={temp as string}
         onChangeText={handleChange}
@@ -201,7 +198,6 @@ export const DynInput = ({
         multiline={!!(numberOfLines && numberOfLines > 0)}
         numberOfLines={numberOfLines}
         label={label}
-        withinBottomSheet={withinBottomSheet}
         value={temp as string}
         onChangeText={handleChange}
         selectTextOnFocus={selectTextOnFocus}

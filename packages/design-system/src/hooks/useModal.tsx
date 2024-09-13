@@ -53,7 +53,6 @@ export const useModal = () => {
               autoFocus={true}
               finishOnEnter={true}
               selectTextOnFocus={true}
-              withinBottomSheet={false}
               onCancel={() => {
                 resolve(data);
               }}
@@ -80,7 +79,6 @@ export const useModal = () => {
             data={data}
             useFlatList={false}
             autoFocus={true}
-            withinBottomSheet={true}
             selectTextOnFocus={true}
             finishOnEnter={true}
             onCancel={() => {
