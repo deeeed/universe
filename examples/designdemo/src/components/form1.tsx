@@ -33,23 +33,26 @@ export const Form1 = ({ label, onChange }: Form1Props) => {
   const styles = useMemo(() => getStyles({ theme, insets }), [theme, insets]);
   const { darkMode } = useThemePreferences();
   const handlePress = () => {
-    console.log("pressed");
     openDrawer({
       // title: "Form 1",
-      containerType: "scrollview",
+      containerType: "view",
       bottomSheetProps: {
         enableDynamicSizing: true,
         snapPoints: [],
-      },
-      render: ({ footerHeight }) => {
-        console.log("renderfooterHeight", footerHeight);
-        return (
-          <>
-            <Form2 label="this is form 2" />
-            <View style={{ backgroundColor: "green", padding: 20 }}>
+        footerComponent: () => {
+          return (
+            <View style={{ padding: 20, backgroundColor: "red" }}>
               <Text>FOOTER here</Text>
             </View>
-          </>
+          );
+        },
+      },
+      render: () => {
+        return (
+          <View>
+            <Text>Form 1</Text>
+            <Form2 label="this is form 2" />
+          </View>
         );
       },
     });

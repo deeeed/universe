@@ -15,8 +15,26 @@ export const Form2 = ({ label }: Form2Props) => {
       bottomSheetProps: {
         enableDynamicSizing: true,
         snapPoints: [],
+        footerComponent: () => (
+          <View
+            style={{
+              paddingBottom: 20,
+              backgroundColor: "red",
+              height: 200,
+            }}
+          >
+            <Text>Fomr 2 footer here</Text>
+          </View>
+        ),
       },
-      render: () => <Form2 label={Date.now().toString()} />,
+      render: () => {
+        return (
+          <View>
+            <Text>Form 2</Text>
+            <Form2 label={Date.now().toString()} />
+          </View>
+        );
+      },
     });
   };
 
@@ -33,7 +51,7 @@ export const Form2 = ({ label }: Form2Props) => {
   };
 
   return (
-    <View style={{ backgroundColor: "blue", flex: 1 }}>
+    <View style={{}}>
       <Text>Form2 {label}</Text>
       <Text>{darkMode ? "Dark Mode" : "Light Mode"}</Text>
       <Button onPress={handlePress}>Open</Button>

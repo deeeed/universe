@@ -1,6 +1,7 @@
 import {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
+  BottomSheetFooter,
   BottomSheetFooterProps,
   BottomSheetHandle,
   BottomSheetHandleProps,
@@ -22,7 +23,6 @@ import { View } from 'react-native';
 import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
 import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import { baseLogger } from '../utils/logger';
-import { Text } from 'react-native-paper';
 
 export interface ModalStackItem<T = unknown> {
   id: number;
@@ -42,7 +42,6 @@ export interface OpenDrawerProps<T> {
   containerType?: 'view' | 'scrollview' | 'none';
   bottomSheetProps?: Partial<BottomSheetModalProps>;
   render: (props: {
-    footerHeight?: number;
     resolve?: (value: T | undefined) => void;
     onChange?: (value: T) => void;
     reject?: (error: Error) => void;
@@ -76,39 +75,60 @@ const defaultBottomSheetModalProps: Partial<BottomSheetModalProps> = {
 export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [footerHeight, setFooterHeight] = useState(0);
   const [modalStack, setModalStack] = useState<Array<ModalStackItem>>([]);
   const modalIdCounter = useRef(0);
+  const [footerHeights, setFooterHeights] = useState<Record<number, number>>(
+    {}
+  );
+
+  const updateFooterHeight = useCallback(
+    (modalId: number, newHeight: number) => {
+      setFooterHeights((prevHeights) => {
+        if (prevHeights[modalId] !== newHeight) {
+          return { ...prevHeights, [modalId]: newHeight };
+        }
+        return prevHeights;
+      });
+    },
+    []
+  );
 
   const renderFooter = useCallback(
-    ({ modalIndex }: { modalIndex: number }) => {
-      const FooterComponent = (props: BottomSheetFooterProps) => {
-        const modal = modalStack[modalIndex];
-        if (!modal) return null;
+    ({
+      modalIndex,
+      footerProps,
+    }: {
+      modalIndex: number;
+      footerProps: BottomSheetFooterProps;
+    }) => {
+      const modal = modalStack[modalIndex];
+      if (!modal) return null;
 
-        const { footerType, bottomSheetProps } = modal.props;
-        const footerComponent = bottomSheetProps?.footerComponent;
+      const { footerType, bottomSheetProps } = modal.props;
+      const footerComponent = bottomSheetProps?.footerComponent;
 
-        if (!footerType && !footerComponent) return null;
+      if (!footerType && !footerComponent) return null;
 
-        return (
+      return (
+        <BottomSheetFooter {...footerProps}>
           <View
-            onLayout={(event) =>
-              setFooterHeight(event.nativeEvent.layout.height)
-            }
+            onLayout={(event) => {
+              if (modalIndex === modalStack.length - 1) {
+                const newHeight = event.nativeEvent.layout.height;
+                updateFooterHeight(modal.id, newHeight);
+              }
+            }}
           >
             {footerComponent ? (
-              footerComponent(props)
+              footerComponent(footerProps)
             ) : (
-              <ConfirmCancelFooter {...props} />
+              <ConfirmCancelFooter {...footerProps} />
             )}
           </View>
-        );
-      };
-      FooterComponent.displayName = 'BottomSheetFooter';
-      return FooterComponent;
+        </BottomSheetFooter>
+      );
     },
-    [modalStack, setFooterHeight]
+    [modalStack, updateFooterHeight]
   );
 
   const renderHandler = useCallback(
@@ -184,6 +204,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
             bottomSheetRef: newBottomSheetRef,
             initialData,
             latestData: initialData,
+            footerHeight: 0,
           } as ModalStackItem,
         ]);
 
@@ -195,7 +216,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
         }, 0);
       });
     },
-    [footerHeight, setModalStack]
+    [setModalStack]
   );
 
   const dismiss = useCallback(() => {
@@ -258,7 +279,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
           // Resolve the promise for the dismissed modal
           setTimeout(() => {
             currentModal.resolve(currentModal.latestData);
-          }, 300); // Adjust this delay if needed
+          }, 100); // Adjust this delay if needed
 
           // Present the next modal if available
           if (newStack.length > 0) {
@@ -291,9 +312,11 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const renderContent = useCallback(
-    ({ modelIndex }: { modelIndex: number }) => {
-      const currentModal = modalStack[modelIndex];
+    ({ modalIndex }: { modalIndex: number }) => {
+      const currentModal = modalStack[modalIndex];
       if (!currentModal) return null;
+
+      const footerHeight = footerHeights[currentModal.id] || 0;
 
       const containerType = currentModal.props.containerType || 'view';
       const Container =
@@ -304,7 +327,6 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
             : React.Fragment;
 
       const content = currentModal.render({
-        footerHeight,
         resolve: currentModal.resolve,
         onChange: (newValue) => {
           updateLatestData(currentModal.id, newValue);
@@ -313,13 +335,10 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       return (
-        <Container>
-          <Text>stackLength: {modalStack.length}</Text>
-          {content}
-        </Container>
+        <Container style={{ paddingBottom: footerHeight }}>{content}</Container>
       );
     },
-    [modalStack, footerHeight]
+    [modalStack, footerHeights, updateLatestData]
   );
 
   const contextValue = useMemo(
@@ -351,11 +370,13 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
               })
             }
             stackBehavior="push"
-            footerComponent={renderFooter({ modalIndex: index })}
+            footerComponent={(props) =>
+              renderFooter({ modalIndex: index, footerProps: props })
+            }
             handleComponent={renderHandler({ modalIndex: index })}
             backdropComponent={renderBackdrop}
           >
-            {renderContent({ modelIndex: index })}
+            {renderContent({ modalIndex: index })}
           </BottomSheetModal>
         ))}
       </BottomSheetModalProvider>

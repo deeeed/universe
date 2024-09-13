@@ -1,5 +1,6 @@
 import {
   BottomSheetBackdrop,
+  BottomSheetFooter,
   BottomSheetModal,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
@@ -52,16 +53,21 @@ export const Bug = () => {
               enableDynamicSizing: true,
               snapPoints: [],
               backdropComponent: undefined,
+              footerComponent: () => (
+                <View style={{ backgroundColor: "green", padding: 20 }}>
+                  <Text>FOOTER here</Text>
+                </View>
+              ),
             },
             render: ({ onChange }) => (
-              <>
+              <View>
                 <Form1 label="Form 1" onChange={onChange} />
                 <View
                   style={{ backgroundColor: "green", padding: 20, flex: 1 }}
                 >
                   <Text>FOOTER here</Text>
                 </View>
-              </>
+              </View>
             ),
           });
         }}
@@ -80,10 +86,13 @@ export const Bug = () => {
         enableDynamicSizing
         // snapPoints={["20%", "60%"]}
         backdropComponent={(props) => <BottomSheetBackdrop {...props} />}
-        footerComponent={() => (
-          <View style={{ backgroundColor: "green", padding: 20 }}>
+        footerComponent={(props) => (
+          <BottomSheetFooter
+            {...props}
+            style={{ backgroundColor: "green", padding: 20 }}
+          >
             <Text>FOOTER here</Text>
-          </View>
+          </BottomSheetFooter>
         )}
       >
         <BottomSheetView>
