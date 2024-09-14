@@ -7,14 +7,15 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ActivityIndicator, IconButton, Text } from 'react-native-paper';
-import { useTheme } from '../../providers/ThemeProvider';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
+import { useTheme } from '../../providers/ThemeProvider';
 
 export interface EditableInfoCardProps {
   label: string;
-  value?: string;
+  value?: unknown;
   processing?: boolean;
   error?: boolean;
+  renderValue?: (value?: unknown) => React.ReactNode;
   editable?: boolean; // New property to determine if the item is editable
   onEdit?: () => void; // Callback function when edit icon is pressed
   containerStyle?: StyleProp<ViewStyle>;
@@ -54,16 +55,17 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
     icon: {},
   });
 
-export const EditableInfoCard = ({
+export function EditableInfoCard({
   label,
   value,
   error,
   processing,
   editable,
   onEdit,
+  renderValue,
   containerStyle,
   contentStyle,
-}: EditableInfoCardProps) => {
+}: EditableInfoCardProps): React.ReactNode {
   const theme = useTheme();
   const styles = useMemo(() => getStyles({ theme }), [theme]);
 
@@ -74,13 +76,15 @@ export const EditableInfoCard = ({
         <View style={[styles.content, contentStyle]}>
           {processing ? (
             <ActivityIndicator size="small" />
+          ) : renderValue ? (
+            renderValue(value)
           ) : (
             <Text
               style={{
                 color: error ? theme.colors.error : theme.colors.text,
               }}
             >
-              {value}
+              {typeof value === 'string' ? value : value?.toString()}
             </Text>
           )}
         </View>
@@ -99,4 +103,4 @@ export const EditableInfoCard = ({
   );
 
   return editable ? <Pressable onPress={onEdit}>{content}</Pressable> : content;
-};
+}
