@@ -1,3 +1,5 @@
+// TextInput.tsx
+
 import { useBottomSheetInternal } from '@gorhom/bottom-sheet';
 import React, {
   forwardRef,
@@ -26,10 +28,18 @@ export interface InputRefMethods {
   blur: () => void;
 }
 
+const useSafeBottomSheetInternal = () => {
+  try {
+    return useBottomSheetInternal();
+  } catch (e) {
+    return null;
+  }
+};
+
 export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
   ({ mandatory, label, onFocus, onBlur, ...rest }, ref) => {
     const inputRef = useRef<RNTextInput>(null);
-    const { shouldHandleKeyboardEvents } = useBottomSheetInternal();
+    const bottomSheetInternal = useSafeBottomSheetInternal();
 
     useImperativeHandle(ref, () => ({
       focus: () => inputRef.current?.focus(),
@@ -50,25 +60,31 @@ export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
 
     const handleOnFocus = useCallback(
       (event: NativeSyntheticEvent<TextInputFocusEventData>) => {
-        shouldHandleKeyboardEvents.value = true;
+        if (bottomSheetInternal) {
+          bottomSheetInternal.shouldHandleKeyboardEvents.value = true;
+        }
         onFocus?.(event);
       },
-      [onFocus, shouldHandleKeyboardEvents]
+      [onFocus, bottomSheetInternal]
     );
 
     const handleOnBlur = useCallback(
       (event: NativeSyntheticEvent<TextInputFocusEventData>) => {
-        shouldHandleKeyboardEvents.value = false;
+        if (bottomSheetInternal) {
+          bottomSheetInternal.shouldHandleKeyboardEvents.value = false;
+        }
         onBlur?.(event);
       },
-      [onBlur, shouldHandleKeyboardEvents]
+      [onBlur, bottomSheetInternal]
     );
 
     useEffect(() => {
       return () => {
-        shouldHandleKeyboardEvents.value = false;
+        if (bottomSheetInternal) {
+          bottomSheetInternal.shouldHandleKeyboardEvents.value = false;
+        }
       };
-    }, [shouldHandleKeyboardEvents]);
+    }, [bottomSheetInternal]);
 
     return (
       <PTextInput
