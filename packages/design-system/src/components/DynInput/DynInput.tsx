@@ -106,7 +106,7 @@ export const DynInput = ({
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
   const inputRef = useRef<RNGTextInput>(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     data as Date
   );
@@ -213,9 +213,6 @@ export const DynInput = ({
     if (dateMode === 'time') {
       return (
         <>
-          <Button onPress={() => setVisible(true)}>
-            {selectedDate ? selectedDate.toLocaleTimeString() : 'Pick time'}
-          </Button>
           <TimePickerModal
             visible={visible}
             onDismiss={() => setVisible(false)}

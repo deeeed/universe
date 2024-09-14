@@ -125,6 +125,7 @@ export const DateInput: StoryObj<DynInputProps> = {
   args: {
     data: new Date(),
     inputType: 'date',
+    showFooter: false,
   },
   parameters: {
     docs: {
@@ -140,6 +141,7 @@ export const DateTimeInput: StoryObj<DynInputProps> = {
     data: new Date(),
     inputType: 'date',
     dateMode: 'datetime',
+    showFooter: false,
   },
   parameters: {
     docs: {
