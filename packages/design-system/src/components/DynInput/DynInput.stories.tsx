@@ -146,32 +146,47 @@ export const DateInput: StoryObj<DynInputProps> = {
   },
 };
 
-export const DateTimeInput: StoryObj<DynInputProps> = {
+export const TimeInput: StoryObj<DynInputProps> = {
   args: {
     data: new Date(),
-    inputType: 'date',
-    dateMode: 'datetime',
+    inputType: 'time',
     showFooter: false,
   },
   parameters: {
     docs: {
       source: {
-        code: '<DynInput data={new Date()} inputType="date" dateMode="datetime" onChange={(value) => console.log("DateTime changed:", value)} onFinish={(selectedDateTime) => console.log("Selected date and time:", selectedDateTime)} />',
+        code: '<DynInput data={new Date()} inputType="time" onChange={(value) => console.log("Time changed:", value)} onFinish={(selectedTime) => console.log("Selected time:", selectedTime)} />',
       },
     },
   },
 };
 
-export const TimeInput: StoryObj<DynInputProps> = {
+export const DateTimeInput: StoryObj<DynInputProps> = {
   args: {
     data: new Date(),
-    inputType: 'date',
-    dateMode: 'time',
+    inputType: 'datetime',
+    showFooter: false,
   },
   parameters: {
     docs: {
       source: {
-        code: '<DynInput data={new Date()} inputType="date" dateMode="time" onChange={(value) => console.log("Time changed:", value)} onFinish={(selectedTime) => console.log("Selected time:", selectedTime)} />',
+        code: '<DynInput data={new Date()} inputType="datetime" onChange={(value) => console.log("DateTime changed:", value)} onFinish={(selectedDateTime) => console.log("Selected date and time:", selectedDateTime)} />',
+      },
+    },
+  },
+};
+
+export const InitiallyOpenDateInput: StoryObj<DynInputProps> = {
+  args: {
+    data: new Date(),
+    inputType: 'date',
+    showFooter: false,
+    initiallyOpen: true,
+  },
+  parameters: {
+    docs: {
+      source: {
+        code: '<DynInput data={new Date()} inputType="date" initiallyOpen={true} onChange={(value) => console.log("Date changed:", value)} onFinish={(selectedDate) => console.log("Selected date:", selectedDate)} />',
       },
     },
   },

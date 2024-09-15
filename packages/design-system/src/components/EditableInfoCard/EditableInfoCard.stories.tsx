@@ -111,8 +111,34 @@ export const EditableTime: StoryFn<EditableInfoCardProps> = (args) => {
             snapPoints: ['10%', '50%', '90%'],
           },
           data: value,
-          inputType: 'date',
-          dateMode: 'time',
+          inputType: 'time',
+        });
+        if (newValue) {
+          setValue(newValue as Date);
+        }
+      }}
+    />
+  );
+};
+
+export const EditableDateTime: StoryFn<EditableInfoCardProps> = (args) => {
+  const { editProp } = useModal();
+  const [value, setValue] = useState(new Date());
+  return (
+    <EditableInfoCard
+      {...args}
+      label="Date and Time"
+      value={value}
+      editable={true}
+      renderValue={(val) => format(val as Date, 'PPp')}
+      onEdit={async () => {
+        const newValue = await editProp({
+          bottomSheetProps: {
+            enableDynamicSizing: false,
+            snapPoints: ['10%', '50%', '90%'],
+          },
+          data: value,
+          inputType: 'datetime',
         });
         if (newValue) {
           setValue(newValue as Date);
