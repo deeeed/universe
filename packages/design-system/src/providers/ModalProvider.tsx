@@ -24,6 +24,8 @@ export interface OpenModalProps<T = unknown> {
 
 export interface ModalProviderProps {
   openModal: <T = unknown>(props: OpenModalProps<T>) => Promise<T>;
+  dismiss: () => Promise<boolean>;
+  dismissAll: () => void;
 }
 
 export const ModalContext = createContext<ModalProviderProps | undefined>(
@@ -43,6 +45,15 @@ const getStyles = (theme: AppTheme) => {
   });
 };
 
+export interface ModalStackItem<T = unknown> {
+  id: number;
+  content: ReactNode;
+  props: OpenModalProps<T>;
+  resolve: (value: T | undefined) => void;
+  reject: (error: Error) => void;
+  initialData: T;
+}
+
 export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -50,17 +61,17 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
   const themePreferences = useThemePreferences();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalContent, setModalContent] = useState<ReactNode>();
-  const [modalProps, setModalProps] = useState<Partial<ModalProps>>({});
-  const onModalResolveRef = useRef<((value: unknown) => void) | undefined>();
-  const onModalRejectRef = useRef<((error: Error) => void) | undefined>();
-  const latestModalDataRef = useRef<unknown>();
+  const [modalStack, setModalStack] = useState<ModalStackItem[]>([]);
 
   const handleModalDismiss = useCallback(() => {
-    setModalVisible(false);
-    onModalRejectRef.current?.(new Error('Modal dismissed'));
-  }, []);
+    if (modalStack.length > 0) {
+      const currentModal = modalStack[modalStack.length - 1];
+      currentModal?.resolve(currentModal.initialData);
+      setModalStack((prevStack) => prevStack.slice(0, -1));
+    }
+  }, [modalStack]);
+
+  const modalIdCounter = useRef(0);
 
   const openModal = useCallback(
     async <T,>({
@@ -68,46 +79,81 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
       modalProps: modalProperties,
       render,
     }: OpenModalProps<T>): Promise<T> => {
-      latestModalDataRef.current = initialData;
-
       return new Promise<T>((resolve, reject) => {
-        const wrapResolve = (value: T) => {
+        const modalId = modalIdCounter.current++;
+
+        const wrapResolve = (value: T | undefined) => {
           logger.debug('modal wrapResolve', value);
-          resolve(value);
-          setModalVisible(false);
+          setModalStack((prevStack) =>
+            prevStack.filter((modal) => modal.id !== modalId)
+          );
+          resolve(value as T);
         };
+
         const wrapReject = (error: Error) => {
           logger.debug('modal wrapReject', error);
+          setModalStack((prevStack) =>
+            prevStack.filter((modal) => modal.id !== modalId)
+          );
           reject(error);
-          setModalVisible(false);
         };
+
         const wrapOnChange = (value: T) => {
           logger.debug('modal onChange', value);
-          latestModalDataRef.current = value;
+          // Update the initialData of the current modal
+          setModalStack((prevStack) =>
+            prevStack.map((modal) =>
+              modal.id === modalId ? { ...modal, initialData: value } : modal
+            )
+          );
         };
 
-        onModalResolveRef.current = wrapResolve as (value: unknown) => void;
-        onModalRejectRef.current = wrapReject;
+        const content = render({
+          resolve: wrapResolve,
+          reject: wrapReject,
+          onChange: wrapOnChange,
+        });
 
-        setModalContent(
-          render({
+        setModalStack((prevStack) => [
+          ...prevStack,
+          {
+            id: modalId,
+            content,
+            props: { initialData, modalProps: modalProperties, render },
             resolve: wrapResolve,
             reject: wrapReject,
-            onChange: wrapOnChange,
-          })
-        );
-        setModalProps(modalProperties || {});
-        setModalVisible(true);
+            initialData: initialData,
+          } as ModalStackItem<unknown>, // Type assertion here
+        ]);
       });
     },
     []
   );
 
+  const dismiss = useCallback(() => {
+    return new Promise<boolean>((resolvePromise) => {
+      if (modalStack.length === 0) {
+        resolvePromise(false);
+        return;
+      }
+
+      handleModalDismiss();
+      resolvePromise(true);
+    });
+  }, [handleModalDismiss, modalStack.length]);
+
+  const dismissAll = useCallback(() => {
+    modalStack.forEach((modal) => modal.resolve(modal.initialData));
+    setModalStack([]);
+  }, [modalStack]);
+
   const contextValue = useMemo(
     () => ({
       openModal,
+      dismiss,
+      dismissAll,
     }),
-    [openModal]
+    [openModal, dismiss, dismissAll]
   );
 
   return (
@@ -115,28 +161,34 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
       {children}
       {Platform.OS === 'web' || Platform.OS === 'ios' ? (
         <Portal>
-          <Modal
-            visible={modalVisible}
-            onDismiss={handleModalDismiss}
-            contentContainerStyle={styles.modalContent}
-            {...modalProps}
-          >
-            <ThemeProvider preferences={themePreferences}>
-              {modalContent}
-            </ThemeProvider>
-          </Modal>
+          {modalStack.map((modal) => (
+            <Modal
+              key={modal.id}
+              visible={true}
+              onDismiss={handleModalDismiss}
+              contentContainerStyle={styles.modalContent}
+              {...modal.props.modalProps}
+            >
+              <ThemeProvider preferences={themePreferences}>
+                {modal.content}
+              </ThemeProvider>
+            </Modal>
+          ))}
         </Portal>
       ) : (
         <Portal>
           <ThemeProvider preferences={themePreferences}>
-            <Modal
-              visible={modalVisible}
-              onDismiss={handleModalDismiss}
-              contentContainerStyle={styles.modalContent}
-              {...modalProps}
-            >
-              {modalContent}
-            </Modal>
+            {modalStack.map((modal) => (
+              <Modal
+                key={modal.id}
+                visible={true}
+                onDismiss={handleModalDismiss}
+                contentContainerStyle={styles.modalContent}
+                {...modal.props.modalProps}
+              >
+                {modal.content}
+              </Modal>
+            ))}
           </ThemeProvider>
         </Portal>
       )}

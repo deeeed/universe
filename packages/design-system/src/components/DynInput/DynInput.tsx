@@ -61,6 +61,7 @@ export interface DynInputProps {
   selectTextOnFocus?: boolean;
   finishOnEnter?: boolean;
   cancelOnEscape?: boolean;
+  onChange?: (value: DynamicType) => void;
 }
 
 const logger = baseLogger.extend('DynInput');
@@ -97,6 +98,7 @@ export const DynInput = ({
   customRender,
   onCancel,
   onFinish,
+  onChange,
   dateMode = 'date',
   selectTextOnFocus,
   finishOnEnter,
@@ -141,18 +143,19 @@ export const DynInput = ({
       let formatedValue = value;
 
       if (Array.isArray(value) && value.length > 0 && !multiSelect) {
-        // Return the first selected value
         formatedValue = value.find((option) => option.selected) as SelectOption;
       }
 
       setTemp(value);
       logger.debug('DynInput handleChange - value changed:', value);
 
+      onChange?.(formatedValue);
+
       if (!showFooter) {
         onFinish?.(formatedValue);
       }
     },
-    [multiSelect, onFinish, showFooter]
+    [multiSelect, onFinish, onChange, showFooter]
   );
 
   const handleFocus = () => {

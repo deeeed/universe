@@ -1,5 +1,11 @@
 import React, { useMemo } from 'react';
-import { StyleProp, StyleSheet, TextStyle, View } from 'react-native';
+import {
+  StyleProp,
+  StyleSheet,
+  TextStyle,
+  View,
+  TouchableOpacity,
+} from 'react-native';
 import { Text } from 'react-native-paper';
 
 const getStyles = () => {
@@ -13,7 +19,6 @@ const getStyles = () => {
       gap: 10,
     },
     colorPreview: {
-      // Ensure the color preview is visible
       borderWidth: 1,
       minWidth: 20, // Use previewSize or a minimum value
       minHeight: 20, // Use previewSize or a minimum value
@@ -33,17 +38,20 @@ export interface ColorItemProps {
   labelStyle?: StyleProp<TextStyle>;
   color: string;
   previewSize?: number;
+  onPress?: () => void;
 }
+
 export const ColorItem = ({
   color,
   labelStyle,
   label,
   previewSize = 20,
+  onPress, // Add this line
 }: ColorItemProps) => {
   const styles = useMemo(() => getStyles(), []);
 
-  return (
-    <View style={styles.container}>
+  const content = (
+    <>
       <View
         style={[
           styles.colorPreview,
@@ -58,6 +66,16 @@ export const ColorItem = ({
       ) : (
         <Text style={[styles.textStyle, labelStyle]}>{color}</Text>
       )}
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity style={styles.container} onPress={onPress}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return <View style={styles.container}>{content}</View>;
 };

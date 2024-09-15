@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import {
   ConfirmContext,
   ConfirmContextType,
-} from '../providers/ConfirmProvider';
+} from '../../providers/ConfirmProvider';
 
 export const useConfirm = (): ConfirmContextType => {
   const context = useContext(ConfirmContext);

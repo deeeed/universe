@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { EditableInfoCard, EditableInfoCardProps } from './EditableInfoCard';
 import { Meta, StoryFn } from '@storybook/react';
-import { useModal } from '../../hooks/useModal';
+import { useModal } from '../../hooks/useModal/useModal';
 import { format } from 'date-fns';
 import { SelectOption } from '../SelectButtons/SelectButtons';
 import { Text } from 'react-native-paper';

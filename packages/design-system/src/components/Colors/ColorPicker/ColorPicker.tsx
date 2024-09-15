@@ -4,7 +4,7 @@ import { Text } from 'react-native-paper';
 import { AppTheme } from '../../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../../providers/ThemeProvider';
 import { SelectOption } from '../../SelectButtons/SelectButtons';
-import { useModal } from '../../../hooks/useModal';
+import { useModal } from '../../../hooks/useModal/useModal';
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
