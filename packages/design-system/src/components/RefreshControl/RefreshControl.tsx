@@ -14,6 +14,7 @@ import {
   RefreshControlProps as RefreshControlPropsRN,
   RefreshControl as RefreshControlRN,
   StyleSheet,
+  View,
   ViewStyle,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -119,176 +120,193 @@ const DefaultRefreshingIndicator = ({
 }: RefreshingIndicatorProps) => {
   return <ActivityIndicator color={color as string} size={size} />;
 };
-
-export const RefreshControl: React.FC<RefreshControlProps> = ({
-  PullingIndicator = DefaultPullingIndicator,
-  RefreshingIndicator = DefaultRefreshingIndicator,
-  onPullStateChange,
-  pullResetDelay = DEFAULT_PULL_RESET_DELAY,
-  ...rcProps
-}) => {
-  if (Platform.OS !== 'web') {
-    return <RefreshControlRN {...rcProps} />;
-  }
-
-  const {
-    refreshing,
-    enabled = true,
-    progressBackgroundColor,
-    progressViewOffset = -defaultProgressViewOffset,
-    size = defaultIndicatorSize,
-    onRefresh,
-    children,
-  } = rcProps;
-  const translateY = useSharedValue(0);
-  const cursorOpacity = useSharedValue(0);
-  const cursorPositionY = useSharedValue(0);
-  const theme = useTheme();
-  const styles = useMemo(
-    () => getStyles({ theme, progressBackgroundColor }),
-    [theme, progressBackgroundColor]
-  );
-  const isPulling = useSharedValue(false);
-  const isScrolling = useSharedValue(false); // To track if we are in scrolling mode
-  const scrollPosition = useSharedValue(0);
-  const initialTranslationY = useSharedValue(0);
-  const scrollViewRef = useRef<Animated.ScrollView>(null);
-  const [isPullingState, setIsPullingState] = useState(false);
-  const hasDragged = useSharedValue(false);
-
-  useEffect(() => {
-    if (!refreshing) {
-      translateY.value = withTiming(0, { duration: 180 });
+export const RefreshControl = React.forwardRef(
+  (
+    {
+      PullingIndicator = DefaultPullingIndicator,
+      RefreshingIndicator = DefaultRefreshingIndicator,
+      onPullStateChange,
+      pullResetDelay = DEFAULT_PULL_RESET_DELAY,
+      ...rcProps
+    }: RefreshControlProps,
+    ref: React.Ref<unknown> // Use unknown to accommodate both View and RefreshControl
+  ) => {
+    if (Platform.OS !== 'web') {
+      return (
+        <RefreshControlRN
+          ref={ref as React.Ref<RefreshControlRN>}
+          {...rcProps}
+        />
+      );
     }
-  }, [refreshing]);
 
-  const notifyPullState = useCallback(
-    (pulling: boolean) => {
-      onPullStateChange?.(pulling);
-    },
-    [onPullStateChange, isPulling]
-  );
+    const {
+      refreshing,
+      enabled = true,
+      progressBackgroundColor,
+      progressViewOffset = -defaultProgressViewOffset,
+      size = defaultIndicatorSize,
+      onRefresh,
+      children,
+    } = rcProps;
+    const translateY = useSharedValue(0);
+    const cursorOpacity = useSharedValue(0);
+    const cursorPositionY = useSharedValue(0);
+    const theme = useTheme();
+    const styles = useMemo(
+      () => getStyles({ theme, progressBackgroundColor }),
+      [theme, progressBackgroundColor]
+    );
+    const isPulling = useSharedValue(false);
+    const isScrolling = useSharedValue(false); // To track if we are in scrolling mode
+    const scrollPosition = useSharedValue(0);
+    const initialTranslationY = useSharedValue(0);
+    const scrollViewRef = useRef<Animated.ScrollView>(null);
+    const [isPullingState, setIsPullingState] = useState(false);
+    const hasDragged = useSharedValue(false);
 
-  const animateValues = (newTranslateY: number) => {
-    'worklet';
-    translateY.value = newTranslateY;
-    cursorPositionY.value = Math.min(10, newTranslateY);
-    cursorOpacity.value = 0.5 + (newTranslateY / maxTranslateY) * 0.5;
-  };
+    useEffect(() => {
+      if (!refreshing) {
+        translateY.value = withTiming(0, { duration: 180 });
+      }
+    }, [refreshing]);
 
-  const gesture = Gesture.Pan()
-    .onStart((e) => {
-      isPulling.value = false;
-      isScrolling.value = false;
-      initialTranslationY.value = e.translationY; // Capture initial translationY
-    })
-    .onChange((e) => {
-      if (!enabled) return;
+    const notifyPullState = useCallback(
+      (pulling: boolean) => {
+        onPullStateChange?.(pulling);
+      },
+      [onPullStateChange, isPulling]
+    );
 
-      if (
-        !hasDragged.value &&
-        !isPulling.value &&
-        !isScrolling.value &&
-        e.changeY !== 0
-      ) {
-        const downward = e.changeY > 0;
-        // Determine if it's a pull or a scroll
+    const animateValues = (newTranslateY: number) => {
+      'worklet';
+      translateY.value = newTranslateY;
+      cursorPositionY.value = Math.min(10, newTranslateY);
+      cursorOpacity.value = 0.5 + (newTranslateY / maxTranslateY) * 0.5;
+    };
+
+    const gesture = Gesture.Pan()
+      .onStart((e) => {
+        isPulling.value = false;
+        isScrolling.value = false;
+        initialTranslationY.value = e.translationY; // Capture initial translationY
+      })
+      .onChange((e) => {
+        if (!enabled) return;
+
         if (
-          initialTranslationY.value === 0 &&
-          scrollPosition.value <= 0 &&
-          downward
+          !hasDragged.value &&
+          !isPulling.value &&
+          !isScrolling.value &&
+          e.changeY !== 0
         ) {
-          // Pull-to-refresh
-          isPulling.value = true;
-          isScrolling.value = false;
-        } else {
-          // Normal scroll
-          isScrolling.value = true;
-          isPulling.value = false;
-        }
-        runOnJS(notifyPullState)(true);
-        runOnJS(setIsPullingState)(isPulling.value);
-        hasDragged.value = true;
-      }
-
-      if (isPulling.value) {
-        // Handle pull-to-refresh gesture
-        const newTranslateY = Math.max(
-          0,
-          Math.min(translateY.value + e.changeY, maxTranslateY)
-        );
-        animateValues(newTranslateY);
-      }
-    })
-    .onEnd(() => {
-      hasDragged.value = false;
-      if (isPulling.value) {
-        cursorOpacity.value = withTiming(0);
-        cursorPositionY.value = withTiming(progressViewOffset);
-
-        if (translateY.value > progressViewOffset) {
-          if (onRefresh) {
-            runOnJS(onRefresh)();
+          const downward = e.changeY > 0;
+          // Determine if it's a pull or a scroll
+          if (
+            initialTranslationY.value === 0 &&
+            scrollPosition.value <= 0 &&
+            downward
+          ) {
+            // Pull-to-refresh
+            isPulling.value = true;
+            isScrolling.value = false;
+          } else {
+            // Normal scroll
+            isScrolling.value = true;
+            isPulling.value = false;
           }
+          runOnJS(notifyPullState)(true);
+          runOnJS(setIsPullingState)(isPulling.value);
+          hasDragged.value = true;
         }
-        translateY.value = withSpring(0);
-      }
 
-      setTimeout(() => {
-        runOnJS(notifyPullState)(false);
-      }, pullResetDelay);
+        if (isPulling.value) {
+          // Handle pull-to-refresh gesture
+          const newTranslateY = Math.max(
+            0,
+            Math.min(translateY.value + e.changeY, maxTranslateY)
+          );
+          animateValues(newTranslateY);
+        }
+      })
+      .onEnd(() => {
+        hasDragged.value = false;
+        if (isPulling.value) {
+          cursorOpacity.value = withTiming(0);
+          cursorPositionY.value = withTiming(progressViewOffset);
 
-      runOnJS(setIsPullingState)(false);
-      // Reset pulling and scrolling state
-      isPulling.value = false;
-      isScrolling.value = false;
-    });
+          if (translateY.value > progressViewOffset) {
+            if (onRefresh) {
+              runOnJS(onRefresh)();
+            }
+          }
+          translateY.value = withSpring(0);
+        }
 
-  const animatedStyles = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
+        setTimeout(() => {
+          runOnJS(notifyPullState)(false);
+        }, pullResetDelay);
 
-  const cursorAnimatedStyles = useAnimatedStyle(() => ({
-    opacity: cursorOpacity.value,
-    transform: [{ translateY: cursorPositionY.value }],
-  }));
+        runOnJS(setIsPullingState)(false);
+        // Reset pulling and scrolling state
+        isPulling.value = false;
+        isScrolling.value = false;
+      });
 
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      scrollPosition.value = event.nativeEvent.contentOffset.y;
-    },
-    [scrollPosition]
-  );
+    const animatedStyles = useAnimatedStyle(() => ({
+      transform: [{ translateY: translateY.value }],
+    }));
 
-  return (
-    <GestureDetector gesture={gesture}>
-      <Animated.View style={[styles.container, animatedStyles]}>
-        {isPullingState && (
-          <>
-            <Animated.View style={[styles.pullingContainer]}>
-              {refreshing ? (
-                <RefreshingIndicator color={theme.colors.primary} size={size} />
-              ) : (
-                <PullingIndicator
-                  color={theme.colors.primary}
-                  size={size}
-                  progress={translateY.value / maxTranslateY}
-                />
-              )}
-            </Animated.View>
-            <Animated.View style={[styles.cursor, cursorAnimatedStyles]}>
-              <Loader color={theme.colors.primary} size={size} />
-            </Animated.View>
-          </>
-        )}
-        <Animated.ScrollView
-          style={styles.content}
-          ref={scrollViewRef}
-          onScroll={handleScroll}
+    const cursorAnimatedStyles = useAnimatedStyle(() => ({
+      opacity: cursorOpacity.value,
+      transform: [{ translateY: cursorPositionY.value }],
+    }));
+
+    const handleScroll = useCallback(
+      (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        scrollPosition.value = event.nativeEvent.contentOffset.y;
+      },
+      [scrollPosition]
+    );
+
+    return (
+      <GestureDetector gesture={gesture}>
+        <Animated.View
+          ref={ref as React.Ref<View>}
+          style={[styles.container, animatedStyles]}
         >
-          {children}
-        </Animated.ScrollView>
-      </Animated.View>
-    </GestureDetector>
-  );
-};
+          {isPullingState && (
+            <>
+              <Animated.View style={[styles.pullingContainer]}>
+                {refreshing ? (
+                  <RefreshingIndicator
+                    color={theme.colors.primary}
+                    size={size}
+                  />
+                ) : (
+                  <PullingIndicator
+                    color={theme.colors.primary}
+                    size={size}
+                    progress={translateY.value / maxTranslateY}
+                  />
+                )}
+              </Animated.View>
+              <Animated.View style={[styles.cursor, cursorAnimatedStyles]}>
+                <Loader color={theme.colors.primary} size={size} />
+              </Animated.View>
+            </>
+          )}
+          <Animated.ScrollView
+            style={styles.content}
+            ref={scrollViewRef}
+            onScroll={handleScroll}
+          >
+            {children}
+          </Animated.ScrollView>
+        </Animated.View>
+      </GestureDetector>
+    );
+  }
+);
+
+RefreshControl.displayName = 'RefreshControl';
