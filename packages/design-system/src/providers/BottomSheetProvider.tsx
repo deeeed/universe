@@ -24,7 +24,7 @@ import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmC
 import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import { baseLogger } from '../utils/logger';
 
-export interface ModalStackItem<T = unknown> {
+export interface BottomSheetStackItem<T = unknown> {
   id: number;
   render: OpenDrawerProps<T>['render']; // Store the render function
   props: OpenDrawerProps<T>;
@@ -52,7 +52,7 @@ export interface BottomSheetProviderProps {
   openDrawer: <T>(props: OpenDrawerProps<T>) => Promise<T | undefined>;
   dismiss: () => Promise<boolean>;
   dismissAll: () => void;
-  modalStack: ModalStackItem[];
+  modalStack: BottomSheetStackItem[];
 }
 
 export const BottomSheetContext = createContext<
@@ -75,7 +75,7 @@ const defaultBottomSheetModalProps: Partial<BottomSheetModalProps> = {
 export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [modalStack, setModalStack] = useState<Array<ModalStackItem>>([]);
+  const [modalStack, setModalStack] = useState<Array<BottomSheetStackItem>>([]);
   const modalIdCounter = useRef(0);
   const [footerHeights, setFooterHeights] = useState<Record<number, number>>(
     {}
@@ -205,7 +205,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
             initialData,
             latestData: initialData,
             footerHeight: 0,
-          } as ModalStackItem,
+          } as BottomSheetStackItem,
         ]);
 
         setTimeout(() => {
@@ -303,7 +303,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
       setModalStack((prevStack) =>
         prevStack.map((modal) =>
           modal.id === modalId
-            ? ({ ...modal, latestData: newValue } as ModalStackItem)
+            ? ({ ...modal, latestData: newValue } as BottomSheetStackItem)
             : modal
         )
       );
