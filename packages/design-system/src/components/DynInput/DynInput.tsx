@@ -216,6 +216,30 @@ export const DynInput = ({
     );
   };
 
+  const handleDateChange = useCallback(
+    (date: Date) => {
+      setDatePickerVisible(false);
+      const newDate = new Date(date);
+      if (selectedDate) {
+        newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
+      }
+      setSelectedDate(newDate);
+      onFinish?.(newDate);
+    },
+    [selectedDate, onFinish]
+  );
+
+  const handleTimeChange = useCallback(
+    ({ hours, minutes }: { hours: number; minutes: number }) => {
+      setTimePickerVisible(false);
+      const newDate = new Date(selectedDate || Date.now());
+      newDate.setHours(hours, minutes);
+      setSelectedDate(newDate);
+      onFinish?.(newDate);
+    },
+    [selectedDate, onFinish]
+  );
+
   const renderDatePicker = () => {
     if (inputType === 'time') {
       return (
@@ -307,28 +331,15 @@ export const DynInput = ({
             onDismiss={() => setDatePickerVisible(false)}
             date={selectedDate}
             onConfirm={(params) => {
-              setDatePickerVisible(false);
               if (params.date) {
-                const newDate = new Date(params.date);
-                if (selectedDate) {
-                  newDate.setHours(
-                    selectedDate.getHours(),
-                    selectedDate.getMinutes()
-                  );
-                }
-                setSelectedDate(newDate);
+                handleDateChange(params.date);
               }
             }}
           />
           <TimePickerModal
             visible={timePickerVisible}
             onDismiss={() => setTimePickerVisible(false)}
-            onConfirm={({ hours, minutes }) => {
-              setTimePickerVisible(false);
-              const newDate = new Date(selectedDate || Date.now());
-              newDate.setHours(hours, minutes);
-              setSelectedDate(newDate);
-            }}
+            onConfirm={handleTimeChange}
             hours={selectedDate?.getHours() || 0}
             minutes={selectedDate?.getMinutes() || 0}
           />
