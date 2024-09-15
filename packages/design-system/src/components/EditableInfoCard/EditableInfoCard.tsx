@@ -106,9 +106,20 @@ export function EditableInfoCard({
     </View>
   );
 
-  return onRightActionPress ? (
-    <Pressable onPress={onRightActionPress}>{content}</Pressable>
-  ) : (
-    content
+  const handlePress = () => {
+    if (editable && onEdit) {
+      onEdit();
+    } else if (onRightActionPress) {
+      onRightActionPress();
+    }
+  };
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      disabled={!editable && !onRightActionPress}
+    >
+      {content}
+    </Pressable>
   );
 }

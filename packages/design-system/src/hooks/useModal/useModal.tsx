@@ -46,6 +46,7 @@ export const useModal = () => {
       modalProps,
       modalType,
       data,
+      inputType,
       ...restProps
     }: EditPropProps): Promise<DynamicType | undefined> => {
       logger.debug('editProp', {
@@ -53,11 +54,14 @@ export const useModal = () => {
         modalProps,
         modalType,
         data,
+        inputType,
         ...restProps,
       });
 
+      const isDateTimeType = ['date', 'time', 'datetime'].includes(inputType);
       const actualModalType =
-        modalType ?? (Platform.OS === 'web' ? 'modal' : 'drawer');
+        modalType ??
+        (isDateTimeType || Platform.OS === 'web' ? 'modal' : 'drawer');
 
       const commonProps = {
         initialData: data,
@@ -73,6 +77,7 @@ export const useModal = () => {
             {...restProps}
             data={data}
             useFlatList={false}
+            inputType={inputType}
             autoFocus={true}
             finishOnEnter={true}
             selectTextOnFocus={true}
