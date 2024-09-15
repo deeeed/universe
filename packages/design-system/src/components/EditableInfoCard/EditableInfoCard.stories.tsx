@@ -5,6 +5,8 @@ import { useModal } from '../../hooks/useModal/useModal';
 import { format } from 'date-fns';
 import { SelectOption } from '../SelectButtons/SelectButtons';
 import { Text } from 'react-native-paper';
+import { IconButton } from 'react-native-paper';
+import { View } from 'react-native';
 
 const ItemViewMeta: Meta<EditableInfoCardProps> = {
   component: EditableInfoCard,
@@ -214,3 +216,118 @@ export const EditableSelect: StoryFn<EditableInfoCardProps> = (args) => {
     />
   );
 };
+
+export const NoLabel: StoryFn<EditableInfoCardProps> = (args) => (
+  <EditableInfoCard
+    {...args}
+    label={undefined}
+    value="This card has no label"
+  />
+);
+
+export const NoLabelEditable: StoryFn<EditableInfoCardProps> = (args) => {
+  const { editProp } = useModal();
+  const [value, setValue] = useState('Editable card without a label');
+  return (
+    <EditableInfoCard
+      {...args}
+      value={value}
+      label={undefined}
+      editable={true}
+      onEdit={async () => {
+        const newValue = await editProp({
+          bottomSheetProps: {
+            enableDynamicSizing: false,
+            snapPoints: ['10%', '50%', '90%'],
+          },
+          data: value,
+          inputType: 'text',
+        });
+        if (newValue) {
+          setValue(newValue as string);
+        }
+      }}
+    />
+  );
+};
+
+export const CustomRightAction: StoryFn<EditableInfoCardProps> = (args) => (
+  <EditableInfoCard
+    {...args}
+    label="Custom Right Action"
+    value="Click the star icon"
+    rightAction={
+      <IconButton
+        icon="star"
+        size={20}
+        onPress={() => console.log('Star pressed')}
+      />
+    }
+  />
+);
+
+export const RightActionWithPress: StoryFn<EditableInfoCardProps> = (args) => (
+  <EditableInfoCard
+    {...args}
+    label="Pressable Card"
+    value="Press anywhere on the card"
+    rightAction={<IconButton icon="chevron-right" size={20} />}
+    onRightActionPress={() => console.log('Card pressed')}
+  />
+);
+
+export const EditableWithCustomIcon: StoryFn<EditableInfoCardProps> = (
+  args
+) => {
+  const { editProp } = useModal();
+  const [value, setValue] = useState('Click the custom edit icon');
+  return (
+    <EditableInfoCard
+      {...args}
+      label="Custom Edit Icon"
+      value={value}
+      editable={true}
+      rightAction={
+        <IconButton
+          icon="pencil-circle"
+          size={24}
+          onPress={async () => {
+            const newValue = await editProp({
+              bottomSheetProps: {
+                enableDynamicSizing: false,
+                snapPoints: ['10%', '50%', '90%'],
+              },
+              data: value,
+              inputType: 'text',
+            });
+            if (newValue) {
+              setValue(newValue as string);
+            }
+          }}
+        />
+      }
+    />
+  );
+};
+
+export const MultipleActions: StoryFn<EditableInfoCardProps> = (args) => (
+  <EditableInfoCard
+    {...args}
+    label="Multiple Actions"
+    value="Card with multiple right actions"
+    rightAction={
+      <View style={{ flexDirection: 'row' }}>
+        <IconButton
+          icon="star"
+          size={20}
+          onPress={() => console.log('Star pressed')}
+        />
+        <IconButton
+          icon="share"
+          size={20}
+          onPress={() => console.log('Share pressed')}
+        />
+      </View>
+    }
+  />
+);
