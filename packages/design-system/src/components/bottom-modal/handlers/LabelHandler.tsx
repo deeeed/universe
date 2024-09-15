@@ -11,14 +11,12 @@ import { useTheme } from '../../../providers/ThemeProvider';
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
-      paddingBottom: theme.padding.l,
-      paddingHorizontal: theme.padding.l,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.outline,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
+      gap: 5,
       backgroundColor: theme.colors.surfaceVariant,
-      // zIndex: 99999,
     },
     titleContainer: {
       justifyContent: 'center',
@@ -55,7 +53,7 @@ export const LabelHandler = ({ label = '', ...rest }: LabelHandlerProps) => {
     >
       {label ? (
         <View style={styles.titleContainer}>
-          <Text variant="labelMedium">{label}</Text>
+          <Text variant="titleSmall">{label}</Text>
         </View>
       ) : undefined}
     </BottomSheetHandle>
