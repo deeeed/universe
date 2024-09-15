@@ -5,21 +5,40 @@ import { Accordion } from '../../components/Accordion/Accordion';
 import { AccordionItemProps } from '../../components/Accordion/AccordionItem/AccordionItem';
 import { Button } from '../../components/Button/Button';
 import { useModal } from './useModal';
+import { baseLogger } from '../../utils/logger';
+
+const logger = baseLogger.extend('openDrawer');
 
 const OpenDrawerExample: React.FC = () => {
-  const { openDrawer, dismissAll } = useModal();
+  const { openDrawer } = useModal();
 
   const handleSimpleDrawer = async () => {
     const result = await openDrawer({
-      title: 'Simple Drawer',
       bottomSheetProps: {
         enableDynamicSizing: true,
+        snapPoints: [],
       },
-      render: () => {
-        return <Text>Simple drawer content</Text>;
+      title: 'Simple Drawer',
+      initialData: { count: 0 },
+      render: ({ data, resolve, onChange }) => {
+        return (
+          <View>
+            <Text>Count: {data.count}</Text>
+            <Button onPress={() => onChange({ count: data.count + 1 })}>
+              Increment
+            </Button>
+            <Button onPress={() => resolve(data)}>Close</Button>
+          </View>
+        );
       },
+      renderFooter: ({ data, resolve }) => (
+        <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
+          <Text>Count: {data.count}</Text>
+          <Button onPress={() => resolve(data)}>Close</Button>
+        </View>
+      ),
     });
-    console.log('Simple drawer result:', result);
+    logger.info('Simple drawer result:', result);
   };
 
   const accordionData: AccordionItemProps[] = [
@@ -47,73 +66,63 @@ const OpenDrawerExample: React.FC = () => {
     const result = await openDrawer({
       title: 'Dynamic Drawer',
       containerType: 'scrollview',
-      bottomSheetProps: {
-        enableDynamicSizing: true,
-        snapPoints: [],
-      },
-      render: () => {
+      initialData: { selectedItem: null },
+      render: (_) => {
         return <Accordion data={accordionData} />;
       },
+      renderFooter: ({ data, resolve }) => (
+        <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
+          <Text>Selected: {data.selectedItem || 'None'}</Text>
+          <Button onPress={() => resolve(data)}>Confirm</Button>
+        </View>
+      ),
     });
-    console.log('Dynamic drawer result:', result);
+    logger.info('Dynamic drawer result:', result);
   };
 
-  const handleDrawerWithFooter = async () => {
+  const handleDrawerWithCustomHandler = async () => {
     const result = await openDrawer({
-      title: 'Drawer with Footer',
-      footerType: 'confirm_cancel',
-      bottomSheetProps: {
-        enableDynamicSizing: true,
-      },
-      render: () => {
-        return (
-          <View>
-            <Text>This drawer has a confirm/cancel footer.</Text>
-            <Text>Press confirm or cancel to close the drawer.</Text>
-          </View>
-        );
-      },
+      initialData: { isOpen: true },
+      renderHandler: ({ data, onChange }) => (
+        <View style={{ padding: 16, backgroundColor: '#e0e0e0' }}>
+          <Text>Custom Handler</Text>
+          <Button onPress={() => onChange({ isOpen: !data.isOpen })}>
+            {data.isOpen ? 'Close' : 'Open'}
+          </Button>
+        </View>
+      ),
+      render: ({ data }) => (
+        <View>
+          <Text>Drawer is {data.isOpen ? 'Open' : 'Closed'}</Text>
+        </View>
+      ),
     });
-    console.log('Drawer with footer result:', result);
-  };
-
-  const handleDrawerWithCustomFooter = async () => {
-    const result = await openDrawer({
-      title: 'Custom Footer Drawer',
-      bottomSheetProps: {
-        enableDynamicSizing: true,
-        snapPoints: [],
-        footerComponent: () => (
-          <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
-            <Text>This is a custom footer</Text>
-            <Button onPress={() => dismissAll()}>Confirm</Button>
-            <Button onPress={() => dismissAll()}>Cancel</Button>
-          </View>
-        ),
-      },
-      render: () => <Text>Drawer content with custom footer</Text>,
-    });
-    console.log('Custom footer drawer result:', result);
+    logger.info('Custom handler drawer result:', result);
   };
 
   const handleNestedDrawers = async () => {
     await openDrawer({
       title: 'First Drawer',
-      bottomSheetProps: {
-        enableDynamicSizing: true,
-      },
-      render: () => (
+      initialData: { level: 1 },
+      render: ({ data, onChange }) => (
         <View>
-          <Text>This is the first drawer</Text>
+          <Text>This is the first drawer (Level {data.level})</Text>
           <Button
             onPress={() =>
               openDrawer({
                 title: 'Second Drawer',
-                bottomSheetProps: {
-                  enableDynamicSizing: true,
-                  stackBehavior: 'push',
-                },
-                render: () => <Text>This is the second drawer</Text>,
+                initialData: { level: data.level + 1 },
+                render: ({ data: nestedData, resolve }) => (
+                  <View>
+                    <Text>
+                      This is the second drawer (Level {nestedData.level})
+                    </Text>
+                    <Button onPress={() => resolve(nestedData)}>Close</Button>
+                  </View>
+                ),
+              }).then((result) => {
+                logger.info('Nested drawer result:', result);
+                onChange({ level: result?.level || data.level });
               })
             }
           >
@@ -130,11 +139,8 @@ const OpenDrawerExample: React.FC = () => {
       <Button onPress={handleDynamicDrawer}>
         Open Dynamic ScrollView Drawer (with accordion)
       </Button>
-      <Button onPress={handleDrawerWithFooter}>
-        Open Drawer with Confirm/Cancel Footer
-      </Button>
-      <Button onPress={handleDrawerWithCustomFooter}>
-        Open Drawer with Custom Footer
+      <Button onPress={handleDrawerWithCustomHandler}>
+        Open Drawer with Custom Handler
       </Button>
       <Button onPress={handleNestedDrawers}>Open Nested Drawers</Button>
     </View>
@@ -151,6 +157,6 @@ export default meta;
 type Story = StoryObj<typeof OpenDrawerExample>;
 
 export const Default: Story = {};
-export const WithFooter: Story = {};
+export const WithCustomHandler: Story = {};
 export const WithCustomFooter: Story = {};
 export const NestedDrawers: Story = {};

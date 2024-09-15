@@ -55,7 +55,7 @@ export const LabelHandler = ({ label = '', ...rest }: LabelHandlerProps) => {
     >
       {label ? (
         <View style={styles.titleContainer}>
-          <Text variant="headlineMedium">{label}</Text>
+          <Text variant="labelMedium">{label}</Text>
         </View>
       ) : undefined}
     </BottomSheetHandle>

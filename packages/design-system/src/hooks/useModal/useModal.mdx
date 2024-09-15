@@ -4,45 +4,47 @@ import { Meta, Story, Canvas } from '@storybook/addon-docs';
 
 # useModal
 
-The `useModal` hook provides methods to manage custom modals, including bottom sheet modals and regular modals. It is designed to be used within a `CustomModalProvider`.
+The `useModal` hook provides methods to manage custom modals and drawers, including bottom sheet modals and regular modals. It must be used within both a `ModalProvider` and a `BottomSheetProvider`.
+
 
 ## API
 
 ### `dismiss`
 
-Dismiss a specific modal.
+Dismiss the current modal or drawer.
 
-- **Type**: `(key?: string) => boolean`
-- **Parameters**:
-  - `key`: Optional key to identify the modal to be dismissed.
-- **Returns**: `boolean`
+- **Type**: `() => Promise<boolean>`
+- **Returns**: `Promise<boolean>` indicating whether a modal or drawer was dismissed.
 
 ### `editProp`
 
-Open a modal for editing a property.
+Open a modal or drawer to edit a property.
 
-- **Type**: `(props: EditPropProps) => Promise<DynInputProps['data']>`
+- **Type**: `(props: EditPropProps) => Promise<DynamicType | undefined>`
 - **Parameters**:
-  - `props`: Properties for the modal and the data to be edited.
-- **Returns**: `Promise<DynInputProps['data']>`
+  - `props`: Properties for the modal/drawer and the data to be edited.
+- **Returns**: `Promise<DynamicType | undefined>` The edited data or `undefined` if cancelled.
+
 
 ### `openDrawer`
 
 Open a custom bottom sheet modal drawer.
 
-- **Type**: `(props: OpenDrawerProps) => Promise<unknown>`
+- **Type**: `<T>(props: OpenDrawerProps<T>) => Promise<T | undefined>`
 - **Parameters**:
   - `props`: Properties for the bottom sheet modal drawer.
-- **Returns**: `Promise<unknown>`
+- **Returns**: `Promise<T | undefined>` The result from the drawer, or `undefined` if dismissed.
+
 
 ### `openModal`
 
 Open a custom modal.
 
-- **Type**: `(props: OpenModalProps) => Promise<DynamicType>`
+- **Type**: `<T>(props: OpenModalProps<T>) => Promise<T>`
 - **Parameters**:
   - `props`: Properties for the modal.
-- **Returns**: `Promise<DynamicType>`
+- **Returns**: `Promise<T>` The result from the modal.
+
 
 ### `dismissAll`
 
@@ -68,11 +70,18 @@ const App = () => {
       title: 'Custom Drawer',
       footerType: 'confirm_cancel',
       initialData: { name: 'John Doe' },
-      render: ({ resolve, reject }) => (
+      render: ({ data, resolve, onChange, reject }) => (
         <View>
-          <Text>Drawer Content</Text>
-          <Button title="Confirm" onPress={() => resolve('Confirmed')} />
-          <Button title="Cancel" onPress={() => reject('Canceled')} />
+          <Text>Drawer Content for {data.name}</Text>
+          <Button
+            title="Change Name"
+            onPress={() => onChange({ name: 'Jane Doe' })}
+          />
+          <Button title="Confirm" onPress={() => resolve(data)} />
+          <Button
+            title="Cancel"
+            onPress={() => reject(new Error('Canceled'))}
+          />
         </View>
       ),
     });
@@ -83,11 +92,18 @@ const App = () => {
   const handleOpenModal = async () => {
     const result = await openModal({
       initialData: { age: 30 },
-      render: ({ resolve, reject }) => (
+      render: ({ data, resolve, onChange, reject }) => (
         <View>
-          <Text>Modal Content</Text>
-          <Button title="Confirm" onPress={() => resolve({ age: 31 })} />
-          <Button title="Cancel" onPress={() => reject(new Error('Canceled'))} />
+          <Text>Modal Content, age is {data.age}</Text>
+          <Button
+            title="Increase Age"
+            onPress={() => onChange({ age: data.age + 1 })}
+          />
+          <Button title="Confirm" onPress={() => resolve(data)} />
+          <Button
+            title="Cancel"
+            onPress={() => reject(new Error('Canceled'))}
+          />
         </View>
       ),
     });
@@ -106,5 +122,3 @@ const App = () => {
 
 export default App;
 ```
-
-For more details on the CustomModalProvider, refer to the [CustomModalProvider](?path=/docs/providers--docs#custommodal) documentation.
