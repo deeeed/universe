@@ -81,7 +81,7 @@ const logger = baseLogger.extend('BottomSheetProvider');
 const defaultSnapPoints = ['40%', '80%'];
 const defaultBottomSheetModalProps: Partial<BottomSheetModalProps> = {
   enableDynamicSizing: true,
-  snapPoints: defaultSnapPoints,
+  snapPoints: [],
   android_keyboardInputMode: 'adjustResize',
   keyboardBehavior: 'interactive',
   keyboardBlurBehavior: 'restore',
@@ -390,32 +390,48 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
     <BottomSheetContext.Provider value={contextValue}>
       <BottomSheetModalProvider>
         {children}
-        {modalStack.map((modal, index) => (
-          <BottomSheetModal
-            key={modal.id}
-            ref={modal.bottomSheetRef}
-            {...defaultBottomSheetModalProps}
-            {...modal.props.bottomSheetProps}
-            onChange={(sheetIndex, position, type) =>
-              handleSheetChanges({
-                modalIndex: index,
-                index: sheetIndex,
-                position,
-                type,
-              })
-            }
-            stackBehavior={
-              modal.props.bottomSheetProps?.stackBehavior || 'push'
-            }
-            footerComponent={(props) =>
-              renderFooter({ modalIndex: index, footerProps: props })
-            }
-            handleComponent={renderHandler({ modalIndex: index })}
-            backdropComponent={renderBackdrop}
-          >
-            {renderContent({ modalIndex: index })}
-          </BottomSheetModal>
-        ))}
+        {modalStack.map((modal, index) => {
+          const bottomSheetProps = {
+            ...defaultBottomSheetModalProps,
+            ...modal.props.bottomSheetProps,
+          };
+
+          // Use defaultSnapPoints only when enableDynamicSizing is false and no snapPoints provided
+          if (
+            !bottomSheetProps.enableDynamicSizing &&
+            (!bottomSheetProps.snapPoints ||
+              (Array.isArray(bottomSheetProps.snapPoints) &&
+                bottomSheetProps.snapPoints.length === 0))
+          ) {
+            bottomSheetProps.snapPoints = defaultSnapPoints;
+          }
+
+          return (
+            <BottomSheetModal
+              key={modal.id}
+              ref={modal.bottomSheetRef}
+              {...bottomSheetProps}
+              onChange={(sheetIndex, position, type) =>
+                handleSheetChanges({
+                  modalIndex: index,
+                  index: sheetIndex,
+                  position,
+                  type,
+                })
+              }
+              stackBehavior={
+                modal.props.bottomSheetProps?.stackBehavior || 'push'
+              }
+              footerComponent={(props) =>
+                renderFooter({ modalIndex: index, footerProps: props })
+              }
+              handleComponent={renderHandler({ modalIndex: index })}
+              backdropComponent={renderBackdrop}
+            >
+              {renderContent({ modalIndex: index })}
+            </BottomSheetModal>
+          );
+        })}
       </BottomSheetModalProvider>
     </BottomSheetContext.Provider>
   );
