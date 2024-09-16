@@ -1,7 +1,7 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { TextInput } from '../TextInput/TextInput';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Button } from '../Button/Button';
+import { TextInput } from '../TextInput/TextInput';
 
 const getStyles = () => {
   return StyleSheet.create({
@@ -28,6 +28,10 @@ export interface NumberAdjusterProps {
   min?: number;
   max?: number;
   step?: number;
+  containerStyle?: StyleProp<ViewStyle>;
+  inputStyle?: StyleProp<ViewStyle>;
+  buttonStyle?: StyleProp<ViewStyle>;
+  buttonContainerStyle?: StyleProp<ViewStyle>;
 }
 
 export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
@@ -37,6 +41,10 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
   min = 1,
   max = Infinity,
   step = 1,
+  containerStyle,
+  inputStyle,
+  buttonStyle,
+  buttonContainerStyle,
 }) => {
   const styles = getStyles();
 
@@ -58,17 +66,21 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
   };
 
   return (
-    <View style={styles.inputRow}>
+    <View style={[styles.inputRow, containerStyle]}>
       <TextInput
         label={label}
         value={value.toString()}
-        style={styles.input}
+        style={[styles.input, inputStyle]}
         onChangeText={handleChangeText}
         keyboardType="numeric"
       />
-      <View style={styles.buttonContainer}>
-        <Button onPress={handleDecrement}>-{step}</Button>
-        <Button onPress={handleIncrement}>+{step}</Button>
+      <View style={[styles.buttonContainer, buttonContainerStyle]}>
+        <Button onPress={handleDecrement} style={[buttonStyle]}>
+          -{step}
+        </Button>
+        <Button onPress={handleIncrement} style={[buttonStyle]}>
+          +{step}
+        </Button>
       </View>
     </View>
   );
