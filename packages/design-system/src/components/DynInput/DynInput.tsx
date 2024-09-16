@@ -63,7 +63,7 @@ export interface DynInputProps {
   finishOnEnter?: boolean;
   cancelOnEscape?: boolean;
   onChange?: (value: DynamicType) => void;
-  initiallyOpen?: boolean; // New prop to control initial visibility
+  initiallyOpen?: boolean; // Prevent double modals if called from editProps
 }
 
 const logger = baseLogger.extend('DynInput');
@@ -249,7 +249,12 @@ export const DynInput = ({
           </Button>
           <TimePickerModal
             visible={visible}
-            onDismiss={() => setVisible(false)}
+            onDismiss={() => {
+              setVisible(false);
+              if (initiallyOpen) {
+                onFinish?.(selectedDate as Date);
+              }
+            }}
             onConfirm={({ hours, minutes }) => {
               const newDate = new Date(selectedDate || Date.now());
               newDate.setHours(hours, minutes);
@@ -274,7 +279,12 @@ export const DynInput = ({
             mode="single"
             visible={visible}
             locale={'en'} // TODO: make this dynamic
-            onDismiss={() => setVisible(false)}
+            onDismiss={() => {
+              setVisible(false);
+              if (initiallyOpen) {
+                onFinish?.(selectedDate as Date);
+              }
+            }}
             date={selectedDate}
             onConfirm={(params) => {
               setVisible(false);
@@ -328,7 +338,12 @@ export const DynInput = ({
             mode="single"
             visible={datePickerVisible}
             locale={'en'} // TODO: make this dynamic
-            onDismiss={() => setDatePickerVisible(false)}
+            onDismiss={() => {
+              setDatePickerVisible(false);
+              if (initiallyOpen) {
+                onFinish?.(selectedDate as Date);
+              }
+            }}
             date={selectedDate}
             onConfirm={(params) => {
               if (params.date) {
@@ -338,7 +353,12 @@ export const DynInput = ({
           />
           <TimePickerModal
             visible={timePickerVisible}
-            onDismiss={() => setTimePickerVisible(false)}
+            onDismiss={() => {
+              setTimePickerVisible(false);
+              if (initiallyOpen) {
+                onFinish?.(selectedDate as Date);
+              }
+            }}
             onConfirm={handleTimeChange}
             hours={selectedDate?.getHours() || 0}
             minutes={selectedDate?.getMinutes() || 0}
