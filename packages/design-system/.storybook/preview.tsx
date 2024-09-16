@@ -20,6 +20,8 @@ const preview: Preview = {
       },
     },
   },
+
+  tags: ['autodocs'],
 };
 
 const colors = colorOptions.map((colorOption) => colorOption.value);

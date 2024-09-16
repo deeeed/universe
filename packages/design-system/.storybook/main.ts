@@ -20,11 +20,14 @@ const config: StorybookConfig = {
     '../src/**/*.mdx',
     '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)',
   ],
+
   staticDirs: ['../assets/'],
+
   managerHead: (head) => `
   ${head}
   ${production ? '<base href="/universe/design-system-storybook/" />' : ''}
   `,
+
   addons: [
     getAbsolutePath('@storybook/addon-webpack5-compiler-swc'),
     getAbsolutePath('@storybook/addon-onboarding'),
@@ -42,11 +45,14 @@ const config: StorybookConfig = {
         ],
       },
     },
+    getAbsolutePath('@storybook/addon-mdx-gfm'),
   ],
+
   framework: {
     name: getAbsolutePath('@storybook/react-webpack5'),
     options: {},
   },
+
   docs: {},
 
   webpackFinal: (config: Configuration) => {
@@ -97,6 +103,10 @@ const config: StorybookConfig = {
     });
 
     return config;
+  },
+
+  typescript: {
+    reactDocgen: 'react-docgen-typescript',
   },
 };
 
