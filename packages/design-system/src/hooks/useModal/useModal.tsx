@@ -15,6 +15,7 @@ const logger = baseLogger.extend('useModal');
 
 export interface EditPropProps extends DynInputProps {
   bottomSheetProps?: Partial<BottomSheetModalProps>;
+  headerComponent?: React.ReactNode;
   modalProps?: Partial<ModalProps>;
   modalType?: 'drawer' | 'modal';
 }
@@ -46,6 +47,7 @@ export const useModal = () => {
       modalProps,
       modalType,
       data,
+      headerComponent,
       inputType,
       ...restProps
     }: EditPropProps): Promise<DynamicType | undefined> => {
@@ -72,20 +74,25 @@ export const useModal = () => {
           resolve?: (value: DynamicType | undefined) => void;
           onChange?: (value: DynamicType) => void;
           reject?: (error: Error) => void;
-        }) => (
-          <DynInput
-            {...restProps}
-            data={data}
-            useFlatList={false}
-            inputType={inputType}
-            autoFocus={true}
-            finishOnEnter={true}
-            selectTextOnFocus={true}
-            onCancel={() => resolve?.(data)}
-            onFinish={(values: DynamicType) => resolve?.(values)}
-            onChange={onChange}
-          />
-        ),
+        }) => {
+          return (
+            <>
+              {headerComponent && headerComponent}
+              <DynInput
+                {...restProps}
+                data={data}
+                useFlatList={false}
+                inputType={inputType}
+                autoFocus={true}
+                finishOnEnter={true}
+                selectTextOnFocus={true}
+                onCancel={() => resolve?.(data)}
+                onFinish={(values: DynamicType) => resolve?.(values)}
+                onChange={onChange}
+              />
+            </>
+          );
+        },
       };
 
       if (actualModalType === 'modal') {
