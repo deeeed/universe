@@ -163,13 +163,13 @@ const UIProviderWithLanguageReady = ({
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider preferences={defaultPreferences}>
-        <ToastProvider {...toastProviderProps}>
-          <ConfirmProvider {...confirmProviderProps}>
-            <BottomSheetProvider>
-              <ModalProvider>{children}</ModalProvider>
-            </BottomSheetProvider>
-          </ConfirmProvider>
-        </ToastProvider>
+        <ConfirmProvider {...confirmProviderProps}>
+          <BottomSheetProvider>
+            <ModalProvider>
+              <ToastProvider {...toastProviderProps}>{children}</ToastProvider>
+            </ModalProvider>
+          </BottomSheetProvider>
+        </ConfirmProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

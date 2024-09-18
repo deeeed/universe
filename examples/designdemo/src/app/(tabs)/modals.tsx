@@ -12,6 +12,7 @@ import {
   EditPropProps,
   Picker,
   useModal,
+  useToast,
 } from "@siteed/design-system";
 import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -65,6 +66,8 @@ const options = [
 
 export const TestModals = () => {
   const styles = useMemo(() => getStyles(), []);
+  const { show } = useToast();
+
   // ref
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
@@ -160,11 +163,22 @@ export const TestModals = () => {
       const result = await openModal({
         initialData: "Initial modal data",
         modalProps: {
+          showBackdrop: true,
           // You can add custom modal props here if needed
         },
         render: ({ resolve, reject }) => (
           <View>
             <Text>This is a test modal content.</Text>
+            <Button
+              onPress={() =>
+                show({
+                  message: "This is a toast message",
+                  type: "success",
+                })
+              }
+            >
+              show toast
+            </Button>
             <Button onPress={() => resolve("Confirmed")}>Confirm</Button>
             <Button onPress={() => reject(new Error("Cancelled"))}>
               Cancel

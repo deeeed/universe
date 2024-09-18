@@ -6,15 +6,22 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Modal, ModalProps, StyleSheet, View } from 'react-native';
+import { Modal, ModalProps, View, ViewStyle } from 'react-native';
 import { AppTheme } from '../hooks/_useAppThemeSetup';
 import { baseLogger } from '../utils/logger';
-import { ThemeProvider, useTheme, useThemePreferences } from './ThemeProvider';
+import { useTheme } from './ThemeProvider';
+
+export interface ModalStyles {
+  modalContainer?: ViewStyle;
+  modalContent?: ViewStyle;
+}
 
 export interface OpenModalProps<T = unknown> {
   initialData?: T;
   modalProps?: Partial<ModalProps> & {
     closeOnOutsideTouch?: boolean;
+    styles?: ModalStyles;
+    showBackdrop?: boolean;
   };
   render: (props: {
     resolve: (value: T) => void;
@@ -35,23 +42,22 @@ export const ModalContext = createContext<ModalProviderProps | undefined>(
 
 const logger = baseLogger.extend('ModalProvider');
 
-const getStyles = (theme: AppTheme) => {
-  return StyleSheet.create({
+const getDefaultStyles = (theme: AppTheme): ModalStyles => {
+  return {
     modalContainer: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
     },
     modalContent: {
       backgroundColor: theme.colors.surface,
       padding: 20,
       borderRadius: 8,
       margin: 20,
-      width: '90%', // Adjust as needed
-      maxHeight: '90%', // Adjust as needed
+      width: '90%',
+      maxHeight: '90%',
     },
-  });
+  };
 };
 
 export interface ModalStackItem<T = unknown> {
@@ -67,8 +73,7 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const theme = useTheme();
-  const themePreferences = useThemePreferences();
-  const styles = useMemo(() => getStyles(theme), [theme]);
+  const defaultStyles = useMemo(() => getDefaultStyles(theme), [theme]);
 
   const [modalStack, setModalStack] = useState<ModalStackItem[]>([]);
 
@@ -177,27 +182,44 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <ModalContext.Provider value={contextValue}>
       {children}
-      {modalStack.map((modal) => (
-        <Modal
-          key={modal.id}
-          visible={true}
-          onRequestClose={handleModalDismiss}
-          transparent={true}
-          animationType="fade"
-          {...modal.props.modalProps}
-        >
-          <ThemeProvider preferences={themePreferences}>
-            <View style={styles.modalContainer} onTouchEnd={handleOutsideTouch}>
+      {modalStack.map((modal) => {
+        const showBackdrop = modal.props.modalProps?.showBackdrop ?? true;
+        const customStyles = modal.props.modalProps?.styles ?? {};
+        const mergedStyles = {
+          modalContainer: {
+            ...defaultStyles.modalContainer,
+            ...(showBackdrop && { backgroundColor: 'rgba(0, 0, 0, 0.5)' }),
+            ...customStyles.modalContainer,
+          },
+          modalContent: {
+            ...defaultStyles.modalContent,
+            ...customStyles.modalContent,
+          },
+        };
+
+        return (
+          <Modal
+            key={modal.id}
+            visible={true}
+            onRequestClose={handleModalDismiss}
+            transparent={true}
+            animationType="fade"
+            {...modal.props.modalProps}
+          >
+            <View
+              style={mergedStyles.modalContainer}
+              onTouchEnd={handleOutsideTouch}
+            >
               <View
-                style={styles.modalContent}
+                style={mergedStyles.modalContent}
                 onTouchEnd={(e) => e.stopPropagation()}
               >
                 {modal.content}
               </View>
             </View>
-          </ThemeProvider>
-        </Modal>
-      ))}
+          </Modal>
+        );
+      })}
     </ModalContext.Provider>
   );
 };
