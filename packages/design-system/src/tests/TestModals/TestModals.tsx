@@ -114,7 +114,7 @@ export const TestModals = (_: TestModalsProps) => {
     const result = await openModal({
       initialData: 'Modal content',
       modalProps: {
-        dismissable: true,
+        closeOnOutsideTouch: true,
       },
       render: ({ resolve, reject }) => (
         <View>
