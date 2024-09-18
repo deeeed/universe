@@ -9,6 +9,7 @@ import {
   AccordionItemProps,
   Button,
   DynInput,
+  EditPropProps,
   Picker,
   useModal,
 } from "@siteed/design-system";
@@ -130,26 +131,63 @@ export const TestModals = () => {
     console.log(`handleOpenDrawer result`, result);
   }, [accordionData, openDrawer]);
 
-  const handleEditProp = useCallback(async () => {
-    console.log(`handleEditProp`);
-    try {
-      const result = await editProp({
-        modalType: "modal",
-        bottomSheetProps: {
-          enableDynamicSizing: false,
-
-          snapPoints: ["40%", "80%"],
-          index: 0,
-        },
-        data: "Hello",
-        inputType: "text",
-      });
-      console.log(`result`, result);
-    } catch (error) {
-      // Ignore error.
-      console.log(`error`, error);
-    }
+  const handleEditDrawer = useCallback(async () => {
+    console.log(`handleEditDrawer`);
+    const result = await openDrawer({
+      bottomSheetProps: {
+        enableDynamicSizing: true,
+      },
+      render: ({ data, resolve, onChange }) => {
+        return (
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 30,
+            }}
+          >
+            <Text>Drawer content</Text>
+            {/* <DynInput
+              data="hello"
+              useFlatList={false}
+              inputType="text"
+              autoFocus
+              finishOnEnter
+              selectTextOnFocus
+              onCancel={() => resolve?.(data)}
+              onFinish={(values) => resolve?.(values)}
+              onChange={onChange}
+            /> */}
+          </View>
+        );
+      },
+    });
+    console.log(`handleEditDrawer result`, result);
   }, []);
+
+  const handleEditProp = useCallback(
+    async ({ modalType }: { modalType: EditPropProps["modalType"] }) => {
+      console.log(`handleEditProp`);
+      try {
+        const result = await editProp({
+          modalType,
+          bottomSheetProps: {
+            // enableDynamicSizing: true,
+            // snapPoints: ["40%", "80%"],
+            // index: 0,
+          },
+          data: "Hello",
+          inputType: "text",
+        });
+        console.log(`result`, result);
+      } catch (error) {
+        // Ignore error.
+        console.log(`error`, error);
+      }
+    },
+    [],
+  );
 
   const handleOpenModal = useCallback(async () => {
     console.log(`handleOpenModal`, openModal);
@@ -201,7 +239,13 @@ export const TestModals = () => {
         </Button>
       </View>
       <View>
-        <Button onPress={handleEditProp}>Edit PRops (string)</Button>
+        <Button onPress={() => handleEditProp({ modalType: "modal" })}>
+          Edit PRops Modal (string)
+        </Button>
+        <Button onPress={() => handleEditProp({ modalType: "drawer" })}>
+          Edit PRops Drawer (string)
+        </Button>
+        <Button onPress={() => handleEditDrawer()}>Edit Drawer (custom)</Button>
       </View>
 
       <View>

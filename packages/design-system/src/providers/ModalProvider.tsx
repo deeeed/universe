@@ -6,15 +6,16 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Platform, StyleSheet } from 'react-native';
-import { Modal, ModalProps, Portal } from 'react-native-paper';
+import { Modal, ModalProps, StyleSheet, View } from 'react-native';
 import { AppTheme } from '../hooks/_useAppThemeSetup';
 import { baseLogger } from '../utils/logger';
 import { ThemeProvider, useTheme, useThemePreferences } from './ThemeProvider';
 
 export interface OpenModalProps<T = unknown> {
   initialData?: T;
-  modalProps?: Partial<ModalProps>;
+  modalProps?: Partial<ModalProps> & {
+    closeOnOutsideTouch?: boolean;
+  };
   render: (props: {
     resolve: (value: T) => void;
     reject: (error: Error) => void;
@@ -36,11 +37,19 @@ const logger = baseLogger.extend('ModalProvider');
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
+    modalContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+    },
     modalContent: {
       backgroundColor: theme.colors.surface,
       padding: 20,
       borderRadius: 8,
       margin: 20,
+      width: '90%', // Adjust as needed
+      maxHeight: '90%', // Adjust as needed
     },
   });
 };
@@ -147,6 +156,15 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
     setModalStack([]);
   }, [modalStack]);
 
+  const handleOutsideTouch = useCallback(() => {
+    if (modalStack.length > 0) {
+      const currentModal = modalStack[modalStack.length - 1];
+      if (currentModal?.props.modalProps?.closeOnOutsideTouch !== false) {
+        handleModalDismiss();
+      }
+    }
+  }, [modalStack, handleModalDismiss]);
+
   const contextValue = useMemo(
     () => ({
       openModal,
@@ -159,39 +177,27 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <ModalContext.Provider value={contextValue}>
       {children}
-      {Platform.OS === 'web' || Platform.OS === 'ios' ? (
-        <Portal>
-          {modalStack.map((modal) => (
-            <Modal
-              key={modal.id}
-              visible={true}
-              onDismiss={handleModalDismiss}
-              contentContainerStyle={styles.modalContent}
-              {...modal.props.modalProps}
-            >
-              <ThemeProvider preferences={themePreferences}>
-                {modal.content}
-              </ThemeProvider>
-            </Modal>
-          ))}
-        </Portal>
-      ) : (
-        <Portal>
+      {modalStack.map((modal) => (
+        <Modal
+          key={modal.id}
+          visible={true}
+          onRequestClose={handleModalDismiss}
+          transparent={true}
+          animationType="fade"
+          {...modal.props.modalProps}
+        >
           <ThemeProvider preferences={themePreferences}>
-            {modalStack.map((modal) => (
-              <Modal
-                key={modal.id}
-                visible={true}
-                onDismiss={handleModalDismiss}
-                contentContainerStyle={styles.modalContent}
-                {...modal.props.modalProps}
+            <View style={styles.modalContainer} onTouchEnd={handleOutsideTouch}>
+              <View
+                style={styles.modalContent}
+                onTouchEnd={(e) => e.stopPropagation()}
               >
                 {modal.content}
-              </Modal>
-            ))}
+              </View>
+            </View>
           </ThemeProvider>
-        </Portal>
-      )}
+        </Modal>
+      ))}
     </ModalContext.Provider>
   );
 };
