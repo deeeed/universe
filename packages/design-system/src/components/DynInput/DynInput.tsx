@@ -1,14 +1,7 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   NativeSyntheticEvent,
-  TextInput as RNGTextInput,
   StyleSheet,
   TextInputKeyPressEventData,
   View,
@@ -94,9 +87,9 @@ export const DynInput = ({
   inputType,
   showSearch,
   showFooter = true,
-  autoFocus,
   label,
   numberOfLines,
+  autoFocus,
   customRender,
   onCancel,
   onFinish,
@@ -109,7 +102,6 @@ export const DynInput = ({
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
-  const inputRef = useRef<RNGTextInput>(null);
   const [visible, setVisible] = useState(initiallyOpen);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     data instanceof Date ? data : undefined
@@ -126,21 +118,6 @@ export const DynInput = ({
     setTemp(data);
     logger.log('DynInput useEffect - data changed:', data);
   }, [data, logger]);
-
-  useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    if (inputRef.current && autoFocus) {
-      timeout = setTimeout(() => {
-        // adding the timeout prevents the input focus to break sizing
-        inputRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(timeout);
-    }
-
-    return () => {
-      timeout && clearTimeout(timeout);
-    };
-  }, [autoFocus]);
 
   const handleChange = useCallback(
     (value: DynamicType) => {
@@ -183,10 +160,10 @@ export const DynInput = ({
   const renderNumber = () => {
     return (
       <TextInput
-        ref={inputRef}
         inputMode="numeric"
         onFocus={handleFocus}
         onBlur={handleBlur}
+        autoFocus={autoFocus}
         value={temp as string}
         onChangeText={handleChange}
         selectTextOnFocus={selectTextOnFocus}
@@ -201,10 +178,10 @@ export const DynInput = ({
   const renderText = () => {
     return (
       <TextInput
-        ref={inputRef}
         multiline={!!(numberOfLines && numberOfLines > 0)}
         numberOfLines={numberOfLines}
         label={label}
+        autoFocus={autoFocus}
         value={temp as string}
         onChangeText={handleChange}
         selectTextOnFocus={selectTextOnFocus}

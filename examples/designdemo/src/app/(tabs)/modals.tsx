@@ -131,41 +131,6 @@ export const TestModals = () => {
     console.log(`handleOpenDrawer result`, result);
   }, [accordionData, openDrawer]);
 
-  const handleEditDrawer = useCallback(async () => {
-    console.log(`handleEditDrawer`);
-    const result = await openDrawer({
-      bottomSheetProps: {
-        enableDynamicSizing: true,
-      },
-      render: ({ data, resolve, onChange }) => {
-        return (
-          <View
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 30,
-            }}
-          >
-            <Text>Drawer content</Text>
-            {/* <DynInput
-              data="hello"
-              useFlatList={false}
-              inputType="text"
-              autoFocus
-              finishOnEnter
-              selectTextOnFocus
-              onCancel={() => resolve?.(data)}
-              onFinish={(values) => resolve?.(values)}
-              onChange={onChange}
-            /> */}
-          </View>
-        );
-      },
-    });
-    console.log(`handleEditDrawer result`, result);
-  }, []);
-
   const handleEditProp = useCallback(
     async ({ modalType }: { modalType: EditPropProps["modalType"] }) => {
       console.log(`handleEditProp`);
@@ -245,7 +210,6 @@ export const TestModals = () => {
         <Button onPress={() => handleEditProp({ modalType: "drawer" })}>
           Edit PRops Drawer (string)
         </Button>
-        <Button onPress={() => handleEditDrawer()}>Edit Drawer (custom)</Button>
       </View>
 
       <View>

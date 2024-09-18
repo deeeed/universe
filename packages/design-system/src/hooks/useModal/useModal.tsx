@@ -1,6 +1,6 @@
 import { BottomSheetModalProps } from '@gorhom/bottom-sheet';
 import React, { useCallback, useContext } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform } from 'react-native';
 import { ModalProps } from 'react-native-paper';
 import {
   DynInput,
