@@ -34,6 +34,7 @@ export const useModal = () => {
     openDrawer,
     dismiss: dismissDrawer,
     dismissAll: dismissAllDrawers,
+    modalStack,
   } = bottomSheetContext;
   const {
     openModal,
@@ -132,5 +133,6 @@ export const useModal = () => {
     dismissAll,
     openDrawer,
     openModal,
+    modalStack,
   };
 };
