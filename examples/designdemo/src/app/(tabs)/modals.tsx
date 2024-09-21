@@ -140,6 +140,7 @@ export const TestModals = () => {
       try {
         const result = await editProp({
           modalType,
+          autoFocus: true,
           bottomSheetProps: {
             // enableDynamicSizing: true,
             // snapPoints: ["40%", "80%"],

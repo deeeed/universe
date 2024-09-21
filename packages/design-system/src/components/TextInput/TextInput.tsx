@@ -7,9 +7,11 @@ import React, {
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from 'react';
 import {
   NativeSyntheticEvent,
+  Platform,
   TextInput as RNTextInput,
   TextInputFocusEventData,
 } from 'react-native';
@@ -35,11 +37,13 @@ const useSafeBottomSheetInternal = () => {
     return null;
   }
 };
+const isWeb = Platform.OS === 'web';
 
 export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
-  ({ mandatory, label, onFocus, onBlur, ...rest }, ref) => {
+  ({ mandatory, label, onFocus, onBlur, autoFocus, ...rest }, ref) => {
     const inputRef = useRef<RNTextInput>(null);
     const bottomSheetInternal = useSafeBottomSheetInternal();
+    const [shouldFocus, setShouldFocus] = useState(!isWeb);
 
     useImperativeHandle(ref, () => ({
       focus: () => inputRef.current?.focus(),
@@ -79,6 +83,18 @@ export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
     );
 
     useEffect(() => {
+      if (isWeb && autoFocus) {
+        const timer = setTimeout(() => {
+          setShouldFocus(true);
+          inputRef.current?.focus();
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+
+      return;
+    }, [autoFocus]);
+
+    useEffect(() => {
       return () => {
         if (bottomSheetInternal) {
           bottomSheetInternal.shouldHandleKeyboardEvents.value = false;
@@ -93,6 +109,7 @@ export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
         label={renderLabel()}
         onFocus={handleOnFocus}
         onBlur={handleOnBlur}
+        autoFocus={isWeb ? shouldFocus && autoFocus : autoFocus}
       />
     );
   }

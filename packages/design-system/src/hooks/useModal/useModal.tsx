@@ -83,7 +83,6 @@ export const useModal = () => {
                 data={data}
                 useFlatList={false}
                 inputType={inputType}
-                autoFocus={true}
                 finishOnEnter={true}
                 selectTextOnFocus={true}
                 onCancel={() => resolve?.(data)}
