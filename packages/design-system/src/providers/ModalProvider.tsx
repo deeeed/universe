@@ -54,7 +54,7 @@ const getDefaultStyles = (theme: AppTheme): ModalStyles => {
       padding: 20,
       borderRadius: 8,
       margin: 20,
-      width: '90%',
+      maxWidth: '90%',
       maxHeight: '90%',
     },
   };
