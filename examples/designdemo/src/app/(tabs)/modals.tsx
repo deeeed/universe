@@ -11,13 +11,16 @@ import {
   DynInput,
   EditPropProps,
   Picker,
+  ThemeConfig,
   useModal,
+  useThemePreferences,
   useToast,
 } from "@siteed/design-system";
 import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Form1 } from "../../components/form1";
+import { ExpoRouterUIWrapper } from "../components/ExpoRouterUIWrapper";
 
 const getStyles = () => {
   return StyleSheet.create({
@@ -67,7 +70,7 @@ const options = [
 export const TestModals = () => {
   const styles = useMemo(() => getStyles(), []);
   const { show } = useToast();
-
+  const { toggleDarkMode, theme } = useThemePreferences();
   // ref
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
@@ -170,6 +173,7 @@ export const TestModals = () => {
         render: ({ resolve, reject }) => (
           <View>
             <Text>This is a test modal content.</Text>
+            <Text>Theme: {theme.dark ? "Dark" : "Light"}</Text>
             <Button
               onPress={() =>
                 show({
@@ -179,6 +183,13 @@ export const TestModals = () => {
               }
             >
               show toast
+            </Button>
+            <Button
+              onPress={() => {
+                toggleDarkMode();
+              }}
+            >
+              Toggle DarkMode
             </Button>
             <Button onPress={() => resolve("Confirmed")}>Confirm</Button>
             <Button onPress={() => reject(new Error("Cancelled"))}>
@@ -191,7 +202,7 @@ export const TestModals = () => {
     } catch (error) {
       console.log(`error`, error);
     }
-  }, [openModal]);
+  }, [openModal, toggleDarkMode, show, theme]);
 
   const checkBug = useCallback(async () => {
     console.log(`checkBug`);
@@ -210,6 +221,7 @@ export const TestModals = () => {
 
   return (
     <View style={styles.container}>
+      <ThemeConfig colors={[]} />
       <View>
         <Picker label="Category (multi)" options={options} multi />
         <Picker label="Category" options={options} />
@@ -271,4 +283,10 @@ export const TestModals = () => {
   );
 };
 
-export default TestModals;
+export default function ModalsScreenWrapper() {
+  return (
+    <ExpoRouterUIWrapper>
+      <TestModals />
+    </ExpoRouterUIWrapper>
+  );
+}
