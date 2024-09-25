@@ -33,39 +33,6 @@ const getStyles = () => {
   });
 };
 
-const options = [
-  {
-    label: "Daily Sentences",
-    value: "1",
-    selected: true,
-  },
-  {
-    label: "Custom Cards",
-    value: "2",
-  },
-  {
-    label: "Greetings",
-    value: "3",
-  },
-  {
-    label: "Dinings & Food",
-    value: "4",
-  },
-  {
-    label: "Shopping",
-    selected: true,
-    value: "5",
-  },
-  {
-    label: "Direction & Transportation",
-    value: "6",
-  },
-  {
-    label: "Accommodation",
-    value: "7",
-  },
-];
-
 interface Test {
   name: string;
 }
@@ -92,20 +59,6 @@ export const TestModals = () => {
   }, []);
   const handleSheetChanges = useCallback((index: number) => {
     console.log("handleSheetChanges", index);
-  }, []);
-
-  const handleOpenDrawer = useCallback(async () => {
-    console.log(`handleOpenDrawer`, openDrawer);
-    const result = await openDrawer({
-      title: "This is Title",
-      bottomSheetProps: {
-        enableDynamicSizing: true,
-      },
-      render: () => {
-        return <Text>Drawer content</Text>;
-      },
-    });
-    console.log(`handleOpenDrawer result`, result);
   }, []);
 
   const renderMany = () => {
