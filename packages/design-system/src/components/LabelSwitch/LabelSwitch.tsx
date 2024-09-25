@@ -1,11 +1,5 @@
 import React, { useMemo } from 'react';
-import {
-  GestureResponderEvent,
-  Pressable,
-  StyleProp,
-  TextStyle,
-  ViewStyle,
-} from 'react-native';
+import { Pressable, StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { Switch, Text } from 'react-native-paper';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
@@ -45,17 +39,22 @@ export const LabelSwitch = ({
   const theme = useTheme();
   const styles = useMemo(() => getStyle(theme), [theme]);
 
-  const handlePress = (event: GestureResponderEvent) => {
-    // Check if the press event originated from the Switch
-    if (event.target === event.currentTarget) {
-      onValueChange(!value);
-    }
+  const handleContainerPress = () => {
+    onValueChange(!value);
   };
 
   return (
-    <Pressable style={[styles.container, containerStyle]} onPress={handlePress}>
+    <Pressable
+      style={[styles.container, containerStyle]}
+      onPress={handleContainerPress}
+    >
       <Text style={[styles.label, labelStyle]}>{label}</Text>
-      <Switch value={value} onValueChange={onValueChange} />
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        // Prevent the Pressable's onPress from firing when the Switch is pressed
+        onTouchStart={(e) => e.stopPropagation()}
+      />
     </Pressable>
   );
 };
