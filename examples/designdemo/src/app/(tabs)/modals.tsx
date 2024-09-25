@@ -10,16 +10,15 @@ import {
   Button,
   DynInput,
   EditPropProps,
-  Picker,
+  TextInput,
   ThemeConfig,
   useModal,
   useThemePreferences,
   useToast,
 } from "@siteed/design-system";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { Form1 } from "../../components/form1";
 import { ExpoRouterUIWrapper } from "../components/ExpoRouterUIWrapper";
 
 const getStyles = () => {
@@ -67,6 +66,10 @@ const options = [
   },
 ];
 
+interface Test {
+  name: string;
+}
+
 export const TestModals = () => {
   const styles = useMemo(() => getStyles(), []);
   const { show } = useToast();
@@ -78,6 +81,8 @@ export const TestModals = () => {
   const _snapPoints = useMemo(() => ["20%", "50%"], []);
 
   const { openDrawer, editProp, openModal } = useModal();
+
+  const [test, setTest] = useState<Test>({ name: "test" });
 
   // callbacks
   const handlePresentModalPress = useCallback(() => {
@@ -207,30 +212,42 @@ export const TestModals = () => {
   const checkBug = useCallback(async () => {
     console.log(`checkBug`);
     try {
-      const result = await openDrawer({
-        render: () => <Form1 label="this is form 1" />,
+      const result = await openDrawer<Test>({
+        initialData: test,
+        render: ({ data, onChange }) => (
+          <View>
+            <Text>Name: {data.name}</Text>
+            <TextInput
+              label="Name"
+              value={data.name}
+              onChangeText={(text) => {
+                onChange({ ...data, name: text });
+              }}
+            />
+          </View>
+        ),
         bottomSheetProps: {
           stackBehavior: "replace",
         },
       });
       console.log(`result`, result);
+      if (result) {
+        setTest(result);
+      }
     } catch (error) {
       console.log(`error`, error);
     }
-  }, []);
+  }, [test, openDrawer]);
 
   return (
     <View style={styles.container}>
       <ThemeConfig colors={[]} />
       <View>
-        <Picker label="Category (multi)" options={options} multi />
-        <Picker label="Category" options={options} />
-        <Button onPress={handleOpenDrawer}>open drawer</Button>
         <Button onPress={handleDynamicDrawer}>
           open drawer (with according inside)
         </Button>
       </View>
-      <View>
+      <View style={{ backgroundColor: theme.colors.surfaceVariant }}>
         <Button onPress={() => handleEditProp({ modalType: "modal" })}>
           Edit PRops Modal (string)
         </Button>
@@ -238,13 +255,12 @@ export const TestModals = () => {
           Edit PRops Drawer (string)
         </Button>
       </View>
-
-      <View>
-        <Text>BUGs</Text>
-        <Button onPress={checkBug}>BOOM Modal</Button>
+      <View style={{ backgroundColor: theme.colors.secondaryContainer }}>
+        <Text>Test: {JSON.stringify(test)}</Text>
+        <Button onPress={checkBug}>Check onChange Event</Button>
       </View>
 
-      <View>
+      <View style={{ backgroundColor: theme.colors.tertiaryContainer }}>
         <Text>Within Provider</Text>
         <Button onPress={handlePresentModalPress}>Present Modal</Button>
         <BottomSheetModal

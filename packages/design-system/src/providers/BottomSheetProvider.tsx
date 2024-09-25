@@ -98,18 +98,15 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
     {}
   );
 
-  const updateLatestData = useCallback(
-    <T,>(modalId: number, newValue: T) => {
-      setModalStack((prevStack) =>
-        prevStack.map((modal) =>
-          modal.id === modalId
-            ? ({ ...modal, latestData: newValue } as BottomSheetStackItem)
-            : modal
-        )
-      );
-    },
-    [setModalStack]
-  );
+  const updateLatestData = useCallback(<T,>(modalId: number, newValue: T) => {
+    setModalStack((prevStack) =>
+      prevStack.map((modal) =>
+        modal.id === modalId
+          ? ({ ...modal, latestData: newValue } as BottomSheetStackItem)
+          : modal
+      )
+    );
+  }, []);
 
   const updateFooterHeight = useCallback(
     (modalId: number, newHeight: number) => {
