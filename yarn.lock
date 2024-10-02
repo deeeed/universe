@@ -5612,6 +5612,7 @@ __metadata:
     "@storybook/test-runner": "npm:^0.19.1"
     "@svgr/webpack": "npm:^8.1.0"
     "@testing-library/react-native": "npm:^12.4.4"
+    "@types/color": "npm:^3.0.6"
     "@types/eslint": "npm:^8"
     "@types/gh-pages": "npm:^6"
     "@types/jest": "npm:^29.5.12"
@@ -5624,6 +5625,7 @@ __metadata:
     babel-loader: "npm:^9.1.3"
     babel-plugin-react-native-web: "npm:^0.19.10"
     bundle-size: "npm:^1.1.5"
+    color: "npm:^4.2.3"
     commitlint: "npm:^19.2.1"
     date-fns: "npm:^4.0.0-beta.1"
     eslint: "npm:^8.57.0"
@@ -6912,6 +6914,31 @@ __metadata:
     "@types/connect": "npm:*"
     "@types/node": "npm:*"
   checksum: 10c0/aebeb200f25e8818d8cf39cd0209026750d77c9b85381cdd8deeb50913e4d18a1ebe4b74ca9b0b4d21952511eeaba5e9fbbf739b52731a2061e206ec60d568df
+  languageName: node
+  linkType: hard
+
+"@types/color-convert@npm:*":
+  version: 2.0.4
+  resolution: "@types/color-convert@npm:2.0.4"
+  dependencies:
+    "@types/color-name": "npm:^1.1.0"
+  checksum: 10c0/fdd2cea0ccf593055c8d952760286a4c114ed72a9940798d13f159823bf71d40a6b124009865e2e066f062d6d5611b677ddb61fd0ed05f6494170454cc6457c2
+  languageName: node
+  linkType: hard
+
+"@types/color-name@npm:^1.1.0":
+  version: 1.1.5
+  resolution: "@types/color-name@npm:1.1.5"
+  checksum: 10c0/ce566d98ab1c2622a2e9d9d1d5cbde403e731a4fc084e8b0f56e89901cd3c46981feafb797d4505918d5eb5a7fd897fce2332d489f450ddf1c58bc4986bd9d76
+  languageName: node
+  linkType: hard
+
+"@types/color@npm:^3.0.6":
+  version: 3.0.6
+  resolution: "@types/color@npm:3.0.6"
+  dependencies:
+    "@types/color-convert": "npm:*"
+  checksum: 10c0/79267eeb67f9d11761aecee36bb1503fb8daa699b9ae7e036fc23a74380e5b130c5c0f6d7adafabba89256e46f36ee4d3e28e0ac7e107e8258550eae7d091acf
   languageName: node
   linkType: hard
 
