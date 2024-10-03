@@ -16,6 +16,9 @@ const TryEditableInfoCard = () => {
   const [name, setName] = useState("John Doe");
   const [age, setAge] = useState(30);
   const [bio, setBio] = useState("A short bio about John Doe.");
+  const [inlineEditableBio, setInlineEditableBio] = useState(
+    "This bio can be edited inline. Click to try!",
+  );
   const [favoriteColors, setFavoriteColors] = useState<SelectOption[]>([
     { label: "Blue", value: "blue" },
     { label: "Green", value: "green" },
@@ -69,6 +72,13 @@ const TryEditableInfoCard = () => {
           value={bio}
           editable
           onEdit={() => handleEdit(bio, "text", setBio)}
+        />
+
+        <EditableInfoCard
+          label="Inline Editable Bio"
+          value={inlineEditableBio}
+          inlineEditable
+          onInlineEdit={(newValue) => setInlineEditableBio(newValue as string)}
         />
 
         <EditableInfoCard

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   StyleProp,
@@ -10,6 +10,7 @@ import {
 import { ActivityIndicator, IconButton, Text } from 'react-native-paper';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
+import { TextInput } from '../TextInput/TextInput';
 
 export interface EditableInfoCardProps {
   label?: string;
@@ -17,8 +18,10 @@ export interface EditableInfoCardProps {
   processing?: boolean;
   error?: boolean;
   renderValue?: (value?: unknown) => React.ReactNode;
-  editable?: boolean; // New property to determine if the item is editable
+  editable?: boolean; // determine if the item is editable
+  inlineEditable?: boolean; // if the item is inline editable
   onEdit?: () => void; // Callback function when edit icon is pressed
+  onInlineEdit?: (newValue?: unknown) => void; // Callback function when inline edit is pressed
   labelStyle?: StyleProp<TextStyle>;
   containerStyle?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
@@ -63,7 +66,9 @@ export function EditableInfoCard({
   error,
   processing,
   editable,
+  inlineEditable,
   onEdit,
+  onInlineEdit,
   renderValue,
   containerStyle,
   contentStyle,
@@ -73,10 +78,54 @@ export function EditableInfoCard({
 }: EditableInfoCardProps): React.ReactNode {
   const theme = useTheme();
   const styles = useMemo(() => getStyles({ theme }), [theme]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedValue, setEditedValue] = useState(value as string);
 
-  const defaultRightAction = editable ? (
-    <IconButton icon="pencil" size={20} style={styles.icon} onPress={onEdit} />
-  ) : null;
+  useEffect(() => {
+    setEditedValue(value as string);
+  }, [value]);
+
+  const handleEdit = () => {
+    if (inlineEditable) {
+      setIsEditing(true);
+    } else if (editable && onEdit) {
+      onEdit();
+    }
+  };
+
+  const handleInlineEditComplete = () => {
+    setIsEditing(false);
+    if (onInlineEdit && editedValue !== value) {
+      onInlineEdit(editedValue);
+    }
+  };
+
+  const handleInlineEditCancel = () => {
+    setIsEditing(false);
+    setEditedValue(value as string);
+  };
+
+  const defaultRightAction =
+    editable || inlineEditable ? (
+      <>
+        {isEditing && (
+          <IconButton
+            icon="close"
+            size={20}
+            style={styles.icon}
+            onPress={handleInlineEditCancel}
+            accessibilityLabel="Cancel editing"
+          />
+        )}
+        <IconButton
+          icon={isEditing ? 'check' : 'pencil'}
+          size={20}
+          style={styles.icon}
+          onPress={isEditing ? handleInlineEditComplete : handleEdit}
+          accessibilityLabel={isEditing ? 'Confirm edit' : 'Edit value'}
+        />
+      </>
+    ) : null;
 
   const rightActionComponent = rightAction ?? defaultRightAction;
 
@@ -87,6 +136,15 @@ export function EditableInfoCard({
         <View style={[styles.content, contentStyle]}>
           {processing ? (
             <ActivityIndicator size="small" />
+          ) : isEditing ? (
+            <TextInput
+              autoFocus
+              value={editedValue}
+              onChangeText={setEditedValue}
+              onBlur={handleInlineEditComplete}
+              onSubmitEditing={handleInlineEditComplete}
+              style={{ backgroundColor: 'transparent' }}
+            />
           ) : renderValue ? (
             renderValue(value)
           ) : (
@@ -107,8 +165,8 @@ export function EditableInfoCard({
   );
 
   const handlePress = () => {
-    if (editable && onEdit) {
-      onEdit();
+    if (inlineEditable || editable) {
+      handleEdit();
     } else if (onRightActionPress) {
       onRightActionPress();
     }
@@ -117,7 +175,7 @@ export function EditableInfoCard({
   return (
     <Pressable
       onPress={handlePress}
-      disabled={!editable && !onRightActionPress}
+      disabled={!editable && !inlineEditable && !onRightActionPress}
     >
       {content}
     </Pressable>

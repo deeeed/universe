@@ -12,6 +12,7 @@ const ItemViewMeta: Meta<EditableInfoCardProps> = {
   component: EditableInfoCard,
   argTypes: {
     onEdit: { action: 'edit clicked' },
+    onInlineEdit: { action: 'inline edit completed' },
   },
   args: {
     label: 'Item Label',
@@ -19,6 +20,7 @@ const ItemViewMeta: Meta<EditableInfoCardProps> = {
     processing: false,
     error: false,
     editable: false,
+    inlineEditable: false,
   },
   decorators: [],
   parameters: {},
@@ -43,13 +45,13 @@ export const Error: StoryFn<EditableInfoCardProps> = (args) => (
   />
 );
 
-export const Editable: StoryFn<EditableInfoCardProps> = (args) => {
+export const EditableModal: StoryFn<EditableInfoCardProps> = (args) => {
   const { editProp } = useModal();
-  const [value, setValue] = useState('Click to edit');
+  const [value, setValue] = useState('Click to edit (modal only)');
   return (
     <EditableInfoCard
       {...args}
-      label="Editable Item"
+      label="Editable Item (Modal)"
       value={value}
       editable={true}
       onEdit={async () => {
@@ -64,6 +66,56 @@ export const Editable: StoryFn<EditableInfoCardProps> = (args) => {
         if (newValue) {
           setValue(newValue as string);
         }
+      }}
+    />
+  );
+};
+
+export const EditableWithInlineAndModal: StoryFn<EditableInfoCardProps> = (
+  args
+) => {
+  const { editProp } = useModal();
+  const [value, setValue] = useState('Click to edit (inline or modal)');
+  return (
+    <EditableInfoCard
+      {...args}
+      label="Editable Item (Inline & Modal)"
+      value={value}
+      editable={true}
+      inlineEditable={true}
+      onInlineEdit={(newValue) => {
+        console.log('Inline edit:', newValue);
+        setValue(newValue as string);
+      }}
+      onEdit={async () => {
+        const newValue = await editProp({
+          bottomSheetProps: {
+            enableDynamicSizing: false,
+            snapPoints: ['10%', '50%', '90%'],
+          },
+          data: value,
+          inputType: 'text',
+        });
+        if (newValue) {
+          console.log('Modal edit:', newValue);
+          setValue(newValue as string);
+        }
+      }}
+    />
+  );
+};
+
+export const InlineEditable: StoryFn<EditableInfoCardProps> = (args) => {
+  const [value, setValue] = useState('Click to edit inline');
+  return (
+    <EditableInfoCard
+      {...args}
+      label="Inline Editable Item"
+      value={value}
+      inlineEditable={true}
+      onInlineEdit={(newValue) => {
+        console.log('New value:', newValue);
+        setValue(newValue as string);
       }}
     />
   );
@@ -276,17 +328,24 @@ export const RightActionWithPress: StoryFn<EditableInfoCardProps> = (args) => (
   />
 );
 
-export const EditableWithCustomIcon: StoryFn<EditableInfoCardProps> = (
+export const EditableWithCustomIconAndInline: StoryFn<EditableInfoCardProps> = (
   args
 ) => {
   const { editProp } = useModal();
-  const [value, setValue] = useState('Click the custom edit icon');
+  const [value, setValue] = useState(
+    'Click the custom edit icon or edit inline'
+  );
   return (
     <EditableInfoCard
       {...args}
-      label="Custom Edit Icon"
+      label="Custom Edit Icon with Inline"
       value={value}
       editable={true}
+      inlineEditable={true}
+      onInlineEdit={(newValue) => {
+        console.log('Inline edit:', newValue);
+        setValue(newValue as string);
+      }}
       rightAction={
         <IconButton
           icon="pencil-circle"
@@ -301,6 +360,7 @@ export const EditableWithCustomIcon: StoryFn<EditableInfoCardProps> = (
               inputType: 'text',
             });
             if (newValue) {
+              console.log('Modal edit:', newValue);
               setValue(newValue as string);
             }
           }}
