@@ -18,7 +18,8 @@
     "jsx": "react",
     "allowJs": false,
     "lib": [
-      "esnext"
+      "esnext",
+      "dom"
     ],
     "module": "esnext",
     "moduleResolution": "node",

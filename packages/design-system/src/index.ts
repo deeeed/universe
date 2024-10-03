@@ -32,6 +32,8 @@ export * from './components/EditableInfoCard/EditableInfoCard';
 export * from './components/RefreshControl/RefreshControl';
 export * from './components/NumberAdjuster/NumberAdjuster';
 export * from './components/FAB/FABGroup';
+export * from './components/Slider/Slider';
+
 // Settings related components, useful to re-use and visualize in external storybooks
 export * from './settings/ThemeConfig/ThemeConfig';
 export * from './settings/ThemeViewer/ThemeViewer';

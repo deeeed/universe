@@ -4359,7 +4359,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-community/slider@npm:^4.5.0":
+"@react-native-community/slider@npm:4.5.2, @react-native-community/slider@npm:^4.5.0":
   version: 4.5.2
   resolution: "@react-native-community/slider@npm:4.5.2"
   checksum: 10c0/0aeef9ce4ccb1e8995e49efbe244edf68b4a6274845d8d4fefa07cf7b1bd2d3d43c6a7dc1e8a300fe18ae768c350dcd99d3c2ee88a74f854341d85c24140f80f
@@ -5679,6 +5679,7 @@ __metadata:
     "@expo/vector-icons": "*"
     "@gorhom/bottom-sheet": "*"
     "@react-native-async-storage/async-storage": "*"
+    "@react-native-community/slider": "*"
     "@react-navigation/native": "*"
     "@siteed/react-native-logger": "*"
     expo: "*"
@@ -12151,6 +12152,7 @@ __metadata:
     "@formatjs/intl-pluralrules": "npm:^5.2.14"
     "@formatjs/intl-relativetimeformat": "npm:^11.2.14"
     "@gorhom/bottom-sheet": "npm:^5.0.0-alpha.11"
+    "@react-native-community/slider": "npm:4.5.2"
     "@react-navigation/drawer": "npm:^6.6.15"
     "@siteed/design-system": "workspace:^"
     "@siteed/react-native-logger": "workspace:^"

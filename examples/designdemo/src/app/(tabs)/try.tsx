@@ -41,6 +41,11 @@ const links = [
     subLabel: "Explore Picker Components",
     path: "/components/try-pickers",
   },
+  {
+    label: "Slider",
+    subLabel: "Explore Slider Components",
+    path: "/components/try-slider",
+  },
 ];
 
 const logger = getLogger("TryItScreen");

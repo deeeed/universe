@@ -45,6 +45,7 @@
     "@expo/vector-icons": "*",
     "@gorhom/bottom-sheet": "*",
     "@react-native-async-storage/async-storage": "*",
+    "@react-native-community/slider": "*",
     "@react-navigation/native": "*",
     "@siteed/react-native-logger": "*",
     "expo": "*",
