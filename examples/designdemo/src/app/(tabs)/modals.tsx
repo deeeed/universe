@@ -88,6 +88,8 @@ export const TestModals = () => {
     console.log(`handleOpenDrawer`, openDrawer);
     const result = await openDrawer({
       title: "This is Title",
+      footerType: "confirm_cancel",
+      containerType: "scrollview",
       render: () => {
         return <Accordion data={accordionData} />;
       },

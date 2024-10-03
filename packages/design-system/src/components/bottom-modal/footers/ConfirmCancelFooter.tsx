@@ -1,10 +1,6 @@
-import {
-  BottomSheetFooter,
-  BottomSheetFooterProps,
-} from '@gorhom/bottom-sheet';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AppTheme } from '../../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../../providers/ThemeProvider';
 import { Button } from '../../Button/Button';
@@ -25,32 +21,27 @@ const getStyles = (theme: AppTheme) => {
   });
 };
 
-export interface ConfirmCancelFooterProps extends BottomSheetFooterProps {
+export interface ConfirmCancelFooterProps {
   onCancel?: () => void;
   onFinish?: () => void;
 }
 
-export const ConfirmCancelFooter = (props: ConfirmCancelFooterProps) => {
+export const ConfirmCancelFooter = ({
+  onCancel,
+  onFinish,
+}: ConfirmCancelFooterProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const { t } = useTranslation('confirm_cancel_footer');
 
   return (
-    <BottomSheetFooter {...props} style={styles.footer}>
-      <Button
-        mode="outlined"
-        style={styles.cancelButton}
-        onPress={props.onCancel}
-      >
+    <View style={styles.footer}>
+      <Button mode="outlined" style={styles.cancelButton} onPress={onCancel}>
         {t('cancel')}
       </Button>
-      <Button
-        style={styles.finishButton}
-        mode="contained"
-        onPress={props.onFinish}
-      >
-        {t('finish')}
+      <Button style={styles.finishButton} mode="contained" onPress={onFinish}>
+        {t('confirm')}
       </Button>
-    </BottomSheetFooter>
+    </View>
   );
 };

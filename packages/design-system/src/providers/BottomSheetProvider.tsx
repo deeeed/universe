@@ -20,9 +20,9 @@ import React, {
   useState,
 } from 'react';
 import { View } from 'react-native';
-import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
 import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import { baseLogger } from '../utils/logger';
+import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
 
 export interface BottomSheetStackItem<T = unknown> {
   id: number;
@@ -43,6 +43,7 @@ export interface OpenDrawerProps<T> {
   bottomSheetProps?: Partial<BottomSheetModalProps>;
   render: (props: {
     data: T;
+    footerHeight: number;
     resolve: (value: T | undefined) => void;
     onChange: (value: T) => void;
     reject: (error: Error) => void;
@@ -145,17 +146,24 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
               }
             }}
           >
-            {renderFooter ? (
+            {!renderFooter && footerType === 'confirm_cancel' && (
+              <ConfirmCancelFooter
+                onFinish={() => {
+                  modal.resolve(modal.latestData);
+                }}
+                onCancel={() => {
+                  modal.resolve(modal.initialData);
+                }}
+              />
+            )}
+            {renderFooter &&
               renderFooter({
                 ...footerProps,
                 data: modal.latestData,
                 resolve: modal.resolve,
                 onChange: (newValue) => updateLatestData(modal.id, newValue),
                 reject: modal.reject,
-              })
-            ) : (
-              <ConfirmCancelFooter {...footerProps} />
-            )}
+              })}
           </View>
         </BottomSheetFooter>
       );
@@ -359,6 +367,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const content = currentModal.render({
         data: currentModal.latestData,
+        footerHeight,
         resolve: currentModal.resolve,
         onChange: (newValue) => {
           updateLatestData(currentModal.id, newValue);
@@ -367,7 +376,9 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       return (
-        <Container style={{ paddingBottom: footerHeight }}>{content}</Container>
+        <Container>
+          <View style={{ paddingBottom: footerHeight }}>{content}</View>
+        </Container>
       );
     },
     [modalStack, footerHeights, updateLatestData]

@@ -31,6 +31,7 @@ const resources = {
     confirm_cancel_footer: {
       cancel: 'Cancel',
       finish: 'Finish',
+      confirm: 'Confirm',
     },
     flashcards_view: {
       totally_forgot: 'Totally forgot',
