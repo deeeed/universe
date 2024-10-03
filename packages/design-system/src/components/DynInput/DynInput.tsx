@@ -102,7 +102,7 @@ export const DynInput = ({
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
-  const [visible, setVisible] = useState(initiallyOpen);
+  const [visible, setVisible] = useState(initiallyOpen || false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     data instanceof Date ? data : undefined
   );
@@ -221,27 +221,31 @@ export const DynInput = ({
     if (inputType === 'time') {
       return (
         <>
-          <Button onPress={() => setVisible(true)}>
-            {selectedDate ? selectedDate.toLocaleTimeString() : 'Pick time'}
-          </Button>
-          <TimePickerModal
-            visible={visible}
-            onDismiss={() => {
-              setVisible(false);
-              if (initiallyOpen) {
-                onFinish?.(selectedDate as Date);
-              }
-            }}
-            onConfirm={({ hours, minutes }) => {
-              const newDate = new Date(selectedDate || Date.now());
-              newDate.setHours(hours, minutes);
-              setSelectedDate(newDate);
-              onFinish?.(newDate);
-              setVisible(false);
-            }}
-            hours={selectedDate?.getHours() || 0}
-            minutes={selectedDate?.getMinutes() || 0}
-          />
+          {!visible && (
+            <Button onPress={() => setVisible(true)}>
+              {selectedDate ? selectedDate.toLocaleTimeString() : 'Pick time'}
+            </Button>
+          )}
+          <Portal>
+            <TimePickerModal
+              visible={visible}
+              onDismiss={() => {
+                setVisible(false);
+                if (initiallyOpen) {
+                  onFinish?.(selectedDate as Date);
+                }
+              }}
+              onConfirm={({ hours, minutes }) => {
+                const newDate = new Date(selectedDate || Date.now());
+                newDate.setHours(hours, minutes);
+                setSelectedDate(newDate);
+                onFinish?.(newDate);
+                setVisible(false);
+              }}
+              hours={selectedDate?.getHours() || 0}
+              minutes={selectedDate?.getMinutes() || 0}
+            />
+          </Portal>
         </>
       );
     }
@@ -249,28 +253,32 @@ export const DynInput = ({
     if (inputType === 'date') {
       return (
         <>
-          <Button onPress={() => setVisible(true)}>
-            {selectedDate ? selectedDate.toLocaleDateString() : 'Pick date'}
-          </Button>
-          <DatePickerModal
-            mode="single"
-            visible={visible}
-            locale={'en'} // TODO: make this dynamic
-            onDismiss={() => {
-              setVisible(false);
-              if (initiallyOpen) {
-                onFinish?.(selectedDate as Date);
-              }
-            }}
-            date={selectedDate}
-            onConfirm={(params) => {
-              setVisible(false);
-              if (params.date) {
-                setSelectedDate(params.date);
-                onFinish?.(params.date);
-              }
-            }}
-          />
+          {!visible && (
+            <Button onPress={() => setVisible(true)}>
+              {selectedDate ? selectedDate.toLocaleDateString() : 'Pick date'}
+            </Button>
+          )}
+          <Portal>
+            <DatePickerModal
+              mode="single"
+              visible={visible}
+              locale={i18n.language}
+              onDismiss={() => {
+                setVisible(false);
+                if (initiallyOpen) {
+                  onFinish?.(selectedDate as Date);
+                }
+              }}
+              date={selectedDate}
+              onConfirm={(params) => {
+                setVisible(false);
+                if (params.date) {
+                  setSelectedDate(params.date);
+                  onFinish?.(params.date);
+                }
+              }}
+            />
+          </Portal>
         </>
       );
     }
@@ -278,11 +286,13 @@ export const DynInput = ({
     if (inputType === 'datetime') {
       return (
         <>
-          <Button onPress={() => setVisible(true)}>
-            {selectedDate
-              ? selectedDate.toLocaleString()
-              : 'Pick date and time'}
-          </Button>
+          {!visible && (
+            <Button onPress={() => setVisible(true)}>
+              {selectedDate
+                ? selectedDate.toLocaleString()
+                : 'Pick date and time'}
+            </Button>
+          )}
           <Portal>
             <Dialog visible={visible} onDismiss={() => setVisible(false)}>
               <Dialog.Title>Select Date and Time</Dialog.Title>
@@ -314,7 +324,7 @@ export const DynInput = ({
           <DatePickerModal
             mode="single"
             visible={datePickerVisible}
-            locale={'en'} // TODO: make this dynamic
+            locale={i18n.language}
             onDismiss={() => {
               setDatePickerVisible(false);
               if (initiallyOpen) {
@@ -357,27 +367,26 @@ export const DynInput = ({
   }, [onFinish, temp]);
 
   return (
-    <View style={styles.container}>
-      <View style={{}}>
-        {inputType === 'text' && renderText()}
-        {inputType === 'number' && renderNumber()}
-        {(inputType === 'date' ||
-          inputType === 'time' ||
-          inputType === 'datetime') &&
-          renderDatePicker()}
-        {inputType === 'custom' && customRender?.(data, handleChange)}
-        {inputType === 'select-button' && (
-          <SelectButtons
-            // Prevent passing references to the original data
-            options={JSON.parse(JSON.stringify(temp)) as SelectOption[]}
-            min={min}
-            max={max}
-            multiSelect={multiSelect}
-            showSearch={showSearch}
-            onChange={handleChange}
-          />
-        )}
-      </View>
+    // <View style={styles.container}>
+    <>
+      {inputType === 'text' && renderText()}
+      {inputType === 'number' && renderNumber()}
+      {(inputType === 'date' ||
+        inputType === 'time' ||
+        inputType === 'datetime') &&
+        renderDatePicker()}
+      {inputType === 'custom' && customRender?.(data, handleChange)}
+      {inputType === 'select-button' && (
+        <SelectButtons
+          // Prevent passing references to the original data
+          options={JSON.parse(JSON.stringify(temp)) as SelectOption[]}
+          min={min}
+          max={max}
+          multiSelect={multiSelect}
+          showSearch={showSearch}
+          onChange={handleChange}
+        />
+      )}
       {showFooter && (
         <View style={styles.footer}>
           <Button
@@ -397,6 +406,6 @@ export const DynInput = ({
           </Button>
         </View>
       )}
-    </View>
+    </>
   );
 };

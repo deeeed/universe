@@ -98,7 +98,24 @@ export const useModal = () => {
       if (actualModalType === 'modal') {
         return openModal({
           ...commonProps,
-          modalProps,
+          modalProps: {
+            ...modalProps,
+            styles: {
+              modalContainer: {
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              },
+              modalContent: {
+                backgroundColor: 'white',
+                padding: 20,
+                borderRadius: 8,
+                width: '80%',
+                maxHeight: '80%',
+              },
+            },
+          },
         });
       }
 

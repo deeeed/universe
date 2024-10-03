@@ -23,12 +23,13 @@ const TryEditableInfoCard = () => {
     { label: "Blue", value: "blue" },
     { label: "Green", value: "green" },
   ]);
+  const [date, setDate] = useState(new Date());
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasError, setHasError] = useState(false);
 
   const handleEdit = async <T extends EditValue>(
     currentValue: T,
-    inputType: "text" | "number" | "select-button",
+    inputType: "text" | "number" | "select-button" | "date",
     setter: React.Dispatch<React.SetStateAction<T>>,
   ) => {
     const newValue = await editProp({
@@ -72,6 +73,52 @@ const TryEditableInfoCard = () => {
           value={bio}
           editable
           onEdit={() => handleEdit(bio, "text", setBio)}
+        />
+
+        <EditableInfoCard
+          value={date}
+          label="Date"
+          containerStyle={{ backgroundColor: theme.colors.surface }}
+          renderValue={(value) => {
+            const date = new Date(value as Date);
+            const formattedDate = date.toLocaleDateString();
+            return <Text>{formattedDate}</Text>;
+          }}
+          editable
+          onEdit={async () => {
+            const newDate = await editProp({
+              data: new Date(date),
+              inputType: "date",
+              initiallyOpen: true,
+              showFooter: false,
+            });
+            if (newDate && newDate !== date) {
+              setDate(newDate as Date);
+            }
+          }}
+        />
+
+        <EditableInfoCard
+          value={date}
+          label="Time"
+          containerStyle={{ backgroundColor: theme.colors.surface }}
+          renderValue={(value) => {
+            const date = new Date(value as Date);
+            const formattedDate = date.toLocaleTimeString();
+            return <Text>{formattedDate}</Text>;
+          }}
+          editable
+          onEdit={async () => {
+            const newDate = await editProp({
+              data: new Date(date),
+              inputType: "time",
+              initiallyOpen: true,
+              showFooter: false,
+            });
+            if (newDate && newDate !== date) {
+              setDate(newDate as Date);
+            }
+          }}
         />
 
         <EditableInfoCard

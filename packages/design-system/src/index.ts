@@ -33,6 +33,8 @@ export * from './components/RefreshControl/RefreshControl';
 export * from './components/NumberAdjuster/NumberAdjuster';
 export * from './components/FAB/FABGroup';
 export * from './components/Slider/Slider';
+export * from './components/HelperWrapper/HelperWrapper';
+export * from './components/HelperText/HelperText';
 
 // Settings related components, useful to re-use and visualize in external storybooks
 export * from './settings/ThemeConfig/ThemeConfig';

@@ -46,6 +46,11 @@ const links = [
     subLabel: "Explore Slider Components",
     path: "/components/try-slider",
   },
+  {
+    label: "Helpers",
+    subLabel: "Explore Helper Components",
+    path: "/components/try-helpers",
+  },
 ];
 
 const logger = getLogger("TryItScreen");
