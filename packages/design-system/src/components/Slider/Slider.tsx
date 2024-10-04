@@ -49,6 +49,7 @@ export interface SliderProps {
   labelStyle?: TextStyle;
   sliderStyle?: ViewStyle;
   valueLabelStyle?: TextStyle;
+  onSlidingStart?: () => void;
 }
 
 export const Slider: React.FC<SliderProps> = ({
@@ -66,6 +67,7 @@ export const Slider: React.FC<SliderProps> = ({
   labelStyle,
   sliderStyle,
   valueLabelStyle,
+  onSlidingStart,
 }) => {
   const theme = useTheme();
   const defaultStyles = useMemo(
@@ -92,6 +94,12 @@ export const Slider: React.FC<SliderProps> = ({
     [onSlidingComplete, disabled]
   );
 
+  const handleWebSliderStart = useCallback(() => {
+    if (!disabled && onSlidingStart) {
+      onSlidingStart();
+    }
+  }, [disabled, onSlidingStart]);
+
   const renderSlider = () => {
     const combinedSliderStyle = StyleSheet.flatten([
       defaultStyles.webSlider,
@@ -106,6 +114,7 @@ export const Slider: React.FC<SliderProps> = ({
           max={maximumValue}
           value={value}
           onChange={handleWebSliderChange}
+          onMouseDown={handleWebSliderStart}
           onMouseUp={handleWebSliderComplete}
           style={
             {
@@ -126,6 +135,7 @@ export const Slider: React.FC<SliderProps> = ({
           maximumValue={maximumValue}
           value={value}
           onValueChange={disabled ? undefined : onValueChange}
+          onSlidingStart={disabled ? undefined : onSlidingStart}
           onSlidingComplete={disabled ? undefined : onSlidingComplete}
           minimumTrackTintColor={
             disabled ? theme.colors.outline : theme.colors.primary
