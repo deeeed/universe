@@ -6,7 +6,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Modal, ModalProps, View, ViewStyle } from 'react-native';
+import { ModalProps, View, ViewStyle } from 'react-native';
+import { Modal, Portal } from 'react-native-paper';
 import { AppTheme } from '../hooks/_useAppThemeSetup';
 import { baseLogger } from '../utils/logger';
 import { useTheme } from './ThemeProvider';
@@ -28,7 +29,6 @@ export interface OpenModalProps<T = unknown> {
     resolve: (value: T) => void;
     reject: (error: Error) => void;
     onChange: (value: T) => void;
-    data: T;
   }) => ReactNode;
 }
 
@@ -119,18 +119,7 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
           // Update the initialData of the current modal
           setModalStack((prevStack) =>
             prevStack.map((modal) =>
-              modal.id === modalId
-                ? {
-                    ...modal,
-                    initialData: value,
-                    content: render({
-                      resolve: wrapResolve,
-                      reject: wrapReject,
-                      onChange: wrapOnChange,
-                      data: value,
-                    }),
-                  }
-                : modal
+              modal.id === modalId ? { ...modal, initialData: value } : modal
             )
           );
         };
@@ -139,7 +128,6 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
           resolve: wrapResolve,
           reject: wrapReject,
           onChange: wrapOnChange,
-          data: initialData as T,
         });
 
         setModalStack((prevStack) => [
@@ -175,15 +163,6 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
     setModalStack([]);
   }, [modalStack]);
 
-  const handleOutsideTouch = useCallback(() => {
-    if (modalStack.length > 0) {
-      const currentModal = modalStack[modalStack.length - 1];
-      if (currentModal?.props.modalProps?.closeOnOutsideTouch !== false) {
-        handleModalDismiss();
-      }
-    }
-  }, [modalStack, handleModalDismiss]);
-
   const contextValue = useMemo(
     () => ({
       openModal,
@@ -196,46 +175,40 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <ModalContext.Provider value={contextValue}>
       {children}
-      {modalStack.map((modal) => {
-        const showBackdrop = modal.props.modalProps?.showBackdrop ?? true;
-        const customStyles = modal.props.modalProps?.styles ?? {};
-        const mergedStyles = {
-          modalContainer: {
-            ...defaultStyles.modalContainer,
-            ...(showBackdrop && { backgroundColor: 'rgba(0, 0, 0, 0.5)' }),
-            ...customStyles.modalContainer,
-          },
-          modalContent: {
-            ...defaultStyles.modalContent,
-            ...customStyles.modalContent,
-          },
-        };
+      <Portal>
+        {modalStack.map((modal) => {
+          const showBackdrop = modal.props.modalProps?.showBackdrop ?? true;
+          const customStyles = modal.props.modalProps?.styles ?? {};
+          const mergedStyles = {
+            modalContainer: {
+              ...defaultStyles.modalContainer,
+              ...(showBackdrop && { backgroundColor: 'rgba(0, 0, 0, 0.5)' }),
+              ...customStyles.modalContainer,
+            },
+            modalContent: {
+              ...defaultStyles.modalContent,
+              ...customStyles.modalContent,
+            },
+          };
 
-        return (
-          <Modal
-            key={modal.id}
-            visible={true}
-            onRequestClose={handleModalDismiss}
-            transparent={true}
-            animationType="fade"
-            {...modal.props.modalProps}
-          >
-            <ToastProvider>
-              <View
-                style={mergedStyles.modalContainer}
-                onTouchEnd={handleOutsideTouch}
-              >
-                <View
-                  style={mergedStyles.modalContent}
-                  onTouchEnd={(e) => e.stopPropagation()}
-                >
-                  {modal.content}
-                </View>
-              </View>
-            </ToastProvider>
-          </Modal>
-        );
-      })}
+          return (
+            <Modal
+              key={modal.id}
+              visible={true}
+              onDismiss={handleModalDismiss}
+              contentContainerStyle={{
+                padding: 20,
+                backgroundColor: theme.colors.background,
+              }}
+              dismissable={
+                modal.props.modalProps?.closeOnOutsideTouch !== false
+              }
+            >
+              {modal.content}
+            </Modal>
+          );
+        })}
+      </Portal>
     </ModalContext.Provider>
   );
 };

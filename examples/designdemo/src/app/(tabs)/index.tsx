@@ -26,7 +26,7 @@ const getStyles = () => {
   });
 };
 
-const IndexPage = () => {
+const ThemePage = () => {
   const { theme } = useThemePreferences();
   const navTheme = useNavigationTheme();
   const styles = useMemo(() => getStyles(), []);
@@ -120,4 +120,4 @@ const IndexPage = () => {
   );
 };
 
-export default IndexPage;
+export default ThemePage;

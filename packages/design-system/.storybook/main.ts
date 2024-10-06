@@ -16,6 +16,7 @@ const production = process.env.NODE_ENV === 'production';
 const config: StorybookConfig = {
   stories: [
     '../src/pages/Introduction.mdx',
+    '../src/pages/Installation.mdx',
     '../src/pages/Providers.mdx',
     '../src/**/*.mdx',
     '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)',

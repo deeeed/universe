@@ -1,4 +1,5 @@
 // packages/design-system/src/providers/UIProvider.tsx
+import { PortalHost, PortalProvider } from '@gorhom/portal';
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,12 +24,12 @@ import {
   CustomAppTheme,
   useAppThemeSetup,
 } from '../hooks/_useAppThemeSetup';
+import { BottomSheetProvider } from './BottomSheetProvider';
 import { ConfirmProvider, ConfirmProviderProps } from './ConfirmProvider';
 import { LanguageProvider } from './LanguageProvider';
+import { ModalProvider } from './ModalProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { ToastProvider, ToastProviderProps } from './ToastProvider';
-import { ModalProvider } from './ModalProvider';
-import { BottomSheetProvider } from './BottomSheetProvider';
 
 export const DefaultLightTheme: CustomAppTheme = {
   ...MD3LightTheme,
@@ -162,15 +163,22 @@ const UIProviderWithLanguageReady = ({
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider preferences={defaultPreferences}>
-        <ConfirmProvider {...confirmProviderProps}>
-          <BottomSheetProvider>
-            <ModalProvider>
-              <ToastProvider {...toastProviderProps}>{children}</ToastProvider>
-            </ModalProvider>
-          </BottomSheetProvider>
-        </ConfirmProvider>
-      </ThemeProvider>
+      <PortalProvider>
+        <ThemeProvider preferences={defaultPreferences}>
+          <ConfirmProvider {...confirmProviderProps}>
+            <ToastProvider {...toastProviderProps}>
+              <BottomSheetProvider>
+                <ModalProvider>
+                  <>
+                    {children}
+                    <PortalHost name="modal" />
+                  </>
+                </ModalProvider>
+              </BottomSheetProvider>
+            </ToastProvider>
+          </ConfirmProvider>
+        </ThemeProvider>
+      </PortalProvider>
     </GestureHandlerRootView>
   );
 };

@@ -3106,7 +3106,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@gorhom/portal@npm:1.0.14":
+"@gorhom/portal@npm:1.0.14, @gorhom/portal@npm:^1.0.14":
   version: 1.0.14
   resolution: "@gorhom/portal@npm:1.0.14"
   dependencies:
@@ -5583,6 +5583,7 @@ __metadata:
     "@evilmartians/lefthook": "npm:^1.6.7"
     "@expo/vector-icons": "npm:^14.0.2"
     "@gorhom/bottom-sheet": "npm:5.0.0-alpha.11"
+    "@gorhom/portal": "npm:^1.0.14"
     "@pchmn/expo-material3-theme": "npm:^1.3.2"
     "@react-native-async-storage/async-storage": "npm:1.23.1"
     "@react-native-community/datetimepicker": "npm:8.0.1"
@@ -5655,6 +5656,7 @@ __metadata:
     react-native-paper-dates: "npm:^0.22.25"
     react-native-reanimated: "npm:~3.10.1"
     react-native-safe-area-context: "npm:4.10.5"
+    react-native-screens: "npm:^3.34.0"
     react-native-svg: "npm:^15.1.0"
     react-native-vector-icons: "npm:^10.0.3"
     react-native-web: "npm:^0.19.10"
@@ -5678,6 +5680,7 @@ __metadata:
   peerDependencies:
     "@expo/vector-icons": "*"
     "@gorhom/bottom-sheet": "*"
+    "@gorhom/portal": "*"
     "@react-native-async-storage/async-storage": "*"
     "@react-native-community/slider": "*"
     "@react-navigation/native": "*"
@@ -5689,6 +5692,7 @@ __metadata:
     react-native-gesture-handler: "*"
     react-native-paper: "*"
     react-native-paper-dates: "*"
+    react-native-screens: "*"
     react-native-vector-icons: "*"
   languageName: unknown
   linkType: soft
@@ -12152,6 +12156,7 @@ __metadata:
     "@formatjs/intl-pluralrules": "npm:^5.2.14"
     "@formatjs/intl-relativetimeformat": "npm:^11.2.14"
     "@gorhom/bottom-sheet": "npm:^5.0.0-alpha.11"
+    "@gorhom/portal": "npm:^1.0.14"
     "@react-native-community/slider": "npm:4.5.2"
     "@react-navigation/drawer": "npm:^6.6.15"
     "@siteed/design-system": "workspace:^"
@@ -22850,6 +22855,19 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10c0/899a02751ecbc6231ce3c869268fb510e5b53428c788135ae46f4bbd768efe78bf74f17fec5becc4c4c1e81a5f224a907dc890ba2406181ff9e21830dda95dec
+  languageName: node
+  linkType: hard
+
+"react-native-screens@npm:^3.34.0":
+  version: 3.34.0
+  resolution: "react-native-screens@npm:3.34.0"
+  dependencies:
+    react-freeze: "npm:^1.0.0"
+    warn-once: "npm:^0.1.0"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/568af49a1d79797ebecf5b8c815d44b651b0affdd82d7a8024b9e5e71250a23e108d73562200ef571b806c6a9ebba0484510e710246165dbdc50ad18e4d77619
   languageName: node
   linkType: hard
 

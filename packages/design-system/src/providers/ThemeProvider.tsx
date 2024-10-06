@@ -19,14 +19,14 @@ export const ThemeProvider: FunctionComponent<ThemeProviderProps> = ({
   preferences,
 }) => {
   return (
-    <PaperProvider
-      theme={preferences.theme}
-      settings={{ rippleEffectEnabled: preferences.rippleEffectEnabled }}
-    >
-      <PreferencesContext.Provider value={preferences}>
+    <PreferencesContext.Provider value={preferences}>
+      <PaperProvider
+        theme={preferences.theme}
+        settings={{ rippleEffectEnabled: preferences.rippleEffectEnabled }}
+      >
         {children}
-      </PreferencesContext.Provider>
-    </PaperProvider>
+      </PaperProvider>
+    </PreferencesContext.Provider>
   );
 };
 

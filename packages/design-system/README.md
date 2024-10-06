@@ -58,7 +58,7 @@ export function App() {
         <LabelSwitch label="Dark Mode" value={darkMode} onValueChange={toggleDarkMode} />
         <Picker label="Category" options={options} onFinish={setOptions} />
       </View>
-      <StatusBar style="auto" />
+      <StatusBar style={darkMode ? "light" : "dark"} />
     </ScreenWrapper>
   );
 }

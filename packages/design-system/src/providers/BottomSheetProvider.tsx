@@ -12,6 +12,7 @@ import {
   BottomSheetView,
   SNAP_POINT_TYPE,
 } from '@gorhom/bottom-sheet';
+import { Portal } from '@gorhom/portal';
 import React, {
   createContext,
   useCallback,
@@ -19,10 +20,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
+import { FullWindowOverlay } from 'react-native-screens';
+import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
 import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import { baseLogger } from '../utils/logger';
-import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
 
 export interface BottomSheetStackItem<T = unknown> {
   id: number;
@@ -427,6 +429,19 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
                   type,
                 })
               }
+              containerComponent={({ children }) => {
+                return (
+                  <Portal hostName="modal">
+                    {Platform.OS === 'ios' ? (
+                      <FullWindowOverlay>{children}</FullWindowOverlay>
+                    ) : (
+                      <View style={{ ...StyleSheet.absoluteFillObject }}>
+                        {children}
+                      </View>
+                    )}
+                  </Portal>
+                );
+              }}
               stackBehavior={
                 modal.props.bottomSheetProps?.stackBehavior || 'push'
               }
