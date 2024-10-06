@@ -1,19 +1,20 @@
+import { Portal } from '@gorhom/portal';
 import React, {
   ReactNode,
   createContext,
   useCallback,
-  useContext,
   useMemo,
   useRef,
   useState,
 } from 'react';
-import { Modal, ModalProps, View, ViewStyle } from 'react-native';
-import { AppTheme } from '../hooks/_useAppThemeSetup';
+import {
+  StyleSheet,
+  TouchableWithoutFeedback,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { baseLogger } from '../utils/logger';
-import { BottomSheetContext } from './BottomSheetProvider';
-import { ConfirmProvider } from './ConfirmProvider';
 import { useTheme } from './ThemeProvider';
-import { ToastProvider } from './ToastProvider';
 
 export interface ModalStyles {
   modalContainer?: ViewStyle;
@@ -22,7 +23,7 @@ export interface ModalStyles {
 
 export interface OpenModalProps<T = unknown> {
   initialData?: T;
-  modalProps?: Partial<ModalProps> & {
+  modalProps?: {
     closeOnOutsideTouch?: boolean;
     styles?: ModalStyles;
     showBackdrop?: boolean;
@@ -47,24 +48,6 @@ export const ModalContext = createContext<ModalProviderProps | undefined>(
 
 const logger = baseLogger.extend('ModalProvider');
 
-const getDefaultStyles = (theme: AppTheme): ModalStyles => {
-  return {
-    modalContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    modalContent: {
-      backgroundColor: theme.colors.surface,
-      padding: 20,
-      borderRadius: 8,
-      margin: 20,
-      maxWidth: '90%',
-      maxHeight: '90%',
-    },
-  };
-};
-
 export interface ModalStackItem<T = unknown> {
   id: number;
   content: ReactNode;
@@ -78,10 +61,8 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const theme = useTheme();
-  const defaultStyles = useMemo(() => getDefaultStyles(theme), [theme]);
 
   const [modalStack, setModalStack] = useState<ModalStackItem[]>([]);
-  const bottomSheetContext = useContext(BottomSheetContext);
 
   const handleModalDismiss = useCallback(() => {
     if (modalStack.length > 0) {
@@ -200,50 +181,56 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <ModalContext.Provider value={contextValue}>
       {children}
-      {modalStack.map((modal) => {
-        const showBackdrop = modal.props.modalProps?.showBackdrop ?? true;
-        const customStyles = modal.props.modalProps?.styles ?? {};
-        const mergedStyles = {
-          modalContainer: {
-            ...defaultStyles.modalContainer,
-            ...(showBackdrop && { backgroundColor: 'rgba(0, 0, 0, 0.5)' }),
-            ...customStyles.modalContainer,
-          },
-          modalContent: {
-            ...defaultStyles.modalContent,
-            ...customStyles.modalContent,
-          },
-        };
+      <Portal hostName="modal">
+        {modalStack.map((modal, index) => {
+          const showBackdrop = modal.props.modalProps?.showBackdrop ?? true;
+          const customStyles = modal.props.modalProps?.styles ?? {};
 
-        return (
-          <Modal
-            key={modal.id}
-            visible={true}
-            onRequestClose={handleModalDismiss}
-            transparent={true}
-            animationType="fade"
-            {...modal.props.modalProps}
-          >
-            <ConfirmProvider>
-              <ToastProvider>
-                <BottomSheetContext.Provider value={bottomSheetContext}>
-                  <View
-                    style={mergedStyles.modalContainer}
-                    onTouchEnd={handleOutsideTouch}
-                  >
-                    <View
-                      style={mergedStyles.modalContent}
-                      onTouchEnd={(e) => e.stopPropagation()}
-                    >
-                      {modal.content}
-                    </View>
-                  </View>
-                </BottomSheetContext.Provider>
-              </ToastProvider>
-            </ConfirmProvider>
-          </Modal>
-        );
-      })}
+          return (
+            <TouchableWithoutFeedback
+              key={modal.id}
+              onPress={handleOutsideTouch}
+            >
+              <View
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  styles.modalContainer,
+                  showBackdrop && styles.backdrop,
+                  { zIndex: 1000 + index },
+                  customStyles.modalContainer,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.modalContent,
+                    { backgroundColor: theme.colors.surface },
+                    customStyles.modalContent,
+                  ]}
+                >
+                  {modal.content}
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          );
+        })}
+      </Portal>
     </ModalContext.Provider>
   );
 };
+
+const styles = StyleSheet.create({
+  modalContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backdrop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    padding: 20,
+    borderRadius: 8,
+    margin: 20,
+    maxWidth: '90%',
+    maxHeight: '90%',
+  },
+});

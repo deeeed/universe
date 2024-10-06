@@ -6,13 +6,14 @@ import {
   TextInputKeyPressEventData,
   View,
 } from 'react-native';
-import { Button, Dialog, Portal } from 'react-native-paper';
+import { Button, Dialog } from 'react-native-paper';
 import { DatePickerModal, TimePickerModal } from 'react-native-paper-dates';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
 import { baseLogger } from '../../utils/logger';
 import { SelectButtons, SelectOption } from '../SelectButtons/SelectButtons';
 import { TextInput } from '../TextInput/TextInput';
+import { Portal } from '@gorhom/portal';
 
 type InputType =
   | 'text'
@@ -114,11 +115,6 @@ export const DynInput = ({
     registerTranslation(i18n.language, en);
   }, [i18n.language]);
 
-  useEffect(() => {
-    setTemp(data);
-    logger.log('DynInput useEffect - data changed:', data);
-  }, [data, logger]);
-
   const handleChange = useCallback(
     (value: DynamicType) => {
       let formatedValue = value;
@@ -139,14 +135,6 @@ export const DynInput = ({
     [multiSelect, onFinish, onChange, showFooter]
   );
 
-  const handleFocus = () => {
-    // shouldHandleKeyboardEvents.value = true;
-  };
-
-  const handleBlur = () => {
-    // shouldHandleKeyboardEvents.value = false;
-  };
-
   const handleKeyPress = (
     e: NativeSyntheticEvent<TextInputKeyPressEventData>
   ) => {
@@ -161,8 +149,6 @@ export const DynInput = ({
     return (
       <TextInput
         inputMode="numeric"
-        onFocus={handleFocus}
-        onBlur={handleBlur}
         autoFocus={autoFocus}
         value={temp as string}
         onChangeText={handleChange}
@@ -226,7 +212,7 @@ export const DynInput = ({
               {selectedDate ? selectedDate.toLocaleTimeString() : 'Pick time'}
             </Button>
           )}
-          <Portal>
+          <Portal hostName="modal">
             <TimePickerModal
               visible={visible}
               onDismiss={() => {
@@ -258,7 +244,7 @@ export const DynInput = ({
               {selectedDate ? selectedDate.toLocaleDateString() : 'Pick date'}
             </Button>
           )}
-          <Portal>
+          <Portal hostName="modal">
             <DatePickerModal
               mode="single"
               visible={visible}
@@ -293,7 +279,7 @@ export const DynInput = ({
                 : 'Pick date and time'}
             </Button>
           )}
-          <Portal>
+          <Portal hostName="modal">
             <Dialog visible={visible} onDismiss={() => setVisible(false)}>
               <Dialog.Title>Select Date and Time</Dialog.Title>
               <Dialog.Content>

@@ -196,6 +196,7 @@ const InnerComponent = ({ onChange }: InnerComponentProps) => {
             initiallyOpen: true,
             showFooter: false,
           });
+          console.log(`newDate: ${newDate}`);
           if (newDate) {
             setDate(newDate as Date);
           }
