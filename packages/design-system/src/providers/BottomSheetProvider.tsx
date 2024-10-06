@@ -435,7 +435,11 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
                     {Platform.OS === 'ios' ? (
                       <FullWindowOverlay>{children}</FullWindowOverlay>
                     ) : (
-                      <View style={{ ...StyleSheet.absoluteFillObject }}>
+                      <View
+                        style={{
+                          ...StyleSheet.absoluteFillObject,
+                        }}
+                      >
                         {children}
                       </View>
                     )}

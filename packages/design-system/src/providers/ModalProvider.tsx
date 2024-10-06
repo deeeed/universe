@@ -2,6 +2,7 @@ import React, {
   ReactNode,
   createContext,
   useCallback,
+  useContext,
   useMemo,
   useRef,
   useState,
@@ -9,6 +10,8 @@ import React, {
 import { Modal, ModalProps, View, ViewStyle } from 'react-native';
 import { AppTheme } from '../hooks/_useAppThemeSetup';
 import { baseLogger } from '../utils/logger';
+import { BottomSheetContext } from './BottomSheetProvider';
+import { ConfirmProvider } from './ConfirmProvider';
 import { useTheme } from './ThemeProvider';
 import { ToastProvider } from './ToastProvider';
 
@@ -78,6 +81,7 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
   const defaultStyles = useMemo(() => getDefaultStyles(theme), [theme]);
 
   const [modalStack, setModalStack] = useState<ModalStackItem[]>([]);
+  const bottomSheetContext = useContext(BottomSheetContext);
 
   const handleModalDismiss = useCallback(() => {
     if (modalStack.length > 0) {
@@ -220,19 +224,23 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
             animationType="fade"
             {...modal.props.modalProps}
           >
-            <ToastProvider>
-              <View
-                style={mergedStyles.modalContainer}
-                onTouchEnd={handleOutsideTouch}
-              >
-                <View
-                  style={mergedStyles.modalContent}
-                  onTouchEnd={(e) => e.stopPropagation()}
-                >
-                  {modal.content}
-                </View>
-              </View>
-            </ToastProvider>
+            <ConfirmProvider>
+              <ToastProvider>
+                <BottomSheetContext.Provider value={bottomSheetContext}>
+                  <View
+                    style={mergedStyles.modalContainer}
+                    onTouchEnd={handleOutsideTouch}
+                  >
+                    <View
+                      style={mergedStyles.modalContent}
+                      onTouchEnd={(e) => e.stopPropagation()}
+                    >
+                      {modal.content}
+                    </View>
+                  </View>
+                </BottomSheetContext.Provider>
+              </ToastProvider>
+            </ConfirmProvider>
           </Modal>
         );
       })}
