@@ -10,6 +10,7 @@ import {
 import { BottomSheetContext } from '../../providers/BottomSheetProvider';
 import { ModalContext } from '../../providers/ModalProvider';
 import { baseLogger } from '../../utils/logger';
+import { useTheme } from '../../providers/ThemeProvider';
 
 const logger = baseLogger.extend('useModal');
 
@@ -23,6 +24,7 @@ export interface EditPropProps extends DynInputProps {
 export const useModal = () => {
   const bottomSheetContext = useContext(BottomSheetContext);
   const modalContext = useContext(ModalContext);
+  const { colors } = useTheme();
 
   if (!bottomSheetContext || !modalContext) {
     throw new Error(
@@ -96,6 +98,7 @@ export const useModal = () => {
       };
 
       if (actualModalType === 'modal') {
+        const isDateTimeType = ['date', 'time', 'datetime'].includes(inputType);
         return openModal({
           ...commonProps,
           modalProps: {
@@ -108,7 +111,9 @@ export const useModal = () => {
                 backgroundColor: 'rgba(0, 0, 0, 0.5)',
               },
               modalContent: {
-                backgroundColor: 'white',
+                backgroundColor: isDateTimeType
+                  ? 'transparent'
+                  : colors.surface,
                 padding: 20,
                 borderRadius: 8,
                 width: '80%',

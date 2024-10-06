@@ -192,11 +192,33 @@ const InnerComponent = ({ onChange }: InnerComponentProps) => {
           const newDate = await editProp({
             data: date,
             inputType: "date",
-            modalType: "drawer",
+            modalType: "modal",
             initiallyOpen: true,
             showFooter: false,
           });
           console.log(`newDate: ${newDate}`);
+          if (newDate) {
+            setDate(newDate as Date);
+          }
+        }}
+      />
+      <EditableInfoCard
+        value={date}
+        label="Time"
+        containerStyle={{ backgroundColor: theme.colors.surface }}
+        renderValue={(value) => {
+          const date = new Date(value as Date);
+          const formattedDate = date.toLocaleTimeString();
+          return <Text>{formattedDate}</Text>;
+        }}
+        editable
+        onEdit={async () => {
+          const newDate = await editProp({
+            data: date,
+            inputType: "time",
+            initiallyOpen: true,
+            showFooter: false,
+          });
           if (newDate) {
             setDate(newDate as Date);
           }

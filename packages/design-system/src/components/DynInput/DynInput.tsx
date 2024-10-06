@@ -1,3 +1,4 @@
+import { Portal } from '@gorhom/portal';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -13,7 +14,6 @@ import { useTheme } from '../../providers/ThemeProvider';
 import { baseLogger } from '../../utils/logger';
 import { SelectButtons, SelectOption } from '../SelectButtons/SelectButtons';
 import { TextInput } from '../TextInput/TextInput';
-import { Portal } from '@gorhom/portal';
 
 type InputType =
   | 'text'
@@ -103,12 +103,14 @@ export const DynInput = ({
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [temp, setTemp] = useState(data);
-  const [visible, setVisible] = useState(initiallyOpen || false);
+  const [visible, setVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     data instanceof Date ? data : undefined
   );
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [isInitialOpen, setIsInitialOpen] = useState(initiallyOpen);
+
   const { i18n } = useTranslation();
 
   useEffect(() => {
@@ -203,21 +205,22 @@ export const DynInput = ({
     [selectedDate, onFinish]
   );
 
-  const renderDatePicker = () => {
+  const renderDatePicker = useCallback(() => {
     if (inputType === 'time') {
       return (
         <>
-          {!visible && (
+          {!visible && !isInitialOpen && (
             <Button onPress={() => setVisible(true)}>
               {selectedDate ? selectedDate.toLocaleTimeString() : 'Pick time'}
             </Button>
           )}
           <Portal hostName="modal">
             <TimePickerModal
-              visible={visible}
+              visible={visible || isInitialOpen}
               onDismiss={() => {
                 setVisible(false);
-                if (initiallyOpen) {
+                setIsInitialOpen(false);
+                if (isInitialOpen) {
                   onFinish?.(selectedDate as Date);
                 }
               }}
@@ -225,6 +228,7 @@ export const DynInput = ({
                 const newDate = new Date(selectedDate || Date.now());
                 newDate.setHours(hours, minutes);
                 setSelectedDate(newDate);
+                setIsInitialOpen(false);
                 onFinish?.(newDate);
                 setVisible(false);
               }}
@@ -239,7 +243,7 @@ export const DynInput = ({
     if (inputType === 'date') {
       return (
         <>
-          {!visible && (
+          {!visible && !isInitialOpen && (
             <Button onPress={() => setVisible(true)}>
               {selectedDate ? selectedDate.toLocaleDateString() : 'Pick date'}
             </Button>
@@ -247,17 +251,19 @@ export const DynInput = ({
           <Portal hostName="modal">
             <DatePickerModal
               mode="single"
-              visible={visible}
+              visible={visible || isInitialOpen}
               locale={i18n.language}
               onDismiss={() => {
                 setVisible(false);
-                if (initiallyOpen) {
+                setIsInitialOpen(false);
+                if (isInitialOpen) {
                   onFinish?.(selectedDate as Date);
                 }
               }}
               date={selectedDate}
               onConfirm={(params) => {
                 setVisible(false);
+                setIsInitialOpen(false);
                 if (params.date) {
                   setSelectedDate(params.date);
                   onFinish?.(params.date);
@@ -272,7 +278,7 @@ export const DynInput = ({
     if (inputType === 'datetime') {
       return (
         <>
-          {!visible && (
+          {!visible && !isInitialOpen && (
             <Button onPress={() => setVisible(true)}>
               {selectedDate
                 ? selectedDate.toLocaleString()
@@ -280,7 +286,16 @@ export const DynInput = ({
             </Button>
           )}
           <Portal hostName="modal">
-            <Dialog visible={visible} onDismiss={() => setVisible(false)}>
+            <Dialog
+              visible={visible || isInitialOpen}
+              onDismiss={() => {
+                setVisible(false);
+                setIsInitialOpen(false);
+                if (isInitialOpen) {
+                  onFinish?.(selectedDate as Date);
+                }
+              }}
+            >
               <Dialog.Title>Select Date and Time</Dialog.Title>
               <Dialog.Content>
                 <Button onPress={() => setDatePickerVisible(true)}>
@@ -295,10 +310,18 @@ export const DynInput = ({
                 </Button>
               </Dialog.Content>
               <Dialog.Actions>
-                <Button onPress={() => setVisible(false)}>Cancel</Button>
                 <Button
                   onPress={() => {
                     setVisible(false);
+                    setIsInitialOpen(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onPress={() => {
+                    setVisible(false);
+                    setIsInitialOpen(false);
                     onFinish?.(selectedDate as Date);
                   }}
                 >
@@ -313,9 +336,6 @@ export const DynInput = ({
             locale={i18n.language}
             onDismiss={() => {
               setDatePickerVisible(false);
-              if (initiallyOpen) {
-                onFinish?.(selectedDate as Date);
-              }
             }}
             date={selectedDate}
             onConfirm={(params) => {
@@ -328,9 +348,6 @@ export const DynInput = ({
             visible={timePickerVisible}
             onDismiss={() => {
               setTimePickerVisible(false);
-              if (initiallyOpen) {
-                onFinish?.(selectedDate as Date);
-              }
             }}
             onConfirm={handleTimeChange}
             hours={selectedDate?.getHours() || 0}
@@ -341,7 +358,16 @@ export const DynInput = ({
     }
 
     return null;
-  };
+  }, [
+    visible,
+    isInitialOpen,
+    selectedDate,
+    inputType,
+    i18n.language,
+    onFinish,
+    handleDateChange,
+    handleTimeChange,
+  ]);
 
   const handleCancel = useCallback(() => {
     setTemp(data); // restore initial value
