@@ -39,9 +39,48 @@ npx expo customize metro.config.js
 
 Quickly integrate the design system into your app by importing and using the provided components and utilities:
 
+- First overwrite the default entry point in main if you are using expo router.
+```
+{
+  "name": "design-playground",
+  "version": "1.0.1",
+  "main": "src/index",
+  ...
+}
+
+Then create a custom `src/index.tsx`
+```
+
+It is recommended to use the UIProvider at the root of your app to avoid issues with nested context when using modals.
+
 ```tsx
-import 'intl-pluralrules';
-// Keep polyfills on top
+import "intl-pluralrules";
+// Keep polyfills at the top
+
+import { UIProvider } from "@siteed/design-system/src";
+import { registerRootComponent } from "expo";
+import { App as ExpoRouterApp } from "expo-router/build/qualified-entry";
+
+const AppEntry = () => {
+  return (
+    <UIProvider
+      toastProviderProps={{
+        overrides: {
+          snackbarStyle: { marginBottom: 100 },
+        },
+      }}
+    >
+      <ExpoRouterApp />
+    </UIProvider>
+  );
+};
+
+registerRootComponent(AppEntry);
+```
+
+Finally you can have your regular code using the design system.
+
+```tsx
 import { LabelSwitch, ScreenWrapper, UIProvider, useThemePreferences, Picker, SelectOption } from "@siteed/design-system";
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';

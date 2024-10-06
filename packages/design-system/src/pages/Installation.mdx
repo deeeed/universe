@@ -5,8 +5,11 @@ import { Meta, Story, Canvas } from '@storybook/addon-docs';
 
 # Installation
 ```bash
-npx expo install @siteed/design-system @siteed/react-native-logger react-native-paper react-native-safe-area-context @gorhom/bottom-sheet@5.0.0-alpha.11 react-native-gesture-handler @expo/vector-icons expo-localization react-native-reanimated react-native-screens react-native-vector-icons @react-navigation/native
-```
+npx create-expo-app@latest
+
+npx expo install @siteed/design-system @siteed/react-native-logger react-native-paper react-native-safe-area-context @gorhom/bottom-sheet@5.0.0-alpha.11 react-native-gesture-handler @expo/vector-icons expo-localization react-native-reanimated react-native-screens react-native-vector-icons @react-navigation/native @react-native-community/slider```
+# we also use react-native-paper-dates for date pickers
+npx expo install react-native-paper-dates react-native-localize @formatjs/intl-pluralrules @formatjs/intl-getcanonicallocales @formatjs/intl-listformat @formatjs/intl-displaynames @formatjs/intl-locale @formatjs/intl-datetimeformat @formatjs/intl-numberformat @formatjs/intl-relativetimeformat 
 
 ## with web support
 ```bash
@@ -18,11 +21,49 @@ npx expo customize metro.config.js
 
 Quickly integrate the design system into your app by importing and using the provided components and utilities:
 
-```tsx
-import 'intl-pluralrules';
-// Keep polyfills on top
-import { LabelSwitch, ScreenWrapper, UIProvider, useThemePreferences, Picker, SelectOption } from "@siteed/design-system";
+- First overwrite the default entry point in main if you are using expo router.
+```
+{
+  "name": "design-playground",
+  "version": "1.0.1",
+  "main": "src/index",
+  ...
+}
 
+Then create a custom `src/index.tsx`
+```
+
+It is recommended to use the UIProvider at the root of your app to avoid issues with nested context when using modals.
+
+```tsx
+import "intl-pluralrules";
+// Keep polyfills at the top
+
+import { UIProvider } from "@siteed/design-system/src";
+import { registerRootComponent } from "expo";
+import { App as ExpoRouterApp } from "expo-router/build/qualified-entry";
+
+const AppEntry = () => {
+  return (
+    <UIProvider
+      toastProviderProps={{
+        overrides: {
+          snackbarStyle: { marginBottom: 100 },
+        },
+      }}
+    >
+      <ExpoRouterApp />
+    </UIProvider>
+  );
+};
+
+registerRootComponent(AppEntry);
+```
+
+Finally you can have your regular code using the design system.
+
+```tsx
+import { LabelSwitch, ScreenWrapper, UIProvider, useThemePreferences, Picker, SelectOption } from "@siteed/design-system";
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -38,7 +79,7 @@ export function App() {
         <LabelSwitch label="Dark Mode" value={darkMode} onValueChange={toggleDarkMode} />
         <Picker label="Category" options={options} onFinish={setOptions} />
       </View>
-      <StatusBar style="auto" />
+      <StatusBar style={darkMode ? "light" : "dark"} />
     </ScreenWrapper>
   );
 }
@@ -59,48 +100,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
-```
-
-## Usage with Expo Router and React Navigation
-```tsx
-import { ThemeProvider } from "@react-navigation/native";
-import { UIProvider, useThemePreferences } from "@siteed/design-system";
-import { getLogger } from "@siteed/react-native-logger";
-import { Drawer } from "expo-router/drawer";
-import { useEffect } from "react";
-
-export const unstable_settings = {
-  initialRouteName: "(tabs)", // always go back to the tabs screen
-};
-
-const logger = getLogger("WithMainProviders");
-const WithMainProviders = () => {
-  const { theme } = useThemePreferences();
-
-  useEffect(() => {
-    logger.info("App started", theme);
-  }, [logger]);
-
-  return (
-    <ThemeProvider value={theme}>
-      <Drawer screenOptions={{ headerShown: true }}>
-        <Drawer.Screen name="(tabs)" />
-      </Drawer>
-    </ThemeProvider>
-  );
-};
-
-export default function HomeLayout() {
-  return (
-    <UIProvider
-      toastProviderProps={{
-        overrides: {
-          snackbarStyle: { marginBottom: 100 },
-        },
-      }}
-    >
-      <WithMainProviders />
-    </UIProvider>
-  );
-}
 ```

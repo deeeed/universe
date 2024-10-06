@@ -1,35 +1,21 @@
 // examples/designdemo/src/app/_layout.tsx
 import { ThemeProvider } from "@react-navigation/native";
 import { useThemePreferences } from "@siteed/design-system";
-import { Redirect } from "expo-router";
 import { Drawer } from "expo-router/drawer";
-import { useEffect } from "react";
+import { StatusBar } from "expo-status-bar";
 
 export const unstable_settings = {
-  initialRouteName: "(tabs)", // always go back to the tabs screen
-};
-
-const WithTheme = ({ children }: { children?: React.ReactNode }) => {
-  const { theme, darkMode } = useThemePreferences();
-
-  useEffect(() => {
-    console.log(`WithTheme has mounted ${darkMode}`);
-  }, [darkMode]);
-
-  return <ThemeProvider value={{ ...theme }}>{children}</ThemeProvider>;
+  initialRouteName: "/",
 };
 
 export default function HomeLayout() {
+  const { theme, darkMode } = useThemePreferences();
   return (
-    <WithTheme>
+    <ThemeProvider value={{ ...theme }}>
+      <StatusBar style={darkMode ? "light" : "dark"} />
       <Drawer screenOptions={{ headerShown: true }}>
         <Drawer.Screen name="(tabs)" />
       </Drawer>
-    </WithTheme>
+    </ThemeProvider>
   );
-}
-
-// Add this to handle the root route
-export function Root() {
-  return <Redirect href="(tabs)" />;
 }
