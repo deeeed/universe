@@ -20,8 +20,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
-import { FullWindowOverlay } from 'react-native-screens';
+import { StyleSheet, View } from 'react-native';
 import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
 import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import { baseLogger } from '../utils/logger';
@@ -430,19 +429,17 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
                 })
               }
               containerComponent={({ children }) => {
+                // On Ios we can also directly use a FullWindowOverlay
+                // <FullWindowOverlay>{children}</FullWindowOverlay>
                 return (
                   <Portal hostName="modal">
-                    {Platform.OS === 'ios' ? (
-                      <FullWindowOverlay>{children}</FullWindowOverlay>
-                    ) : (
-                      <View
-                        style={{
-                          ...StyleSheet.absoluteFillObject,
-                        }}
-                      >
-                        {children}
-                      </View>
-                    )}
+                    <View
+                      style={{
+                        ...StyleSheet.absoluteFillObject,
+                      }}
+                    >
+                      {children}
+                    </View>
                   </Portal>
                 );
               }}

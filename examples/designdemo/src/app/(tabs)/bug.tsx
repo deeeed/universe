@@ -1,24 +1,17 @@
 import { FontAwesome } from "@expo/vector-icons";
 import {
-  BottomSheetBackdrop,
-  BottomSheetFooter,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
-import {
   Accordion,
   AccordionItemProps,
+  EditableInfoCard,
   TextInput,
   ThemeConfig,
   useModal,
   useThemePreferences,
 } from "@siteed/design-system/src";
 import { useNavigation } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Button, Text } from "react-native-paper";
-
-import { Form1 } from "../../components/form1";
 
 const getStyles = () => {
   return StyleSheet.create({
@@ -61,7 +54,6 @@ export const Bug = () => {
 
   const { openDrawer } = useModal();
   const [viewType, setViewType] = useState<"view" | "scroll">("view");
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   useEffect(() => {
     // Set navbar title
@@ -138,46 +130,80 @@ export const Bug = () => {
                 </View>
               ),
             },
-            render: ({ onChange }) => (
-              <View>
-                <Form1 label="Form 1" onChange={onChange} />
-                <View
-                  style={{ backgroundColor: "green", padding: 20, flex: 1 }}
-                >
-                  <Text>FOOTER here</Text>
-                </View>
-              </View>
-            ),
+            render: ({ onChange }) => <InnerComponent onChange={onChange} />,
           });
         }}
       >
         drawer
       </Button>
+    </View>
+  );
+};
+
+interface InnerComponentProps {
+  onChange?: (value: unknown) => void;
+}
+const InnerComponent = ({ onChange }: InnerComponentProps) => {
+  const { theme } = useThemePreferences();
+  const [date, setDate] = useState(new Date());
+  const { editProp } = useModal();
+  const [title, setTitle] = useState("Title");
+  return (
+    <View>
+      <Text>Inner Component</Text>
       <Button
         onPress={() => {
-          bottomSheetModalRef.current?.present();
+          onChange?.("test");
         }}
       >
-        Open
+        Change
       </Button>
-      <BottomSheetModal
-        ref={bottomSheetModalRef}
-        enableDynamicSizing
-        // snapPoints={["20%", "60%"]}
-        backdropComponent={(props) => <BottomSheetBackdrop {...props} />}
-        footerComponent={(props) => (
-          <BottomSheetFooter
-            {...props}
-            style={{ backgroundColor: "green", padding: 20 }}
-          >
-            <Text>FOOTER here</Text>
-          </BottomSheetFooter>
-        )}
-      >
-        <BottomSheetView>
-          <Form1 label="Form 1" />
-        </BottomSheetView>
-      </BottomSheetModal>
+      <EditableInfoCard
+        label="Title"
+        value={title}
+        containerStyle={{ backgroundColor: theme.colors.surface }}
+        editable
+        onEdit={async () => {
+          console.log("edit");
+          const newTitle = await editProp({
+            data: title,
+            inputType: "text",
+            modalType: "modal",
+            initiallyOpen: true,
+            showFooter: false,
+          });
+          if (newTitle) {
+            setTitle(newTitle as string);
+          }
+        }}
+      />
+      <EditableInfoCard
+        value={date}
+        label="Date"
+        containerStyle={{ backgroundColor: theme.colors.surface }}
+        renderValue={(value) => {
+          const date = new Date(value as Date);
+          const formattedDate = date.toLocaleDateString();
+          return <Text>{formattedDate}</Text>;
+        }}
+        editable
+        onEdit={async () => {
+          console.log("edit");
+          const newDate = await editProp({
+            data: date,
+            inputType: "date",
+            modalType: "drawer",
+            initiallyOpen: true,
+            showFooter: false,
+          });
+          if (newDate) {
+            setDate(newDate as Date);
+          }
+        }}
+      />
+      <View style={{ height: 100 }}>
+        <Text>Inner Inner Component</Text>
+      </View>
     </View>
   );
 };

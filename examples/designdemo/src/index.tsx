@@ -1,7 +1,7 @@
 import "intl-pluralrules";
 // Keep polyfills at the top
 
-import { UIProvider } from "@siteed/design-system/src";
+import { UIProvider } from "@siteed/design-system";
 import { setLoggerConfig } from "@siteed/react-native-logger";
 import { registerRootComponent } from "expo";
 import { App as ExpoRouterApp } from "expo-router/build/qualified-entry";
