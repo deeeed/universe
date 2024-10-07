@@ -213,13 +213,16 @@ const InnerComponent = ({ onChange }: InnerComponentProps) => {
         }}
         editable
         onEdit={async () => {
+          console.log("EditableInfoCard onEdit called");
           const newDate = await editProp({
             data: date,
             inputType: "time",
             initiallyOpen: true,
             showFooter: false,
           });
+          console.log("EditableInfoCard onEdit received newDate:", newDate);
           if (newDate) {
+            console.log("EditableInfoCard setting new date");
             setDate(newDate as Date);
           }
         }}
