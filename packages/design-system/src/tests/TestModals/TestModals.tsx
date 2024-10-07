@@ -149,7 +149,7 @@ export const TestModals = (_: TestModalsProps) => {
       data: dateValue,
       modalType: 'modal',
       modalProps: {
-        dismissable: true,
+        closeOnOutsideTouch: true,
       },
     });
     if (result !== undefined) {
