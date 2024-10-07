@@ -34,6 +34,7 @@ export interface BottomSheetStackItem<T = unknown> {
   bottomSheetRef: React.RefObject<BottomSheetModal>;
   initialData: T;
   latestData: T;
+  resolved: boolean;
 }
 
 export interface OpenDrawerProps<T> {
@@ -258,6 +259,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
             initialData,
             latestData: initialData,
             footerHeight: 0,
+            resolved: false,
           } as BottomSheetStackItem,
         ]);
 
@@ -317,24 +319,23 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
       if (index === -1) {
         // Modal is dismissed
         setModalStack((prevStack) => {
-          // Determine the new stack based on stackBehavior
           let newStack = [...prevStack];
           if (
             currentModal.props.bottomSheetProps?.stackBehavior === 'replace'
           ) {
-            // For 'replace', remove all modals up to the current one
             newStack = newStack.slice(0, modalIndex);
           } else {
-            // For 'push', remove only the current modal
             newStack.splice(modalIndex, 1);
           }
 
-          // Resolve the promise for the dismissed modal
-          setTimeout(() => {
-            currentModal.resolve(currentModal.latestData);
-          }, 100); // Adjust this delay if needed
+          // Only resolve if it hasn't been resolved already
+          if (!currentModal.resolved) {
+            setTimeout(() => {
+              currentModal.resolve(currentModal.latestData);
+            }, 100);
+            currentModal.resolved = true;
+          }
 
-          // Present the next modal if available
           if (newStack.length > 0) {
             setTimeout(() => {
               newStack[newStack.length - 1]?.bottomSheetRef.current?.present();
@@ -344,7 +345,6 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
           return newStack;
         });
       } else {
-        // Handle other changes if necessary
         currentModal.props.bottomSheetProps?.onChange?.(index, position, type);
       }
     },
