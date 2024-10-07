@@ -228,32 +228,42 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
 
         const wrapResolve = (value: T | undefined) => {
           logger.debug('openDrawer wrapResolve', value);
+
           setModalStack((prevStack) => {
-            logger.debug('wrapResolve setModalStack called');
+            logger.debug(
+              `wrapResolve setModalStack called, finding modal id ${modalId} in prevStack: `,
+              prevStack
+            );
             const currentModal = prevStack.find(
               (modal) => modal.id === modalId
+            );
+
+            logger.debug(
+              `wrapResolve setModalStack called, modalId=${modalId} rejected: ${currentModal?.rejected} resolved: ${currentModal?.resolved}`,
+              currentModal
             );
             if (
               currentModal &&
               !currentModal.resolved &&
               !currentModal.rejected
             ) {
-              logger.debug('Resolving modal:', modalId);
+              logger.debug('wrapResolve resolving modal:', modalId);
               const newStack = prevStack
                 .map((modal) =>
                   modal.id === modalId ? { ...modal, resolved: true } : modal
                 )
                 .filter((modal) => modal.id !== modalId);
-              if (newStack.length > 0) {
-                newStack[
-                  newStack.length - 1
-                ]?.bottomSheetRef.current?.present();
-              }
+              logger.debug(`wrapResolve new stack length: ${newStack.length}`);
               return newStack;
+            } else {
+              logger.debug(
+                'wrapResolve modal already resolved or rejected:',
+                modalId
+              );
+              return prevStack;
             }
-            logger.debug('Modal already resolved or rejected:', modalId);
-            return prevStack;
           });
+
           if (!modalResolved) {
             logger.debug('Calling resolve function');
             modalResolved = true;
@@ -271,14 +281,14 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
                 modal.id === modalId ? { ...modal, rejected: true } : modal
               )
               .filter((modal) => modal.id !== modalId);
-            if (newStack.length > 0) {
-              newStack[newStack.length - 1]?.bottomSheetRef.current?.present();
-            }
             return newStack;
           });
           if (!modalResolved) {
+            logger.debug('wrapReject called');
             modalResolved = true;
             reject(error);
+          } else {
+            logger.debug('wrapReject already called, skipping');
           }
         };
 
@@ -309,25 +319,39 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
     [setModalStack]
   );
 
-  const dismiss = useCallback(() => {
-    return new Promise<boolean>((resolvePromise) => {
-      if (modalStack.length === 0) {
-        resolvePromise(false);
-        return;
-      }
+  const dismiss = useCallback(
+    (modalIndex?: number) => {
+      return new Promise<boolean>((resolvePromise) => {
+        if (modalIndex && modalIndex > modalStack.length) {
+          logger.error('dismiss: modalIndex out of bounds');
+          resolvePromise(false);
+          return;
+        }
 
-      const currentModal = modalStack[modalStack.length - 1];
+        if (modalStack.length === 0) {
+          logger.error('dismiss: modalStack is empty');
+          resolvePromise(false);
+          return;
+        }
 
-      // Dismiss the current modal
-      currentModal?.bottomSheetRef.current?.dismiss();
+        const currentModal = modalStack[modalIndex || modalStack.length - 1];
+        logger.debug(
+          `dismiss: index: ${modalIndex}, modalId: ${currentModal?.id}`,
+          currentModal
+        );
 
-      // Resolve the promise after a short delay to allow for animation
-      setTimeout(() => {
-        currentModal?.resolve(undefined);
-        resolvePromise(true);
-      }, 300); // Adjust this delay if needed
-    });
-  }, [modalStack]);
+        // Dismiss the current modal
+        currentModal?.bottomSheetRef.current?.dismiss();
+
+        // Resolve the promise after a short delay to allow for animation
+        setTimeout(() => {
+          currentModal?.resolve(undefined);
+          resolvePromise(true);
+        }, 300); // Adjust this delay if needed
+      });
+    },
+    [modalStack]
+  );
 
   const dismissAll = useCallback(() => {
     modalStack.forEach((modal) => {
@@ -348,11 +372,14 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
       position: number;
       type: SNAP_POINT_TYPE;
     }) => {
+      logger.debug(
+        `handleSheetChanges: modalIndex: ${modalIndex}, index: ${index}, position: ${position}, type: ${type}`
+      );
       const currentModal = modalStack[modalIndex];
       if (!currentModal) return;
 
       if (index === -1) {
-        // Modal is dismissed
+        // Modal is closed (-1)
         setModalStack((prevStack) => {
           let newStack = [...prevStack];
           const modalToResolve = newStack[modalIndex];
@@ -381,12 +408,6 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
               'handleSheetChanges: modal already resolved or rejected:',
               modalToResolve.id
             );
-          }
-
-          if (newStack.length > 0) {
-            setTimeout(() => {
-              newStack[newStack.length - 1]?.bottomSheetRef.current?.present();
-            }, 0);
           }
 
           return newStack;
@@ -475,6 +496,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
                   type,
                 })
               }
+              enableDismissOnClose={true}
               containerComponent={({ children }) => {
                 // On Ios we can also directly use a FullWindowOverlay
                 // <FullWindowOverlay>{children}</FullWindowOverlay>
