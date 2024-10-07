@@ -93,6 +93,10 @@ export const TestModals = () => {
             // snapPoints: ["40%", "80%"],
             // index: 0,
           },
+          modalProps: {
+            closeOnOutsideTouch: false,
+            showBackdrop: false,
+          },
           data: "Hello",
           inputType: "text",
         });

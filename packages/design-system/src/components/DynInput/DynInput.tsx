@@ -110,6 +110,8 @@ export const DynInput = ({
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
   const [isInitialOpen, setIsInitialOpen] = useState(initiallyOpen);
+  const isTextType =
+    inputType === 'text' || inputType === 'textarea' || inputType === 'number';
 
   const { i18n } = useTranslation();
 
@@ -130,22 +132,23 @@ export const DynInput = ({
 
       onChange?.(formatedValue);
 
-      if (!showFooter) {
+      if (!showFooter && !isTextType) {
         onFinish?.(formatedValue);
       }
     },
-    [multiSelect, onFinish, onChange, showFooter]
+    [multiSelect, onFinish, onChange, showFooter, isTextType]
   );
 
-  const handleKeyPress = (
-    e: NativeSyntheticEvent<TextInputKeyPressEventData>
-  ) => {
-    if (finishOnEnter && e.nativeEvent.key === 'Enter') {
-      onFinish?.(temp);
-    } else if (cancelOnEscape && e.nativeEvent.key === 'Escape') {
-      onCancel?.();
-    }
-  };
+  const handleKeyPress = useCallback(
+    (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      if (finishOnEnter && e.nativeEvent.key === 'Enter') {
+        onFinish?.(temp);
+      } else if (cancelOnEscape && e.nativeEvent.key === 'Escape') {
+        onCancel?.();
+      }
+    },
+    [finishOnEnter, cancelOnEscape, onFinish, onCancel, temp]
+  );
 
   const renderNumber = () => {
     return (
@@ -173,10 +176,8 @@ export const DynInput = ({
         value={temp as string}
         onChangeText={handleChange}
         selectTextOnFocus={selectTextOnFocus}
-        onKeyPress={
-          finishOnEnter || cancelOnEscape ? handleKeyPress : undefined
-        }
-        blurOnSubmit={finishOnEnter}
+        onKeyPress={handleKeyPress}
+        blurOnSubmit={false} // Prevent submitting on blur
       />
     );
   };

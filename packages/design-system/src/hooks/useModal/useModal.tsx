@@ -1,23 +1,22 @@
 import { BottomSheetModalProps } from '@gorhom/bottom-sheet';
 import React, { useCallback, useContext } from 'react';
 import { Platform } from 'react-native';
-import { ModalProps } from 'react-native-paper';
 import {
   DynInput,
   DynInputProps,
   DynamicType,
 } from '../../components/DynInput/DynInput';
 import { BottomSheetContext } from '../../providers/BottomSheetProvider';
-import { ModalContext } from '../../providers/ModalProvider';
-import { baseLogger } from '../../utils/logger';
+import { ModalContext, OpenModalProps } from '../../providers/ModalProvider';
 import { useTheme } from '../../providers/ThemeProvider';
+import { baseLogger } from '../../utils/logger';
 
 const logger = baseLogger.extend('useModal');
 
 export interface EditPropProps extends DynInputProps {
   bottomSheetProps?: Partial<BottomSheetModalProps>;
   headerComponent?: React.ReactNode;
-  modalProps?: Partial<ModalProps>;
+  modalProps?: Partial<OpenModalProps['modalProps']>;
   modalType?: 'drawer' | 'modal';
 }
 
@@ -70,6 +69,10 @@ export const useModal = () => {
 
       const commonProps = {
         initialData: data,
+        modalProps: {
+          closeOnOutsideTouch: modalProps?.closeOnOutsideTouch ?? false,
+          ...modalProps,
+        },
         render: ({
           resolve,
           onChange,
@@ -88,9 +91,20 @@ export const useModal = () => {
                 inputType={inputType}
                 finishOnEnter={true}
                 selectTextOnFocus={true}
-                onCancel={() => resolve?.(data)}
-                onFinish={(values: DynamicType) => resolve?.(values)}
-                onChange={onChange}
+                onCancel={() => {
+                  logger.debug('DynInput onCancel');
+                  resolve?.(data);
+                }}
+                onFinish={(values: DynamicType) => {
+                  logger.debug('DynInput onFinish', values);
+                  resolve?.(values);
+                }}
+                onChange={(value: DynamicType) => {
+                  logger.debug('DynInput onChange', value);
+                  onChange?.(value);
+                }}
+                showFooter={true} // Force showing footer
+                initiallyOpen={true} // Ensure the input is initially open
               />
             </>
           );
@@ -104,20 +118,10 @@ export const useModal = () => {
           modalProps: {
             ...modalProps,
             styles: {
-              modalContainer: {
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              },
               modalContent: {
                 backgroundColor: isDateTimeType
                   ? 'transparent'
                   : colors.surface,
-                padding: 20,
-                borderRadius: 8,
-                width: '80%',
-                maxHeight: '80%',
               },
             },
           },

@@ -164,13 +164,17 @@ const InnerComponent = ({ onChange }: InnerComponentProps) => {
         containerStyle={{ backgroundColor: theme.colors.surface }}
         editable
         onEdit={async () => {
-          console.log("edit");
+          console.debug("BUG -> startedit");
           const newTitle = await editProp({
             data: title,
             inputType: "text",
             modalType: "modal",
             initiallyOpen: true,
             showFooter: false,
+            modalProps: {
+              closeOnOutsideTouch: false,
+              showBackdrop: false,
+            },
           });
           if (newTitle) {
             setTitle(newTitle as string);
