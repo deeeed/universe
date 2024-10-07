@@ -1,93 +1,45 @@
 import { AntDesign } from '@expo/vector-icons';
-import {
-  BottomSheetBackdrop,
-  BottomSheetBackdropProps,
-  BottomSheetFooterProps,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-} from '@gorhom/bottom-sheet';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Chip, Text } from 'react-native-paper';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
+import { useModal } from '../../hooks/useModal/useModal';
 import { useTheme } from '../../providers/ThemeProvider';
-import { Result } from '../Result/Result';
-import { SelectOption } from '../SelectButtons/SelectButtons';
+import { baseLogger } from '../../utils/logger';
 import { ConfirmCancelFooter } from '../bottom-modal/footers/ConfirmCancelFooter';
-import { LabelHandler } from '../bottom-modal/handlers/LabelHandler';
+import { PickerContent } from './PickerContent';
+import { ScrollView } from 'react-native-gesture-handler';
+
+const logger = baseLogger.extend('Picker');
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
       backgroundColor: theme.colors.surface,
-      display: 'flex',
+      padding: theme.spacing.padding,
+    },
+    header: {
       flexDirection: 'row',
-      justifyContent: 'center',
+      justifyContent: 'space-between',
       alignItems: 'center',
-      padding: theme.spacing.padding,
     },
-    leftSide: {
+    title: {
       flexGrow: 1,
-      flexShrink: 1,
     },
-    scrollview: {
-      flexGrow: 1,
-      flexShrink: 1,
-    },
-    scrollContainer: {
-      gap: theme.spacing.gap,
-      padding: theme.spacing.padding,
-    },
-    title: {},
-    emptyText: {
-      padding: theme.spacing.padding,
-      color: theme.colors.scrim,
-    },
-    modalHeader: {
-      padding: theme.spacing.padding,
-    },
-    modalContent: {
-      flex: 1,
-      padding: theme.spacing.padding,
-    },
-    scrollViewContent: {
-      backgroundColor: theme.colors.surface,
-      paddingHorizontal: theme.spacing.padding,
-      paddingBottom: 80, // Add padding to the bottom to prevent overlap with footer
-    },
-    optionItem: {},
-    searchInput: {
-      borderWidth: 1,
-      borderColor: theme.colors.outline,
-      borderRadius: 5,
-      padding: theme.spacing.padding,
-      marginBottom: theme.spacing.margin,
-    },
-    optionItemsContainer: {
+    optionsContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: theme.spacing.gap,
     },
-    emptyStateContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: theme.spacing.padding,
-    },
-    noResultsText: {
-      textAlign: 'center',
-      marginTop: theme.spacing.margin,
-      marginBottom: theme.spacing.margin,
-    },
   });
 };
+
+export interface SelectOption {
+  label: string;
+  value: string;
+  selected?: boolean;
+  color?: string;
+}
 
 export interface PickerProps {
   options: SelectOption[];
@@ -109,234 +61,122 @@ export interface PickerProps {
 }
 
 export const Picker = ({
-  onFinish,
-  onItemPress,
-  options,
-  multi = false,
-  closable = false,
-  showFooter = true,
-  showSearch = false,
-  fullWidthOptions = true,
-  emptyLabel = 'No selection',
+  options: initialOptions,
   label,
-  emptyAction,
-  emptyOptionsTitle = 'No Options',
-  emptyOptionsMessage = "You don't have any options yet",
-  noResultsText = 'No options match your search',
+  multi = false,
+  showSearch = false,
+  fullWidthOptions = false,
+  emptyLabel = 'No options available',
+  emptyOptionsTitle = 'No options available',
+  emptyOptionsMessage = 'No options available',
+  noResultsText = 'No options available',
   emptyActionLabel = 'Create New',
+  onFinish,
+  emptyAction,
 }: PickerProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
-  const [activeOptions, setActiveOptions] = useState<SelectOption[]>(options);
-  const [tempOptions, setTempOptions] = useState<SelectOption[]>(options);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeOptions, setActiveOptions] =
+    useState<SelectOption[]>(initialOptions);
+  const [tempOptions, setTempOptions] =
+    useState<SelectOption[]>(initialOptions);
   const selectedOptions = activeOptions.filter((option) => option.selected);
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const { openDrawer } = useModal();
 
   useEffect(() => {
-    setActiveOptions(options);
-    setTempOptions(options);
-  }, [options]);
+    setActiveOptions(initialOptions);
+    setTempOptions(initialOptions);
+  }, [initialOptions]);
 
-  const filteredOptions = useMemo(() => {
-    return tempOptions.filter((option) =>
-      option.label.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [tempOptions, searchQuery]);
-
-  const handlePick = useCallback(() => {
-    setTempOptions(activeOptions);
-    setSearchQuery('');
-    bottomSheetModalRef.current?.present();
-  }, [activeOptions]);
-
-  const handleClose = useCallback(() => {
-    bottomSheetModalRef.current?.dismiss();
-  }, []);
-
-  const handleSelectOption = useCallback(
-    (option: SelectOption) => {
-      setTempOptions((prev) =>
-        prev.map((o) =>
-          o.value === option.value
-            ? { ...o, selected: multi ? !o.selected : true }
-            : multi
-              ? o
-              : { ...o, selected: false }
-        )
-      );
-    },
-    [multi]
-  );
-
-  const handleConfirm = useCallback(() => {
-    setActiveOptions(tempOptions);
-    onFinish?.(tempOptions.filter((o) => o.selected));
-    handleClose();
-  }, [onFinish, tempOptions, handleClose]);
-
-  const handleCancel = useCallback(() => {
-    setTempOptions(activeOptions);
-    handleClose();
-  }, [activeOptions, handleClose]);
-
-  const renderBackdrop = useCallback((props: BottomSheetBackdropProps) => {
-    return (
-      <BottomSheetBackdrop
-        {...props}
-        pressBehavior={'close'}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.6}
-      />
-    );
-  }, []);
-
-  const renderFooter = useCallback(
-    (props: BottomSheetFooterProps) => (
-      <ConfirmCancelFooter
-        {...props}
-        onCancel={handleCancel}
-        onFinish={handleConfirm}
-      />
-    ),
-    [handleCancel, handleConfirm]
-  );
-
-  const renderOptions = useCallback(() => {
-    return (
-      <View style={styles.optionItemsContainer}>
-        {filteredOptions.map((item) => (
-          <View
-            key={item.value}
-            style={[styles.optionItem, fullWidthOptions && { width: '100%' }]}
-          >
-            <Chip
-              mode={item.selected ? 'flat' : 'outlined'}
-              selected={item.selected}
-              onPress={() => handleSelectOption(item)}
-              style={fullWidthOptions ? { width: '100%' } : {}}
-            >
-              {item.label}
-            </Chip>
-          </View>
-        ))}
-      </View>
-    );
-  }, [
-    filteredOptions,
-    styles.optionItem,
-    styles.emptyStateContainer,
-    handleSelectOption,
-    emptyAction,
-    emptyActionLabel,
-    fullWidthOptions,
-  ]);
-
-  const renderHeader = useCallback(
-    () => (
-      <View style={styles.modalHeader}>
-        {showSearch && (
-          <BottomSheetTextInput
-            style={styles.searchInput}
-            placeholder="Filter..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+  const handlePick = useCallback(async () => {
+    try {
+      const result = await openDrawer<SelectOption[]>({
+        title: label,
+        initialData: tempOptions,
+        render: ({ onChange, data }) => (
+          <PickerContent
+            options={data || []}
+            multi={multi}
+            showSearch={showSearch}
+            emptyLabel={emptyLabel}
+            emptyOptionsTitle={emptyOptionsTitle}
+            emptyOptionsMessage={emptyOptionsMessage}
+            noResultsText={noResultsText}
+            emptyActionLabel={emptyActionLabel}
+            fullWidthOptions={fullWidthOptions}
+            onChange={onChange}
+            emptyAction={emptyAction}
           />
-        )}
-      </View>
-    ),
-    [styles.modalHeader, styles.searchInput, showSearch, searchQuery]
-  );
+        ),
+        renderFooter: ({ data, resolve }) => {
+          if (initialOptions.length === 0 && !data) {
+            return null;
+          }
+
+          return (
+            <ConfirmCancelFooter
+              onCancel={() => {
+                logger.debug(`onCancel`);
+                resolve(undefined);
+              }}
+              onFinish={() => {
+                logger.debug(`onConfirm > selectedData`, data);
+                setActiveOptions(data || []);
+                logger.debug(`resolve now`, data);
+                resolve(data);
+                logger.debug(`resolve done`);
+              }}
+            />
+          );
+        },
+      });
+      logger.debug(`result`, result);
+      onFinish?.(result || initialOptions);
+    } catch (error) {
+      logger.error('Error opening picker', error);
+    }
+  }, [
+    openDrawer,
+    label,
+    tempOptions,
+    multi,
+    showSearch,
+    fullWidthOptions,
+    emptyAction,
+    initialOptions.length,
+    selectedOptions,
+    onFinish,
+  ]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.leftSide}>
-        <Pressable onPress={handlePick}>
-          <Text style={styles.title} variant="headlineMedium">
-            {label}
-          </Text>
-        </Pressable>
-        {selectedOptions.length === 0 ? (
-          <Text style={styles.emptyText}>{emptyLabel}</Text>
-        ) : (
-          <Pressable onPress={handlePick}>
-            <ScrollView
-              horizontal={true}
-              showsHorizontalScrollIndicator={false}
-              style={styles.scrollview}
-              contentContainerStyle={styles.scrollContainer}
-            >
-              {selectedOptions.map((option, index) => (
-                <Chip
-                  key={`option-${index}`}
-                  style={{ backgroundColor: option.color }}
-                  compact={true}
-                  onPress={(event) => {
-                    event.stopPropagation();
-                    if (onItemPress) {
-                      onItemPress?.(option);
-                    } else {
-                      handlePick();
-                    }
-                  }}
-                  onClose={
-                    closable
-                      ? () => {
-                          setActiveOptions((prev) =>
-                            prev.map((o) =>
-                              o.value === option.value
-                                ? { ...o, selected: false }
-                                : o
-                            )
-                          );
-                        }
-                      : undefined
-                  }
-                  mode={'flat'}
-                >
-                  {option.label}
-                </Chip>
-              ))}
-            </ScrollView>
-          </Pressable>
-        )}
-      </View>
-      {activeOptions.length > 0 && (
+      <Pressable style={styles.header} onPress={handlePick}>
+        <Text style={styles.title} variant="headlineMedium">
+          {label}
+        </Text>
         <Pressable onPress={handlePick} testID="picker-right-handle">
           <AntDesign name="right" size={24} color={theme.colors.text} />
         </Pressable>
+      </Pressable>
+      {selectedOptions.length === 0 ? (
+        <Text>No options selected</Text>
+      ) : (
+        <ScrollView
+          horizontal
+          contentContainerStyle={styles.optionsContainer}
+          showsHorizontalScrollIndicator={false}
+        >
+          {selectedOptions.map((option) => (
+            <Chip
+              key={option.value}
+              mode="flat"
+              style={{ backgroundColor: option.color }}
+            >
+              {option.label}
+            </Chip>
+          ))}
+        </ScrollView>
       )}
-      <BottomSheetModal
-        ref={bottomSheetModalRef}
-        enableDynamicSizing
-        enableDismissOnClose
-        backdropComponent={renderBackdrop}
-        handleComponent={(props) => <LabelHandler {...props} />}
-        footerComponent={
-          showFooter && tempOptions.length > 0 ? renderFooter : undefined
-        }
-      >
-        <BottomSheetScrollView contentContainerStyle={styles.scrollViewContent}>
-          {renderHeader()}
-          {tempOptions.length === 0 ? (
-            <Result
-              status="warning"
-              title={emptyOptionsTitle}
-              message={emptyOptionsMessage}
-              buttonText={emptyActionLabel}
-              onButtonPress={() => {
-                emptyAction?.();
-                handleClose();
-              }}
-            />
-          ) : filteredOptions.length === 0 ? (
-            <Text style={styles.noResultsText}>{noResultsText}</Text>
-          ) : (
-            renderOptions()
-          )}
-        </BottomSheetScrollView>
-      </BottomSheetModal>
     </View>
   );
 };

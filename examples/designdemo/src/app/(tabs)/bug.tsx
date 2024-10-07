@@ -3,6 +3,8 @@ import {
   Accordion,
   AccordionItemProps,
   EditableInfoCard,
+  Picker,
+  SelectOption,
   TextInput,
   ThemeConfig,
   useModal,
@@ -148,6 +150,11 @@ const InnerComponent = ({ onChange }: InnerComponentProps) => {
   const [date, setDate] = useState(new Date());
   const { editProp } = useModal();
   const [title, setTitle] = useState("Title");
+  const [options, setOptions] = useState<SelectOption[]>([
+    { label: "Option 1", value: "1" },
+    { label: "Option 2", value: "2" },
+    { label: "Option 3", value: "3" },
+  ]);
   return (
     <View>
       <Text>Inner Component</Text>
@@ -168,7 +175,7 @@ const InnerComponent = ({ onChange }: InnerComponentProps) => {
           const newTitle = await editProp({
             data: title,
             inputType: "text",
-            modalType: "modal",
+            modalType: "drawer",
             initiallyOpen: true,
             showFooter: false,
             modalProps: {
@@ -202,7 +209,7 @@ const InnerComponent = ({ onChange }: InnerComponentProps) => {
           });
           console.log(`newDate: ${newDate}`);
           if (newDate) {
-            setDate(newDate as Date);
+            setDate(new Date(newDate as string));
           }
         }}
       />
@@ -227,12 +234,22 @@ const InnerComponent = ({ onChange }: InnerComponentProps) => {
           console.log("EditableInfoCard onEdit received newDate:", newDate);
           if (newDate) {
             console.log("EditableInfoCard setting new date");
-            setDate(newDate as Date);
+            setDate(new Date(newDate as string));
           }
         }}
       />
       <View style={{ height: 100 }}>
         <Text>Inner Inner Component</Text>
+        <Text>{JSON.stringify(options)}</Text>
+        <Picker
+          label="Picker"
+          options={options}
+          onFinish={(values) => {
+            console.log("Picker value changed to:", values);
+            setOptions(values);
+            setTitle(JSON.stringify(options));
+          }}
+        />
       </View>
     </View>
   );
