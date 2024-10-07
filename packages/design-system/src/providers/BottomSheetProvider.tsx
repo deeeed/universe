@@ -35,6 +35,7 @@ export interface BottomSheetStackItem<T = unknown> {
   initialData: T;
   latestData: T;
   resolved: boolean;
+  rejected: boolean;
 }
 
 export interface OpenDrawerProps<T> {
@@ -227,7 +228,11 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
         const wrapResolve = (value: T | undefined) => {
           logger.debug('openDrawer wrapResolve', value);
           setModalStack((prevStack) => {
-            const newStack = prevStack.filter((modal) => modal.id !== modalId);
+            const newStack = prevStack
+              .map((modal) =>
+                modal.id === modalId ? { ...modal, resolved: true } : modal
+              )
+              .filter((modal) => modal.id !== modalId);
             if (newStack.length > 0) {
               newStack[newStack.length - 1]?.bottomSheetRef.current?.present();
             }
@@ -235,10 +240,15 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
           });
           resolve(value);
         };
+
         const wrapReject = (error: Error) => {
           logger.debug('openDrawer wrapReject', error);
           setModalStack((prevStack) => {
-            const newStack = prevStack.filter((modal) => modal.id !== modalId);
+            const newStack = prevStack
+              .map((modal) =>
+                modal.id === modalId ? { ...modal, rejected: true } : modal
+              )
+              .filter((modal) => modal.id !== modalId);
             if (newStack.length > 0) {
               newStack[newStack.length - 1]?.bottomSheetRef.current?.present();
             }
@@ -258,8 +268,8 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
             bottomSheetRef: newBottomSheetRef,
             initialData,
             latestData: initialData,
-            footerHeight: 0,
             resolved: false,
+            rejected: false,
           } as BottomSheetStackItem,
         ]);
 
@@ -328,8 +338,8 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
             newStack.splice(modalIndex, 1);
           }
 
-          // Only resolve if it hasn't been resolved already
-          if (!currentModal.resolved) {
+          // Only resolve if it hasn't been resolved/rejected already
+          if (!currentModal.resolved && !currentModal.rejected) {
             setTimeout(() => {
               currentModal.resolve(currentModal.latestData);
             }, 100);
