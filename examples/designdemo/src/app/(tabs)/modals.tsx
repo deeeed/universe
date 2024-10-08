@@ -195,7 +195,7 @@ const ModalContent: React.FC<{
     setTrigger((prev) => prev + 1);
   }, [toggleDarkMode]);
 
-  const { openDrawer } = useModal();
+  const { openDrawer, openModal } = useModal();
 
   return (
     <View>
@@ -217,7 +217,25 @@ const ModalContent: React.FC<{
         onPress={() =>
           openDrawer({
             render: () => {
-              return <Text>This is a test drawer content.</Text>;
+              return (
+                <View style={{ padding: 30 }}>
+                  <Text>This is a test drawer content.</Text>
+                  <Button
+                    onPress={() => {
+                      console.log(`open inner modal`);
+                      openModal({
+                        render: () => {
+                          return (
+                            <Text>This is a test inner modal content.</Text>
+                          );
+                        },
+                      });
+                    }}
+                  >
+                    Open Inner Modal
+                  </Button>
+                </View>
+              );
             },
           })
         }

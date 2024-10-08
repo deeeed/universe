@@ -30,6 +30,7 @@ import { LanguageProvider } from './LanguageProvider';
 import { ModalProvider } from './ModalProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { ToastProvider, ToastProviderProps } from './ToastProvider';
+import { OverlayProvider } from './OverlayProvider';
 
 export const DefaultLightTheme: CustomAppTheme = {
   ...MD3LightTheme,
@@ -165,18 +166,20 @@ const UIProviderWithLanguageReady = ({
     <GestureHandlerRootView style={{ flex: 1 }}>
       <PortalProvider>
         <ThemeProvider preferences={defaultPreferences}>
-          <ConfirmProvider {...confirmProviderProps}>
-            <ToastProvider {...toastProviderProps}>
-              <BottomSheetProvider>
-                <ModalProvider>
-                  <>
-                    {children}
-                    <PortalHost name="modal" />
-                  </>
-                </ModalProvider>
-              </BottomSheetProvider>
-            </ToastProvider>
-          </ConfirmProvider>
+          <OverlayProvider>
+            <ConfirmProvider {...confirmProviderProps}>
+              <ToastProvider {...toastProviderProps}>
+                <BottomSheetProvider>
+                  <ModalProvider>
+                    <>
+                      {children}
+                      <PortalHost name="modal" />
+                    </>
+                  </ModalProvider>
+                </BottomSheetProvider>
+              </ToastProvider>
+            </ConfirmProvider>
+          </OverlayProvider>
         </ThemeProvider>
       </PortalProvider>
     </GestureHandlerRootView>

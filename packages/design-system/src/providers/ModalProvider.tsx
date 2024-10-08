@@ -216,7 +216,7 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
                   StyleSheet.absoluteFillObject,
                   styles.modalContainer,
                   showBackdrop && styles.backdrop,
-                  { zIndex: 1000 + index },
+                  { zIndex: 9999 + index },
                   customStyles.modalContainer,
                 ]}
               >

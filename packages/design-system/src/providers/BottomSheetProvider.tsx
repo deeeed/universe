@@ -99,6 +99,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
   const [modalStack, setModalStack] = useState<Array<BottomSheetStackItem>>([]);
   const modalStackRef = useRef<Array<BottomSheetStackItem>>([]);
   const modalIdCounter = useRef(0);
+
   const [footerHeights, setFooterHeights] = useState<Record<number, number>>(
     {}
   );
@@ -506,6 +507,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
                     <View
                       style={{
                         ...StyleSheet.absoluteFillObject,
+                        zIndex: 9999,
                       }}
                     >
                       {children}
