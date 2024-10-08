@@ -97,6 +97,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [modalStack, setModalStack] = useState<Array<BottomSheetStackItem>>([]);
+  const modalStackRef = useRef<Array<BottomSheetStackItem>>([]);
   const modalIdCounter = useRef(0);
   const [footerHeights, setFooterHeights] = useState<Record<number, number>>(
     {}
@@ -126,13 +127,13 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const renderFooter = useCallback(
     ({
-      modalIndex,
+      modalId,
       footerProps,
     }: {
-      modalIndex: number;
+      modalId: number;
       footerProps: BottomSheetFooterProps;
     }) => {
-      const modal = modalStack[modalIndex];
+      const modal = modalStack.find((m) => m.id === modalId);
       if (!modal) return null;
 
       const { renderFooter, footerType } = modal.props;
@@ -143,7 +144,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
         <BottomSheetFooter {...footerProps}>
           <View
             onLayout={(event) => {
-              if (modalIndex === modalStack.length - 1) {
+              if (modalId === modalStack[modalStack.length - 1]?.id) {
                 const newHeight = event.nativeEvent.layout.height;
                 updateFooterHeight(modal.id, newHeight);
               }
@@ -175,9 +176,9 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const renderHandler = useCallback(
-    ({ modalIndex }: { modalIndex: number }) => {
+    ({ modalId }: { modalId: number }) => {
       const HandlerComponent = (props: BottomSheetHandleProps) => {
-        const modal = modalStack[modalIndex];
+        const modal = modalStack.find((m) => m.id === modalId);
         if (!modal) return null;
 
         const { renderHandler, title } = modal.props;
@@ -216,6 +217,66 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   }, []);
 
+  const wrapResolve = useCallback(
+    <T,>(
+      modalId: number,
+      value: T | undefined,
+      resolve: (value: T | undefined) => void
+    ) => {
+      logger.debug('wrapResolve value', value);
+
+      const currentModal = modalStackRef.current.find((m) => m.id === modalId);
+      if (!currentModal) {
+        logger.error(
+          `wrapResolve: modal ${modalId} not found`,
+          modalStackRef.current
+        );
+        return;
+      }
+
+      logger.debug(
+        `wrapResolve currentModal.bottomSheetRef`,
+        currentModal?.bottomSheetRef.current
+      );
+
+      // Close the bottom sheet if it's open
+      if (currentModal?.bottomSheetRef?.current) {
+        currentModal.bottomSheetRef.current.dismiss();
+      }
+
+      logger.debug('wrapResolve Calling resolve function');
+      resolve(value);
+    },
+    []
+  );
+
+  const wrapReject = useCallback(
+    (modalId: number, error: Error, reject: (error: Error) => void) => {
+      logger.debug('wrapReject', error);
+
+      const currentModal = modalStackRef.current.find((m) => m.id === modalId);
+      if (!currentModal) {
+        logger.error(
+          `wrapResolve: modal ${modalId} not found`,
+          modalStackRef.current
+        );
+        return;
+      }
+
+      logger.debug(
+        `wrapResolve currentModal.bottomSheetRef`,
+        currentModal?.bottomSheetRef.current
+      );
+
+      // Close the bottom sheet if it's open
+      if (currentModal?.bottomSheetRef?.current) {
+        currentModal.bottomSheetRef.current.dismiss();
+      }
+      reject(error);
+    },
+    [setModalStack]
+  );
+
   const openDrawer = useCallback(
     async <T,>(props: OpenDrawerProps<T>): Promise<T | undefined> => {
       const newBottomSheetRef = React.createRef<BottomSheetModal>();
@@ -226,87 +287,37 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
         const modalId = modalIdCounter.current++;
         let modalResolved = false;
 
-        const wrapResolve = (value: T | undefined) => {
-          logger.debug('openDrawer wrapResolve', value);
-
-          setModalStack((prevStack) => {
-            logger.debug(
-              `wrapResolve setModalStack called, finding modal id ${modalId} in prevStack: `,
-              prevStack
-            );
-            const currentModal = prevStack.find(
-              (modal) => modal.id === modalId
-            );
-
-            logger.debug(
-              `wrapResolve setModalStack called, modalId=${modalId} rejected: ${currentModal?.rejected} resolved: ${currentModal?.resolved}`,
-              currentModal
-            );
-            if (
-              currentModal &&
-              !currentModal.resolved &&
-              !currentModal.rejected
-            ) {
-              logger.debug('wrapResolve resolving modal:', modalId);
-              const newStack = prevStack
-                .map((modal) =>
-                  modal.id === modalId ? { ...modal, resolved: true } : modal
-                )
-                .filter((modal) => modal.id !== modalId);
-              logger.debug(`wrapResolve new stack length: ${newStack.length}`);
-              return newStack;
-            } else {
-              logger.debug(
-                'wrapResolve modal already resolved or rejected:',
-                modalId
-              );
-              return prevStack;
-            }
-          });
-
+        const modalResolve = (value: T | undefined) => {
           if (!modalResolved) {
-            logger.debug('Calling resolve function');
             modalResolved = true;
-            resolve(value);
+            wrapResolve(modalId, value, resolve);
           } else {
             logger.debug('Resolve already called, skipping');
           }
         };
 
-        const wrapReject = (error: Error) => {
-          logger.debug('openDrawer wrapReject', error);
-          setModalStack((prevStack) => {
-            const newStack = prevStack
-              .map((modal) =>
-                modal.id === modalId ? { ...modal, rejected: true } : modal
-              )
-              .filter((modal) => modal.id !== modalId);
-            return newStack;
-          });
+        const modalReject = (error: Error) => {
           if (!modalResolved) {
-            logger.debug('wrapReject called');
             modalResolved = true;
-            reject(error);
+            wrapReject(modalId, error, reject);
           } else {
-            logger.debug('wrapReject already called, skipping');
+            logger.debug('Reject already called, skipping');
           }
         };
 
-        setModalStack((prevStack) => [
-          ...prevStack,
-          {
-            id: modalId,
-            render: props.render,
-            props,
-            resolve: wrapResolve,
-            reject: wrapReject,
-            bottomSheetRef: newBottomSheetRef,
-            initialData,
-            latestData: initialData,
-            resolved: false,
-            rejected: false,
-          } as BottomSheetStackItem,
-        ]);
+        const newModal = {
+          id: modalId,
+          render: props.render,
+          props,
+          resolve: modalResolve,
+          reject: modalReject,
+          bottomSheetRef: newBottomSheetRef,
+          initialData,
+          latestData: initialData,
+        } as BottomSheetStackItem;
+
+        modalStackRef.current = [...modalStackRef.current, newModal];
+        setModalStack(modalStackRef.current);
 
         setTimeout(() => {
           newBottomSheetRef.current?.present();
@@ -320,32 +331,30 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const dismiss = useCallback(
-    (modalIndex?: number) => {
+    (modalId?: number) => {
       return new Promise<boolean>((resolvePromise) => {
-        if (modalIndex && modalIndex > modalStack.length) {
-          logger.error('dismiss: modalIndex out of bounds');
+        const currentModal = modalId
+          ? modalStack.find((m) => m.id === modalId)
+          : modalStack[modalStack.length - 1];
+
+        if (!currentModal) {
+          logger.error('dismiss: modal not found');
           resolvePromise(false);
           return;
         }
 
-        if (modalStack.length === 0) {
-          logger.error('dismiss: modalStack is empty');
-          resolvePromise(false);
-          return;
-        }
-
-        const currentModal = modalStack[modalIndex || modalStack.length - 1];
-        logger.debug(
-          `dismiss: index: ${modalIndex}, modalId: ${currentModal?.id}`,
-          currentModal
-        );
+        logger.debug(`dismiss: modalId: ${currentModal.id}`, currentModal);
 
         // Dismiss the current modal
-        currentModal?.bottomSheetRef.current?.dismiss();
+        currentModal.bottomSheetRef.current?.dismiss();
 
         // Resolve the promise after a short delay to allow for animation
         setTimeout(() => {
-          currentModal?.resolve(undefined);
+          logger.debug(
+            'dismiss: resolving modal after delay:',
+            currentModal.id
+          );
+          currentModal.resolve(undefined);
           resolvePromise(true);
         }, 300); // Adjust this delay if needed
       });
@@ -362,57 +371,49 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const handleSheetChanges = useCallback(
     ({
-      modalIndex,
+      modalId,
       index,
       position,
       type,
     }: {
-      modalIndex: number;
+      modalId: number;
       index: number;
       position: number;
       type: SNAP_POINT_TYPE;
     }) => {
       logger.debug(
-        `handleSheetChanges: modalIndex: ${modalIndex}, index: ${index}, position: ${position}, type: ${type}`
+        `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}, modalStack.length: ${modalStack.length}`
       );
-      const currentModal = modalStack[modalIndex];
-      if (!currentModal) return;
+      const currentModal = modalStack.find((m) => m.id === modalId);
+      if (!currentModal) {
+        logger.error(
+          `handleSheetChanges: modal modalId=${modalId} not found`,
+          modalStack
+        );
+        return;
+      }
 
       if (index === -1) {
-        // Modal is closed (-1)
-        setModalStack((prevStack) => {
-          let newStack = [...prevStack];
-          const modalToResolve = newStack[modalIndex];
-          if (!modalToResolve) return prevStack;
-
-          if (
-            modalToResolve.props.bottomSheetProps?.stackBehavior === 'replace'
-          ) {
-            newStack = newStack.slice(0, modalIndex);
-          } else {
-            newStack.splice(modalIndex, 1);
-          }
-
-          // Only resolve if it hasn't been resolved or rejected already
-          if (!modalToResolve.resolved && !modalToResolve.rejected) {
-            logger.debug(
-              'handleSheetChanges resolving modal:',
-              modalToResolve.id
-            );
-            setTimeout(() => {
-              modalToResolve.resolve(modalToResolve.latestData);
-            }, 100);
-            modalToResolve.resolved = true;
-          } else {
-            logger.debug(
-              'handleSheetChanges: modal already resolved or rejected:',
-              modalToResolve.id
-            );
-          }
-
-          return newStack;
-        });
+        logger.debug(`handleSheetChanges: modalId: ${modalId} is closing`);
+        if (!currentModal.resolved) {
+          logger.debug(
+            `handleSheetChanges: modalId: ${modalId} is closing and not resolved, resolving with initialData`,
+            currentModal.initialData
+          );
+          currentModal.resolve(undefined);
+        }
+        setTimeout(() => {
+          // remove from modalStack
+          setModalStack((prevStack) => {
+            const newStack = prevStack.filter((m) => m.id !== modalId);
+            logger.debug('handleSheetChanges: newStack', newStack);
+            return newStack;
+          });
+        }, 100);
       } else {
+        logger.debug(
+          `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}`
+        );
         currentModal.props.bottomSheetProps?.onChange?.(index, position, type);
       }
     },
@@ -420,8 +421,8 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const renderContent = useCallback(
-    ({ modalIndex }: { modalIndex: number }) => {
-      const currentModal = modalStack[modalIndex];
+    ({ modalId }: { modalId: number }) => {
+      const currentModal = modalStack.find((m) => m.id === modalId);
       if (!currentModal) return null;
 
       const footerHeight = footerHeights[currentModal.id] || 0;
@@ -467,7 +468,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
     <BottomSheetContext.Provider value={contextValue}>
       <BottomSheetModalProvider>
         {children}
-        {modalStack.map((modal, index) => {
+        {modalStack.map((modal) => {
           const bottomSheetProps = {
             ...defaultBottomSheetModalProps,
             ...modal.props.bottomSheetProps,
@@ -490,7 +491,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
               {...bottomSheetProps}
               onChange={(sheetIndex, position, type) =>
                 handleSheetChanges({
-                  modalIndex: index,
+                  modalId: modal.id,
                   index: sheetIndex,
                   position,
                   type,
@@ -516,12 +517,12 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
                 modal.props.bottomSheetProps?.stackBehavior || 'push'
               }
               footerComponent={(props) =>
-                renderFooter({ modalIndex: index, footerProps: props })
+                renderFooter({ modalId: modal.id, footerProps: props })
               }
-              handleComponent={renderHandler({ modalIndex: index })}
+              handleComponent={renderHandler({ modalId: modal.id })}
               backdropComponent={renderBackdrop}
             >
-              {renderContent({ modalIndex: index })}
+              {renderContent({ modalId: modal.id })}
             </BottomSheetModal>
           );
         })}

@@ -132,7 +132,9 @@ export const Bug = () => {
                 </View>
               ),
             },
-            render: ({ onChange }) => <InnerComponent onChange={onChange} />,
+            render: ({ onChange, footerHeight }) => (
+              <InnerComponent onChange={onChange} footerHeight={footerHeight} />
+            ),
           });
         }}
       >
@@ -144,8 +146,9 @@ export const Bug = () => {
 
 interface InnerComponentProps {
   onChange?: (value: unknown) => void;
+  footerHeight?: number;
 }
-const InnerComponent = ({ onChange }: InnerComponentProps) => {
+const InnerComponent = ({ onChange, footerHeight }: InnerComponentProps) => {
   const { theme } = useThemePreferences();
   const [date, setDate] = useState(new Date());
   const { editProp } = useModal();
@@ -156,7 +159,7 @@ const InnerComponent = ({ onChange }: InnerComponentProps) => {
     { label: "Option 3", value: "3" },
   ]);
   return (
-    <View>
+    <View style={{ paddingBottom: footerHeight }}>
       <Text>Inner Component</Text>
       <Button
         onPress={() => {
@@ -247,7 +250,6 @@ const InnerComponent = ({ onChange }: InnerComponentProps) => {
           onFinish={(values) => {
             console.log("Picker value changed to:", values);
             setOptions(values);
-            setTitle(JSON.stringify(options));
           }}
         />
       </View>
