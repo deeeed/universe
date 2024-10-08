@@ -9,6 +9,7 @@ import { baseLogger } from '../../utils/logger';
 import { ConfirmCancelFooter } from '../bottom-modal/footers/ConfirmCancelFooter';
 import { PickerContent } from './PickerContent';
 import { ScrollView } from 'react-native-gesture-handler';
+import { SelectOption } from '../SelectButtons/SelectButtons';
 
 const logger = baseLogger.extend('Picker');
 
@@ -38,13 +39,6 @@ const getStyles = (theme: AppTheme) => {
     },
   });
 };
-
-export interface SelectOption {
-  label: string;
-  value: string;
-  selected?: boolean;
-  color?: string;
-}
 
 export interface PickerProps {
   options: SelectOption[];

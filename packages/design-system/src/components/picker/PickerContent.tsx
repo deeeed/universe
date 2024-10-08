@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Chip, Searchbar, Text } from 'react-native-paper';
-import { useTheme } from '../../providers/ThemeProvider';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
-import { SelectOption } from './Picker';
+import { useTheme } from '../../providers/ThemeProvider';
 import { Result } from '../Result/Result';
+import { SelectOption } from '../SelectButtons/SelectButtons';
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
