@@ -30,6 +30,11 @@ const getStyles = (theme: AppTheme) => {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: theme.spacing.gap,
+      minHeight: 40, // Add a minimum height to ensure visibility
+    },
+    scrollViewContent: {
+      flexGrow: 1,
+      paddingVertical: 8, // Add vertical padding
     },
   });
 };
@@ -158,15 +163,18 @@ export const Picker = ({
           <AntDesign name="right" size={24} color={theme.colors.text} />
         </Pressable>
       </Pressable>
-      {selectedOptions.length === 0 ? (
-        <Text>No options selected</Text>
-      ) : (
-        <ScrollView
-          horizontal
-          contentContainerStyle={styles.optionsContainer}
-          showsHorizontalScrollIndicator={false}
-        >
-          {selectedOptions.map((option) => (
+      <ScrollView
+        horizontal
+        contentContainerStyle={[
+          styles.optionsContainer,
+          styles.scrollViewContent,
+        ]}
+        showsHorizontalScrollIndicator={false}
+      >
+        {selectedOptions.length === 0 ? (
+          <Text>No options selected</Text>
+        ) : (
+          selectedOptions.map((option) => (
             <Chip
               key={option.value}
               mode="flat"
@@ -174,9 +182,9 @@ export const Picker = ({
             >
               {option.label}
             </Chip>
-          ))}
-        </ScrollView>
-      )}
+          ))
+        )}
+      </ScrollView>
     </View>
   );
 };

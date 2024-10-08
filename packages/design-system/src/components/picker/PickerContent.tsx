@@ -4,11 +4,11 @@ import { Chip, Searchbar, Text } from 'react-native-paper';
 import { useTheme } from '../../providers/ThemeProvider';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { SelectOption } from './Picker';
+import { Result } from '../Result/Result';
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
     container: {
-      flex: 1,
       padding: theme.spacing.padding,
     },
     searchBar: {
@@ -18,6 +18,7 @@ const getStyles = (theme: AppTheme) => {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: theme.spacing.gap,
+      minHeight: 40,
     },
     optionItem: {
       marginBottom: theme.spacing.margin,
@@ -57,25 +58,29 @@ export const PickerContent: React.FC<PickerContentProps> = ({
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [tempOptions, setTempOptions] = useState(options);
+
   const filteredOptions = useMemo(() => {
-    return options.filter((option) =>
+    return tempOptions.filter((option) =>
       option.label.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [options, searchQuery]);
+  }, [tempOptions, searchQuery]);
 
   const handleSelectOption = useCallback(
     (selectedOption: SelectOption) => {
-      const updatedOptions = options.map((option) =>
+      const updatedOptions = tempOptions.map((option) =>
         option.value === selectedOption.value
           ? { ...option, selected: multi ? !option.selected : true }
           : multi
             ? option
             : { ...option, selected: false }
       );
+      console.log('updatedOptions', updatedOptions);
+      setTempOptions(updatedOptions);
       onChange(updatedOptions);
       onItemPress?.(selectedOption);
     },
-    [options, multi, onChange, onItemPress]
+    [tempOptions, multi, onChange, onItemPress]
   );
 
   const renderOptions = useCallback(() => {
@@ -100,12 +105,16 @@ export const PickerContent: React.FC<PickerContentProps> = ({
     );
   }, [filteredOptions, styles, fullWidthOptions, handleSelectOption]);
 
-  if (options.length === 0) {
+  if (tempOptions.length === 0) {
     return (
       <View style={styles.container}>
-        <Text>{emptyOptionsTitle}</Text>
-        <Text>{emptyOptionsMessage}</Text>
-        {emptyAction && <Chip onPress={emptyAction}>{emptyActionLabel}</Chip>}
+        <Result
+          status="info"
+          title={emptyOptionsTitle}
+          message={emptyOptionsMessage}
+          buttonText={emptyActionLabel}
+          onButtonPress={emptyAction}
+        />
       </View>
     );
   }
