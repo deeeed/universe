@@ -98,6 +98,7 @@ export interface UIProviderProps {
   locale?: string;
   lightTheme?: AppTheme;
   darkTheme?: AppTheme;
+  portalName?: string;
   preferences?: Partial<Omit<ThemePreferences, 'theme'>>;
   actions?: Partial<ThemeActions>;
   safeAreaProviderProps?: SafeAreaProviderProps;
@@ -113,6 +114,7 @@ const UIProviderWithLanguageReady = ({
   lightTheme,
   toastProviderProps,
   confirmProviderProps,
+  portalName = 'modal',
   children,
 }: Omit<UIProviderProps, 'locale'>) => {
   // Create default preferences if none are provided
@@ -169,11 +171,11 @@ const UIProviderWithLanguageReady = ({
           <OverlayProvider>
             <ConfirmProvider {...confirmProviderProps}>
               <ToastProvider {...toastProviderProps}>
-                <BottomSheetProvider>
-                  <ModalProvider>
+                <BottomSheetProvider defaultPortalName={portalName}>
+                  <ModalProvider portalName={portalName}>
                     <>
                       {children}
-                      <PortalHost name="modal" />
+                      <PortalHost name={portalName} />
                     </>
                   </ModalProvider>
                 </BottomSheetProvider>

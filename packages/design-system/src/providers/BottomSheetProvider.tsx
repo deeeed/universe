@@ -42,6 +42,7 @@ export interface OpenDrawerProps<T> {
   title?: string;
   footerType?: 'confirm_cancel';
   initialData?: T;
+  portalName?: string;
   containerType?: 'view' | 'scrollview' | 'none';
   bottomSheetProps?: Partial<BottomSheetModalProps>;
   render: (props: {
@@ -70,14 +71,19 @@ export interface OpenDrawerProps<T> {
 }
 
 export interface BottomSheetProviderProps {
+  children: React.ReactNode;
+  defaultPortalName?: string;
+}
+
+export interface BottomSheetContextValue {
   openDrawer: <T>(props: OpenDrawerProps<T>) => Promise<T | undefined>;
-  dismiss: () => Promise<boolean>;
+  dismiss: (modalId?: number) => Promise<boolean>;
   dismissAll: () => void;
-  modalStack: BottomSheetStackItem[];
+  modalStack: BottomSheetStackItem<unknown>[];
 }
 
 export const BottomSheetContext = createContext<
-  BottomSheetProviderProps | undefined
+  BottomSheetContextValue | undefined
 >(undefined);
 
 const logger = baseLogger.extend('BottomSheetProvider');
@@ -93,8 +99,9 @@ const defaultBottomSheetModalProps: Partial<BottomSheetModalProps> = {
   enableDismissOnClose: true,
 };
 
-export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
+export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
   children,
+  defaultPortalName = 'modal',
 }) => {
   const [modalStack, setModalStack] = useState<Array<BottomSheetStackItem>>([]);
   const modalStackRef = useRef<Array<BottomSheetStackItem>>([]);
@@ -283,7 +290,11 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
       const newBottomSheetRef = React.createRef<BottomSheetModal>();
 
       return new Promise((resolve, reject) => {
-        const { initialData, bottomSheetProps } = props;
+        const {
+          initialData,
+          bottomSheetProps,
+          portalName = defaultPortalName,
+        } = props;
 
         const modalId = modalIdCounter.current++;
         let modalResolved = false;
@@ -309,7 +320,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
         const newModal = {
           id: modalId,
           render: props.render,
-          props,
+          props: { ...props, portalName }, // Include portalName in the props
           resolve: modalResolve,
           reject: modalReject,
           bottomSheetRef: newBottomSheetRef,
@@ -328,7 +339,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
         }, 0);
       });
     },
-    [setModalStack]
+    [setModalStack, defaultPortalName, wrapResolve, wrapReject]
   );
 
   const dismiss = useCallback(
@@ -455,7 +466,7 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
     [modalStack, footerHeights, updateLatestData]
   );
 
-  const contextValue = useMemo(
+  const contextValue = useMemo<BottomSheetContextValue>(
     () => ({
       openDrawer,
       dismiss,
@@ -499,22 +510,18 @@ export const BottomSheetProvider: React.FC<{ children: React.ReactNode }> = ({
                 })
               }
               enableDismissOnClose={true}
-              containerComponent={({ children }) => {
-                // On Ios we can also directly use a FullWindowOverlay
-                // <FullWindowOverlay>{children}</FullWindowOverlay>
-                return (
-                  <Portal hostName="modal">
-                    <View
-                      style={{
-                        ...StyleSheet.absoluteFillObject,
-                        zIndex: 9999,
-                      }}
-                    >
-                      {children}
-                    </View>
-                  </Portal>
-                );
-              }}
+              containerComponent={({ children }) => (
+                <Portal hostName={modal.props.portalName || defaultPortalName}>
+                  <View
+                    style={{
+                      ...StyleSheet.absoluteFillObject,
+                      zIndex: 9999,
+                    }}
+                  >
+                    {children}
+                  </View>
+                </Portal>
+              )}
               stackBehavior={
                 modal.props.bottomSheetProps?.stackBehavior || 'push'
               }

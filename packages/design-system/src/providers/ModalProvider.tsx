@@ -57,9 +57,10 @@ export interface ModalStackItem<T = unknown> {
   initialData: T;
 }
 
-export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const ModalProvider: React.FC<{
+  children: React.ReactNode;
+  portalName?: string;
+}> = ({ children, portalName = 'modal' }) => {
   const theme = useTheme();
   const [modalStack, setModalStack] = useState<ModalStackItem[]>([]);
   const modalIdCounter = useRef(0);
@@ -197,7 +198,7 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <ModalContext.Provider value={contextValue}>
       {children}
-      <Portal hostName="modal">
+      <Portal hostName={portalName}>
         {modalStack.map((modal, index) => {
           const showBackdrop = modal.props.modalProps?.showBackdrop ?? true;
           const customStyles = modal.props.modalProps?.styles ?? {};
