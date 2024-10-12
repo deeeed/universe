@@ -110,15 +110,13 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
   const [footerHeights, setFooterHeights] = useState<Record<number, number>>(
     {}
   );
-
   const updateLatestData = useCallback(<T,>(modalId: number, newValue: T) => {
-    setModalStack((prevStack) =>
-      prevStack.map((modal) =>
-        modal.id === modalId
-          ? ({ ...modal, latestData: newValue } as BottomSheetStackItem)
-          : modal
-      )
+    modalStackRef.current = modalStackRef.current.map((modal) =>
+      modal.id === modalId
+        ? ({ ...modal, latestData: newValue } as BottomSheetStackItem)
+        : modal
     );
+    setModalStack(modalStackRef.current);
   }, []);
 
   const updateFooterHeight = useCallback(
@@ -254,6 +252,13 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
 
       logger.debug('wrapResolve Calling resolve function');
       resolve(value);
+
+      // // Remove the modal from the ref first
+      // modalStackRef.current = modalStackRef.current.filter(
+      //   (m) => m.id !== modalId
+      // );
+      // // Then update the state with the latest ref value
+      // setModalStack([...modalStackRef.current]);
     },
     []
   );
@@ -394,13 +399,13 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
       type: SNAP_POINT_TYPE;
     }) => {
       logger.debug(
-        `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}, modalStack.length: ${modalStack.length}`
+        `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}, modalStack.length: ${modalStackRef.current.length}`
       );
-      const currentModal = modalStack.find((m) => m.id === modalId);
+      const currentModal = modalStackRef.current.find((m) => m.id === modalId);
       if (!currentModal) {
         logger.error(
           `handleSheetChanges: modal modalId=${modalId} not found`,
-          modalStack
+          modalStackRef.current
         );
         return;
       }
@@ -414,14 +419,13 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
           );
           currentModal.resolve(undefined);
         }
-        setTimeout(() => {
-          // remove from modalStack
-          setModalStack((prevStack) => {
-            const newStack = prevStack.filter((m) => m.id !== modalId);
-            logger.debug('handleSheetChanges: newStack', newStack);
-            return newStack;
-          });
-        }, 100);
+        // Update the ref first
+        modalStackRef.current = modalStackRef.current.filter(
+          (m) => m.id !== modalId
+        );
+        // Then update the state with the latest ref value
+        setModalStack([...modalStackRef.current]);
+        logger.debug('handleSheetChanges: newStack', modalStackRef.current);
       } else {
         logger.debug(
           `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}`
@@ -429,7 +433,7 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
         currentModal.props.bottomSheetProps?.onChange?.(index, position, type);
       }
     },
-    [modalStack]
+    []
   );
 
   const renderContent = useCallback(
