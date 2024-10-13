@@ -251,6 +251,9 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
       // Mark the modal as resolved
       currentModal.resolved = true;
 
+      logger.debug('wrapResolve Calling resolve function', value);
+      resolve(value);
+
       // Close the bottom sheet
       if (currentModal.bottomSheetRef.current) {
         currentModal.bottomSheetRef.current.dismiss();
@@ -261,9 +264,6 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
         // remove the modal from the stack
         removeModalFromStack(modalId);
       }
-
-      logger.debug('wrapResolve Calling resolve function', value);
-      setTimeout(() => resolve(value), 0);
     },
     [removeModalFromStack]
   );
@@ -284,14 +284,20 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
       // Mark the modal as rejected
       currentModal.rejected = true;
 
+      logger.debug('wrapReject Calling reject function', error);
+      reject(error);
+
       // Close the bottom sheet
       if (currentModal.bottomSheetRef.current) {
         currentModal.bottomSheetRef.current.dismiss();
+      } else {
+        logger.debug(
+          `wrapReject: modal ${modalId} bottomSheetRef.current is null, removing from stack`
+        );
+        removeModalFromStack(modalId);
       }
-
-      reject(error);
     },
-    []
+    [removeModalFromStack]
   );
 
   const handleModalDismiss = useCallback(
