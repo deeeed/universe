@@ -253,12 +253,12 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
       logger.debug('wrapResolve Calling resolve function');
       resolve(value);
 
-      // // Remove the modal from the ref first
-      // modalStackRef.current = modalStackRef.current.filter(
-      //   (m) => m.id !== modalId
-      // );
-      // // Then update the state with the latest ref value
-      // setModalStack([...modalStackRef.current]);
+      // Remove the modal from the ref first
+      modalStackRef.current = modalStackRef.current.filter(
+        (m) => m.id !== modalId
+      );
+      // Then update the state with the latest ref value
+      setModalStack([...modalStackRef.current]);
     },
     []
   );
@@ -286,6 +286,13 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
         currentModal.bottomSheetRef.current.dismiss();
       }
       reject(error);
+
+      // Remove the modal from the ref first
+      modalStackRef.current = modalStackRef.current.filter(
+        (m) => m.id !== modalId
+      );
+      // Then update the state with the latest ref value
+      setModalStack([...modalStackRef.current]);
     },
     [setModalStack]
   );
