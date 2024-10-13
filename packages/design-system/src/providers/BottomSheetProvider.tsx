@@ -261,9 +261,14 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
       // Close the bottom sheet
       if (currentModal.bottomSheetRef.current) {
         logger.debug(
-          `wrapResolve: dismissing bottom sheet for modal ${modalId}`
+          `wrapResolve: dismissing bottom sheet for modal ${modalId}`,
+          currentModal.bottomSheetRef.current
         );
         currentModal.bottomSheetRef.current.dismiss();
+        logger.debug(
+          `wrapResolve: dismissed bottom sheet for modal ${modalId}`,
+          currentModal.bottomSheetRef.current
+        );
       } else {
         logger.debug(
           `wrapResolve: modal ${modalId} bottomSheetRef.current is null, removing from stack`
@@ -319,11 +324,12 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
         return;
       }
 
-      if (!currentModal.resolved && !currentModal.rejected) {
+      if (!currentModal.resolved) {
         logger.debug(
-          `handleModalDismiss: modalId: ${modalId} is closing and not resolved, resolving with undefined`
+          `handleModalDismiss: modalId: ${modalId} is closing and not resolved, resolving with latestData`,
+          currentModal
         );
-        currentModal.resolve(undefined);
+        currentModal.resolve(currentModal.latestData);
       }
 
       removeModalFromStack(modalId);
