@@ -181,6 +181,14 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
     [modalStack, updateFooterHeight, updateLatestData]
   );
 
+  const removeModalFromStack = useCallback((modalId: number) => {
+    modalStackRef.current = modalStackRef.current.filter(
+      (m) => m.id !== modalId
+    );
+    setModalStack(modalStackRef.current);
+    logger.debug('removeModalFromStack: newStack', modalStackRef.current);
+  }, []);
+
   const renderHandler = useCallback(
     ({ modalId }: { modalId: number }) => {
       const HandlerComponent = (props: BottomSheetHandleProps) => {
@@ -280,31 +288,30 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
     []
   );
 
-  const handleModalDismiss = useCallback((modalId: number) => {
-    logger.debug(`handleModalDismiss: modalId: ${modalId}`);
-    const currentModal = modalStackRef.current.find((m) => m.id === modalId);
-    if (!currentModal) {
-      logger.error(
-        `handleModalDismiss: modal modalId=${modalId} not found`,
-        modalStackRef.current
-      );
-      return;
-    }
+  const handleModalDismiss = useCallback(
+    (modalId: number) => {
+      logger.debug(`handleModalDismiss: modalId: ${modalId}`);
+      const currentModal = modalStackRef.current.find((m) => m.id === modalId);
+      if (!currentModal) {
+        logger.error(
+          `handleModalDismiss: modal modalId=${modalId} not found`,
+          modalStackRef.current
+        );
+        return;
+      }
 
-    if (!currentModal.resolved && !currentModal.rejected) {
-      logger.debug(
-        `handleModalDismiss: modalId: ${modalId} is closing and not resolved, resolving with undefined`
-      );
-      currentModal.resolve(undefined);
-    }
+      if (!currentModal.resolved && !currentModal.rejected) {
+        logger.debug(
+          `handleModalDismiss: modalId: ${modalId} is closing and not resolved, resolving with undefined`
+        );
+        currentModal.resolve(undefined);
+      }
 
-    // Remove the modal from the stack
-    modalStackRef.current = modalStackRef.current.filter(
-      (m) => m.id !== modalId
-    );
-    setModalStack(modalStackRef.current);
-    logger.debug('handleModalDismiss: newStack', modalStackRef.current);
-  }, []);
+      removeModalFromStack(modalId);
+      logger.debug('handleModalDismiss: newStack', modalStackRef.current);
+    },
+    [removeModalFromStack]
+  );
 
   const openDrawer = useCallback(
     async <T,>(props: OpenDrawerProps<T>): Promise<T | undefined> => {
@@ -436,14 +443,14 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
           currentModal.resolve(undefined);
         }
 
-        logger.debug('handleSheetChanges: removing modal from stack', modalId);
-        // Update the ref first
-        modalStackRef.current = modalStackRef.current.filter(
-          (m) => m.id !== modalId
-        );
-        // Then update the state with the latest ref value
-        setModalStack(modalStackRef.current);
-        logger.debug('handleSheetChanges: newStack', modalStackRef.current);
+        // logger.debug('handleSheetChanges: removing modal from stack', modalId);
+        // // Update the ref first
+        // modalStackRef.current = modalStackRef.current.filter(
+        //   (m) => m.id !== modalId
+        // );
+        // // Then update the state with the latest ref value
+        // setModalStack(modalStackRef.current);
+        // logger.debug('handleSheetChanges: newStack', modalStackRef.current);
       } else {
         logger.debug(
           `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}`
