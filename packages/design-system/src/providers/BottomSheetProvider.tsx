@@ -405,7 +405,7 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
 
       if (index === -1) {
         logger.debug(`handleSheetChanges: modalId: ${modalId} is closing`);
-        if (!currentModal.resolved) {
+        if (!currentModal.resolved && !currentModal.rejected) {
           logger.debug(
             `handleSheetChanges: modalId: ${modalId} is closing and not resolved, resolving with initialData`,
             currentModal.initialData
@@ -480,7 +480,7 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
       <BottomSheetModalProvider>
         {children}
         {modalStack
-          .filter((modal) => !modal.resolved)
+          .filter((modal) => !modal.resolved && !modal.rejected)
           .map((modal) => {
             const bottomSheetProps = {
               ...defaultBottomSheetModalProps,
