@@ -250,8 +250,12 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
 
       // Mark the modal as resolved
       currentModal.resolved = true;
+      currentModal.latestData = value;
 
-      logger.debug('wrapResolve Calling resolve function', value);
+      logger.debug(
+        `wrapResolve Calling resolve function for modal ${modalId}`,
+        currentModal
+      );
       resolve(value);
 
       // Close the bottom sheet
