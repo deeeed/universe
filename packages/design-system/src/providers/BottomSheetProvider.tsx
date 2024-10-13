@@ -242,11 +242,9 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
 
       // Mark the modal as resolved
       currentModal.resolved = true;
-      setModalStack(modalStackRef.current);
 
-      // Close the bottom sheet if it's open
+      // Close the bottom sheet
       if (currentModal.bottomSheetRef.current) {
-        logger.debug('wrapResolve: dismissing bottom sheet', currentModal.id);
         currentModal.bottomSheetRef.current.dismiss();
       }
 
@@ -271,17 +269,42 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
 
       // Mark the modal as rejected
       currentModal.rejected = true;
-      setModalStack(modalStackRef.current);
 
-      // Close the bottom sheet if it's open
+      // Close the bottom sheet
       if (currentModal.bottomSheetRef.current) {
-        logger.debug('wrapReject: dismissing bottom sheet', currentModal.id);
         currentModal.bottomSheetRef.current.dismiss();
       }
+
       reject(error);
     },
     []
   );
+
+  const handleModalDismiss = useCallback((modalId: number) => {
+    logger.debug(`handleModalDismiss: modalId: ${modalId}`);
+    const currentModal = modalStackRef.current.find((m) => m.id === modalId);
+    if (!currentModal) {
+      logger.error(
+        `handleModalDismiss: modal modalId=${modalId} not found`,
+        modalStackRef.current
+      );
+      return;
+    }
+
+    if (!currentModal.resolved && !currentModal.rejected) {
+      logger.debug(
+        `handleModalDismiss: modalId: ${modalId} is closing and not resolved, resolving with undefined`
+      );
+      currentModal.resolve(undefined);
+    }
+
+    // Remove the modal from the stack
+    modalStackRef.current = modalStackRef.current.filter(
+      (m) => m.id !== modalId
+    );
+    setModalStack(modalStackRef.current);
+    logger.debug('handleModalDismiss: newStack', modalStackRef.current);
+  }, []);
 
   const openDrawer = useCallback(
     async <T,>(props: OpenDrawerProps<T>): Promise<T | undefined> => {
@@ -511,6 +534,7 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
                   })
                 }
                 enableDismissOnClose={true}
+                onDismiss={() => handleModalDismiss(modal.id)}
                 containerComponent={({ children }) => (
                   <Portal
                     hostName={modal.props.portalName || defaultPortalName}
