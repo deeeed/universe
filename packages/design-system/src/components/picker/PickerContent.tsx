@@ -32,6 +32,7 @@ const getStyles = (theme: AppTheme) => {
     },
     createOptionContainer: {
       padding: theme.spacing.padding,
+      paddingBottom: 100,
     },
     createOptionInput: {
       marginBottom: theme.spacing.margin,
@@ -108,20 +109,21 @@ export const PickerContent: React.FC<PickerContentProps> = ({
         initialData: {
           value: `new-option-${Date.now()}`,
           label: '',
-          selected: false,
+          selected: true,
         },
         title: 'Create New Option',
-        bottomSheetProps: {
-          enableDynamicSizing: true,
-        },
         render: ({ data, onChange }) => {
+          // console.debug('PickerContent: handleCreate render: data', data);
           return (
             <View style={styles.createOptionContainer}>
               <TextInput
                 autoFocus
                 label="New Option Label"
                 value={data?.label}
-                onChangeText={(text) => onChange({ ...data, label: text })}
+                onChangeText={(text) => {
+                  console.log('PickerContent: handleCreate onChangeText', text);
+                  onChange({ ...data, label: text });
+                }}
                 style={styles.createOptionInput}
               />
             </View>
@@ -129,17 +131,23 @@ export const PickerContent: React.FC<PickerContentProps> = ({
         },
         renderFooter: ({ resolve, data }) => {
           return (
-            <ConfirmCancelFooter
-              onCancel={() => resolve(undefined)}
-              onFinish={() => resolve(data)}
-            />
+            <View>
+              <Text>data: {JSON.stringify(data)}</Text>
+              <ConfirmCancelFooter
+                onCancel={() => resolve(undefined)}
+                onFinish={() => resolve(data)}
+              />
+            </View>
           );
         },
       });
 
       console.log('after drawernewOption', newOption);
       if (newOption) {
-        const updatedOptions = [...tempOptions, newOption];
+        const updatedOptions = [
+          ...tempOptions,
+          { ...newOption, selected: true },
+        ];
         setTempOptions(updatedOptions);
         onChange(updatedOptions);
       }
@@ -199,13 +207,15 @@ export const PickerContent: React.FC<PickerContentProps> = ({
       ) : (
         renderOptions()
       )}
-      {showDebugCreate && (
-        <IconButton
-          icon="plus"
-          onPress={handleCreate}
-          style={styles.debugCreateButton}
-        />
-      )}
+      <View style={{ height: 100 }}>
+        {showDebugCreate && (
+          <IconButton
+            icon="plus"
+            onPress={handleCreate}
+            style={styles.debugCreateButton}
+          />
+        )}
+      </View>
     </View>
   );
 };

@@ -92,21 +92,25 @@ export const Picker = ({
       const result = await openDrawer<SelectOption[]>({
         title: label,
         initialData: tempOptions,
-        render: ({ onChange, data }) => (
-          <PickerContent
-            options={data || []}
-            multi={multi}
-            showSearch={showSearch}
-            emptyLabel={emptyLabel}
-            emptyOptionsTitle={emptyOptionsTitle}
-            emptyOptionsMessage={emptyOptionsMessage}
-            noResultsText={noResultsText}
-            emptyActionLabel={emptyActionLabel}
-            fullWidthOptions={fullWidthOptions}
-            onChange={onChange}
-            emptyAction={emptyAction}
-          />
-        ),
+        render: ({ onChange, data }) => {
+          logger.debug(`Picker render: data`, data);
+          console.log('Picker render: tempOptions', tempOptions);
+          return (
+            <PickerContent
+              options={data || []}
+              multi={multi}
+              showSearch={showSearch}
+              emptyLabel={emptyLabel}
+              emptyOptionsTitle={emptyOptionsTitle}
+              emptyOptionsMessage={emptyOptionsMessage}
+              noResultsText={noResultsText}
+              emptyActionLabel={emptyActionLabel}
+              fullWidthOptions={fullWidthOptions}
+              onChange={onChange}
+              emptyAction={emptyAction}
+            />
+          );
+        },
         renderFooter: ({ data, resolve }) => {
           if (initialOptions.length === 0 && !data) {
             return null;
