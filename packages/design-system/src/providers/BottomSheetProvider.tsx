@@ -433,30 +433,34 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
         return;
       }
 
-      if (index === -1) {
-        logger.debug(`handleSheetChanges: modalId: ${modalId} is closing`);
-        if (!currentModal.resolved && !currentModal.rejected) {
-          logger.debug(
-            `handleSheetChanges: modalId: ${modalId} is closing and not resolved, resolving with initialData`,
-            currentModal.initialData
-          );
-          currentModal.resolve(undefined);
-        }
+      // if (index === -1) {
+      //   logger.debug(`handleSheetChanges: modalId: ${modalId} is closing`);
+      //   if (!currentModal.resolved && !currentModal.rejected) {
+      //     logger.debug(
+      //       `handleSheetChanges: modalId: ${modalId} is closing and not resolved, resolving with initialData`,
+      //       currentModal.initialData
+      //     );
+      //     currentModal.resolve(undefined);
+      //   }
 
-        // logger.debug('handleSheetChanges: removing modal from stack', modalId);
-        // // Update the ref first
-        // modalStackRef.current = modalStackRef.current.filter(
-        //   (m) => m.id !== modalId
-        // );
-        // // Then update the state with the latest ref value
-        // setModalStack(modalStackRef.current);
-        // logger.debug('handleSheetChanges: newStack', modalStackRef.current);
-      } else {
-        logger.debug(
-          `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}`
-        );
-        currentModal.props.bottomSheetProps?.onChange?.(index, position, type);
-      }
+      //   // logger.debug('handleSheetChanges: removing modal from stack', modalId);
+      //   // // Update the ref first
+      //   // modalStackRef.current = modalStackRef.current.filter(
+      //   //   (m) => m.id !== modalId
+      //   // );
+      //   // // Then update the state with the latest ref value
+      //   // setModalStack(modalStackRef.current);
+      //   // logger.debug('handleSheetChanges: newStack', modalStackRef.current);
+      // } else {
+      //   logger.debug(
+      //     `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}`
+      //   );
+      //   currentModal.props.bottomSheetProps?.onChange?.(index, position, type);
+      // }
+      logger.debug(
+        `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}`
+      );
+      currentModal.props.bottomSheetProps?.onChange?.(index, position, type);
     },
     []
   );
