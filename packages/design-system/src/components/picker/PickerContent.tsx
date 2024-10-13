@@ -1,10 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Chip, Searchbar, Text } from 'react-native-paper';
+import { Chip, IconButton, Searchbar, Text } from 'react-native-paper';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
+import { useModal } from '../../hooks/useModal/useModal';
 import { useTheme } from '../../providers/ThemeProvider';
+import { ConfirmCancelFooter } from '../bottom-modal/footers/ConfirmCancelFooter';
 import { Result } from '../Result/Result';
 import { SelectOption } from '../SelectButtons/SelectButtons';
+import { TextInput } from '../TextInput/TextInput';
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
@@ -23,6 +26,19 @@ const getStyles = (theme: AppTheme) => {
     optionItem: {
       marginBottom: theme.spacing.margin,
     },
+    debugCreateButton: {
+      alignSelf: 'flex-end',
+      marginTop: theme.spacing.margin,
+    },
+    createOptionContainer: {
+      padding: theme.spacing.padding,
+    },
+    createOptionInput: {
+      marginBottom: theme.spacing.margin,
+    },
+    createOptionButton: {
+      marginTop: theme.spacing.margin,
+    },
   });
 };
 
@@ -39,6 +55,7 @@ interface PickerContentProps {
   emptyActionLabel: string;
   onChange: (options: SelectOption[]) => void;
   onItemPress?: (item: SelectOption) => void;
+  showDebugCreate?: boolean;
 }
 
 export const PickerContent: React.FC<PickerContentProps> = ({
@@ -53,12 +70,14 @@ export const PickerContent: React.FC<PickerContentProps> = ({
   noResultsText,
   onChange,
   onItemPress,
+  showDebugCreate = true,
 }) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [searchQuery, setSearchQuery] = useState('');
 
   const [tempOptions, setTempOptions] = useState(options);
+  const { openDrawer } = useModal();
 
   const filteredOptions = useMemo(() => {
     return tempOptions.filter((option) =>
@@ -82,6 +101,52 @@ export const PickerContent: React.FC<PickerContentProps> = ({
     },
     [tempOptions, multi, onChange, onItemPress]
   );
+
+  const handleCreate = useCallback(async () => {
+    try {
+      const newOption = await openDrawer<SelectOption>({
+        initialData: {
+          value: `new-option-${Date.now()}`,
+          label: '',
+          selected: false,
+        },
+        title: 'Create New Option',
+        bottomSheetProps: {
+          enableDynamicSizing: true,
+        },
+        render: ({ data, onChange }) => {
+          return (
+            <View style={styles.createOptionContainer}>
+              <TextInput
+                autoFocus
+                label="New Option Label"
+                value={data?.label}
+                onChangeText={(text) => onChange({ ...data, label: text })}
+                style={styles.createOptionInput}
+              />
+            </View>
+          );
+        },
+        renderFooter: ({ resolve, data }) => {
+          return (
+            <ConfirmCancelFooter
+              onCancel={() => resolve(undefined)}
+              onFinish={() => resolve(data)}
+            />
+          );
+        },
+      });
+
+      console.log('after drawernewOption', newOption);
+      if (newOption) {
+        const updatedOptions = [...tempOptions, newOption];
+        setTempOptions(updatedOptions);
+        onChange(updatedOptions);
+      }
+    } catch (error) {
+      console.error('Error creating new option', error);
+    }
+  }, [openDrawer, tempOptions, onChange]);
 
   const renderOptions = useCallback(() => {
     return (
@@ -133,6 +198,13 @@ export const PickerContent: React.FC<PickerContentProps> = ({
         <Text>{noResultsText}</Text>
       ) : (
         renderOptions()
+      )}
+      {showDebugCreate && (
+        <IconButton
+          icon="plus"
+          onPress={handleCreate}
+          style={styles.debugCreateButton}
+        />
       )}
     </View>
   );
