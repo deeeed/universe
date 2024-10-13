@@ -240,25 +240,17 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
         return;
       }
 
-      logger.debug(
-        `wrapResolve currentModal.bottomSheetRef`,
-        currentModal?.bottomSheetRef.current
-      );
+      // Mark the modal as resolved
+      currentModal.resolved = true;
+      setModalStack([...modalStackRef.current]);
 
       // Close the bottom sheet if it's open
-      if (currentModal?.bottomSheetRef?.current) {
+      if (currentModal.bottomSheetRef.current) {
         currentModal.bottomSheetRef.current.dismiss();
       }
 
-      logger.debug('wrapResolve Calling resolve function');
+      logger.debug('wrapResolve Calling resolve function', value);
       resolve(value);
-
-      // Remove the modal from the ref first
-      modalStackRef.current = modalStackRef.current.filter(
-        (m) => m.id !== modalId
-      );
-      // Then update the state with the latest ref value
-      setModalStack([...modalStackRef.current]);
     },
     []
   );
@@ -270,31 +262,23 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
       const currentModal = modalStackRef.current.find((m) => m.id === modalId);
       if (!currentModal) {
         logger.error(
-          `wrapResolve: modal ${modalId} not found`,
+          `wrapReject: modal ${modalId} not found`,
           modalStackRef.current
         );
         return;
       }
 
-      logger.debug(
-        `wrapResolve currentModal.bottomSheetRef`,
-        currentModal?.bottomSheetRef.current
-      );
+      // Mark the modal as resolved
+      currentModal.resolved = true;
+      setModalStack([...modalStackRef.current]);
 
       // Close the bottom sheet if it's open
-      if (currentModal?.bottomSheetRef?.current) {
+      if (currentModal.bottomSheetRef.current) {
         currentModal.bottomSheetRef.current.dismiss();
       }
       reject(error);
-
-      // Remove the modal from the ref first
-      modalStackRef.current = modalStackRef.current.filter(
-        (m) => m.id !== modalId
-      );
-      // Then update the state with the latest ref value
-      setModalStack([...modalStackRef.current]);
     },
-    [setModalStack]
+    []
   );
 
   const openDrawer = useCallback(
@@ -418,13 +402,14 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
 
       if (index === -1) {
         logger.debug(`handleSheetChanges: modalId: ${modalId} is closing`);
-        // if (!currentModal.resolved) {
-        //   logger.debug(
-        //     `handleSheetChanges: modalId: ${modalId} is closing and not resolved, resolving with initialData`,
-        //     currentModal.initialData
-        //   );
-        //   currentModal.resolve(undefined);
-        // }
+        if (!currentModal.resolved) {
+          logger.debug(
+            `handleSheetChanges: modalId: ${modalId} is closing and not resolved, resolving with initialData`,
+            currentModal.initialData
+          );
+          currentModal.resolve(undefined);
+        }
+
         // Update the ref first
         modalStackRef.current = modalStackRef.current.filter(
           (m) => m.id !== modalId
@@ -490,61 +475,65 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
     <BottomSheetContext.Provider value={contextValue}>
       <BottomSheetModalProvider>
         {children}
-        {modalStack.map((modal) => {
-          const bottomSheetProps = {
-            ...defaultBottomSheetModalProps,
-            ...modal.props.bottomSheetProps,
-          };
+        {modalStack
+          .filter((modal) => !modal.resolved)
+          .map((modal) => {
+            const bottomSheetProps = {
+              ...defaultBottomSheetModalProps,
+              ...modal.props.bottomSheetProps,
+            };
 
-          // Use defaultSnapPoints only when enableDynamicSizing is false and no snapPoints provided
-          if (
-            !bottomSheetProps.enableDynamicSizing &&
-            (!bottomSheetProps.snapPoints ||
-              (Array.isArray(bottomSheetProps.snapPoints) &&
-                bottomSheetProps.snapPoints.length === 0))
-          ) {
-            bottomSheetProps.snapPoints = defaultSnapPoints;
-          }
+            // Use defaultSnapPoints only when enableDynamicSizing is false and no snapPoints provided
+            if (
+              !bottomSheetProps.enableDynamicSizing &&
+              (!bottomSheetProps.snapPoints ||
+                (Array.isArray(bottomSheetProps.snapPoints) &&
+                  bottomSheetProps.snapPoints.length === 0))
+            ) {
+              bottomSheetProps.snapPoints = defaultSnapPoints;
+            }
 
-          return (
-            <BottomSheetModal
-              key={modal.id}
-              ref={modal.bottomSheetRef}
-              {...bottomSheetProps}
-              onChange={(sheetIndex, position, type) =>
-                handleSheetChanges({
-                  modalId: modal.id,
-                  index: sheetIndex,
-                  position,
-                  type,
-                })
-              }
-              enableDismissOnClose={true}
-              containerComponent={({ children }) => (
-                <Portal hostName={modal.props.portalName || defaultPortalName}>
-                  <View
-                    style={{
-                      ...StyleSheet.absoluteFillObject,
-                      zIndex: 9999,
-                    }}
+            return (
+              <BottomSheetModal
+                key={modal.id}
+                ref={modal.bottomSheetRef}
+                {...bottomSheetProps}
+                onChange={(sheetIndex, position, type) =>
+                  handleSheetChanges({
+                    modalId: modal.id,
+                    index: sheetIndex,
+                    position,
+                    type,
+                  })
+                }
+                enableDismissOnClose={true}
+                containerComponent={({ children }) => (
+                  <Portal
+                    hostName={modal.props.portalName || defaultPortalName}
                   >
-                    {children}
-                  </View>
-                </Portal>
-              )}
-              stackBehavior={
-                modal.props.bottomSheetProps?.stackBehavior || 'push'
-              }
-              footerComponent={(props) =>
-                renderFooter({ modalId: modal.id, footerProps: props })
-              }
-              handleComponent={renderHandler({ modalId: modal.id })}
-              backdropComponent={renderBackdrop}
-            >
-              {renderContent({ modalId: modal.id })}
-            </BottomSheetModal>
-          );
-        })}
+                    <View
+                      style={{
+                        ...StyleSheet.absoluteFillObject,
+                        zIndex: 9999,
+                      }}
+                    >
+                      {children}
+                    </View>
+                  </Portal>
+                )}
+                stackBehavior={
+                  modal.props.bottomSheetProps?.stackBehavior || 'push'
+                }
+                footerComponent={(props) =>
+                  renderFooter({ modalId: modal.id, footerProps: props })
+                }
+                handleComponent={renderHandler({ modalId: modal.id })}
+                backdropComponent={renderBackdrop}
+              >
+                {renderContent({ modalId: modal.id })}
+              </BottomSheetModal>
+            );
+          })}
       </BottomSheetModalProvider>
     </BottomSheetContext.Provider>
   );
