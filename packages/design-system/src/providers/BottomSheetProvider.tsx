@@ -242,10 +242,11 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
 
       // Mark the modal as resolved
       currentModal.resolved = true;
-      setModalStack([...modalStackRef.current]);
+      setModalStack(modalStackRef.current);
 
       // Close the bottom sheet if it's open
       if (currentModal.bottomSheetRef.current) {
+        logger.debug('wrapResolve: dismissing bottom sheet', currentModal.id);
         currentModal.bottomSheetRef.current.dismiss();
       }
 
@@ -268,12 +269,13 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
         return;
       }
 
-      // Mark the modal as resolved
-      currentModal.resolved = true;
-      setModalStack([...modalStackRef.current]);
+      // Mark the modal as rejected
+      currentModal.rejected = true;
+      setModalStack(modalStackRef.current);
 
       // Close the bottom sheet if it's open
       if (currentModal.bottomSheetRef.current) {
+        logger.debug('wrapReject: dismissing bottom sheet', currentModal.id);
         currentModal.bottomSheetRef.current.dismiss();
       }
       reject(error);
@@ -324,6 +326,7 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
           latestData: initialData,
         } as BottomSheetStackItem;
 
+        logger.debug('openDrawer: adding new modal to stack', newModal);
         modalStackRef.current = [...modalStackRef.current, newModal];
         setModalStack(modalStackRef.current);
 
@@ -410,12 +413,13 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
           currentModal.resolve(undefined);
         }
 
+        logger.debug('handleSheetChanges: removing modal from stack', modalId);
         // Update the ref first
         modalStackRef.current = modalStackRef.current.filter(
           (m) => m.id !== modalId
         );
         // Then update the state with the latest ref value
-        setModalStack([...modalStackRef.current]);
+        setModalStack(modalStackRef.current);
         logger.debug('handleSheetChanges: newStack', modalStackRef.current);
       } else {
         logger.debug(
