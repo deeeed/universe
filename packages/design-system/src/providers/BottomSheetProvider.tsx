@@ -254,12 +254,18 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
       // Close the bottom sheet
       if (currentModal.bottomSheetRef.current) {
         currentModal.bottomSheetRef.current.dismiss();
+      } else {
+        logger.debug(
+          `wrapResolve: modal ${modalId} bottomSheetRef.current is null, removing from stack`
+        );
+        // remove the modal from the stack
+        removeModalFromStack(modalId);
       }
 
       logger.debug('wrapResolve Calling resolve function', value);
-      resolve(value);
+      setTimeout(() => resolve(value), 0);
     },
-    []
+    [removeModalFromStack]
   );
 
   const wrapReject = useCallback(
