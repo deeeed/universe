@@ -260,6 +260,9 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
 
       // Close the bottom sheet
       if (currentModal.bottomSheetRef.current) {
+        logger.debug(
+          `wrapResolve: dismissing bottom sheet for modal ${modalId}`
+        );
         currentModal.bottomSheetRef.current.dismiss();
       } else {
         logger.debug(
