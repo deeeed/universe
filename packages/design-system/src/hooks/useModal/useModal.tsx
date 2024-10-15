@@ -1,13 +1,13 @@
 import { BottomSheetModalProps } from '@gorhom/bottom-sheet';
-import React, { useCallback, useContext } from 'react';
+import React, { useCallback } from 'react';
 import { Platform } from 'react-native';
 import {
   DynInput,
   DynInputProps,
   DynamicType,
 } from '../../components/DynInput/DynInput';
-import { BottomSheetContext } from '../../providers/BottomSheetProvider';
-import { ModalContext, OpenModalProps } from '../../providers/ModalProvider';
+import { useModalController } from '../../providers/ModalControllerProvider';
+import { OpenModalProps } from '../../providers/ModalProvider';
 import { useTheme } from '../../providers/ThemeProvider';
 import { baseLogger } from '../../utils/logger';
 
@@ -21,27 +21,17 @@ export interface EditPropProps extends DynInputProps {
 }
 
 export const useModal = () => {
-  const bottomSheetContext = useContext(BottomSheetContext);
-  const modalContext = useContext(ModalContext);
+  const modalControllerContext = useModalController();
   const { colors } = useTheme();
 
-  if (!bottomSheetContext || !modalContext) {
+  if (!modalControllerContext) {
     throw new Error(
       'useModal must be used within both BottomSheetProvider and ModalProvider'
     );
   }
 
-  const {
-    openDrawer,
-    dismiss: dismissDrawer,
-    dismissAll: dismissAllDrawers,
-    modalStack,
-  } = bottomSheetContext;
-  const {
-    openModal,
-    dismiss: dismissModal,
-    dismissAll: dismissAllModals,
-  } = modalContext;
+  const { openDrawer, openModal, dismiss, dismissAll, modalStack } =
+    modalControllerContext;
 
   const editProp = useCallback(
     async ({
@@ -140,18 +130,6 @@ export const useModal = () => {
     },
     [openModal, openDrawer]
   );
-
-  const dismiss = useCallback(async (): Promise<boolean> => {
-    const modalDismissed = await dismissModal();
-    if (modalDismissed) return true;
-
-    return dismissDrawer();
-  }, [dismissModal, dismissDrawer]);
-
-  const dismissAll = useCallback(() => {
-    dismissAllModals();
-    dismissAllDrawers();
-  }, [dismissAllModals, dismissAllDrawers]);
 
   return {
     editProp,

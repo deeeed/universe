@@ -71,7 +71,7 @@ export const PickerContent: React.FC<PickerContentProps> = ({
   noResultsText,
   onChange,
   onItemPress,
-  showDebugCreate = false,
+  showDebugCreate = true,
 }) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);

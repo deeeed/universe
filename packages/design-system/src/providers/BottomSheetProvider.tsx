@@ -12,10 +12,11 @@ import {
   BottomSheetView,
   SNAP_POINT_TYPE,
 } from '@gorhom/bottom-sheet';
-import { Portal } from '@gorhom/portal';
 import React, {
   createContext,
+  forwardRef,
   useCallback,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -24,6 +25,7 @@ import { StyleSheet, View } from 'react-native';
 import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmCancelFooter';
 import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import { baseLogger } from '../utils/logger';
+import { Portal } from '@gorhom/portal';
 
 export interface BottomSheetStackItem<T = unknown> {
   id: number;
@@ -73,6 +75,7 @@ export interface OpenDrawerProps<T> {
 export interface BottomSheetProviderProps {
   children: React.ReactNode;
   defaultPortalName?: string;
+  sharedIdCounter: React.MutableRefObject<number>;
 }
 
 export interface BottomSheetContextValue {
@@ -98,14 +101,12 @@ const defaultBottomSheetModalProps: Partial<BottomSheetModalProps> = {
   enablePanDownToClose: true,
   enableDismissOnClose: true,
 };
-
-export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
-  children,
-  defaultPortalName = 'modal',
-}) => {
+export const BottomSheetProvider = forwardRef<
+  BottomSheetContextValue,
+  BottomSheetProviderProps
+>(({ children, defaultPortalName = 'modal', sharedIdCounter }, ref) => {
   const [modalStack, setModalStack] = useState<Array<BottomSheetStackItem>>([]);
   const modalStackRef = useRef<Array<BottomSheetStackItem>>([]);
-  const modalIdCounter = useRef(0);
 
   const [footerHeights, setFooterHeights] = useState<Record<number, number>>(
     {}
@@ -296,7 +297,7 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
           portalName = defaultPortalName,
         } = props;
 
-        const modalId = modalIdCounter.current++;
+        const modalId = sharedIdCounter.current++;
         let modalResolved = false;
 
         const modalResolve = (value: T | undefined) => {
@@ -476,6 +477,13 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
     [openDrawer, dismiss, dismissAll, modalStack]
   );
 
+  useImperativeHandle(ref, () => ({
+    openDrawer,
+    dismiss,
+    dismissAll,
+    modalStack,
+  }));
+
   return (
     <BottomSheetContext.Provider value={contextValue}>
       <BottomSheetModalProvider>
@@ -510,7 +518,13 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
                 })
               }
               enableDismissOnClose={true}
-              containerComponent={({ children }) => (
+              // FIXME: missing types in BottomSheetModal
+              // @ts-expect-error missing types in BottomSheetModal
+              containerComponent={({
+                children,
+              }: {
+                children: React.ReactNode;
+              }) => (
                 <Portal hostName={modal.props.portalName || defaultPortalName}>
                   <View
                     style={{
@@ -538,4 +552,5 @@ export const BottomSheetProvider: React.FC<BottomSheetProviderProps> = ({
       </BottomSheetModalProvider>
     </BottomSheetContext.Provider>
   );
-};
+});
+BottomSheetProvider.displayName = 'BottomSheetProvider';

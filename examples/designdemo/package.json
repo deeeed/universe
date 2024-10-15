@@ -27,7 +27,7 @@
     "@formatjs/intl-numberformat": "^8.10.3",
     "@formatjs/intl-pluralrules": "^5.2.14",
     "@formatjs/intl-relativetimeformat": "^11.2.14",
-    "@gorhom/bottom-sheet": "^5.0.0-alpha.11",
+    "@gorhom/bottom-sheet": "^5",
     "@gorhom/portal": "^1.0.14",
     "@react-native-community/slider": "4.5.2",
     "@react-navigation/drawer": "^6.6.15",

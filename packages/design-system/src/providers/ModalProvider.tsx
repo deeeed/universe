@@ -2,9 +2,10 @@ import { Portal } from '@gorhom/portal';
 import React, {
   ReactNode,
   createContext,
+  forwardRef,
   useCallback,
+  useImperativeHandle,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import {
@@ -37,9 +38,10 @@ export interface OpenModalProps<T = unknown> {
 }
 
 export interface ModalProviderProps {
-  openModal: <T = unknown>(props: OpenModalProps<T>) => Promise<T>;
+  openModal: <T>(props: OpenModalProps<T>) => Promise<T | undefined>;
   dismiss: () => Promise<boolean>;
   dismissAll: () => void;
+  modalStack: ModalStackItem[];
 }
 
 export const ModalContext = createContext<ModalProviderProps | undefined>(
@@ -50,20 +52,23 @@ const logger = baseLogger.extend('ModalProvider');
 
 export interface ModalStackItem<T = unknown> {
   id: number;
-  content: ReactNode;
+  content: React.ReactNode;
   props: OpenModalProps<T>;
   resolve: (value: T | undefined) => void;
   reject: (error: Error) => void;
   initialData: T;
 }
 
-export const ModalProvider: React.FC<{
-  children: React.ReactNode;
-  portalName?: string;
-}> = ({ children, portalName = 'modal' }) => {
+export const ModalProvider = forwardRef<
+  ModalProviderProps,
+  {
+    children: React.ReactNode;
+    portalName?: string;
+    sharedIdCounter: React.MutableRefObject<number>;
+  }
+>(({ children, portalName = 'modal', sharedIdCounter }, ref) => {
   const theme = useTheme();
   const [modalStack, setModalStack] = useState<ModalStackItem[]>([]);
-  const modalIdCounter = useRef(0);
 
   const handleModalDismiss = useCallback(() => {
     if (modalStack.length > 0) {
@@ -73,7 +78,7 @@ export const ModalProvider: React.FC<{
         return;
       }
       logger.debug('Dismissing modal', currentModal.id);
-      currentModal?.resolve(currentModal.initialData);
+      currentModal.resolve(currentModal.initialData);
       setModalStack((prevStack) => prevStack.slice(0, -1));
     }
   }, [modalStack]);
@@ -85,46 +90,40 @@ export const ModalProvider: React.FC<{
       render,
     }: OpenModalProps<T>): Promise<T> => {
       return new Promise<T>((resolve, reject) => {
-        const modalId = modalIdCounter.current++;
+        const modalId = sharedIdCounter.current++;
         logger.debug('Opening modal', modalId, {
           initialData,
           modalProperties,
         });
 
-        const wrapResolve = (value: T | undefined) => {
-          logger.debug('Modal resolved', modalId, value);
-          setModalStack((prevStack) =>
-            prevStack.filter((modal) => modal.id !== modalId)
-          );
-          resolve(value as T);
-        };
-
-        const wrapReject = (error: Error) => {
-          logger.debug('Modal rejected', modalId, error);
-          setModalStack((prevStack) =>
-            prevStack.filter((modal) => modal.id !== modalId)
-          );
-          reject(error);
-        };
-
-        const wrapOnChange = (value: T) => {
-          logger.debug('Modal onChange', modalId, value);
-          setModalStack((prevStack) =>
-            prevStack.map((modal) =>
-              modal.id === modalId
-                ? {
-                    ...modal,
-                    initialData: value,
-                  }
-                : modal
-            )
-          );
-        };
-
         const content = render({
-          resolve: wrapResolve,
-          reject: wrapReject,
-          onChange: wrapOnChange,
+          resolve: (value: T | undefined) => {
+            logger.debug('Modal resolved', modalId, value);
+            setModalStack((prevStack) =>
+              prevStack.filter((modal) => modal.id !== modalId)
+            );
+            resolve(value as T);
+          },
+          reject: (error: Error) => {
+            logger.debug('Modal rejected', modalId, error);
+            setModalStack((prevStack) =>
+              prevStack.filter((modal) => modal.id !== modalId)
+            );
+            reject(error);
+          },
+          onChange: (value: T) => {
+            logger.debug('Modal onChange', modalId, value);
+            setModalStack((prevStack) =>
+              prevStack.map((modal) =>
+                modal.id === modalId
+                  ? {
+                      ...modal,
+                      initialData: value,
+                    }
+                  : modal
+              )
+            );
+          },
           data: initialData as T,
         });
 
@@ -134,10 +133,10 @@ export const ModalProvider: React.FC<{
             id: modalId,
             content,
             props: { initialData, modalProps: modalProperties, render },
-            resolve: wrapResolve,
-            reject: wrapReject,
-            initialData: initialData,
-          } as ModalStackItem<unknown>,
+            resolve,
+            reject,
+            initialData,
+          } as ModalStackItem,
         ]);
       });
     },
@@ -191,9 +190,17 @@ export const ModalProvider: React.FC<{
       openModal,
       dismiss,
       dismissAll,
+      modalStack,
     }),
-    [openModal, dismiss, dismissAll]
+    [openModal, dismiss, dismissAll, modalStack]
   );
+
+  useImperativeHandle(ref, () => ({
+    openModal,
+    dismiss,
+    dismissAll,
+    modalStack,
+  }));
 
   return (
     <ModalContext.Provider value={contextValue}>
@@ -203,10 +210,6 @@ export const ModalProvider: React.FC<{
           const showBackdrop = modal.props.modalProps?.showBackdrop ?? true;
           const customStyles = modal.props.modalProps?.styles ?? {};
 
-          console.log(
-            `displaying modal ${modal.id} showBackdrop: ${showBackdrop}`,
-            modal.props.modalProps
-          );
           return (
             <TouchableWithoutFeedback
               key={modal.id}
@@ -239,7 +242,8 @@ export const ModalProvider: React.FC<{
       </Portal>
     </ModalContext.Provider>
   );
-};
+});
+ModalProvider.displayName = 'ModalProvider';
 
 const styles = StyleSheet.create({
   modalContainer: {

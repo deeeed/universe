@@ -3084,7 +3084,29 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@gorhom/bottom-sheet@npm:5.0.0-alpha.11, @gorhom/bottom-sheet@npm:^5.0.0-alpha.11, @gorhom/bottom-sheet@npm:^5.0.0-alpha.9":
+"@gorhom/bottom-sheet@npm:^5":
+  version: 5.0.2
+  resolution: "@gorhom/bottom-sheet@npm:5.0.2"
+  dependencies:
+    "@gorhom/portal": "npm:1.0.14"
+    invariant: "npm:^2.2.4"
+  peerDependencies:
+    "@types/react": "*"
+    "@types/react-native": "*"
+    react: "*"
+    react-native: "*"
+    react-native-gesture-handler: ">=2.16.1"
+    react-native-reanimated: ">=3.10.1"
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    "@types/react-native":
+      optional: true
+  checksum: 10c0/232c65215d5bbdbc22e82a5d4935594dd32438efa981238fcd41153033c409ead8c492d8d0c8338f0d9a249ae3788434c790a7e8396bb6e4be49509d8da6db2b
+  languageName: node
+  linkType: hard
+
+"@gorhom/bottom-sheet@npm:^5.0.0-alpha.9":
   version: 5.0.0-alpha.11
   resolution: "@gorhom/bottom-sheet@npm:5.0.0-alpha.11"
   dependencies:
@@ -5582,7 +5604,7 @@ __metadata:
     "@commitlint/config-conventional": "npm:^19.1.0"
     "@evilmartians/lefthook": "npm:^1.6.7"
     "@expo/vector-icons": "npm:^14.0.2"
-    "@gorhom/bottom-sheet": "npm:5.0.0-alpha.11"
+    "@gorhom/bottom-sheet": "npm:^5"
     "@gorhom/portal": "npm:^1.0.14"
     "@pchmn/expo-material3-theme": "npm:^1.3.2"
     "@react-native-async-storage/async-storage": "npm:1.23.1"
@@ -12155,7 +12177,7 @@ __metadata:
     "@formatjs/intl-numberformat": "npm:^8.10.3"
     "@formatjs/intl-pluralrules": "npm:^5.2.14"
     "@formatjs/intl-relativetimeformat": "npm:^11.2.14"
-    "@gorhom/bottom-sheet": "npm:^5.0.0-alpha.11"
+    "@gorhom/bottom-sheet": "npm:^5"
     "@gorhom/portal": "npm:^1.0.14"
     "@react-native-community/slider": "npm:4.5.2"
     "@react-navigation/drawer": "npm:^6.6.15"
