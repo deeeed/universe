@@ -1,6 +1,7 @@
 export interface LoggerConfig {
   maxLogs: number;
   namespaces: string;
+  disableExtraParamsInConsole?: boolean;
 }
 
 /**

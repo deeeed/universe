@@ -45,21 +45,25 @@ export const addLog = ({ namespace, level, params = [] }: AddLogParams) => {
   }
 
   const toLogParams = hasStringMessage ? restParams : params;
+  const consoleParams = state.config.disableExtraParamsInConsole
+    ? []
+    : toLogParams;
+
   switch (level) {
     case 'debug':
-      console.debug(messageWithNamespace, ...toLogParams);
+      console.debug(messageWithNamespace, ...consoleParams);
       break;
     case 'info':
-      console.info(messageWithNamespace, ...toLogParams);
+      console.info(messageWithNamespace, ...consoleParams);
       break;
     case 'warn':
-      console.warn(messageWithNamespace, ...toLogParams);
+      console.warn(messageWithNamespace, ...consoleParams);
       break;
     case 'error':
-      console.error(messageWithNamespace, ...toLogParams);
+      console.error(messageWithNamespace, ...consoleParams);
       break;
     default:
-      console.log(messageWithNamespace, ...toLogParams);
+      console.log(messageWithNamespace, ...consoleParams);
       break;
   }
 };
@@ -127,6 +131,10 @@ export const setLoggerConfig = (newConfig: Partial<LoggerConfig>) => {
   state.config = { ...state.config, ...newConfig };
   if (newConfig.namespaces !== undefined) {
     setNamespaces(newConfig.namespaces);
+  }
+  if (newConfig.disableExtraParamsInConsole !== undefined) {
+    state.config.disableExtraParamsInConsole =
+      newConfig.disableExtraParamsInConsole;
   }
 };
 

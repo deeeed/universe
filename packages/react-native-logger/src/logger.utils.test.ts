@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+//packages/react-native-logger/src/logger.utils.test.ts
+
 import { safeStringify, coerceToString } from './logger.utils';
 
 describe('logger.utils', () => {
@@ -9,7 +10,11 @@ describe('logger.utils', () => {
     });
 
     it('should handle circular references', () => {
-      const obj: any = { a: 1 };
+      interface CircularObj {
+        a: number;
+        b?: CircularObj;
+      }
+      const obj: CircularObj = { a: 1 };
       obj.b = obj;
       expect(safeStringify(obj)).toBe('{"a":1,"b":"[Circular]"}');
     });
@@ -20,13 +25,21 @@ describe('logger.utils', () => {
     });
 
     it('should handle nested objects with circular references', () => {
-      const obj: any = { a: 1, b: { c: 2 } };
+      interface NestedCircularObj {
+        a: number;
+        b: {
+          c: number;
+          d?: NestedCircularObj;
+        };
+      }
+      const obj: NestedCircularObj = { a: 1, b: { c: 2 } };
       obj.b.d = obj;
       expect(safeStringify(obj)).toBe('{"a":1,"b":{"c":2,"d":"[Circular]"}}');
     });
 
     it('should handle arrays with circular references', () => {
-      const arr: any[] = [1, 2, 3];
+      type CircularArray = (number | CircularArray)[];
+      const arr: CircularArray = [1, 2, 3];
       arr.push(arr);
       expect(safeStringify(arr)).toBe('[1,2,3,"[Circular]"]');
     });
@@ -63,7 +76,11 @@ describe('logger.utils', () => {
     });
 
     it('should handle circular references', () => {
-      const obj: any = { a: 1 };
+      interface CircularObj {
+        a: number;
+        b?: CircularObj;
+      }
+      const obj: CircularObj = { a: 1 };
       obj.b = obj;
       expect(coerceToString(obj)).toBe('{"a":1,"b":"[Circular]"}');
     });
