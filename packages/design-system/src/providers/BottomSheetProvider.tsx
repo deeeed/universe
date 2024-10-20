@@ -343,44 +343,39 @@ export const BottomSheetProvider = forwardRef<
     [setModalStack, defaultPortalName, wrapResolve, wrapReject]
   );
 
-  const dismiss = useCallback(
-    (modalId?: number) => {
-      return new Promise<boolean>((resolvePromise) => {
-        const currentModal = modalId
-          ? modalStack.find((m) => m.id === modalId)
-          : modalStack[modalStack.length - 1];
+  const dismiss = useCallback((modalId?: number) => {
+    return new Promise<boolean>((resolvePromise) => {
+      const currentModal = modalId
+        ? modalStackRef.current.find((m) => m.id === modalId)
+        : modalStackRef.current[modalStackRef.current.length - 1];
 
-        if (!currentModal) {
-          logger.error('dismiss: modal not found');
-          resolvePromise(false);
-          return;
-        }
+      if (!currentModal) {
+        logger.error('dismiss: modal not found');
+        resolvePromise(false);
+        return;
+      }
 
-        logger.debug(`dismiss: modalId: ${currentModal.id}`, currentModal);
+      logger.debug(`dismiss: modalId: ${currentModal.id}`, currentModal);
 
-        // Dismiss the current modal
-        currentModal.bottomSheetRef.current?.dismiss();
+      // Dismiss the current modal
+      currentModal.bottomSheetRef.current?.dismiss();
 
-        // Resolve the promise after a short delay to allow for animation
-        setTimeout(() => {
-          logger.debug(
-            'dismiss: resolving modal after delay:',
-            currentModal.id
-          );
-          currentModal.resolve(undefined);
-          resolvePromise(true);
-        }, 300); // Adjust this delay if needed
-      });
-    },
-    [modalStack]
-  );
+      // Resolve the promise after a short delay to allow for animation
+      setTimeout(() => {
+        logger.debug('dismiss: resolving modal after delay:', currentModal.id);
+        currentModal.resolve(undefined);
+        resolvePromise(true);
+      }, 300); // Adjust this delay if needed
+    });
+  }, []);
 
   const dismissAll = useCallback(() => {
-    modalStack.forEach((modal) => {
+    modalStackRef.current.forEach((modal) => {
       modal.bottomSheetRef.current?.dismiss();
     });
+    modalStackRef.current = [];
     setModalStack([]);
-  }, [modalStack]);
+  }, []);
 
   const handleSheetChanges = useCallback(
     ({
@@ -395,42 +390,23 @@ export const BottomSheetProvider = forwardRef<
       type: SNAP_POINT_TYPE;
     }) => {
       logger.debug(
-        `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}, modalStack.length: ${modalStack.length}`
+        `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}, modalStack.length: ${modalStackRef.current.length}`
       );
-      const currentModal = modalStack.find((m) => m.id === modalId);
+      const currentModal = modalStackRef.current.find((m) => m.id === modalId);
       if (!currentModal) {
         logger.error(
           `handleSheetChanges: modal modalId=${modalId} not found`,
-          modalStack
+          modalStackRef.current
         );
         return;
       }
 
-      if (index === -1) {
-        logger.debug(`handleSheetChanges: modalId: ${modalId} is closing`);
-        if (!currentModal.resolved) {
-          logger.debug(
-            `handleSheetChanges: modalId: ${modalId} is closing and not resolved, resolving with initialData`,
-            currentModal.initialData
-          );
-          currentModal.resolve(undefined);
-        }
-        setTimeout(() => {
-          // remove from modalStack
-          setModalStack((prevStack) => {
-            const newStack = prevStack.filter((m) => m.id !== modalId);
-            logger.debug('handleSheetChanges: newStack', newStack);
-            return newStack;
-          });
-        }, 100);
-      } else {
-        logger.debug(
-          `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}`
-        );
-        currentModal.props.bottomSheetProps?.onChange?.(index, position, type);
-      }
+      logger.debug(
+        `handleSheetChanges: modalId: ${modalId}, index: ${index}, position: ${position}, type: ${type}`
+      );
+      currentModal.props.bottomSheetProps?.onChange?.(index, position, type);
     },
-    [modalStack]
+    []
   );
 
   const renderContent = useCallback(
@@ -484,6 +460,21 @@ export const BottomSheetProvider = forwardRef<
     modalStack,
   }));
 
+  const handleDismiss = useCallback(({ modalId }: { modalId: number }) => {
+    const currentModal = modalStackRef.current.find((m) => m.id === modalId);
+    if (!currentModal) {
+      logger.error('handleDismiss: modal not found');
+      return;
+    }
+    logger.debug('handleDismiss modalId', modalId);
+
+    const newStack = modalStackRef.current.filter((m) => m.id !== modalId);
+    modalStackRef.current = newStack;
+    // remove from modalStack
+    setModalStack(newStack);
+    logger.debug(`new modalStack length: ${newStack.length}`);
+  }, []);
+
   return (
     <BottomSheetContext.Provider value={contextValue}>
       <BottomSheetModalProvider>
@@ -518,6 +509,7 @@ export const BottomSheetProvider = forwardRef<
                 })
               }
               enableDismissOnClose={true}
+              onDismiss={() => handleDismiss({ modalId: modal.id })}
               // FIXME: missing types in BottomSheetModal
               // @ts-expect-error missing types in BottomSheetModal
               containerComponent={({

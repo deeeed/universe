@@ -57,6 +57,7 @@ export interface PickerProps {
   emptyOptionsMessage?: string;
   noResultsText?: string;
   emptyActionLabel?: string;
+  showCreateOptionButton?: boolean;
 }
 
 export const Picker = ({
@@ -70,6 +71,7 @@ export const Picker = ({
   emptyOptionsMessage = 'No options available',
   noResultsText = 'No options available',
   emptyActionLabel = 'Create New',
+  showCreateOptionButton = false,
   onFinish,
   emptyAction,
 }: PickerProps) => {
@@ -100,6 +102,7 @@ export const Picker = ({
               options={data || []}
               multi={multi}
               showSearch={showSearch}
+              showDebugCreate={showCreateOptionButton}
               emptyLabel={emptyLabel}
               emptyOptionsTitle={emptyOptionsTitle}
               emptyOptionsMessage={emptyOptionsMessage}

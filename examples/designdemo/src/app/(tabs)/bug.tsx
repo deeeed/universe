@@ -246,6 +246,7 @@ const InnerComponent = ({ onChange, footerHeight }: InnerComponentProps) => {
         <Text>{JSON.stringify(options)}</Text>
         <Picker
           label="Picker"
+          showCreateOptionButton
           options={options}
           onFinish={(values) => {
             console.log("Picker value changed to:", values);
