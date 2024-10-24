@@ -24,13 +24,11 @@ import {
   CustomAppTheme,
   useAppThemeSetup,
 } from '../hooks/_useAppThemeSetup';
-import { BottomSheetProvider } from './BottomSheetProvider';
 import { ConfirmProvider, ConfirmProviderProps } from './ConfirmProvider';
 import { LanguageProvider } from './LanguageProvider';
-import { ModalProvider } from './ModalProvider';
+import { ModalControllerProvider } from './ModalControllerProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { ToastProvider, ToastProviderProps } from './ToastProvider';
-import { OverlayProvider } from './OverlayProvider';
 
 export const DefaultLightTheme: CustomAppTheme = {
   ...MD3LightTheme,
@@ -166,24 +164,20 @@ const UIProviderWithLanguageReady = ({
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <PortalProvider>
-        <ThemeProvider preferences={defaultPreferences}>
-          <OverlayProvider>
-            <ConfirmProvider {...confirmProviderProps}>
-              <ToastProvider {...toastProviderProps}>
-                <BottomSheetProvider defaultPortalName={portalName}>
-                  <ModalProvider portalName={portalName}>
-                    <>
-                      {children}
-                      <PortalHost name={portalName} />
-                    </>
-                  </ModalProvider>
-                </BottomSheetProvider>
-              </ToastProvider>
-            </ConfirmProvider>
-          </OverlayProvider>
-        </ThemeProvider>
-      </PortalProvider>
+      <ThemeProvider preferences={defaultPreferences}>
+        <ConfirmProvider {...confirmProviderProps}>
+          <ToastProvider {...toastProviderProps}>
+            <PortalProvider>
+              <ModalControllerProvider>
+                <>
+                  {children}
+                  <PortalHost name={portalName} />
+                </>
+              </ModalControllerProvider>
+            </PortalProvider>
+          </ToastProvider>
+        </ConfirmProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 };

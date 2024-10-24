@@ -1,6 +1,6 @@
 {
   "name": "@siteed/design-system",
-  "version": "0.28.16",
+  "version": "0.29.2",
   "author": "Arthur Breton <abreton@siteed.net> (https://github.com/deeeed)",
   "license": "MIT",
   "repository": {
@@ -67,7 +67,7 @@
     "@commitlint/config-conventional": "^19.1.0",
     "@evilmartians/lefthook": "^1.6.7",
     "@expo/vector-icons": "^14.0.2",
-    "@gorhom/bottom-sheet": "5.0.0-alpha.11",
+    "@gorhom/bottom-sheet": "^5",
     "@gorhom/portal": "^1.0.14",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/datetimepicker": "8.0.1",

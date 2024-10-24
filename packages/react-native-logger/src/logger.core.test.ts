@@ -1,4 +1,5 @@
 // packages/react-native-logger/src/logger.core.test.ts
+
 import {
   addLog,
   clearLogs,
@@ -11,6 +12,7 @@ import {
   setLoggerConfig,
   setNamespaces,
 } from './logger.core';
+import { coerceToString, safeStringify } from './logger.utils';
 
 export const mockGetItem = jest.fn();
 export const mockSetItem = jest.fn();
@@ -422,6 +424,83 @@ describe('Logger Tests', () => {
       (console.debug as jest.Mock).mockRestore();
       (console.warn as jest.Mock).mockRestore();
       (console.error as jest.Mock).mockRestore();
+    });
+
+    it('should safely stringify circular objects', () => {
+      const circularObj: { a: number; self?: unknown } = { a: 1 };
+      circularObj.self = circularObj;
+
+      const result = safeStringify(circularObj);
+      expect(result).toContain('"a":1');
+      expect(result).toContain('"self":"[Circular]"');
+    });
+
+    it('should coerce various types to string', () => {
+      expect(coerceToString(undefined)).toBe('');
+      expect(coerceToString('string')).toBe('string');
+      expect(coerceToString({ a: 1 })).toBe('{"a":1}');
+      expect(coerceToString([1, 2, 3])).toBe('[1,2,3]');
+
+      const circularObj: { a: number; self?: unknown } = { a: 1 };
+      circularObj.self = circularObj;
+      expect(coerceToString(circularObj)).toContain('"self":"[Circular]"');
+    });
+  });
+
+  describe('Console Output Control', () => {
+    beforeEach(() => {
+      resetLoggerAndMocks();
+      jest.spyOn(console, 'log').mockImplementation();
+    });
+
+    afterEach(() => {
+      (console.log as jest.Mock).mockRestore();
+    });
+
+    it('should print all params to console when disableExtraParamsInConsole is false', () => {
+      setLoggerConfig({
+        namespaces: 'test',
+        disableExtraParamsInConsole: false,
+      });
+      const logger = getLogger('test');
+      logger.log('Test message', { key: 'value' }, [1, 2, 3]);
+
+      expect(console.log).toHaveBeenCalledWith(
+        '[test] Test message',
+        { key: 'value' },
+        [1, 2, 3]
+      );
+    });
+
+    it('should only print the first param to console when disableExtraParamsInConsole is true', () => {
+      setLoggerConfig({
+        namespaces: 'test',
+        disableExtraParamsInConsole: true,
+      });
+      const logger = getLogger('test');
+      logger.log('Test message', { key: 'value' }, [1, 2, 3]);
+
+      expect(console.log).toHaveBeenCalledWith('[test] Test message');
+    });
+
+    it('should still save all params in memory when disableExtraParamsInConsole is true', () => {
+      setLoggerConfig({
+        namespaces: 'test',
+        disableExtraParamsInConsole: true,
+      });
+      const logger = getLogger('test');
+      logger.log('Test message', { key: 'value' }, [1, 2, 3]);
+
+      const logs = getLogs();
+      expect(logs.length).toBe(1);
+
+      const lastLog = logs[logs.length - 1];
+      expect(lastLog).toBeDefined();
+      if (lastLog) {
+        expect(lastLog.message).toContain('Test message');
+        expect(lastLog.message).toContain('{"key":"value"}');
+        expect(lastLog.message).toContain('[1,2,3]');
+      }
     });
   });
 });

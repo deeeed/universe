@@ -14,6 +14,10 @@ export interface LoggerState {
 export const state: LoggerState = {
   enabledNamespaces: [],
   logsArray: [],
-  config: { maxLogs: DEFAULT_MAX_LOGS, namespaces: DEFAULT_NAMESPACES },
+  config: {
+    maxLogs: DEFAULT_MAX_LOGS,
+    namespaces: DEFAULT_NAMESPACES,
+    disableExtraParamsInConsole: false,
+  },
   loggersMap: new Map<string, LoggerMethods>(),
 };

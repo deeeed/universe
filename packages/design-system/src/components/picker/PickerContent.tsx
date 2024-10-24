@@ -71,7 +71,7 @@ export const PickerContent: React.FC<PickerContentProps> = ({
   noResultsText,
   onChange,
   onItemPress,
-  showDebugCreate = true,
+  showDebugCreate = false,
 }) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -132,7 +132,6 @@ export const PickerContent: React.FC<PickerContentProps> = ({
         renderFooter: ({ resolve, data }) => {
           return (
             <View>
-              <Text>data: {JSON.stringify(data)}</Text>
               <ConfirmCancelFooter
                 onCancel={() => resolve(undefined)}
                 onFinish={() => resolve(data)}
@@ -207,15 +206,13 @@ export const PickerContent: React.FC<PickerContentProps> = ({
       ) : (
         renderOptions()
       )}
-      <View style={{ height: 100 }}>
-        {showDebugCreate && (
-          <IconButton
-            icon="plus"
-            onPress={handleCreate}
-            style={styles.debugCreateButton}
-          />
-        )}
-      </View>
+      {showDebugCreate && (
+        <IconButton
+          icon="plus"
+          onPress={handleCreate}
+          style={styles.debugCreateButton}
+        />
+      )}
     </View>
   );
 };

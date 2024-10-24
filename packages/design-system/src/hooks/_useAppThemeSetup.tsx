@@ -1,5 +1,6 @@
 // hooks/useAppTheme.ts
 import { useEffect, useMemo, useState } from 'react';
+import { Appearance, ColorSchemeName } from 'react-native';
 import { MD3Theme, configureFonts } from 'react-native-paper';
 import { useScreenWidth } from './useScreenWidth';
 
@@ -44,7 +45,7 @@ export interface AppTheme extends CustomAppTheme {
 }
 
 export interface SavedUserPreferences {
-  darkMode: boolean;
+  darkMode?: boolean;
   locale?: string;
   rippleEffectEnabled: boolean;
 }
@@ -56,11 +57,14 @@ export const useAppThemeSetup = ({
   customLightTheme,
 }: {
   fontFamily?: string;
-  savedPreferences?: SavedUserPreferences; // if set will override the theme
+  savedPreferences?: SavedUserPreferences;
   customLightTheme: CustomAppTheme;
   customDarkTheme: CustomAppTheme;
 }) => {
-  const [darkMode, setDarkMode] = useState(savedPreferences?.darkMode ?? false);
+  const colorScheme = Appearance.getColorScheme();
+  const [darkMode, setDarkMode] = useState<boolean>(
+    savedPreferences?.darkMode ?? colorScheme === 'dark'
+  );
   const [themeVersion, setThemeVersion] = useState<number>(3);
   const screenWidth = useScreenWidth();
 
@@ -99,9 +103,25 @@ export const useAppThemeSetup = ({
     customLightTheme.gap,
   ]);
 
+  // Listen to system color scheme changes
   useEffect(() => {
-    if (savedPreferences) {
+    if (savedPreferences && savedPreferences.darkMode !== undefined) {
       setDarkMode(savedPreferences.darkMode);
+      return; // No cleanup needed
+    } else {
+      const appearanceListener = ({
+        colorScheme,
+      }: {
+        colorScheme: ColorSchemeName;
+      }) => {
+        setDarkMode(colorScheme === 'dark');
+      };
+
+      const subscription = Appearance.addChangeListener(appearanceListener);
+
+      return () => {
+        subscription.remove();
+      };
     }
   }, [savedPreferences]);
 
@@ -109,7 +129,7 @@ export const useAppThemeSetup = ({
     const baseTheme = darkMode ? customDarkTheme : customLightTheme;
     return {
       ...baseTheme,
-      spacing: dynamicSpacing, // Add the dynamic spacing to the theme
+      spacing: dynamicSpacing,
     };
   }, [darkMode, customDarkTheme, customLightTheme, dynamicSpacing]);
 
