@@ -1,10 +1,12 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { DrawerActions } from "@react-navigation/native";
+import { useThemePreferences } from "@siteed/design-system";
 import { Tabs, useNavigation } from "expo-router";
 import React from "react";
 
 export default function TabLayout() {
   const navigation = useNavigation();
+  const { darkMode, theme } = useThemePreferences();
 
   return (
     <Tabs
@@ -15,12 +17,17 @@ export default function TabLayout() {
             name="menu"
             size={24}
             style={{ paddingLeft: 10 }}
-            color="black"
+            color={darkMode ? "white" : "black"}
             onPress={() => {
               navigation.dispatch(DrawerActions.toggleDrawer());
             }}
           />
         ),
+        tabBarStyle: {
+          backgroundColor: theme.colors.background,
+        },
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.onSurface,
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Theme", href: "/" }} />

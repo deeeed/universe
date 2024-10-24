@@ -1,7 +1,6 @@
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useMemo, useRef } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Button, Text } from "react-native-paper";
 
 export default function ModalScreen() {
@@ -30,7 +29,6 @@ export default function ModalScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Modal</Text>
 
-      <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
       <Button onPress={() => handleSnapPress(2)}>Snap To 90%</Button>
       <Button onPress={() => handleSnapPress(1)}>Snap To 50%</Button>
       <Button onPress={() => handleSnapPress(0)}>Snap To 25%</Button>

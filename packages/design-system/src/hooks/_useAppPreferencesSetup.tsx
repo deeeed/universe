@@ -15,6 +15,7 @@ interface useThemePreferencesProps {
 export interface ThemeActions {
   toggleShouldUseDeviceColors?: () => void;
   toggleDarkMode: () => void;
+  setDarkMode: (value: boolean) => void;
   toggleThemeVersion: () => void;
   toggleCollapsed: () => void;
   toggleCustomFont: () => void;
@@ -29,6 +30,7 @@ export interface ThemePreferences {
   theme: AppTheme;
   darkMode: boolean;
   shouldUseDeviceColors?: boolean;
+  isReady: boolean;
 }
 
 const logger = baseLogger.extend('useAppPreferencesSetup');
@@ -37,7 +39,7 @@ export const useAppPreferencesSetup = ({
   theme,
   i18nInstance,
   savePreferences,
-  setDarkMode,
+  setDarkMode: setThemeDarkMode,
 }: useThemePreferencesProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [darkMode, setLocalDarkmode] = useState(theme.dark);
@@ -45,10 +47,18 @@ export const useAppPreferencesSetup = ({
   const [rippleEffectEnabled, setRippleEffectEnabled] = useState(true);
   const [dynamicTheme, setDynamicTheme] = useState<AppTheme>(theme);
   const [listener, setListener] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     setDynamicTheme(theme);
   }, [theme]);
+
+  // FIXNE: find a reliable way to determins when all providers are ready and set it from the parent UIProvider.
+  // Currently, it causes issue with the status bar that is set too soon and somehow doesn't sync the theme.
+  // useEffect(() => {
+  //   const timeout = setTimeout(() => setIsReady(true), 1000);
+  //   return () => clearTimeout(timeout);
+  // }, []);
 
   useEffect(() => {
     const onLanguage = (lng: string) => {
@@ -61,7 +71,9 @@ export const useAppPreferencesSetup = ({
 
     if (!listener && i18nInstance.isInitialized) {
       i18nInstance.on('languageChanged', onLanguage);
+      console.log('language changed set isReady to true');
       setListener(true);
+      setIsReady(true);
     }
 
     return () => {};
@@ -77,12 +89,20 @@ export const useAppPreferencesSetup = ({
   const preferences: ThemeActions & ThemePreferences = useMemo(
     () => ({
       toggleDarkMode: () => {
-        const oldValue = dynamicTheme.dark ?? false;
-        const newValue = !oldValue;
+        const newValue = !dynamicTheme.dark;
         setLocalDarkmode(newValue);
-        setDarkMode(newValue);
+        setThemeDarkMode(newValue);
         savePreferences?.({
           darkMode: newValue,
+          rippleEffectEnabled,
+          locale: i18nInstance.language,
+        });
+      },
+      setDarkMode: (value: boolean) => {
+        setLocalDarkmode(value);
+        setThemeDarkMode(value);
+        savePreferences?.({
+          darkMode: value,
           rippleEffectEnabled,
           locale: i18nInstance.language,
         });
@@ -125,15 +145,17 @@ export const useAppPreferencesSetup = ({
       collapsed,
       darkMode,
       theme: dynamicTheme,
+      isReady,
     }),
     [
       dynamicTheme,
+      isReady,
       collapsed,
       i18nInstance,
       savePreferences,
       customFontLoaded,
       rippleEffectEnabled,
-      setDarkMode,
+      setThemeDarkMode,
     ]
   );
 

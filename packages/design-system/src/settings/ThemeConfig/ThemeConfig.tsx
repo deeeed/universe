@@ -32,7 +32,7 @@ export const ThemeConfig = ({
 }: ThemeConfigProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
-  const { toggleDarkMode, setThemeColor, darkMode } = useThemePreferences();
+  const { setDarkMode, setThemeColor, darkMode } = useThemePreferences();
   const { i18n } = useTranslation();
 
   return (
@@ -40,7 +40,7 @@ export const ThemeConfig = ({
       <LabelSwitch
         label={'DarkMode'}
         value={darkMode}
-        onValueChange={toggleDarkMode}
+        onValueChange={setDarkMode}
       />
       <ColorPicker
         label={'Primary'}
