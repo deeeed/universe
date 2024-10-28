@@ -8,7 +8,7 @@ import pkg from "../package.json";
 const program = new Command();
 
 program
-  .name("release-it")
+  .name("publisher")
   .description("Monorepo release management tool")
   .version(pkg.version);
 
