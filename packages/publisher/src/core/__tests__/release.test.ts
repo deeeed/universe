@@ -18,12 +18,10 @@ jest.mock("../package-manager", () => ({
   PackageManagerFactory: {
     create: jest.fn().mockReturnValue({
       validateAuth: jest.fn().mockResolvedValue(undefined),
-      publish: jest
-        .fn()
-        .mockResolvedValue({
-          published: true,
-          registry: "https://registry.npmjs.org",
-        }),
+      publish: jest.fn().mockResolvedValue({
+        published: true,
+        registry: "https://registry.npmjs.org",
+      }),
       getLatestVersion: jest.fn().mockResolvedValue("1.0.0"),
       checkWorkspaceIntegrity: jest.fn().mockResolvedValue(true),
       updateDependencies: jest.fn().mockResolvedValue(undefined),
