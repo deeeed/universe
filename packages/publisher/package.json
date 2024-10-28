@@ -12,7 +12,7 @@
   "main": "dist/src/index.js",
   "module": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
-  "bin": "./dist/bin/publisher.js",
+  "bin": "dist/bin/publisher.js",
   "files": [
     "dist",
     "templates",
@@ -30,6 +30,7 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\" \"bin/**/*.ts\"",
     "release": "node ./dist/bin/publisher.js publish",
+    "publisher": "ts-node bin/publisher.ts",
     "prepare": "husky install"
   },
   "dependencies": {

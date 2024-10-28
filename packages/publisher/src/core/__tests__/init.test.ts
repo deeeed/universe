@@ -16,6 +16,7 @@ jest.mock("../../utils/logger", () => {
       warning: jest.fn(),
       error: jest.fn(),
       success: jest.fn(),
+      debug: jest.fn(), // Add debug method if your Logger uses it
     })),
   };
 });
@@ -25,6 +26,7 @@ jest.mock("../workspace", () => {
   return {
     WorkspaceService: jest.fn().mockImplementation(() => ({
       getPackages: jest.fn(),
+      getRootDir: jest.fn().mockReturnValue("/path/to/monorepo/root"), // Add this line
       // Add other methods if necessary
     })),
   };
@@ -60,21 +62,36 @@ describe("InitService", () => {
       ];
 
       mockWorkspaceService.getPackages.mockResolvedValue(mockPackages);
+      mockWorkspaceService.getRootDir.mockReturnValue("/path/to/monorepo/root"); // Ensure getRootDir returns a value
+
       (fs.access as jest.Mock).mockRejectedValue(new Error("Not found"));
       (fs.writeFile as jest.Mock).mockResolvedValue(undefined);
+      (fs.mkdir as jest.Mock).mockResolvedValue(undefined);
+
       (path.join as jest.Mock).mockImplementation((...args: string[]) =>
         args.join("/"),
       );
 
       await initService.initialize(["@scope/pkg-a"]);
 
+      expect(fs.mkdir).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "/path/to/monorepo/root/packages/pkg-a/.publisher/hooks",
+        ),
+        { recursive: true },
+      );
+
       expect(fs.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining("packages/pkg-a/publisher.config.ts"),
+        expect.stringContaining(
+          "/path/to/monorepo/root/packages/pkg-a/publisher.config.ts",
+        ),
         expect.stringContaining("@scope/pkg-a"),
       );
 
       expect(fs.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining("packages/pkg-a/CHANGELOG.md"),
+        expect.stringContaining(
+          "/path/to/monorepo/root/packages/pkg-a/CHANGELOG.md",
+        ),
         expect.stringContaining("# Changelog"),
       );
     });

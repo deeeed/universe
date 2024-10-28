@@ -10,10 +10,15 @@ import { Logger } from "../utils/logger";
 import { WorkspaceService } from "./workspace";
 
 export class InitService {
+  private rootDir: string;
+
   constructor(
     private logger: Logger,
     private workspaceService: WorkspaceService = new WorkspaceService(),
-  ) {}
+  ) {
+    // Initialize rootDir from workspaceService
+    this.rootDir = this.workspaceService.getRootDir();
+  }
 
   async initialize(
     packages: string[],
@@ -61,13 +66,26 @@ export class InitService {
   }
 
   private async createDirectoryStructure(packagePath: string): Promise<void> {
+    // Ensure packagePath is absolute
+    const absolutePackagePath = path.isAbsolute(packagePath)
+      ? packagePath
+      : path.join(this.rootDir, packagePath);
+
+    this.logger.debug(`Creating directories in: ${absolutePackagePath}`);
+
     const dirs = [
-      path.join(packagePath, ".publisher"),
-      path.join(packagePath, ".publisher/hooks"),
+      path.join(absolutePackagePath, ".publisher"),
+      path.join(absolutePackagePath, ".publisher/hooks"),
     ];
 
     for (const dir of dirs) {
-      await fs.mkdir(dir, { recursive: true });
+      try {
+        await fs.mkdir(dir, { recursive: true });
+        this.logger.debug(`Created directory: ${dir}`);
+      } catch (error) {
+        this.logger.error(`Failed to create directory ${dir}:`, error);
+        throw error;
+      }
     }
   }
 
@@ -76,19 +94,26 @@ export class InitService {
     packagePath: string,
     force = false,
   ): Promise<void> {
+    // Ensure packagePath is absolute
+    const absolutePackagePath = path.isAbsolute(packagePath)
+      ? packagePath
+      : path.join(this.rootDir, packagePath);
+
+    this.logger.debug(`Creating files in: ${absolutePackagePath}`);
+
     const files = [
       {
-        path: path.join(packagePath, "publisher.config.ts"),
+        path: path.join(absolutePackagePath, "publisher.config.ts"),
         content: packageConfigTemplate.replace(/\${packageName}/g, packageName),
         description: "package configuration",
       },
       {
-        path: path.join(packagePath, "CHANGELOG.md"),
+        path: path.join(absolutePackagePath, "CHANGELOG.md"),
         content: changelogTemplate,
         description: "changelog",
       },
       {
-        path: path.join(packagePath, ".publisher/hooks/index.ts"),
+        path: path.join(absolutePackagePath, ".publisher/hooks/index.ts"),
         content: hooksTemplate,
         description: "release hooks",
       },

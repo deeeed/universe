@@ -1,12 +1,11 @@
 import * as semver from "semver";
 import type { ExecaReturnValue, Options as ExecaOptions } from "execa";
-import type { PackageContext, ReleaseConfig, BumpType } from "../types/config";
-
-interface PackageJson {
-  dependencies?: Record<string, string>;
-  devDependencies?: Record<string, string>;
-  peerDependencies?: Record<string, string>;
-}
+import type {
+  PackageContext,
+  ReleaseConfig,
+  BumpType,
+  PackageJson,
+} from "../types/config";
 
 export class VersionService {
   private async execCommand(
