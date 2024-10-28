@@ -19,10 +19,14 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["node","jest"],
     "composite": true,
+    "paths": {
+      "@siteed/publisher": ["./src/index.ts"]
+    },
   },
   "include": [
     "src/**/*",
     "bin/**/*",
+    "publisher.config.ts",
     "package.json",
     "jest.config.ts",
     "jest.setup.ts"

@@ -65,16 +65,16 @@ describe("ChangelogService", () => {
   });
 
   describe("generate", () => {
-    it("should generate changelog content", async () => {
+    it("should generate changelog content using conventional format", async () => {
       const mockStream = new PassThrough();
       (conventionalChangelog as jest.Mock).mockReturnValue(mockStream);
 
       const changelogPromise = service.generate(mockContext, mockConfig);
-      mockStream.write("## Changes\n\n* Feature: New stuff\n");
+      mockStream.write("* feat: New stuff\n");
       mockStream.end();
 
       const result = await changelogPromise;
-      expect(result).toBe("## Changes\n\n* Feature: New stuff");
+      expect(result).toBe("### Added\n- New stuff\n");
     });
 
     it("should handle errors during generation", async () => {
@@ -92,7 +92,7 @@ describe("ChangelogService", () => {
     it("should create new changelog file if it doesnt exist", async () => {
       (fs.readFile as jest.Mock).mockRejectedValueOnce(new Error("ENOENT"));
 
-      const newContent = "* Feature: Something new";
+      const newContent = "### Added\n- Something new";
       await service.update(mockContext, newContent, mockConfig);
 
       const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
@@ -100,25 +100,24 @@ describe("ChangelogService", () => {
 
       expect(content).toContain("# Changelog");
       expect(content).toContain("## [Unreleased]");
-      expect(content).toContain("## [1.1.0]");
-      expect(content).toContain("* Feature: Something new");
+      expect(content).toContain(`## [${mockContext.newVersion}]`);
+      expect(content).toContain("### Added\n- Something new");
       expect(content).toContain(
-        "[unreleased]: https://github.com/deeeed/universe/compare/v1.1.0...HEAD",
+        `[unreleased]: https://github.com/deeeed/universe/compare/v${mockContext.newVersion}...HEAD`,
       );
     });
 
     it("should update existing changelog file", async () => {
-      const existingContent =
-        "# Changelog\n\n## [1.0.0] - 2024-01-01\n\n* Initial release\n";
+      const existingContent = `# Changelog\n\n## [Unreleased]\n\n## [1.0.0] - 2024-01-01\n\n* Initial release\n`;
       (fs.readFile as jest.Mock).mockResolvedValueOnce(existingContent);
 
-      const newContent = "* Feature: Something new";
+      const newContent = "### Added\n- Something new";
       await service.update(mockContext, newContent, mockConfig);
 
       const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
       const content = writeCall?.[1] as string;
-      expect(content).toContain("## [1.1.0]");
-      expect(content).toContain("* Feature: Something new");
+      expect(content).toContain(`## [${mockContext.newVersion}]`);
+      expect(content).toContain("### Added\n- Something new");
       expect(content).toContain("## [1.0.0]");
     });
   });
@@ -131,17 +130,22 @@ describe("ChangelogService", () => {
 
 ## [2.0.0] - 2024-03-01
 
-* Major update
+### Added
+- Major update
 
 ## [1.0.0] - 2024-01-01
 
-* Initial release
+### Added
+- Initial release
 `;
       (fs.access as jest.Mock).mockResolvedValue(undefined);
       (fs.readFile as jest.Mock).mockResolvedValue(validContent);
 
       await expect(
-        service.validate(mockContext, mockConfig),
+        service.validate(mockContext, {
+          ...mockConfig,
+          conventionalCommits: false,
+        }),
       ).resolves.not.toThrow();
     });
 
@@ -154,9 +158,7 @@ describe("ChangelogService", () => {
     });
 
     it("should fail if changelog is missing header", async () => {
-      const invalidContent = `## [Unreleased]
-
-## [1.0.0] - 2024-01-01`;
+      const invalidContent = `## [Unreleased]\n\n## [1.0.0] - 2024-01-01`;
 
       (fs.access as jest.Mock).mockResolvedValue(undefined);
       (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
@@ -167,9 +169,7 @@ describe("ChangelogService", () => {
     });
 
     it("should fail if changelog is missing unreleased section", async () => {
-      const invalidContent = `# Changelog
-
-## [1.0.0] - 2024-01-01`;
+      const invalidContent = `# Changelog\n\n## [1.0.0] - 2024-01-01`;
 
       (fs.access as jest.Mock).mockResolvedValue(undefined);
       (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
@@ -186,10 +186,17 @@ describe("ChangelogService", () => {
 
 ## [1.0.0] - 2024-03-01
 
-## [2.0.0] - 2024-01-01`;
+### Added
+- Initial release
+
+## [2.0.0] - 2024-01-01
+
+### Added
+- Major update`;
 
       (fs.access as jest.Mock).mockResolvedValue(undefined);
       (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
+      mockConfig.conventionalCommits = false;
 
       await expect(service.validate(mockContext, mockConfig)).rejects.toThrow(
         "Version ordering error",
@@ -201,10 +208,14 @@ describe("ChangelogService", () => {
 
 ## [Unreleased]
 
-## [1.0.0] - 2024-13-45`;
+## [2.0.0] - 2024-13-45
+
+### Added
+- Major update`;
 
       (fs.access as jest.Mock).mockResolvedValue(undefined);
       (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
+      mockConfig.conventionalCommits = false;
 
       await expect(service.validate(mockContext, mockConfig)).rejects.toThrow(
         "Invalid date format",
@@ -213,11 +224,30 @@ describe("ChangelogService", () => {
   });
 
   describe("comparison links", () => {
-    it("should add comparison links", async () => {
+    it("should add comparison links for keep-a-changelog format", async () => {
       const existingContent = "# Changelog\n\n## [1.0.0] - 2024-01-01\n";
       (fs.readFile as jest.Mock).mockResolvedValueOnce(existingContent);
+      mockConfig.conventionalCommits = false;
 
-      const newContent = "* Feature: Something new";
+      const newContent = "### Added\n- Something new";
+      await service.update(mockContext, newContent, mockConfig);
+
+      const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
+      const content = writeCall?.[1] as string;
+      expect(content).toContain(
+        "[unreleased]: https://github.com/deeeed/universe/compare/v1.1.0...HEAD",
+      );
+      expect(content).toContain(
+        "[1.1.0]: https://github.com/deeeed/universe/compare/v1.0.0...v1.1.0",
+      );
+    });
+
+    it("should add comparison links for conventional format", async () => {
+      const existingContent = "# Changelog\n\n## [1.0.0]\n";
+      (fs.readFile as jest.Mock).mockResolvedValueOnce(existingContent);
+      mockConfig.conventionalCommits = true;
+
+      const newContent = "### Added\n- Something new";
       await service.update(mockContext, newContent, mockConfig);
 
       const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
