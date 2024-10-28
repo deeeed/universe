@@ -6,7 +6,7 @@ A flexible and powerful release management tool designed for JavaScript/TypeScri
 
 - 🎯 **Monorepo-aware**: Handles dependencies and versioning across workspace packages
 - 🔄 **Flexible Workflows**: Supports different release strategies (independent/fixed/custom)
-- 📦 **Package Manager Agnostic**: Works with npm, Yarn, and pnpm
+- 📦 **Package Manager Agnostic**: Works with npm, and Yarn
 - 🔧 **Highly Configurable**: Customize every aspect of your release process
 - 🤖 **CI/CD Ready**: Automate releases in your CI/CD pipeline
 - 📝 **Smart Changelog**: Generates and maintains changelogs automatically
