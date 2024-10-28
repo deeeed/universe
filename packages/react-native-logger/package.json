@@ -1,6 +1,6 @@
 {
   "name": "@siteed/react-native-logger",
-  "version": "0.11.0",
+  "version": "1.0.0",
   "description": "A simple yet powerful logging library for cross platform applications, supporting persistent log history.",
   "main": "dist/logger.js",
   "module": "dist/logger.js",

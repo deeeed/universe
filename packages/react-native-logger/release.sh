@@ -8,49 +8,126 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # Change to the script's directory
 cd "$SCRIPT_DIR"
 
-# Function to display help message
-show_help() {
-    echo "Usage: $0 [patch|minor|major]"
-    echo
-    echo "Specify the type of version bump:"
-    echo "  patch   - Increment the patch version (x.x.1)"
-    echo "  minor   - Increment the minor version (x.1.x)"
-    echo "  major   - Increment the major version (1.x.x)"
-    exit 1
+# Function to update changelog
+update_changelog() {
+    local new_version=$1
+    local previous_version=$2
+    local current_date=$(date +%Y-%m-%d)
+    local package_prefix="react-native-logger-v"
+
+    # Create temporary file
+    temp_file=$(mktemp)
+
+    # Read line by line and update the changelog
+    while IFS= read -r line; do
+        echo "$line" >> "$temp_file"
+
+        # Find the [Unreleased] section and add the new version
+        if [[ "$line" == "## [Unreleased]" ]]; then
+            echo "" >> "$temp_file"
+            echo "## [$new_version] - $current_date" >> "$temp_file"
+        fi
+
+        # Update the comparison links at the bottom
+        if [[ "$line" == "[unreleased]:"* ]]; then
+            echo "[unreleased]: https://github.com/deeeed/universe/compare/${package_prefix}${new_version}...HEAD" >> "$temp_file"
+            echo "[$new_version]: https://github.com/deeeed/universe/compare/${package_prefix}${previous_version}...${package_prefix}${new_version}" >> "$temp_file"
+            break
+        fi
+    done < CHANGELOG.md
+
+    # Replace original file with updated content
+    mv "$temp_file" CHANGELOG.md
 }
 
-# Check if version type is provided
-if [ -z "$1" ]; then
-    show_help
-fi
+echo "Starting release process..."
 
-version_type=$1
+# Get current version from package.json
+current_version=$(node -p "require('./package.json').version")
+echo "Current version: $current_version"
 
-# Validate the version type
-if [[ "$version_type" != "patch" && "$version_type" != "minor" && "$version_type" != "major" ]]; then
-    echo "Invalid version type: $version_type"
-    show_help
-fi
+# Ask user for version bump type
+echo -e "\nPlease select version bump type:"
+echo "1) patch (x.x.X) - for backwards-compatible bug fixes"
+echo "2) minor (x.X.0) - for new backwards-compatible functionality"
+echo "3) major (X.0.0) - for breaking changes"
+echo "4) manual - enter specific version"
+read -p "Enter choice (1-4): " choice
 
-# Extract the current version
-previous_version=$(node -p "require('./package.json').version")
-echo "Current version: $previous_version"
+# Store the previous version before any changes
+previous_version=$current_version
+
+# Handle version bump based on user choice
+case $choice in
+    1)
+        echo -e "\nBumping patch version..."
+        yarn version patch
+        ;;
+    2)
+        echo -e "\nBumping minor version..."
+        yarn version minor
+        ;;
+    3)
+        echo -e "\nBumping major version..."
+        yarn version major
+        ;;
+    4)
+        read -p "Enter new version (current: $current_version): " new_version
+        if [[ -z "$new_version" ]]; then
+            echo "Version cannot be empty. Exiting."
+            exit 1
+        fi
+        echo -e "\nSetting version to $new_version..."
+        yarn version $new_version
+        ;;
+    *)
+        echo "Invalid choice. Exiting."
+        exit 1
+        ;;
+esac
+
+# Get new version after bump
+new_version=$(node -p "require('./package.json').version")
+echo -e "\nVersion bump: $current_version → $new_version"
 
 # Run typecheck
+echo -e "\nRunning typecheck..."
 yarn typecheck
 
-# Bump the specified version type
-yarn version $version_type
+# Create git tag
+echo -e "\nCreating git tag..."
+git tag "react-native-logger-v${new_version}"
 
-# Get the new version
-new_version=$(node -p "require('./package.json').version")
-echo "New version: $new_version"
+# Update the changelog
+echo -e "\nUpdating changelog..."
+update_changelog "$new_version" "$previous_version"
+
+# Show changelog diff
+echo -e "\nChangelog updates:"
+git diff CHANGELOG.md
+
+# Confirm before proceeding
+read -p $'\nReady to commit, push, and publish. Continue? (y/n): ' confirm
+if [[ $confirm != "y" ]]; then
+    echo "Operation cancelled."
+    exit 1
+fi
 
 # Add changes to git
+echo -e "\nCommitting changes..."
 git add .
-
-# Commit changes with the new version in the commit message
 git commit -m "feat(react-native-logger): bump version $new_version"
 
+# Push the tag
+echo -e "\nPushing tag..."
+git push origin "react-native-logger-v${new_version}"
+
 # Run the release script
+echo -e "\nPublishing to npm..."
 yarn release
+
+echo -e "\n✨ Release process completed successfully!"
+echo "New version $new_version has been:"
+echo "- Tagged in git as react-native-logger-v${new_version}"
+echo "- Updated in CHANGELOG.md"
+echo "- Published to npm"
