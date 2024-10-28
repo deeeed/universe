@@ -1,0 +1,73 @@
+{
+  "name": "@siteed/release-it",
+  "version": "0.1.0",
+  "description": "Flexible release management tool for JavaScript/TypeScript monorepos",
+  "author": "Arthur Breton <abreton@siteed.net> (https://github.com/deeeed)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deeeed/universe",
+    "directory": "packages/release-it"
+  },
+  "main": "dist/src/index.js",
+  "module": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "bin": "./dist/bin/release-it.js",
+  "files": [
+    "dist",
+    "templates",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "build": "yarn build:tsc",
+    "build:clean": "yarn clean && yarn build",
+    "build:tsc": "tsc --project tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.json --noEmit",
+    "test": "jest",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"bin/**/*.ts\"",
+    "release": "node ./dist/bin/release-it.js release release-it",
+    "prepare": "husky install"
+  },
+  "dependencies": {
+    "chalk": "4.1.2",
+    "commander": "^11.1.0",
+    "conventional-changelog": "^5.1.0",
+    "execa": "^5.1.1",
+    "globby": "^11.1.0",
+    "inquirer": "^8.2.6",
+    "ora": "^5.4.1",
+    "semver": "^7.5.4",
+    "simple-git": "^3.21.0",
+    "update-notifier": "^5.1.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@jest/types": "^29.6.3",
+    "@types/conventional-changelog": "^3.1.5",
+    "@types/inquirer": "^8.2.10",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.8.0",
+    "@types/semver": "^7.5.3",
+    "@types/update-notifier": "^6.0.5",
+    "@typescript-eslint/eslint-plugin": "^6.7.3",
+    "@typescript-eslint/parser": "^6.7.3",
+    "eslint": "^8.50.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "husky": "^8.0.3",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.1.0",
+    "prettier": "^3.1.0",
+    "rimraf": "^5.0.5",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
