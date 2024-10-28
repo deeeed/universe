@@ -1,19 +1,19 @@
-import type { ExecaReturnValue } from 'execa';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-import type { PackageJson } from 'type-fest';
-import type { PackageContext, ReleaseConfig } from '../types/config';
+import type { ExecaReturnValue } from "execa";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import type { PackageJson } from "type-fest";
+import type { PackageContext, ReleaseConfig } from "../types/config";
 
 export class WorkspaceService {
   private packageCache: Map<string, PackageContext> = new Map();
 
   async getPackages(packageNames?: string[]): Promise<PackageContext[]> {
-    const globby = (await import('globby')).default;
+    const globby = (await import("globby")).default;
     const workspaceGlobs = await this.getWorkspaceGlobs();
 
     const packagePaths = await globby(workspaceGlobs, {
       onlyDirectories: true,
-      ignore: ['**/node_modules/**'],
+      ignore: ["**/node_modules/**"],
     });
 
     const contexts = await Promise.all(
@@ -31,13 +31,17 @@ export class WorkspaceService {
           }
 
           const dependencies = this.ensureStringRecord(pkgJson.dependencies);
-          const devDependencies = this.ensureStringRecord(pkgJson.devDependencies);
-          const peerDependencies = this.ensureStringRecord(pkgJson.peerDependencies);
+          const devDependencies = this.ensureStringRecord(
+            pkgJson.devDependencies,
+          );
+          const peerDependencies = this.ensureStringRecord(
+            pkgJson.peerDependencies,
+          );
 
           const context: PackageContext = {
             name: pkgJson.name,
             path: packagePath,
-            currentVersion: pkgJson.version ?? '0.0.0',
+            currentVersion: pkgJson.version ?? "0.0.0",
             dependencies,
             devDependencies,
             peerDependencies,
@@ -56,12 +60,16 @@ export class WorkspaceService {
   }
 
   async getChangedPackages(): Promise<PackageContext[]> {
-    const execa = (await import('execa')).default;
-    const result: ExecaReturnValue<string> = await execa('git', ['diff', '--name-only', 'HEAD^']);
-    const changedFiles = result.stdout.split('\n').filter(Boolean);
+    const execa = (await import("execa")).default;
+    const result: ExecaReturnValue<string> = await execa("git", [
+      "diff",
+      "--name-only",
+      "HEAD^",
+    ]);
+    const changedFiles = result.stdout.split("\n").filter(Boolean);
 
     const packages = await this.getPackages();
-    return packages.filter(pkg =>
+    return packages.filter((pkg) =>
       changedFiles.some((file: string) => file.startsWith(pkg.path)),
     );
   }
@@ -73,33 +81,39 @@ export class WorkspaceService {
     }
 
     try {
-      const configPath = path.join(process.cwd(), packagePath, 'publisher.config.ts');
-      const importedConfig = (await import(configPath)) as { default: ReleaseConfig };
+      const configPath = path.join(
+        process.cwd(),
+        packagePath,
+        "publisher.config.ts",
+      );
+      const importedConfig = (await import(configPath)) as {
+        default: ReleaseConfig;
+      };
       return importedConfig.default;
     } catch {
       // Return default config if no package-specific config exists
       return {
-        packageManager: 'yarn',
-        changelogFile: 'CHANGELOG.md',
+        packageManager: "yarn",
+        changelogFile: "CHANGELOG.md",
         conventionalCommits: true,
-        versionStrategy: 'independent',
-        bumpStrategy: 'prompt',
+        versionStrategy: "independent",
+        bumpStrategy: "prompt",
         git: {
-          tagPrefix: 'v',
+          tagPrefix: "v",
           requireCleanWorkingDirectory: true,
           requireUpToDate: true,
           commit: true,
           push: true,
-          commitMessage: 'chore(release): release ${packageName}@${version}',
+          commitMessage: "chore(release): release ${packageName}@${version}",
           tag: true,
-          allowedBranches: ['main', 'master'],
-          remote: 'origin',
+          allowedBranches: ["main", "master"],
+          remote: "origin",
         },
         npm: {
           publish: true,
-          registry: 'https://registry.npmjs.org',
-          tag: 'latest',
-          access: 'public',
+          registry: "https://registry.npmjs.org",
+          tag: "latest",
+          access: "public",
         },
         hooks: {},
       };
@@ -107,36 +121,44 @@ export class WorkspaceService {
   }
 
   private async readPackageJson(packagePath: string): Promise<PackageJson> {
-    const fullPath = path.join(process.cwd(), packagePath, 'package.json');
-    const content = await readFile(fullPath, 'utf-8');
+    const fullPath = path.join(process.cwd(), packagePath, "package.json");
+    const content = await readFile(fullPath, "utf-8");
     const parsed = JSON.parse(content) as PackageJson;
     return parsed;
   }
 
   private async getWorkspaceGlobs(): Promise<string[]> {
     try {
-      const rootPkgJson = await this.readPackageJson('.');
+      const rootPkgJson = await this.readPackageJson(".");
       if (rootPkgJson.workspaces) {
         if (Array.isArray(rootPkgJson.workspaces)) {
           return rootPkgJson.workspaces;
         }
-        if (rootPkgJson.workspaces.packages && Array.isArray(rootPkgJson.workspaces.packages)) {
+        if (
+          rootPkgJson.workspaces.packages &&
+          Array.isArray(rootPkgJson.workspaces.packages)
+        ) {
           return rootPkgJson.workspaces.packages;
         }
       }
-      return ['packages/*'];
+      return ["packages/*"];
     } catch {
-      return ['packages/*'];
+      return ["packages/*"];
     }
   }
 
-  private ensureStringRecord(obj: Record<string, unknown> | undefined): Record<string, string> {
+  private ensureStringRecord(
+    obj: Record<string, unknown> | undefined,
+  ): Record<string, string> {
     if (!obj) return {};
-    return Object.entries(obj).reduce<Record<string, string>>((acc, [key, value]) => {
-      if (typeof value === 'string') {
-        acc[key] = value;
-      }
-      return acc;
-    }, {});
+    return Object.entries(obj).reduce<Record<string, string>>(
+      (acc, [key, value]) => {
+        if (typeof value === "string") {
+          acc[key] = value;
+        }
+        return acc;
+      },
+      {},
+    );
   }
 }

@@ -1,11 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { VersionService } from '../version';
-import type { PackageContext } from '../../types/config';
-import { jest, expect, describe, it, beforeEach, afterEach } from '@jest/globals';
+import { VersionService } from "../version";
+import type { PackageContext } from "../../types/config";
+import {
+  jest,
+  expect,
+  describe,
+  it,
+  beforeEach,
+  afterEach,
+} from "@jest/globals";
 
 type MockFunction = (...args: any[]) => Promise<unknown>;
 
-describe('VersionService', () => {
+describe("VersionService", () => {
   let versionService: VersionService;
   let mockExecCommand: jest.MockedFunction<MockFunction>;
 
@@ -13,106 +20,113 @@ describe('VersionService', () => {
     versionService = new VersionService();
   });
 
-  describe('determineVersion', () => {
+  describe("determineVersion", () => {
     const context: PackageContext = {
-      name: 'test-package',
-      path: '/test/path',
-      currentVersion: '1.0.0',
+      name: "test-package",
+      path: "/test/path",
+      currentVersion: "1.0.0",
       dependencies: {},
       devDependencies: {},
-      peerDependencies: {}
+      peerDependencies: {},
     };
 
-    it('should bump patch version correctly', () => {
-      const newVersion = versionService.determineVersion(context, 'patch');
-      expect(newVersion).toBe('1.0.1');
+    it("should bump patch version correctly", () => {
+      const newVersion = versionService.determineVersion(context, "patch");
+      expect(newVersion).toBe("1.0.1");
     });
 
-    it('should bump minor version correctly', () => {
-      const newVersion = versionService.determineVersion(context, 'minor');
-      expect(newVersion).toBe('1.1.0');
+    it("should bump minor version correctly", () => {
+      const newVersion = versionService.determineVersion(context, "minor");
+      expect(newVersion).toBe("1.1.0");
     });
 
-    it('should bump major version correctly', () => {
-      const newVersion = versionService.determineVersion(context, 'major');
-      expect(newVersion).toBe('2.0.0');
+    it("should bump major version correctly", () => {
+      const newVersion = versionService.determineVersion(context, "major");
+      expect(newVersion).toBe("2.0.0");
     });
 
-    it('should handle custom version', () => {
-      const customContext = { ...context, newVersion: '1.5.0' };
-      const newVersion = versionService.determineVersion(customContext, 'custom');
-      expect(newVersion).toBe('1.5.0');
+    it("should handle custom version", () => {
+      const customContext = { ...context, newVersion: "1.5.0" };
+      const newVersion = versionService.determineVersion(
+        customContext,
+        "custom",
+      );
+      expect(newVersion).toBe("1.5.0");
     });
 
-    it('should throw error for invalid current version', () => {
-      const invalidContext = { ...context, currentVersion: 'invalid' };
-      expect(() => 
-        versionService.determineVersion(invalidContext, 'patch')
-      ).toThrow('Invalid current version');
+    it("should throw error for invalid current version", () => {
+      const invalidContext = { ...context, currentVersion: "invalid" };
+      expect(() =>
+        versionService.determineVersion(invalidContext, "patch"),
+      ).toThrow("Invalid current version");
     });
   });
 
-  describe('updateDependencies', () => {
+  describe("updateDependencies", () => {
     beforeEach(() => {
       // @ts-expect-error dont need to mock exec
       mockExecCommand = jest.fn().mockResolvedValue({});
-      jest.spyOn(versionService as any, 'execCommand').mockImplementation(mockExecCommand);
+      jest
+        .spyOn(versionService as any, "execCommand")
+        .mockImplementation(mockExecCommand);
     });
 
     afterEach(() => {
       jest.restoreAllMocks();
     });
 
-    it('should update package dependencies correctly', async () => {
+    it("should update package dependencies correctly", async () => {
       const mockPackageJson = {
         dependencies: {
-          'dep-a': '^1.0.0',
-          'dep-b': '^2.0.0'
+          "dep-a": "^1.0.0",
+          "dep-b": "^2.0.0",
         },
         devDependencies: {
-          'dev-dep-a': '^1.0.0'
+          "dev-dep-a": "^1.0.0",
         },
-        peerDependencies: {}
+        peerDependencies: {},
       };
 
-      jest.mock('/test/path/package.json', () => mockPackageJson, { virtual: true });
+      jest.mock("/test/path/package.json", () => mockPackageJson, {
+        virtual: true,
+      });
 
       const context: PackageContext = {
-        name: 'test-package',
-        path: '/test/path',
-        currentVersion: '1.0.0',
+        name: "test-package",
+        path: "/test/path",
+        currentVersion: "1.0.0",
         dependencies: {
-          'dep-a': '^1.0.0',
-          'dep-b': '^2.0.0'
+          "dep-a": "^1.0.0",
+          "dep-b": "^2.0.0",
         },
         devDependencies: {
-          'dev-dep-a': '^1.0.0'
+          "dev-dep-a": "^1.0.0",
         },
-        peerDependencies: {}
+        peerDependencies: {},
       };
 
       const updates: Map<string, string> = new Map([
-        ['dep-a', '1.1.0'],
-        ['dev-dep-a', '1.2.0']
+        ["dep-a", "1.1.0"],
+        ["dev-dep-a", "1.2.0"],
       ]);
 
       await versionService.updateDependencies(context, updates);
 
       expect(mockExecCommand).toHaveBeenCalledWith(
-        'yarn',
-        ['up', 'dep-a', 'dev-dep-a'],
-        { cwd: '/test/path' }
+        "yarn",
+        ["up", "dep-a", "dev-dep-a"],
+        { cwd: "/test/path" },
       );
     });
 
-    it('should not call yarn if no updates are needed', async () => {
+    it("should not call yarn if no updates are needed", async () => {
       const context: PackageContext = {
-        name: 'test-package',
-        path: '/test/path',
-        currentVersion: '1.0.0',
+        name: "test-package",
+        path: "/test/path",
+        currentVersion: "1.0.0",
         dependencies: {},
         devDependencies: {},
-        peerDependencies: {}
+        peerDependencies: {},
       };
 
       const updates = new Map<string, string>();
@@ -122,27 +136,23 @@ describe('VersionService', () => {
       expect(mockExecCommand).not.toHaveBeenCalled();
     });
 
-    it('should handle empty dependency sections', async () => {
+    it("should handle empty dependency sections", async () => {
       const context: PackageContext = {
-        name: 'test-package',
-        path: '/test/path',
-        currentVersion: '1.0.0',
+        name: "test-package",
+        path: "/test/path",
+        currentVersion: "1.0.0",
         dependencies: {},
         devDependencies: {},
-        peerDependencies: {}
+        peerDependencies: {},
       };
 
-      const updates = new Map<string, string>([
-        ['dep-a', '1.1.0']
-      ]);
+      const updates = new Map<string, string>([["dep-a", "1.1.0"]]);
 
       await versionService.updateDependencies(context, updates);
 
-      expect(mockExecCommand).toHaveBeenCalledWith(
-        'yarn',
-        ['up', 'dep-a'],
-        { cwd: '/test/path' }
-      );
+      expect(mockExecCommand).toHaveBeenCalledWith("yarn", ["up", "dep-a"], {
+        cwd: "/test/path",
+      });
     });
   });
 });

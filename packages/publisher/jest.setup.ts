@@ -6,7 +6,7 @@ const mockConsole = {
   log: jest.fn(),
   info: jest.fn(),
   error: jest.fn(),
-  warn: jest.fn()
+  warn: jest.fn(),
 } as unknown as Console;
 
 global.console = mockConsole;

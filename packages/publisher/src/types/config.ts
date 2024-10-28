@@ -1,28 +1,29 @@
 // packages/publisher/src/types/config.ts
-import { z } from 'zod';
-
+import { z } from "zod";
 
 // Git configuration schema
 export const GitConfigSchema = z.object({
-  tagPrefix: z.string().default('v'),
+  tagPrefix: z.string().default("v"),
   requireCleanWorkingDirectory: z.boolean().default(true),
   requireUpToDate: z.boolean().default(true),
   commit: z.boolean().default(true),
   push: z.boolean().default(true),
-  commitMessage: z.string().default('chore(release): release ${packageName}@${version}'),
+  commitMessage: z
+    .string()
+    .default("chore(release): release ${packageName}@${version}"),
   tag: z.boolean().default(true),
   tagMessage: z.string().optional(),
-  allowedBranches: z.array(z.string()).default(['main', 'master']),
-  remote: z.string().default('origin')
+  allowedBranches: z.array(z.string()).default(["main", "master"]),
+  remote: z.string().default("origin"),
 });
 
 // NPM configuration schema
 export const NpmConfigSchema = z.object({
   publish: z.boolean().default(true),
-  registry: z.string().default('https://registry.npmjs.org'),
-  tag: z.string().default('latest'),
-  access: z.enum(['public', 'restricted']).default('public'),
-  otp: z.string().optional()
+  registry: z.string().default("https://registry.npmjs.org"),
+  tag: z.string().default("latest"),
+  access: z.enum(["public", "restricted"]).default("public"),
+  otp: z.string().optional(),
 });
 
 // Hooks configuration schema
@@ -34,29 +35,39 @@ export const HooksSchema = z.object({
   preChangelog: z.function().optional(),
   postChangelog: z.function().optional(),
   prePublish: z.function().optional(),
-  postPublish: z.function().optional()
+  postPublish: z.function().optional(),
 });
 
 // Package-specific release configuration schema
 export const ReleaseConfigSchema = z.object({
-  packageManager: z.enum(['npm', 'yarn', 'pnpm']).default('yarn'),
-  changelogFile: z.string().default('CHANGELOG.md'),
+  packageManager: z.enum(["npm", "yarn", "pnpm"]).default("yarn"),
+  changelogFile: z.string().default("CHANGELOG.md"),
   conventionalCommits: z.boolean().default(true),
   git: GitConfigSchema.default({}),
   npm: NpmConfigSchema.default({}),
   hooks: HooksSchema.default({}),
-  versionStrategy: z.enum(['independent', 'fixed']).default('independent'),
-  bumpStrategy: z.enum(['conventional', 'prompt', 'auto']).default('prompt'),
-  bumpType: z.enum(['patch', 'minor', 'major', 'prepatch', 'preminor', 'premajor', 'prerelease', 'custom']).optional(),
-  preReleaseId: z.string().optional() // optional pre-release identifier
+  versionStrategy: z.enum(["independent", "fixed"]).default("independent"),
+  bumpStrategy: z.enum(["conventional", "prompt", "auto"]).default("prompt"),
+  bumpType: z
+    .enum([
+      "patch",
+      "minor",
+      "major",
+      "prepatch",
+      "preminor",
+      "premajor",
+      "prerelease",
+      "custom",
+    ])
+    .optional(),
+  preReleaseId: z.string().optional(), // optional pre-release identifier
 });
-
 
 // Monorepo-wide configuration schema
 export const MonorepoConfigSchema = ReleaseConfigSchema.extend({
   packages: z.record(z.string(), ReleaseConfigSchema.partial()).default({}),
   ignorePackages: z.array(z.string()).default([]),
-  maxConcurrency: z.number().default(4)
+  maxConcurrency: z.number().default(4),
 });
 
 // Infer types from schemas
@@ -67,7 +78,15 @@ export type ReleaseConfig = z.infer<typeof ReleaseConfigSchema>;
 export type MonorepoConfig = z.infer<typeof MonorepoConfigSchema>;
 
 // Version bump types
-export type BumpType = 'patch' | 'minor' | 'major' | 'prepatch' | 'preminor' | 'premajor' | 'prerelease' | 'custom';
+export type BumpType =
+  | "patch"
+  | "minor"
+  | "major"
+  | "prepatch"
+  | "preminor"
+  | "premajor"
+  | "prerelease"
+  | "custom";
 
 // Package release context
 export interface PackageContext {
@@ -76,7 +95,7 @@ export interface PackageContext {
   currentVersion: string;
   newVersion?: string;
   changelog?: string;
-  dependencies?: Record<string, string>; 
+  dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;

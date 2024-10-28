@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-import { Command } from 'commander';
-import { initCommand } from '../src/commands/init';
-import { releaseCommand } from '../src/commands/release';
-import { validateCommand } from '../src/commands/validate';
-import pkg from '../package.json';
+import { Command } from "commander";
+import { initCommand } from "../src/commands/init";
+import { releaseCommand } from "../src/commands/release";
+import { validateCommand } from "../src/commands/validate";
+import pkg from "../package.json";
 
 const program = new Command();
 
 program
-  .name('release-it')
-  .description('Monorepo release management tool')
+  .name("release-it")
+  .description("Monorepo release management tool")
   .version(pkg.version);
 
 program.addCommand(initCommand);

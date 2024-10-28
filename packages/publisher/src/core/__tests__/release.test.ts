@@ -1,30 +1,39 @@
-import type { MonorepoConfig, NpmConfig, PackageContext } from '../../types/config';
-import { Logger } from '../../utils/logger';
-import { ReleaseService } from '../release';
+import type {
+  MonorepoConfig,
+  NpmConfig,
+  PackageContext,
+} from "../../types/config";
+import { Logger } from "../../utils/logger";
+import { ReleaseService } from "../release";
 
 // Mock modules
-jest.mock('../git');
-jest.mock('../npm');
-jest.mock('../yarn');
-jest.mock('../version');
-jest.mock('../workspace');
-jest.mock('../changelog');
-jest.mock('../../utils/prompt');
-jest.mock('../package-manager', () => ({
+jest.mock("../git");
+jest.mock("../npm");
+jest.mock("../yarn");
+jest.mock("../version");
+jest.mock("../workspace");
+jest.mock("../changelog");
+jest.mock("../../utils/prompt");
+jest.mock("../package-manager", () => ({
   PackageManagerFactory: {
     create: jest.fn().mockReturnValue({
       validateAuth: jest.fn().mockResolvedValue(undefined),
-      publish: jest.fn().mockResolvedValue({ published: true, registry: 'https://registry.npmjs.org' }),
-      getLatestVersion: jest.fn().mockResolvedValue('1.0.0'),
+      publish: jest
+        .fn()
+        .mockResolvedValue({
+          published: true,
+          registry: "https://registry.npmjs.org",
+        }),
+      getLatestVersion: jest.fn().mockResolvedValue("1.0.0"),
       checkWorkspaceIntegrity: jest.fn().mockResolvedValue(true),
       updateDependencies: jest.fn().mockResolvedValue(undefined),
-      pack: jest.fn().mockResolvedValue('package.tgz'),
-      runScript: jest.fn().mockResolvedValue(undefined)
-    })
-  }
+      pack: jest.fn().mockResolvedValue("package.tgz"),
+      runScript: jest.fn().mockResolvedValue(undefined),
+    }),
+  },
 }));
 
-describe('ReleaseService', () => {
+describe("ReleaseService", () => {
   let releaseService: ReleaseService;
   let config: MonorepoConfig;
   let logger: Logger;
@@ -32,121 +41,143 @@ describe('ReleaseService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     defaultNpmConfig = {
       publish: true,
-      registry: 'https://registry.npmjs.org',
-      tag: 'latest',
-      access: 'public'
+      registry: "https://registry.npmjs.org",
+      tag: "latest",
+      access: "public",
     };
 
     config = {
-      packageManager: 'yarn',
+      packageManager: "yarn",
       conventionalCommits: true,
-      versionStrategy: 'independent',
+      versionStrategy: "independent",
       git: {
-        tagPrefix: 'v',
+        tagPrefix: "v",
         requireCleanWorkingDirectory: true,
         requireUpToDate: true,
         commit: true,
         push: true,
-        commitMessage: 'chore(release): release ${packageName}@${version}',
+        commitMessage: "chore(release): release ${packageName}@${version}",
         tag: true,
-        allowedBranches: ['main', 'master'],
-        remote: 'origin'
+        allowedBranches: ["main", "master"],
+        remote: "origin",
       },
       npm: defaultNpmConfig,
       hooks: {},
       packages: {},
       ignorePackages: [],
       maxConcurrency: 4,
-      bumpStrategy: 'prompt',
-      changelogFile: 'CHANGELOG.md'
+      bumpStrategy: "prompt",
+      changelogFile: "CHANGELOG.md",
     };
-    
+
     logger = new Logger();
     releaseService = new ReleaseService(config, logger);
 
     // Set default workspace integrity check to pass
-    jest.spyOn(releaseService['packageManager'], 'checkWorkspaceIntegrity')
+    jest
+      .spyOn(releaseService["packageManager"], "checkWorkspaceIntegrity")
       .mockResolvedValue(true);
   });
 
-  describe('constructor', () => {
-    it('should default to yarn when invalid package manager specified', () => {
-      const invalidConfig: MonorepoConfig = { 
-        ...config, 
-        packageManager: 'invalid' as 'npm' | 'yarn' | 'pnpm' 
+  describe("constructor", () => {
+    it("should default to yarn when invalid package manager specified", () => {
+      const invalidConfig: MonorepoConfig = {
+        ...config,
+        packageManager: "invalid" as "npm" | "yarn" | "pnpm",
       };
-      const spyLogger = jest.spyOn(logger, 'warning');
-      
+      const spyLogger = jest.spyOn(logger, "warning");
+
       new ReleaseService(invalidConfig, logger);
-      
-      expect(spyLogger).toHaveBeenCalledWith('Invalid package manager specified, defaulting to "yarn"');
+
+      expect(spyLogger).toHaveBeenCalledWith(
+        'Invalid package manager specified, defaulting to "yarn"',
+      );
     });
   });
 
-  describe('releasePackages', () => {
-    it('should handle no packages found', async () => {
-      const mockGetPackages = jest.spyOn(releaseService['workspace'], 'getPackages')
+  describe("releasePackages", () => {
+    it("should handle no packages found", async () => {
+      const mockGetPackages = jest
+        .spyOn(releaseService["workspace"], "getPackages")
         .mockResolvedValue([]);
 
-      const result = await releaseService.releasePackages(['pkg1'], {});
+      const result = await releaseService.releasePackages(["pkg1"], {});
       expect(result).toEqual([]);
-      expect(mockGetPackages).toHaveBeenCalledWith(['pkg1']);
+      expect(mockGetPackages).toHaveBeenCalledWith(["pkg1"]);
     });
 
-    it('should throw error when workspace integrity check fails', async () => {
-      jest.spyOn(releaseService['packageManager'], 'checkWorkspaceIntegrity')
+    it("should throw error when workspace integrity check fails", async () => {
+      jest
+        .spyOn(releaseService["packageManager"], "checkWorkspaceIntegrity")
         .mockResolvedValue(false);
 
-      await expect(releaseService.releasePackages(['pkg1'], {}))
-        .rejects.toThrow('Workspace integrity check failed');
+      await expect(
+        releaseService.releasePackages(["pkg1"], {}),
+      ).rejects.toThrow("Workspace integrity check failed");
     });
 
-    it('should handle dry run mode', async () => {
-      const mockPackages = [{ name: 'pkg1', path: '/path/pkg1', currentVersion: '1.0.0' }];
-      
-      jest.spyOn(releaseService['workspace'], 'getPackages')
-        .mockResolvedValue(mockPackages);
-      jest.spyOn(releaseService['workspace'], 'getPackageConfig')
-        .mockResolvedValue(config);
-      const spyLogger = jest.spyOn(releaseService['logger'], 'info');
+    it("should handle dry run mode", async () => {
+      const mockPackages = [
+        { name: "pkg1", path: "/path/pkg1", currentVersion: "1.0.0" },
+      ];
 
-      const results = await releaseService.releasePackages(['pkg1'], { dryRun: true });
-      
-      expect(results[0]).toMatchObject({
-        packageName: 'pkg1',
-        changelog: 'Dry run - no changes made',
-        git: { tag: 'dry-run', commit: 'dry-run' }
+      jest
+        .spyOn(releaseService["workspace"], "getPackages")
+        .mockResolvedValue(mockPackages);
+      jest
+        .spyOn(releaseService["workspace"], "getPackageConfig")
+        .mockResolvedValue(config);
+      const spyLogger = jest.spyOn(releaseService["logger"], "info");
+
+      const results = await releaseService.releasePackages(["pkg1"], {
+        dryRun: true,
       });
-      expect(spyLogger).toHaveBeenCalledWith('Dry run completed');
+
+      expect(results[0]).toMatchObject({
+        packageName: "pkg1",
+        changelog: "Dry run - no changes made",
+        git: { tag: "dry-run", commit: "dry-run" },
+      });
+      expect(spyLogger).toHaveBeenCalledWith("Dry run completed");
     });
 
-    it('should cancel release when user does not confirm', async () => {
-      const mockPackages = [{ name: 'pkg1', path: '/path/pkg1', currentVersion: '1.0.0' }];
-      
-      jest.spyOn(releaseService['workspace'], 'getPackages')
+    it("should cancel release when user does not confirm", async () => {
+      const mockPackages = [
+        { name: "pkg1", path: "/path/pkg1", currentVersion: "1.0.0" },
+      ];
+
+      jest
+        .spyOn(releaseService["workspace"], "getPackages")
         .mockResolvedValue(mockPackages);
-      jest.spyOn(releaseService['workspace'], 'getPackageConfig')
+      jest
+        .spyOn(releaseService["workspace"], "getPackageConfig")
         .mockResolvedValue(config);
-      jest.spyOn(releaseService['version'], 'determineVersion')
-        .mockReturnValue('1.0.1');
-      jest.spyOn(releaseService['changelog'], 'generate')
-        .mockResolvedValue('Changelog entry');
-      jest.spyOn(releaseService['prompts'], 'confirmRelease')
+      jest
+        .spyOn(releaseService["version"], "determineVersion")
+        .mockReturnValue("1.0.1");
+      jest
+        .spyOn(releaseService["changelog"], "generate")
+        .mockResolvedValue("Changelog entry");
+      jest
+        .spyOn(releaseService["prompts"], "confirmRelease")
         .mockResolvedValue(false);
 
-      await expect(releaseService.releasePackages(['pkg1'], {}))
-        .rejects.toThrow('Release cancelled');
+      await expect(
+        releaseService.releasePackages(["pkg1"], {}),
+      ).rejects.toThrow("Release cancelled");
     });
   });
 
-  describe('releaseAll', () => {
-    it('should handle no changed packages', async () => {
-      jest.spyOn(releaseService['workspace'], 'getChangedPackages')
+  describe("releaseAll", () => {
+    it("should handle no changed packages", async () => {
+      jest
+        .spyOn(releaseService["workspace"], "getChangedPackages")
         .mockResolvedValue([]);
-      jest.spyOn(releaseService['workspace'], 'getPackages')
+      jest
+        .spyOn(releaseService["workspace"], "getPackages")
         .mockResolvedValue([]);
 
       const results = await releaseService.releaseAll({});
@@ -154,178 +185,210 @@ describe('ReleaseService', () => {
       expect(results).toEqual([]);
     });
 
-    it('should release all changed packages', async () => {
+    it("should release all changed packages", async () => {
       const changedPackages = [
-        { name: 'pkg1', path: '/path/to/pkg1', currentVersion: '1.0.0' }
+        { name: "pkg1", path: "/path/to/pkg1", currentVersion: "1.0.0" },
       ];
 
-      const mockResult = [{ 
-        packageName: 'pkg1', 
-        version: '1.0.1', 
-        changelog: 'Changelog',
-        git: { tag: 'v1.0.1', commit: 'commit-hash' }
-      }];
+      const mockResult = [
+        {
+          packageName: "pkg1",
+          version: "1.0.1",
+          changelog: "Changelog",
+          git: { tag: "v1.0.1", commit: "commit-hash" },
+        },
+      ];
 
-      const spyGetChangedPackages = jest.spyOn(releaseService['workspace'], 'getChangedPackages')
+      const spyGetChangedPackages = jest
+        .spyOn(releaseService["workspace"], "getChangedPackages")
         .mockResolvedValue(changedPackages);
-      const spyReleasePackages = jest.spyOn(releaseService, 'releasePackages')
+      const spyReleasePackages = jest
+        .spyOn(releaseService, "releasePackages")
         .mockResolvedValue(mockResult);
 
       const results = await releaseService.releaseAll({});
 
       expect(results).toEqual(mockResult);
-      expect(spyReleasePackages).toHaveBeenCalledWith(['pkg1'], {});
+      expect(spyReleasePackages).toHaveBeenCalledWith(["pkg1"], {});
       expect(spyGetChangedPackages).toHaveBeenCalled();
     });
   });
 
-  describe('version determination', () => {
-    const mockContext = { name: 'pkg1', path: '/path/pkg1', currentVersion: '1.0.0' };
+  describe("version determination", () => {
+    const mockContext = {
+      name: "pkg1",
+      path: "/path/pkg1",
+      currentVersion: "1.0.0",
+    };
     const mockConfig = { ...config };
 
-    it('should prompt for version when bumpStrategy is prompt', async () => {
-      mockConfig.bumpStrategy = 'prompt';
-      const spyPrompt = jest.spyOn(releaseService['prompts'], 'getVersionBump')
-        .mockResolvedValue('minor');
-      const spyVersion = jest.spyOn(releaseService['version'], 'determineVersion')
-        .mockReturnValue('1.1.0');
+    it("should prompt for version when bumpStrategy is prompt", async () => {
+      mockConfig.bumpStrategy = "prompt";
+      const spyPrompt = jest
+        .spyOn(releaseService["prompts"], "getVersionBump")
+        .mockResolvedValue("minor");
+      const spyVersion = jest
+        .spyOn(releaseService["version"], "determineVersion")
+        .mockReturnValue("1.1.0");
 
-      await releaseService['determineVersion'](mockContext, mockConfig);
-      
+      await releaseService["determineVersion"](mockContext, mockConfig);
+
       expect(spyPrompt).toHaveBeenCalled();
-      expect(spyVersion).toHaveBeenCalledWith(mockContext, 'minor', undefined);
+      expect(spyVersion).toHaveBeenCalledWith(mockContext, "minor", undefined);
     });
 
-    it('should use conventional commits when bumpStrategy is conventional', async () => {
-      mockConfig.bumpStrategy = 'conventional';
-      mockConfig.bumpType = 'major';
-      const spyVersion = jest.spyOn(releaseService['version'], 'determineVersion')
-        .mockReturnValue('2.0.0');
+    it("should use conventional commits when bumpStrategy is conventional", async () => {
+      mockConfig.bumpStrategy = "conventional";
+      mockConfig.bumpType = "major";
+      const spyVersion = jest
+        .spyOn(releaseService["version"], "determineVersion")
+        .mockReturnValue("2.0.0");
 
-      await releaseService['determineVersion'](mockContext, mockConfig);
-      
-      expect(spyVersion).toHaveBeenCalledWith(mockContext, 'major', undefined);
+      await releaseService["determineVersion"](mockContext, mockConfig);
+
+      expect(spyVersion).toHaveBeenCalledWith(mockContext, "major", undefined);
     });
 
-    it('should default to patch when using auto strategy', async () => {
-      mockConfig.bumpStrategy = 'auto';
-      const spyVersion = jest.spyOn(releaseService['version'], 'determineVersion')
-        .mockReturnValue('1.0.1');
+    it("should default to patch when using auto strategy", async () => {
+      mockConfig.bumpStrategy = "auto";
+      const spyVersion = jest
+        .spyOn(releaseService["version"], "determineVersion")
+        .mockReturnValue("1.0.1");
 
-      await releaseService['determineVersion'](mockContext, mockConfig);
-      
-      expect(spyVersion).toHaveBeenCalledWith(mockContext, 'patch', undefined);
+      await releaseService["determineVersion"](mockContext, mockConfig);
+
+      expect(spyVersion).toHaveBeenCalledWith(mockContext, "patch", undefined);
     });
   });
 
-  describe('workspace dependencies', () => {
-    it('should identify workspace dependencies correctly', () => {
+  describe("workspace dependencies", () => {
+    it("should identify workspace dependencies correctly", () => {
       const context: PackageContext = {
-        name: 'pkg1',
-        path: '/path/pkg1',
-        currentVersion: '1.0.0',
+        name: "pkg1",
+        path: "/path/pkg1",
+        currentVersion: "1.0.0",
         dependencies: {
-          '@siteed/pkg2': '^1.0.0',
-          'lodash': '^4.0.0',
-          '@your-scope/pkg3': '^1.0.0'
+          "@siteed/pkg2": "^1.0.0",
+          lodash: "^4.0.0",
+          "@your-scope/pkg3": "^1.0.0",
         },
         devDependencies: {
-          '@siteed/dev-pkg': '^1.0.0'
-        }
+          "@siteed/dev-pkg": "^1.0.0",
+        },
       };
 
-      const deps = releaseService['getWorkspaceDependencies'](context);
-      
+      const deps = releaseService["getWorkspaceDependencies"](context);
+
       expect(deps).toEqual([
-        '@siteed/pkg2',
-        '@your-scope/pkg3',
-        '@siteed/dev-pkg'
+        "@siteed/pkg2",
+        "@your-scope/pkg3",
+        "@siteed/dev-pkg",
       ]);
     });
   });
 
-  describe('config handling', () => {
-    it('should merge configs correctly with pattern matching', async () => {
+  describe("config handling", () => {
+    it("should merge configs correctly with pattern matching", async () => {
       // Create a fresh config with pattern matching
       const testConfig: MonorepoConfig = {
         ...config,
         packages: {
-          'packages/*': {
-            packageManager: 'yarn',
-            changelogFile: 'CHANGELOG.md',
+          "packages/*": {
+            packageManager: "yarn",
+            changelogFile: "CHANGELOG.md",
             conventionalCommits: true,
             git: config.git,
-            versionStrategy: 'independent',
-            bumpStrategy: 'prompt',
+            versionStrategy: "independent",
+            bumpStrategy: "prompt",
             npm: {
               ...defaultNpmConfig,
-              access: 'restricted'
+              access: "restricted",
             },
-            hooks: {}
-          }
-        }
+            hooks: {},
+          },
+        },
       };
 
       // Create service with test config
       const testReleaseService = new ReleaseService(testConfig, logger);
 
       // Mock the package-specific config
-      jest.spyOn(testReleaseService['workspace'], 'getPackageConfig')
+      jest
+        .spyOn(testReleaseService["workspace"], "getPackageConfig")
         .mockResolvedValue({
-          packageManager: 'yarn',
-          changelogFile: 'CHANGELOG.md',
+          packageManager: "yarn",
+          changelogFile: "CHANGELOG.md",
           conventionalCommits: true,
           git: config.git,
-          versionStrategy: 'independent',
-          bumpStrategy: 'prompt',
+          versionStrategy: "independent",
+          bumpStrategy: "prompt",
           npm: {
             publish: true,
-            registry: 'https://registry.npmjs.org',
-            tag: 'beta',            // Explicitly set tag to beta
-            access: 'restricted'
+            registry: "https://registry.npmjs.org",
+            tag: "beta", // Explicitly set tag to beta
+            access: "restricted",
           },
-          hooks: {}
+          hooks: {},
         });
 
       // Get the effective config
-      const result = await testReleaseService['getEffectiveConfig']('packages/pkg1');
-      
+      const result =
+        await testReleaseService["getEffectiveConfig"]("packages/pkg1");
+
       // Verify the merged config
       expect(result.npm).toEqual({
         publish: true,
-        registry: 'https://registry.npmjs.org',
-        tag: 'beta',
-        access: 'restricted'
+        registry: "https://registry.npmjs.org",
+        tag: "beta",
+        access: "restricted",
       });
 
       // Also verify that pattern matching worked
-      expect(testReleaseService['matchPackagePattern']('packages/pkg1', 'packages/*')).toBe(true);
+      expect(
+        testReleaseService["matchPackagePattern"](
+          "packages/pkg1",
+          "packages/*",
+        ),
+      ).toBe(true);
     });
-  
-    it('should handle pattern matching with glob patterns', () => {
-      expect(releaseService['matchPackagePattern']('packages/pkg1', 'packages/*')).toBe(true);
-      expect(releaseService['matchPackagePattern']('packages/nested/pkg1', 'packages/*/*')).toBe(true);
-      expect(releaseService['matchPackagePattern']('other/pkg1', 'packages/*')).toBe(false);
+
+    it("should handle pattern matching with glob patterns", () => {
+      expect(
+        releaseService["matchPackagePattern"]("packages/pkg1", "packages/*"),
+      ).toBe(true);
+      expect(
+        releaseService["matchPackagePattern"](
+          "packages/nested/pkg1",
+          "packages/*/*",
+        ),
+      ).toBe(true);
+      expect(
+        releaseService["matchPackagePattern"]("other/pkg1", "packages/*"),
+      ).toBe(false);
     });
   });
 
-  describe('hooks', () => {
-    it('should run hooks in correct order', async () => {
+  describe("hooks", () => {
+    it("should run hooks in correct order", async () => {
       const mockHook = jest.fn();
-      const mockContext = { name: 'pkg1', path: '/path', currentVersion: '1.0.0' };
+      const mockContext = {
+        name: "pkg1",
+        path: "/path",
+        currentVersion: "1.0.0",
+      };
       const mockConfig = {
         ...config,
         hooks: {
-          preRelease: mockHook
-        }
+          preRelease: mockHook,
+        },
       };
 
-      const spyLogger = jest.spyOn(releaseService['logger'], 'info');
-      
-      await releaseService['runHooks']('preRelease', mockConfig, mockContext);
-      
+      const spyLogger = jest.spyOn(releaseService["logger"], "info");
+
+      await releaseService["runHooks"]("preRelease", mockConfig, mockContext);
+
       expect(mockHook).toHaveBeenCalledWith(mockContext);
-      expect(spyLogger).toHaveBeenCalledWith('Running preRelease hook...');
+      expect(spyLogger).toHaveBeenCalledWith("Running preRelease hook...");
     });
   });
 });

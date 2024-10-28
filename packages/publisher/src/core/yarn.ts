@@ -1,6 +1,6 @@
-import type { ExecaReturnValue } from 'execa';
-import type { NpmConfig, PackageContext } from '../types/config';
-import { PackageManagerService } from './package-manager';
+import type { ExecaReturnValue } from "execa";
+import type { NpmConfig, PackageContext } from "../types/config";
+import { PackageManagerService } from "./package-manager";
 
 interface YarnInfoResponse {
   data?: string;
@@ -14,75 +14,89 @@ export class YarnService implements PackageManagerService {
   async validateAuth(config?: { npm: NpmConfig }): Promise<void> {
     const effectiveConfig = this.getEffectiveConfig(config);
     try {
-      const execa = (await import('execa')).default;
-      const result: ExecaReturnValue<string> = await execa('yarn', ['npm', 'whoami', '--registry', effectiveConfig.registry]);
+      const execa = (await import("execa")).default;
+      const result: ExecaReturnValue<string> = await execa("yarn", [
+        "npm",
+        "whoami",
+        "--registry",
+        effectiveConfig.registry,
+      ]);
 
-      if (!result.stdout || result.stdout.toString().trim() === '') {
-        throw new Error('Not authenticated to npm registry');
+      if (!result.stdout || result.stdout.toString().trim() === "") {
+        throw new Error("Not authenticated to npm registry");
       }
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`yarn npm authentication failed: ${error.message}`);
       }
-      throw new Error('yarn npm authentication failed: Unknown error occurred');
+      throw new Error("yarn npm authentication failed: Unknown error occurred");
     }
   }
 
-  async publish(context: PackageContext, config?: { npm: NpmConfig }): Promise<{ published: boolean; registry: string }> {
+  async publish(
+    context: PackageContext,
+    config?: { npm: NpmConfig },
+  ): Promise<{ published: boolean; registry: string }> {
     const effectiveConfig = this.getEffectiveConfig(config);
     const publishArgs = [
-      'npm',
-      'publish',
-      '--registry', effectiveConfig.registry,
-      '--tag', effectiveConfig.tag,
-      '--access', effectiveConfig.access
+      "npm",
+      "publish",
+      "--registry",
+      effectiveConfig.registry,
+      "--tag",
+      effectiveConfig.tag,
+      "--access",
+      effectiveConfig.access,
     ];
 
     if (effectiveConfig.otp) {
-      publishArgs.push('--otp', effectiveConfig.otp);
+      publishArgs.push("--otp", effectiveConfig.otp);
     }
 
     try {
-      const execa = (await import('execa')).default;
-      await execa('yarn', publishArgs, { cwd: context.path });
+      const execa = (await import("execa")).default;
+      await execa("yarn", publishArgs, { cwd: context.path });
 
       return {
         published: true,
-        registry: effectiveConfig.registry
+        registry: effectiveConfig.registry,
       };
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Failed to publish package: ${error.message}`);
       }
-      throw new Error('Failed to publish package: Unknown error occurred');
+      throw new Error("Failed to publish package: Unknown error occurred");
     }
   }
 
-  async getLatestVersion(packageName: string, config?: { npm: NpmConfig }): Promise<string> {
+  async getLatestVersion(
+    packageName: string,
+    config?: { npm: NpmConfig },
+  ): Promise<string> {
     const effectiveConfig = this.getEffectiveConfig(config);
     try {
-      const execa = (await import('execa')).default;
-      const result: ExecaReturnValue<string> = await execa('yarn', [
-        'npm',
-        'info',
+      const execa = (await import("execa")).default;
+      const result: ExecaReturnValue<string> = await execa("yarn", [
+        "npm",
+        "info",
         packageName,
-        'version',
-        '--registry',
+        "version",
+        "--registry",
         effectiveConfig.registry,
-        '--json'
+        "--json",
       ]);
-      
+
       const parsed = this.parseJsonResponse<YarnInfoResponse>(result.stdout);
-      return parsed.data ?? '0.0.0';
+      return parsed.data ?? "0.0.0";
     } catch {
-      return '0.0.0';
+      return "0.0.0";
     }
   }
 
   async checkWorkspaceIntegrity(): Promise<boolean> {
     try {
-      const execa = (await import('execa')).default;
-      await execa('yarn', ['install', '--check-cache']);
+      const execa = (await import("execa")).default;
+      await execa("yarn", ["install", "--check-cache"]);
       return true;
     } catch {
       return false;
@@ -91,57 +105,64 @@ export class YarnService implements PackageManagerService {
 
   async getWorkspaceVersion(packageName: string): Promise<string> {
     try {
-      const execa = (await import('execa')).default;
-      const result: ExecaReturnValue<string> = await execa('yarn', [
-        'workspaces',
-        'info',
+      const execa = (await import("execa")).default;
+      const result: ExecaReturnValue<string> = await execa("yarn", [
+        "workspaces",
+        "info",
         packageName,
-        '--json'
+        "--json",
       ]);
-      
+
       const parsed = this.parseJsonResponse<YarnInfoResponse>(result.stdout);
-      return parsed.version ?? '0.0.0';
+      return parsed.version ?? "0.0.0";
     } catch {
-      return '0.0.0';
+      return "0.0.0";
     }
   }
 
-  async updateDependencies(context: PackageContext, dependencies: string[]): Promise<void> {
+  async updateDependencies(
+    context: PackageContext,
+    dependencies: string[],
+  ): Promise<void> {
     try {
-      const execa = (await import('execa')).default;
-      await execa('yarn', ['up', ...dependencies], {
-        cwd: context.path
+      const execa = (await import("execa")).default;
+      await execa("yarn", ["up", ...dependencies], {
+        cwd: context.path,
       });
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Failed to update dependencies: ${error.message}`);
       }
-      throw new Error('Failed to update dependencies: Unknown error occurred');
+      throw new Error("Failed to update dependencies: Unknown error occurred");
     }
   }
 
   async pack(context: PackageContext): Promise<string> {
     try {
-      const execa = (await import('execa')).default;
-      const result: ExecaReturnValue<string> = await execa('yarn', ['pack', '--json'], {
-        cwd: context.path
-      });
-      
+      const execa = (await import("execa")).default;
+      const result: ExecaReturnValue<string> = await execa(
+        "yarn",
+        ["pack", "--json"],
+        {
+          cwd: context.path,
+        },
+      );
+
       const parsed = this.parseJsonResponse<YarnInfoResponse>(result.stdout);
-      return parsed.filename ?? '';
+      return parsed.filename ?? "";
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Failed to pack package: ${error.message}`);
       }
-      throw new Error('Failed to pack package: Unknown error occurred');
+      throw new Error("Failed to pack package: Unknown error occurred");
     }
   }
 
   async runScript(context: PackageContext, script: string): Promise<void> {
     try {
-      const execa = (await import('execa')).default;
-      await execa('yarn', ['run', script], {
-        cwd: context.path
+      const execa = (await import("execa")).default;
+      await execa("yarn", ["run", script], {
+        cwd: context.path,
       });
     } catch (error) {
       if (error instanceof Error) {

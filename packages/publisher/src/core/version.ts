@@ -1,6 +1,6 @@
-import * as semver from 'semver';
-import type { ExecaReturnValue, Options as ExecaOptions } from 'execa';
-import type { PackageContext, ReleaseConfig, BumpType } from '../types/config';
+import * as semver from "semver";
+import type { ExecaReturnValue, Options as ExecaOptions } from "execa";
+import type { PackageContext, ReleaseConfig, BumpType } from "../types/config";
 
 interface PackageJson {
   dependencies?: Record<string, string>;
@@ -12,26 +12,27 @@ export class VersionService {
   private async execCommand(
     command: string,
     args: string[],
-    options: ExecaOptions
+    options: ExecaOptions,
   ): Promise<ExecaReturnValue> {
-    const execaDefault = await import('execa');
+    const execaDefault = await import("execa");
     const execa = execaDefault.default;
     return execa(command, args, options);
   }
 
   async bump(context: PackageContext, config: ReleaseConfig): Promise<void> {
-    const packageManager = config.packageManager || 'yarn';
+    const packageManager = config.packageManager || "yarn";
 
     try {
       if (!context.newVersion) {
-        throw new Error('New version is not defined');
+        throw new Error("New version is not defined");
       }
 
-      await this.execCommand(packageManager, ['version', context.newVersion], {
-        cwd: context.path
+      await this.execCommand(packageManager, ["version", context.newVersion], {
+        cwd: context.path,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       throw new Error(`Failed to bump version: ${errorMessage}`);
     }
   }
@@ -39,13 +40,13 @@ export class VersionService {
   determineVersion(
     context: PackageContext,
     bumpType: BumpType,
-    preReleaseId?: string
+    preReleaseId?: string,
   ): string {
     const { currentVersion } = context;
 
-    if (bumpType === 'custom') {
+    if (bumpType === "custom") {
       if (!context.newVersion) {
-        throw new Error('New version is required for custom bump type');
+        throw new Error("New version is required for custom bump type");
       }
       return context.newVersion;
     }
@@ -56,17 +57,25 @@ export class VersionService {
 
     let newVersion: string | null;
 
-    if (bumpType.startsWith('pre')) {
+    if (bumpType.startsWith("pre")) {
       if (!preReleaseId) {
-        throw new Error('Prerelease identifier is required for prerelease versions');
+        throw new Error(
+          "Prerelease identifier is required for prerelease versions",
+        );
       }
-      newVersion = semver.inc(currentVersion, bumpType as semver.ReleaseType, preReleaseId);
+      newVersion = semver.inc(
+        currentVersion,
+        bumpType as semver.ReleaseType,
+        preReleaseId,
+      );
     } else {
       newVersion = semver.inc(currentVersion, bumpType as semver.ReleaseType);
     }
 
     if (!newVersion) {
-      throw new Error(`Failed to increment version ${currentVersion} with bump type ${bumpType}`);
+      throw new Error(
+        `Failed to increment version ${currentVersion} with bump type ${bumpType}`,
+      );
     }
 
     return newVersion;
@@ -74,10 +83,10 @@ export class VersionService {
 
   async updateDependencies(
     context: PackageContext,
-    updatedPackages: Map<string, string>
+    updatedPackages: Map<string, string>,
   ): Promise<void> {
     const packageJsonPath = `${context.path}/package.json`;
-    const packageJson = await import(packageJsonPath) as PackageJson;
+    const packageJson = (await import(packageJsonPath)) as PackageJson;
     let updated = false;
 
     for (const [name, version] of updatedPackages.entries()) {
@@ -96,9 +105,13 @@ export class VersionService {
     }
 
     if (updated) {
-      await this.execCommand('yarn', ['up', ...Array.from(updatedPackages.keys())], {
-        cwd: context.path
-      });
+      await this.execCommand(
+        "yarn",
+        ["up", ...Array.from(updatedPackages.keys())],
+        {
+          cwd: context.path,
+        },
+      );
     }
   }
 }
