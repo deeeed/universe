@@ -4,56 +4,57 @@ import path from "node:path";
 import type { PackageJson } from "type-fest";
 import type { PackageContext, ReleaseConfig } from "../types/config";
 import { Logger } from "../utils/logger";
-import fs from "fs";
+import fs from "fs/promises";
 
 export class WorkspaceService {
   private packageCache: Map<string, PackageContext> = new Map();
   private logger: Logger;
-  private rootDir: string;
+  private rootDir: string | undefined;
 
   constructor(logger?: Logger) {
     this.logger = logger ?? new Logger();
-    this.rootDir = this.findMonorepoRoot(process.cwd());
-    this.logger.debug("Monorepo root directory:", this.rootDir);
+    // Initialize rootDir later asynchronously
   }
 
-  getRootDir(): string {
+  async getRootDir(): Promise<string> {
+    if (!this.rootDir) {
+      this.rootDir = await this.findMonorepoRoot(process.cwd());
+      this.logger.debug("Monorepo root directory:", this.rootDir);
+    }
     return this.rootDir;
   }
 
-  private findMonorepoRoot(startDir: string): string {
+  private async findMonorepoRoot(startDir: string): Promise<string> {
     let currentDir = startDir;
     while (currentDir !== path.parse(currentDir).root) {
       const pkgJsonPath = path.join(currentDir, "package.json");
-      if (fs.existsSync(pkgJsonPath)) {
-        try {
-          const content = fs.readFileSync(pkgJsonPath, "utf-8");
-          const pkgJson = JSON.parse(content) as PackageJson; // Use type assertion
-          if (pkgJson.workspaces) {
-            // Safe access due to type assertion
-            return currentDir;
-          }
-        } catch (error) {
-          this.logger.debug(`Error reading ${pkgJsonPath}:`, error);
+      try {
+        await fs.access(pkgJsonPath);
+        const content = await fs.readFile(pkgJsonPath, "utf-8");
+        const pkgJson = JSON.parse(content) as PackageJson;
+        if (pkgJson.workspaces) {
+          return currentDir;
         }
+      } catch (error) {
+        this.logger.debug(`Error accessing ${pkgJsonPath}:`, error);
       }
       currentDir = path.dirname(currentDir);
     }
-    return startDir; // fallback to current directory if no root found
+    return startDir; // fallback to start directory if no root found
   }
 
   async getPackages(packageNames?: string[]): Promise<PackageContext[]> {
     const globby = (await import("globby")).default;
+    const rootDir = await this.getRootDir();
     const workspaceGlobs = await this.getWorkspaceGlobs();
 
     this.logger.debug("Current directory:", process.cwd());
     this.logger.debug("Using workspace globs:", workspaceGlobs);
 
-    // Use rootDir for globbing
     const packagePaths = await globby(workspaceGlobs, {
       onlyDirectories: true,
       ignore: ["**/node_modules/**"],
-      cwd: this.rootDir,
+      cwd: rootDir,
     });
 
     this.logger.debug("Found package paths:", packagePaths);
@@ -203,7 +204,8 @@ export class WorkspaceService {
   }
 
   private async readPackageJson(packagePath: string): Promise<PackageJson> {
-    const fullPath = path.join(this.rootDir, packagePath, "package.json");
+    const rootDir = await this.getRootDir();
+    const fullPath = path.join(rootDir, packagePath, "package.json");
     try {
       const content = await readFile(fullPath, "utf-8");
       const parsed = JSON.parse(content) as PackageJson;
@@ -217,8 +219,8 @@ export class WorkspaceService {
 
   private async getWorkspaceGlobs(): Promise<string[]> {
     try {
-      // Use rootDir for reading root package.json
-      const rootPkgJsonPath = path.join(this.rootDir, "package.json");
+      const rootDir = await this.getRootDir();
+      const rootPkgJsonPath = path.join(rootDir, "package.json");
       const content = await readFile(rootPkgJsonPath, "utf-8");
       const rootPkgJson = JSON.parse(content) as PackageJson;
 
@@ -261,5 +263,22 @@ export class WorkspaceService {
       },
       {},
     );
+  }
+
+  // Adjusted formatting per Prettier
+  async writePackageJson(
+    packagePath: string,
+    data: PackageJson,
+  ): Promise<void> {
+    const rootDir = await this.getRootDir();
+    const fullPath = path.join(rootDir, packagePath, "package.json");
+    try {
+      const content = JSON.stringify(data, null, 2);
+      await fs.writeFile(fullPath, content, "utf8");
+      this.logger.debug(`Successfully wrote package.json at: ${fullPath}`);
+    } catch (error) {
+      this.logger.error(`Failed to write package.json at: ${fullPath}`, error);
+      throw error;
+    }
   }
 }

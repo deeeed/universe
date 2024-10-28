@@ -4,6 +4,7 @@ import { Logger } from "../utils/logger";
 
 interface InitOptions {
   force?: boolean;
+  interactive?: boolean;
 }
 
 export const initCommand = new Command()
@@ -11,14 +12,16 @@ export const initCommand = new Command()
   .description("Initialize release configuration")
   .argument("[packages...]", "Package names to initialize")
   .option("-f, --force", "Overwrite existing configuration")
+  .option("-i, --interactive", "Run in interactive mode")
   .action(async (packages: string[], commandOptions: InitOptions) => {
     const logger = new Logger();
     try {
       const initService = new InitService(logger);
 
-      // Extract only the options we care about
-      const options: { force?: boolean } = {
+      // Extract options
+      const options = {
         force: commandOptions.force,
+        interactive: commandOptions.interactive,
       };
 
       await initService.initialize(packages, options);

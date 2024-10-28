@@ -27,6 +27,7 @@
     "src/**/*",
     "bin/**/*",
     "publisher.config.ts",
+    ".publisher/**/*",
     "package.json",
     "jest.config.ts",
     "jest.setup.ts"

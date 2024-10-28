@@ -26,7 +26,7 @@ jest.mock("../workspace", () => {
   return {
     WorkspaceService: jest.fn().mockImplementation(() => ({
       getPackages: jest.fn(),
-      getRootDir: jest.fn().mockReturnValue("/path/to/monorepo/root"), // Add this line
+      getRootDir: jest.fn(), // Mock getRootDir
       // Add other methods if necessary
     })),
   };
@@ -62,7 +62,11 @@ describe("InitService", () => {
       ];
 
       mockWorkspaceService.getPackages.mockResolvedValue(mockPackages);
-      mockWorkspaceService.getRootDir.mockReturnValue("/path/to/monorepo/root"); // Ensure getRootDir returns a value
+
+      // Use mockResolvedValue to return a Promise<string>
+      mockWorkspaceService.getRootDir.mockResolvedValue(
+        "/path/to/monorepo/root",
+      );
 
       (fs.access as jest.Mock).mockRejectedValue(new Error("Not found"));
       (fs.writeFile as jest.Mock).mockResolvedValue(undefined);

@@ -1,5 +1,5 @@
 export const hooksTemplate = `import type { PackageContext } from '@siteed/publisher';
-import { exec } from '@siteed/publisher/utils';
+import { exec } from '@siteed/publisher';
 
 export async function preRelease(context: PackageContext): Promise<void> {
   // Run tests

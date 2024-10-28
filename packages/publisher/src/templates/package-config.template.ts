@@ -7,29 +7,29 @@ const config: ReleaseConfig = {
   versionStrategy: 'independent',
   bumpStrategy: 'prompt',
   git: {
-    tagPrefix: '\${packageName}-v',
+    tagPrefix: '{{packageName}}-v',
     requireCleanWorkingDirectory: true,
     requireUpToDate: true,
     commit: true,
     push: true,
-    commitMessage: 'chore(\${packageName}): release v\${version}',
+    commitMessage: 'chore({{packageName}}): release v{{version}}',
     tag: true,
     allowedBranches: ['main', 'master'],
-    remote: 'origin'
+    remote: 'origin',
   },
   npm: {
     publish: true,
     registry: 'https://registry.npmjs.org',
     tag: 'latest',
-    access: 'public'
+    access: 'public',
   },
   hooks: {
     preRelease: async () => {
       // Add your pre-release checks here
       // await exec('yarn test');
       // await exec('yarn build');
-    }
-  }
+    },
+  },
 };
 
 export default config;`;

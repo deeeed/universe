@@ -1,39 +1,35 @@
-import type { MonorepoConfig } from '@siteed/publisher';
+import type { ReleaseConfig } from '@siteed/publisher';
 
-const config: MonorepoConfig = {
+const config: ReleaseConfig = {
   packageManager: 'yarn',
+  changelogFile: 'CHANGELOG.md',
   conventionalCommits: true,
   versionStrategy: 'independent',
   bumpStrategy: 'prompt',
   git: {
-    tagPrefix: 'v',
+    tagPrefix: '@siteed/publisher-v',
     requireCleanWorkingDirectory: true,
     requireUpToDate: true,
     commit: true,
     push: true,
-    commitMessage: 'chore(release): release ${packageName}@${version}',
+    commitMessage: 'chore(@siteed/publisher): release v0.1.0',
     tag: true,
     allowedBranches: ['main', 'master'],
-    remote: 'origin'
+    remote: 'origin',
   },
   npm: {
     publish: true,
     registry: 'https://registry.npmjs.org',
     tag: 'latest',
-    access: 'public'
+    access: 'public',
   },
-  packages: {
-    'packages/*': {
-      changelogFile: 'CHANGELOG.md',
-      conventionalCommits: true,
-      npm: {
-        publish: true,
-        access: 'public'
-      }
-    }
+  hooks: {
+    preRelease: async () => {
+      // Add your pre-release checks here
+      // await exec('yarn test');
+      // await exec('yarn build');
+    },
   },
-  ignorePackages: [],
-  maxConcurrency: 4
 };
 
 export default config;

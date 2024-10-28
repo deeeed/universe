@@ -8,23 +8,33 @@ import {
 } from "../templates";
 import { Logger } from "../utils/logger";
 import { WorkspaceService } from "./workspace";
+import { PackageManagerDetector } from "../utils/packageManagerDetector";
+import { prompt } from "inquirer";
+
+interface InitializeOptions {
+  force?: boolean;
+  interactive?: boolean;
+}
 
 export class InitService {
-  private rootDir: string;
-
   constructor(
     private logger: Logger,
     private workspaceService: WorkspaceService = new WorkspaceService(),
-  ) {
-    // Initialize rootDir from workspaceService
-    this.rootDir = this.workspaceService.getRootDir();
-  }
+  ) {}
 
   async initialize(
     packages: string[],
-    options: { force?: boolean } = {},
+    options: InitializeOptions = {},
   ): Promise<void> {
     try {
+      // Detect package manager
+      const packageManagerDetector = new PackageManagerDetector(
+        await this.workspaceService.getRootDir(),
+      );
+      const packageManager = await packageManagerDetector.detectPackageManager();
+
+      this.logger.info(`Detected package manager: ${packageManager}`);
+
       // Get packages to initialize
       const packagesToInit =
         packages.length > 0
@@ -42,8 +52,21 @@ export class InitService {
         // Create directory structure
         await this.createDirectoryStructure(pkg.path);
 
+        // Collect custom configuration if interactive mode is enabled
+        let customConfig: string | undefined;
+        if (options.interactive) {
+          customConfig = await this.collectCustomConfig(pkg.name, packageManager);
+        }
+
         // Initialize package files
-        await this.initializePackageFiles(pkg.name, pkg.path, options.force);
+        await this.initializePackageFiles(
+          pkg.name,
+          pkg.path,
+          pkg.currentVersion ?? "1.0.0",
+          packageManager,
+          options.force,
+          customConfig,
+        );
 
         this.logger.success(`Initialized ${pkg.name}`);
       }
@@ -66,10 +89,12 @@ export class InitService {
   }
 
   private async createDirectoryStructure(packagePath: string): Promise<void> {
+    const rootDir = await this.workspaceService.getRootDir();
+
     // Ensure packagePath is absolute
     const absolutePackagePath = path.isAbsolute(packagePath)
       ? packagePath
-      : path.join(this.rootDir, packagePath);
+      : path.join(rootDir, packagePath);
 
     this.logger.debug(`Creating directories in: ${absolutePackagePath}`);
 
@@ -92,19 +117,32 @@ export class InitService {
   private async initializePackageFiles(
     packageName: string,
     packagePath: string,
+    version: string,
+    packageManager: string,
     force = false,
+    customConfig?: string,
   ): Promise<void> {
+    const rootDir = await this.workspaceService.getRootDir();
+
     // Ensure packagePath is absolute
     const absolutePackagePath = path.isAbsolute(packagePath)
       ? packagePath
-      : path.join(this.rootDir, packagePath);
+      : path.join(rootDir, packagePath);
 
     this.logger.debug(`Creating files in: ${absolutePackagePath}`);
+
+    // Generate package configuration content
+    const packageConfigContent = customConfig
+      ? customConfig
+      : packageConfigTemplate
+          .replace(/{{packageName}}/g, packageName)
+          .replace(/{{version}}/g, version)
+          .replace(/{{packageManager}}/g, packageManager);
 
     const files = [
       {
         path: path.join(absolutePackagePath, "publisher.config.ts"),
-        content: packageConfigTemplate.replace(/\${packageName}/g, packageName),
+        content: packageConfigContent,
         description: "package configuration",
       },
       {
@@ -138,7 +176,8 @@ export class InitService {
   }
 
   private async initializeRootConfig(force = false): Promise<void> {
-    const rootConfigPath = path.join(process.cwd(), "publisher.config.ts");
+    const rootDir = await this.workspaceService.getRootDir();
+    const rootConfigPath = path.join(rootDir, "publisher.config.ts");
 
     try {
       await fs.access(rootConfigPath);
@@ -154,5 +193,70 @@ export class InitService {
 
     await fs.writeFile(rootConfigPath, monorepoConfigTemplate);
     this.logger.success("Created root configuration");
+  }
+
+  private async collectCustomConfig(
+    packageName: string,
+    packageManager: string,
+  ): Promise<string> {
+    const responses = await prompt([
+      {
+        type: "input",
+        name: "registry",
+        message: `Enter the NPM registry URL for ${packageName}:`,
+        default: "https://registry.npmjs.org",
+      },
+      {
+        type: "confirm",
+        name: "conventionalCommits",
+        message: "Use conventional commits?",
+        default: true,
+      },
+      {
+        type: "list",
+        name: "versionStrategy",
+        message: "Select version strategy:",
+        choices: ["independent", "synchronized"],
+        default: "independent",
+      },
+      // Add more prompts as needed
+    ]);
+
+    // Build custom configuration content
+    const customConfig = `import type { ReleaseConfig } from '@siteed/publisher';
+
+const config: ReleaseConfig = {
+  packageManager: '${packageManager}',
+  changelogFile: 'CHANGELOG.md',
+  conventionalCommits: ${responses.conventionalCommits},
+  versionStrategy: '${responses.versionStrategy}',
+  bumpStrategy: 'prompt',
+  git: {
+    tagPrefix: '${packageName}-v',
+    requireCleanWorkingDirectory: true,
+    requireUpToDate: true,
+    commit: true,
+    push: true,
+    commitMessage: 'chore(${packageName}): release v\${version}',
+    tag: true,
+    allowedBranches: ['main', 'master'],
+    remote: 'origin',
+  },
+  npm: {
+    publish: true,
+    registry: '${responses.registry}',
+    tag: 'latest',
+    access: 'public',
+  },
+  hooks: {
+    preRelease: async () => {
+      // Add your pre-release checks here
+    },
+  },
+};
+
+export default config;`;
+
+    return customConfig;
   }
 }
