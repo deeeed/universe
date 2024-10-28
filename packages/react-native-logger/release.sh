@@ -78,7 +78,7 @@ case $choice in
             exit 1
         fi
         echo -e "\nSetting version to $new_version..."
-        yarn version --new-version $new_version
+        yarn version $new_version
         ;;
     *)
         echo "Invalid choice. Exiting."
