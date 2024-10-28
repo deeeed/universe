@@ -26,6 +26,7 @@ import { ConfirmCancelFooter } from '../components/bottom-modal/footers/ConfirmC
 import { LabelHandler } from '../components/bottom-modal/handlers/LabelHandler';
 import { baseLogger } from '../utils/logger';
 import { Portal } from '@gorhom/portal';
+import { useTheme } from './ThemeProvider';
 
 export interface BottomSheetStackItem<T = unknown> {
   id: number;
@@ -107,6 +108,7 @@ export const BottomSheetProvider = forwardRef<
 >(({ children, defaultPortalName = 'modal', sharedIdCounter }, ref) => {
   const [modalStack, setModalStack] = useState<Array<BottomSheetStackItem>>([]);
   const modalStackRef = useRef<Array<BottomSheetStackItem>>([]);
+  const theme = useTheme();
 
   const [footerHeights, setFooterHeights] = useState<Record<number, number>>(
     {}
@@ -181,7 +183,7 @@ export const BottomSheetProvider = forwardRef<
         </BottomSheetFooter>
       );
     },
-    [modalStack, updateFooterHeight, updateLatestData]
+    [modalStack, updateFooterHeight, updateLatestData, theme.colors]
   );
 
   const renderHandler = useCallback(
@@ -206,7 +208,19 @@ export const BottomSheetProvider = forwardRef<
           return <LabelHandler {...props} label={title} />;
         }
 
-        return <BottomSheetHandle {...props} />;
+        return (
+          <BottomSheetHandle
+            {...props}
+            style={{
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.outline,
+              borderTopLeftRadius: 15,
+              borderTopRightRadius: 15,
+              gap: 5,
+              backgroundColor: theme.colors.surfaceVariant,
+            }}
+          />
+        );
       };
       HandlerComponent.displayName = 'BottomSheetHandler';
       return HandlerComponent;
@@ -436,11 +450,18 @@ export const BottomSheetProvider = forwardRef<
 
       return (
         <Container>
-          <View style={{ paddingBottom: footerHeight }}>{content}</View>
+          <View
+            style={{
+              paddingBottom: footerHeight,
+              backgroundColor: theme.colors.surface,
+            }}
+          >
+            {content}
+          </View>
         </Container>
       );
     },
-    [modalStack, footerHeights, updateLatestData]
+    [modalStack, footerHeights, updateLatestData, theme.colors]
   );
 
   const contextValue = useMemo<BottomSheetContextValue>(

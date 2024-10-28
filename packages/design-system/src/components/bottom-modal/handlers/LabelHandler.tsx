@@ -13,8 +13,8 @@ const getStyles = (theme: AppTheme) => {
     container: {
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.outline,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
+      borderTopLeftRadius: 15,
+      borderTopRightRadius: 15,
       gap: 5,
       backgroundColor: theme.colors.surfaceVariant,
     },
