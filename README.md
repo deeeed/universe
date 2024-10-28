@@ -19,6 +19,7 @@ Here's a quick overview of the main packages in this monorepo:
 
 - [**@siteed/design-system**](./packages/design-system/README.md): Core design system components and utilities.
 - [**@siteed/react-native-logger**](./packages/react-native-logger/README.md): A flexible logging solution for React Native applications.
+- [**@siteed/publisher**](./packages/publisher/README.md): A monorepo release management tool.
 
 For more detailed information about each package, please refer to their individual README files linked above.
 
