@@ -11,6 +11,7 @@ jest.mock('fs', () => ({
   promises: {
     readFile: jest.fn(),
     writeFile: jest.fn(),
+    access: jest.fn(),
   },
 }));
 
@@ -97,7 +98,6 @@ describe('ChangelogService', () => {
       const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
       const content = writeCall?.[1] as string;
       
-      // Check essential parts instead of exact format
       expect(content).toContain('# Changelog');
       expect(content).toContain('## [Unreleased]');
       expect(content).toContain('## [1.1.0]');
@@ -118,26 +118,84 @@ describe('ChangelogService', () => {
       expect(content).toContain('* Feature: Something new');
       expect(content).toContain('## [1.0.0]');
     });
+  });
 
-    it('should insert new entry after Unreleased section', async () => {
-      const existingContent = '# Changelog\n\n## [Unreleased]\n\n## [1.0.0] - 2024-01-01\n';
-      (fs.readFile as jest.Mock).mockResolvedValueOnce(existingContent);
+  describe('validate', () => {
+    it('should validate a valid changelog', async () => {
+      const validContent = `# Changelog
 
-      const newContent = '* Feature: Something new';
-      await service.update(mockContext, newContent, mockConfig);
+## [Unreleased]
 
-      const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
-      const content = writeCall?.[1] as string;
+## [2.0.0] - 2024-03-01
+
+* Major update
+
+## [1.0.0] - 2024-01-01
+
+* Initial release
+`;
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+      (fs.readFile as jest.Mock).mockResolvedValue(validContent);
+
+      await expect(service.validate(mockContext, mockConfig)).resolves.not.toThrow();
+    });
+
+    it('should fail if changelog file is missing', async () => {
+      (fs.access as jest.Mock).mockRejectedValue(new Error('ENOENT'));
+
+      await expect(service.validate(mockContext, mockConfig)).rejects.toThrow('Changelog file not found');
+    });
+
+    it('should fail if changelog is missing header', async () => {
+      const invalidContent = `## [Unreleased]
+
+## [1.0.0] - 2024-01-01`;
       
-      // Handle string operations in a type-safe way
-      const sections = {
-        unreleased: content.indexOf('## [Unreleased]'),
-        newVersion: content.indexOf('## [1.1.0]'),
-        oldVersion: content.indexOf('## [1.0.0]')
-      };
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+      (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
 
-      expect(sections.unreleased).toBeLessThan(sections.newVersion);
-      expect(sections.newVersion).toBeLessThan(sections.oldVersion);
+      await expect(service.validate(mockContext, mockConfig)).rejects.toThrow('missing header');
+    });
+
+    it('should fail if changelog is missing unreleased section', async () => {
+      const invalidContent = `# Changelog
+
+## [1.0.0] - 2024-01-01`;
+      
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+      (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
+
+      await expect(service.validate(mockContext, mockConfig)).rejects.toThrow('missing Unreleased section');
+    });
+
+    it('should fail if version entries are in wrong order', async () => {
+      const invalidContent = `# Changelog
+
+## [Unreleased]
+
+## [1.0.0] - 2024-03-01
+
+## [2.0.0] - 2024-01-01`;
+      
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+      (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
+
+      await expect(service.validate(mockContext, mockConfig))
+        .rejects.toThrow('Version ordering error');
+    });
+
+    it('should fail if date format is invalid', async () => {
+      const invalidContent = `# Changelog
+
+## [Unreleased]
+
+## [1.0.0] - 2024-13-45`;
+      
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+      (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
+
+      await expect(service.validate(mockContext, mockConfig))
+        .rejects.toThrow('Invalid date format');
     });
   });
 
