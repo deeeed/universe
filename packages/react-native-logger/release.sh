@@ -19,6 +19,38 @@ show_help() {
     exit 1
 }
 
+# Function to update changelog
+update_changelog() {
+    local new_version=$1
+    local previous_version=$2
+    local current_date=$(date +%Y-%m-%d)
+    local package_prefix="react-native-logger-v"
+
+    # Create temporary file
+    temp_file=$(mktemp)
+
+    # Read line by line and update the changelog
+    while IFS= read -r line; do
+        echo "$line" >> "$temp_file"
+
+        # Find the [Unreleased] section and add the new version
+        if [[ "$line" == "## [Unreleased]" ]]; then
+            echo "" >> "$temp_file"
+            echo "## [$new_version] - $current_date" >> "$temp_file"
+        fi
+
+        # Update the comparison links at the bottom
+        if [[ "$line" == "[unreleased]:"* ]]; then
+            echo "[unreleased]: https://github.com/deeeed/universe/compare/${package_prefix}${new_version}...HEAD" >> "$temp_file"
+            echo "[$new_version]: https://github.com/deeeed/universe/compare/${package_prefix}${previous_version}...${package_prefix}${new_version}" >> "$temp_file"
+            break
+        fi
+    done < CHANGELOG.md
+
+    # Replace original file with updated content
+    mv "$temp_file" CHANGELOG.md
+}
+
 # Check if version type is provided
 if [ -z "$1" ]; then
     show_help
@@ -46,11 +78,20 @@ yarn version $version_type
 new_version=$(node -p "require('./package.json').version")
 echo "New version: $new_version"
 
+# Create git tag with correct prefix
+git tag "react-native-logger-v${new_version}"
+
+# Update the changelog
+update_changelog "$new_version" "$previous_version"
+
 # Add changes to git
 git add .
 
 # Commit changes with the new version in the commit message
 git commit -m "feat(react-native-logger): bump version $new_version"
+
+# Push the tag
+git push origin "react-native-logger-v${new_version}"
 
 # Run the release script
 yarn release
