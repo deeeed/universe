@@ -1,4 +1,4 @@
-# @siteed/release-it
+# @siteed/publisher
 
 A flexible and powerful release management tool designed for JavaScript/TypeScript monorepos. Automates version management, changelog generation, and package publishing with support for various package managers and CI/CD workflows.
 
@@ -17,25 +17,25 @@ A flexible and powerful release management tool designed for JavaScript/TypeScri
 
 ```bash
 # npm
-npm install -D @siteed/release-it
+npm install -D @siteed/publisher
 
 # yarn
-yarn add -D @siteed/release-it
+yarn add -D @siteed/publisher
 
 # pnpm 
-pnpm add -D @siteed/release-it
+pnpm add -D @siteed/publisher
 ```
 
 ## Quick Start
 
 1. Initialize release configuration in your package:
 ```bash
-npx release-it init
+npx publisher init
 ```
 
-2. Configure release-it.config.ts:
+2. Configure publisher.config.ts:
 ```typescript
-import { ReleaseConfig } from '@siteed/release-it';
+import { ReleaseConfig } from '@siteed/publisher';
 
 export default {
   packageManager: 'yarn',
@@ -60,16 +60,16 @@ export default {
 
 3. Release your package:
 ```bash
-npx release-it release
+npx publisher publish
 ```
 
 ## Configuration
 
 ### Global Configuration
-Create a `.release-it.config.ts` in your root directory for monorepo-wide settings:
+Create a `.publisher.config.ts` in your root directory for monorepo-wide settings:
 
 ```typescript
-import { MonorepoConfig } from '@siteed/release-it';
+import { MonorepoConfig } from '@siteed/publisher';
 
 export default {
   versionStrategy: 'independent',
@@ -85,7 +85,7 @@ export default {
 ```
 
 ### Package-specific Configuration
-Each package can have its own `release-it.config.ts`:
+Each package can have its own `publisher.config.ts`:
 
 ```typescript
 export default {
@@ -104,25 +104,25 @@ export default {
 
 ```bash
 # Show available commands
-release-it --help
+publisher --help
 
 # Initialize configuration
-release-it init [package]
+publisher init [package]
 
 # Release a specific package
-release-it release my-package
+publisher publish my-package
 
 # Release multiple packages
-release-it release pkg1 pkg2
+publisher publish pkg1 pkg2
 
 # Release all packages that have changes
-release-it release --all
+publisher publish --all
 
 # Dry run
-release-it release --dry-run
+publisher publish --dry-run
 
 # Custom version
-release-it release --version 1.2.3
+publisher publish --version 1.2.3
 ```
 
 ## Advanced Features

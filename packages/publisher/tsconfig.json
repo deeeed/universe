@@ -23,6 +23,7 @@
   "include": [
     "src/**/*",
     "bin/**/*",
+    "package.json",
     "jest.config.ts",
     "jest.setup.ts"
   ],

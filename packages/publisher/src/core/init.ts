@@ -26,7 +26,7 @@ export class InitService {
       for (const pkg of packagesToInit) {
         this.logger.info(`\nInitializing ${pkg.name}...`);
 
-        const configPath = path.join(pkg.path, 'release-it.config.ts');
+        const configPath = path.join(pkg.path, 'publisher.config.ts');
 
         // Check if config already exists
         try {
@@ -105,7 +105,7 @@ export class InitService {
     configPath: string,
     config: ReleaseConfig,
   ): Promise<void> {
-    const configContent = `import type { ReleaseConfig } from '@siteed/release-it';
+    const configContent = `import type { ReleaseConfig } from '@siteed/publisher';
 
 const config: ReleaseConfig = ${JSON.stringify(config, null, 2)};
 
@@ -145,7 +145,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   }
 
   private async initializeRootConfig(force?: boolean): Promise<void> {
-    const rootConfigPath = path.join(process.cwd(), 'release-it.config.ts');
+    const rootConfigPath = path.join(process.cwd(), 'publisher.config.ts');
 
     try {
       await fs.access(rootConfigPath);
@@ -157,7 +157,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       // File doesn't exist, continue
     }
 
-    const rootConfig = `import type { MonorepoConfig } from '@siteed/release-it';
+    const rootConfig = `import type { MonorepoConfig } from '@siteed/publisher';
 
 const config: MonorepoConfig = {
   packageManager: 'yarn',

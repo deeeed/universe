@@ -236,7 +236,7 @@ describe('WorkspaceService', () => {
       });
 
       jest.mock(
-        path.join(process.cwd(), 'packages/pkg-a', 'release-it.config.ts'),
+        path.join(process.cwd(), 'packages/pkg-a', 'publisher.config.ts'),
         () => ({
           __esModule: true,
           default: { packageManager: 'npm' },

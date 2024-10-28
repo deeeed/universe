@@ -73,7 +73,7 @@ export class WorkspaceService {
     }
 
     try {
-      const configPath = path.join(process.cwd(), packagePath, 'release-it.config.ts');
+      const configPath = path.join(process.cwd(), packagePath, 'publisher.config.ts');
       const importedConfig = (await import(configPath)) as { default: ReleaseConfig };
       return importedConfig.default;
     } catch {

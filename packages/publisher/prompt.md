@@ -1,4 +1,4 @@
-# @siteed/release-it
+# @siteed/publisher
 
 A monorepo-aware release management tool that streamlines the process of versioning, changelog management, and package publishing. This tool is specifically designed to handle multiple packages in a monorepo setup with a focus on TypeScript projects.
 
@@ -50,20 +50,20 @@ src/
 
 ```bash
 # Initialize a package
-release-it init @scope/package-name
+publisher init @scope/package-name
 
 # Release a package
-release-it release @scope/package-name
+publisher publish @scope/package-name
 
 # Validate release readiness
-release-it validate @scope/package-name
+publisher validate @scope/package-name
 ```
 
 ## Configuration
 
-Each package can have its own `release-it.config.ts`:
+Each package can have its own `publisher.config.ts`:
 ```typescript
-import type { ReleaseConfig } from '@siteed/release-it';
+import type { ReleaseConfig } from '@siteed/publisher';
 
 export default {
   packageManager: 'yarn',

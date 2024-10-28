@@ -66,7 +66,7 @@ describe('InitService', () => {
       await initService.initialize(['@scope/pkg-a']);
 
       expect(fs.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining('packages/pkg-a/release-it.config.ts'),
+        expect.stringContaining('packages/pkg-a/publisher.config.ts'),
         expect.stringContaining('@scope/pkg-a'),
       );
 

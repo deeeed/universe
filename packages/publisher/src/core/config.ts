@@ -5,10 +5,10 @@ import type { MonorepoConfig } from '../types/config';
 import { MonorepoConfigSchema } from '../types/config';
 
 const CONFIG_FILES = [
-  'release-it.config.js',
-  'release-it.config.ts',
-  '.release-it.js',
-  '.release-it.ts'
+  'publisher.config.js',
+  'publisher.config.ts',
+  '.publisher.js',
+  '.publisher.ts'
 ];
 
 export async function loadConfig(): Promise<MonorepoConfig> {

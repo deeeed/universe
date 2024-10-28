@@ -5749,42 +5749,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@siteed/react-native-logger@npm:^0.9.3":
-  version: 0.9.3
-  resolution: "@siteed/react-native-logger@npm:0.9.3"
-  checksum: 10c0/fa8b3cf8a47480ca630993d1fe5abe6a4dc6e43b66b52783e228ddf89b59a5e5856d156fcf57a48d184230d9b3d82d1c8f2e685a5c2838ad1ee3309a2f1493c2
-  languageName: node
-  linkType: hard
-
-"@siteed/react-native-logger@workspace:^, @siteed/react-native-logger@workspace:packages/react-native-logger":
+"@siteed/publisher@workspace:packages/publisher":
   version: 0.0.0-use.local
-  resolution: "@siteed/react-native-logger@workspace:packages/react-native-logger"
-  dependencies:
-    "@babel/eslint-parser": "npm:^7.24.8"
-    "@commitlint/config-conventional": "npm:^17.0.2"
-    "@evilmartians/lefthook": "npm:^1.2.2"
-    "@types/jest": "npm:^29.5.13"
-    "@typescript-eslint/eslint-plugin": "npm:^7.17.0"
-    "@typescript-eslint/parser": "npm:^7.17.0"
-    codecov: "npm:^3.8.3"
-    commitlint: "npm:^17.0.2"
-    del-cli: "npm:^5.0.0"
-    eslint: "npm:^8.4.1"
-    eslint-config-prettier: "npm:^8.5.0"
-    eslint-plugin-ft-flow: "npm:^3.0.11"
-    eslint-plugin-prettier: "npm:^4.0.0"
-    jest: "npm:^29.7.0"
-    jest-environment-jsdom: "npm:^29.7.0"
-    prettier: "npm:^2.0.5"
-    rimraf: "npm:^6.0.1"
-    ts-jest: "npm:^29.2.4"
-    typescript: "npm:^5.0.2"
-  languageName: unknown
-  linkType: soft
-
-"@siteed/release-it@workspace:packages/release-it":
-  version: 0.0.0-use.local
-  resolution: "@siteed/release-it@workspace:packages/release-it"
+  resolution: "@siteed/publisher@workspace:packages/publisher"
   dependencies:
     "@jest/types": "npm:^29.6.3"
     "@types/conventional-changelog": "npm:^3.1.5"
@@ -5818,7 +5785,40 @@ __metadata:
     update-notifier: "npm:^5.1.0"
     zod: "npm:^3.22.4"
   bin:
-    release-it: ./dist/bin/release-it.js
+    publisher: ./dist/bin/publisher.js
+  languageName: unknown
+  linkType: soft
+
+"@siteed/react-native-logger@npm:^0.9.3":
+  version: 0.9.3
+  resolution: "@siteed/react-native-logger@npm:0.9.3"
+  checksum: 10c0/fa8b3cf8a47480ca630993d1fe5abe6a4dc6e43b66b52783e228ddf89b59a5e5856d156fcf57a48d184230d9b3d82d1c8f2e685a5c2838ad1ee3309a2f1493c2
+  languageName: node
+  linkType: hard
+
+"@siteed/react-native-logger@workspace:^, @siteed/react-native-logger@workspace:packages/react-native-logger":
+  version: 0.0.0-use.local
+  resolution: "@siteed/react-native-logger@workspace:packages/react-native-logger"
+  dependencies:
+    "@babel/eslint-parser": "npm:^7.24.8"
+    "@commitlint/config-conventional": "npm:^17.0.2"
+    "@evilmartians/lefthook": "npm:^1.2.2"
+    "@types/jest": "npm:^29.5.13"
+    "@typescript-eslint/eslint-plugin": "npm:^7.17.0"
+    "@typescript-eslint/parser": "npm:^7.17.0"
+    codecov: "npm:^3.8.3"
+    commitlint: "npm:^17.0.2"
+    del-cli: "npm:^5.0.0"
+    eslint: "npm:^8.4.1"
+    eslint-config-prettier: "npm:^8.5.0"
+    eslint-plugin-ft-flow: "npm:^3.0.11"
+    eslint-plugin-prettier: "npm:^4.0.0"
+    jest: "npm:^29.7.0"
+    jest-environment-jsdom: "npm:^29.7.0"
+    prettier: "npm:^2.0.5"
+    rimraf: "npm:^6.0.1"
+    ts-jest: "npm:^29.2.4"
+    typescript: "npm:^5.0.2"
   languageName: unknown
   linkType: soft
 

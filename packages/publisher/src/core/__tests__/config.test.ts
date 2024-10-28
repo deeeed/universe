@@ -33,8 +33,8 @@ describe('Config Loading', () => {
     };
 
     (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (path.join as jest.Mock).mockReturnValue('/fake/path/release-it.config.js');
-    jest.mock('/fake/path/release-it.config.js', () => mockConfig, { virtual: true });
+    (path.join as jest.Mock).mockReturnValue('/fake/path/publisher.config.js');
+    jest.mock('/fake/path/publisher.config.js', () => mockConfig, { virtual: true });
 
     const config = await loadConfig();
     

@@ -1,4 +1,4 @@
-// packages/release-it/src/types/config.ts
+// packages/publisher/src/types/config.ts
 import { z } from 'zod';
 
 
