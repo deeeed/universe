@@ -16,14 +16,8 @@ A flexible and powerful release management tool designed for JavaScript/TypeScri
 ## Installation
 
 ```bash
-# npm
-npm install -D @siteed/publisher
-
 # yarn
 yarn add -D @siteed/publisher
-
-# pnpm 
-pnpm add -D @siteed/publisher
 ```
 
 ## Quick Start

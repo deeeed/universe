@@ -1,5 +1,6 @@
 import type { ExecaReturnValue } from 'execa';
 import type { NpmConfig, PackageContext } from '../types/config';
+import { PackageManagerService } from './package-manager';
 
 interface YarnInfoResponse {
   data?: string;
@@ -7,7 +8,7 @@ interface YarnInfoResponse {
   filename?: string;
 }
 
-export class YarnService {
+export class YarnService implements PackageManagerService {
   constructor(private readonly config: NpmConfig) {}
 
   async validateAuth(config?: { npm: NpmConfig }): Promise<void> {

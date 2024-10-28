@@ -3,33 +3,41 @@ import { Logger } from '../utils/logger';
 import { Prompts } from '../utils/prompt';
 import { ChangelogService } from './changelog';
 import { GitService } from './git';
-import { YarnService } from './yarn';
+import { PackageManagerFactory, PackageManagerService } from './package-manager';
 import { VersionService } from './version';
 import { WorkspaceService } from './workspace';
 
 export class ReleaseService {
   private git: GitService;
-  private yarn: YarnService;
+  private packageManager: PackageManagerService;
   private version: VersionService;
   private changelog: ChangelogService;
   private workspace: WorkspaceService;
   private prompts: Prompts;
 
+
   constructor(
     private config: MonorepoConfig,
     private logger: Logger
   ) {
+    if (!['npm', 'yarn'].includes(config.packageManager)) {
+      logger.warning('Invalid package manager specified, defaulting to "yarn"');
+      this.config.packageManager = 'yarn';
+    }
+
     this.git = new GitService(config.git);
-    this.yarn = new YarnService(config.npm);
+    this.packageManager = PackageManagerFactory.create(
+      config.packageManager as 'npm' | 'yarn',
+      config.npm
+    );
     this.version = new VersionService();
     this.changelog = new ChangelogService();
     this.workspace = new WorkspaceService();
     this.prompts = new Prompts(logger);
   }
-
   async releasePackages(packageNames: string[], options: { dryRun?: boolean; gitPush?: boolean; npmPublish?: boolean }): Promise<ReleaseResult[]> {
     // Validate workspace integrity before proceeding
-    if (!await this.yarn.checkWorkspaceIntegrity()) {
+    if (!await this.packageManager.checkWorkspaceIntegrity()) {
       throw new Error('Workspace integrity check failed. Please run yarn install');
     }
 
@@ -49,22 +57,16 @@ export class ReleaseService {
     return this.releasePackages(changedPackages.map(p => p.name), options);
   }
 
-  private async releasePackage(context: PackageContext, options: { dryRun?: boolean; gitPush?: boolean; npmPublish?: boolean }): Promise<ReleaseResult> {
+
+  private async releasePackage(context: PackageContext, options: { dryRun?: boolean; gitPush?: boolean; publish?: boolean }): Promise<ReleaseResult> {
     this.logger.info(`\nPreparing release for ${context.name}...`);
 
-    // Load package-specific config
-    const packageConfig = await this.workspace.getPackageConfig(context.name);
+    const packageConfig: ReleaseConfig = await this.getEffectiveConfig(context.name);
 
-    // Validate environment
     await this.validateEnvironment(packageConfig);
-
-    // Determine new version using VersionService
     context.newVersion = await this.determineVersion(context, packageConfig);
-
-    // Generate changelog
     const changelogEntry = await this.changelog.generate(context, packageConfig);
 
-    // Confirm release
     if (!options.dryRun && !await this.prompts.confirmRelease()) {
       throw new Error('Release cancelled');
     }
@@ -74,39 +76,27 @@ export class ReleaseService {
       return this.createDryRunResult(context);
     }
 
-    // Run pre-release hooks
     await this.runHooks('preRelease', packageConfig, context);
-
-    // Update version and dependencies
     await this.updateVersionAndDependencies(context, packageConfig);
-
-    // Update changelog
     await this.changelog.update(context, changelogEntry, packageConfig);
 
-    // Create git tag
-    const tag = await this.git.createTag(context, packageConfig);
+    const tag = await this.git.createTag(context, { git: packageConfig.git });
+    const commit = await this.git.commitChanges(context, { git: packageConfig.git });
 
-    // Commit changes
-    const commit = await this.git.commitChanges(context, packageConfig);
-
-    // Push changes
     if (options.gitPush) {
-      await this.git.push(packageConfig);
+      await this.git.push({ git: packageConfig.git });
     }
 
-    // Pack and publish to npm registry using yarn
-    let npmResult;
-    if (options.npmPublish) {
-      // Pack the package first as a verification step
-      const packageFile = await this.yarn.pack(context);
+    let publishResult;
+    if (options.publish) {
+      const packageFile = await this.packageManager.pack(context);
       if (!packageFile) {
         throw new Error('Failed to pack package');
       }
 
-      npmResult = await this.yarn.publish(context, packageConfig);
+      publishResult = await this.packageManager.publish(context, { npm: packageConfig.npm });
     }
 
-    // Run post-release hooks
     await this.runHooks('postRelease', packageConfig, context);
 
     return {
@@ -114,16 +104,17 @@ export class ReleaseService {
       version: context.newVersion,
       changelog: changelogEntry,
       git: { tag, commit },
-      npm: npmResult
+      npm: publishResult
     };
   }
 
   private async validateEnvironment(config: ReleaseConfig): Promise<void> {
     await this.git.validateStatus(config);
     if (config.npm?.publish) {
-      await this.yarn.validateAuth(config);
+      await this.packageManager.validateAuth(config);
     }
   }
+
 
   private async determineVersion(context: PackageContext, config: ReleaseConfig): Promise<string> {
     if (config.bumpStrategy === 'prompt') {
@@ -140,13 +131,10 @@ export class ReleaseService {
   }
 
   private async updateVersionAndDependencies(context: PackageContext, config: ReleaseConfig): Promise<void> {
-    // First update the version
     await this.version.bump(context, config);
-
-    // Then update any workspace dependencies if needed
     const workspaceDependencies = this.getWorkspaceDependencies(context);
     if (workspaceDependencies.length > 0) {
-      await this.yarn.updateDependencies(context, workspaceDependencies);
+      await this.packageManager.updateDependencies(context, workspaceDependencies);
     }
   }
 
@@ -169,6 +157,30 @@ export class ReleaseService {
       this.logger.info(`Running ${hookName} hook...`);
       await hook(context);
     }
+  }
+
+  private async getEffectiveConfig(packageName: string): Promise<ReleaseConfig> {
+    const packageConfig = await this.workspace.getPackageConfig(packageName);
+    const packagePattern = Object.keys(this.config.packages)
+      .find(pattern => this.matchPackagePattern(packageName, pattern));
+    
+    const patternConfig = packagePattern ? this.config.packages[packagePattern] : {};
+    
+    return {
+      ...this.config,
+      ...patternConfig,
+      ...packageConfig,
+      packageManager: this.config.packageManager as 'npm' | 'yarn'
+    };
+  }
+
+
+  private matchPackagePattern(packageName: string, pattern: string): boolean {
+    const regexPattern = pattern
+      .replace(/\*/g, '.*')
+      .replace(/\?/g, '.')
+      .replace(/\//g, '\\/');
+    return new RegExp(`^${regexPattern}$`).test(packageName);
   }
 
   private createDryRunResult(context: PackageContext): ReleaseResult {

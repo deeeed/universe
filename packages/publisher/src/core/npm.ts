@@ -1,7 +1,8 @@
 import type { ExecaReturnValue } from 'execa';
 import type { NpmConfig, PackageContext } from '../types/config';
+import { PackageManagerService } from './package-manager';
 
-export class NpmService {
+export class NpmService implements PackageManagerService {
   constructor(private readonly config: NpmConfig) {}
 
   private getEffectiveConfig(providedConfig?: { npm: NpmConfig }): NpmConfig {
@@ -14,7 +15,6 @@ export class NpmService {
       const execa = (await import('execa')).default;
       const result: ExecaReturnValue<string | Buffer> = await execa('npm', ['whoami', '--registry', effectiveConfig.registry]);
 
-      // Use `.toString().trim()` to handle Buffer or string output
       const output = result.stdout.toString().trim();
       if (!output) {
         throw new Error('Not authenticated to npm registry');
@@ -68,9 +68,63 @@ export class NpmService {
         effectiveConfig.registry
       ]);
       
-      return result.stdout.toString().trim();  // Ensure consistent string output
+      return result.stdout.toString().trim();
     } catch {
       return '0.0.0';
+    }
+  }
+
+  async checkWorkspaceIntegrity(): Promise<boolean> {
+    try {
+      const execa = (await import('execa')).default;
+      await execa('npm', ['install', '--dry-run']);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async updateDependencies(context: PackageContext, dependencies: string[]): Promise<void> {
+    try {
+      const execa = (await import('execa')).default;
+      await execa('npm', ['install', ...dependencies], {
+        cwd: context.path
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to update dependencies: ${error.message}`);
+      }
+      throw new Error('Failed to update dependencies: Unknown error occurred');
+    }
+  }
+
+  async pack(context: PackageContext): Promise<string> {
+    try {
+      const execa = (await import('execa')).default;
+      const result: ExecaReturnValue<string | Buffer> = await execa('npm', ['pack'], {
+        cwd: context.path
+      });
+      
+      return result.stdout.toString().trim();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to pack package: ${error.message}`);
+      }
+      throw new Error('Failed to pack package: Unknown error occurred');
+    }
+  }
+
+  async runScript(context: PackageContext, script: string): Promise<void> {
+    try {
+      const execa = (await import('execa')).default;
+      await execa('npm', ['run', script], {
+        cwd: context.path
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to run script ${script}: ${error.message}`);
+      }
+      throw new Error(`Failed to run script ${script}: Unknown error occurred`);
     }
   }
 }
