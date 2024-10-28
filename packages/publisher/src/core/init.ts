@@ -1,14 +1,18 @@
-import path from 'path';
 import fs from 'fs/promises';
+import path from 'path';
+import {
+  changelogTemplate,
+  hooksTemplate,
+  monorepoConfigTemplate,
+  packageConfigTemplate
+} from '../templates';
 import { Logger } from '../utils/logger';
 import { WorkspaceService } from './workspace';
-import type { ReleaseConfig } from '../types/config';
-import type execaType from 'execa';
 
 export class InitService {
   constructor(
     private logger: Logger,
-    private workspaceService: WorkspaceService = new WorkspaceService(), // Default value for production code
+    private workspaceService: WorkspaceService = new WorkspaceService(),
   ) {}
 
   async initialize(packages: string[], options: { force?: boolean } = {}): Promise<void> {
@@ -16,7 +20,7 @@ export class InitService {
       // Get packages to initialize
       const packagesToInit = packages.length > 0
         ? await this.workspaceService.getPackages(packages)
-        : await this.workspaceService.getPackages(); // No argument when packages array is empty
+        : await this.workspaceService.getPackages();
 
       if (packagesToInit.length === 0) {
         throw new Error('No packages found to initialize');
@@ -26,29 +30,11 @@ export class InitService {
       for (const pkg of packagesToInit) {
         this.logger.info(`\nInitializing ${pkg.name}...`);
 
-        const configPath = path.join(pkg.path, 'publisher.config.ts');
+        // Create directory structure
+        await this.createDirectoryStructure(pkg.path);
 
-        // Check if config already exists
-        try {
-          await fs.access(configPath);
-          if (!options.force) {
-            this.logger.warning(
-              `Config already exists for ${pkg.name}. Use --force to overwrite.`,
-            );
-            continue;
-          }
-        } catch {
-          // File doesn't exist, continue with creation
-        }
-
-        // Generate config
-        const config = this.generateConfig(pkg.name);
-
-        // Write config file
-        await this.writeConfig(configPath, config);
-
-        // Create or update changelog
-        await this.initializeChangelog(pkg.path);
+        // Initialize package files
+        await this.initializePackageFiles(pkg.name, pkg.path, options.force);
 
         this.logger.success(`Initialized ${pkg.name}`);
       }
@@ -60,91 +46,63 @@ export class InitService {
       this.logger.info('\nNext steps:');
       this.logger.info('1. Review and adjust the generated configurations');
       this.logger.info('2. Update CHANGELOG.md files with your initial content');
-      this.logger.info('3. Commit the changes');
+      this.logger.info('3. Review and customize release hooks in hooks.ts');
+      this.logger.info('4. Commit the changes');
     } catch (error) {
       this.logger.error('Initialization failed:', error);
       throw error;
     }
   }
 
-  private generateConfig(packageName: string): ReleaseConfig {
-    return {
-      packageManager: 'yarn',
-      changelogFile: 'CHANGELOG.md',
-      conventionalCommits: true,
-      versionStrategy: 'independent', // Added missing property
-      bumpStrategy: 'prompt',         // Added missing property
-      git: {
-        tagPrefix: `${packageName.replace('@', '').replace('/', '-')}-v`,
-        requireCleanWorkingDirectory: true,
-        requireUpToDate: true,
-        commit: true,
-        push: true,
-        commitMessage: `chore(${packageName}): release v\${version}`,
-        tag: true,
-        allowedBranches: ['main', 'master'],
-        remote: 'origin',
-      },
-      npm: {
-        publish: true,
-        registry: 'https://registry.npmjs.org',
-        tag: 'latest',
-        access: 'public',
-      },
-      hooks: {
-        preRelease: async (): Promise<void> => {
-          await exec('yarn typecheck');
-          await exec('yarn test');
-          await exec('yarn build');
-        },
-      },
-    };
-  }
+  private async createDirectoryStructure(packagePath: string): Promise<void> {
+    const dirs = [
+      path.join(packagePath, '.publisher'),
+      path.join(packagePath, '.publisher/hooks'),
+    ];
 
-  private async writeConfig(
-    configPath: string,
-    config: ReleaseConfig,
-  ): Promise<void> {
-    const configContent = `import type { ReleaseConfig } from '@siteed/publisher';
-
-const config: ReleaseConfig = ${JSON.stringify(config, null, 2)};
-
-export default config;
-`;
-    await fs.writeFile(configPath, configContent);
-  }
-
-  private async initializeChangelog(packagePath: string): Promise<void> {
-    const changelogPath = path.join(packagePath, 'CHANGELOG.md');
-
-    try {
-      await fs.access(changelogPath);
-      // Changelog exists, skip
-      return;
-    } catch {
-      // Create new changelog
-      const content = `# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-### Added
-
-### Changed
-
-### Removed
-
-[unreleased]: https://github.com/deeeed/universe/compare/HEAD
-`;
-      await fs.writeFile(changelogPath, content);
+    for (const dir of dirs) {
+      await fs.mkdir(dir, { recursive: true });
     }
   }
 
-  private async initializeRootConfig(force?: boolean): Promise<void> {
+  private async initializePackageFiles(packageName: string, packagePath: string, force = false): Promise<void> {
+    const files = [
+      {
+        path: path.join(packagePath, 'publisher.config.ts'),
+        content: packageConfigTemplate.replace(/\${packageName}/g, packageName),
+        description: 'package configuration'
+      },
+      {
+        path: path.join(packagePath, 'CHANGELOG.md'),
+        content: changelogTemplate,
+        description: 'changelog'
+      },
+      {
+        path: path.join(packagePath, '.publisher/hooks/index.ts'),
+        content: hooksTemplate,
+        description: 'release hooks'
+      }
+    ];
+
+    for (const file of files) {
+      try {
+        await fs.access(file.path);
+        if (!force) {
+          this.logger.warning(
+            `${file.description} already exists for ${packageName}. Use --force to overwrite.`,
+          );
+          continue;
+        }
+      } catch {
+        // File doesn't exist, continue with creation
+      }
+
+      await fs.writeFile(file.path, file.content);
+      this.logger.info(`Created ${file.description} for ${packageName}`);
+    }
+  }
+
+  private async initializeRootConfig(force = false): Promise<void> {
     const rootConfigPath = path.join(process.cwd(), 'publisher.config.ts');
 
     try {
@@ -157,37 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       // File doesn't exist, continue
     }
 
-    const rootConfig = `import type { MonorepoConfig } from '@siteed/publisher';
-
-const config: MonorepoConfig = {
-  packageManager: 'yarn',
-  conventionalCommits: true,
-  versionStrategy: 'independent',
-  packages: {
-    'packages/*': {
-      // Default package configuration
-      changelogFile: 'CHANGELOG.md',
-      npm: {
-        publish: true,
-        access: 'public',
-      },
-    },
-  },
-  ignorePackages: [],
-  maxConcurrency: 4,
-};
-
-export default config;
-`;
-
-    await fs.writeFile(rootConfigPath, rootConfig);
+    await fs.writeFile(rootConfigPath, monorepoConfigTemplate);
     this.logger.success('Created root configuration');
   }
-}
-
-
-async function exec(command: string): Promise<void> {
-  const execaModule = await import('execa');
-  const execa: typeof execaType = execaModule.default;
-  await execa(command.split(' ')[0], command.split(' ').slice(1));
 }
