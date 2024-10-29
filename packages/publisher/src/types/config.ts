@@ -65,6 +65,19 @@ export const PackageConfigSchema = z.object({
   git: GitConfigSchema,
   npm: NpmConfigSchema,
   hooks: HooksSchema,
+  packValidation: z
+    .object({
+      enabled: z.boolean().default(true),
+      validateFiles: z.boolean().default(true),
+      validateBuildArtifacts: z.boolean().default(true),
+      requiredFiles: z.array(z.string()).optional(),
+    })
+    .optional()
+    .default({
+      enabled: true,
+      validateFiles: true,
+      validateBuildArtifacts: true,
+    }),
 });
 
 // Release configuration schema (extends package config)
@@ -127,6 +140,9 @@ export interface PackageJson {
   version?: string;
   description?: string;
   main?: string;
+  types?: string;
+  typings?: string;
+  files?: string[];
   scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
@@ -168,3 +184,14 @@ export type DeepPartial<T> = T extends object
       [P in keyof T]?: DeepPartial<T[P]>;
     }
   : T;
+
+// Add after GitConfigSchema
+export const PackValidationSchema = z.object({
+  enabled: z.boolean().default(true),
+  validateFiles: z.boolean().default(true),
+  validateBuildArtifacts: z.boolean().default(true),
+  requiredFiles: z.array(z.string()).optional(),
+});
+
+// Add type export
+export type PackValidation = z.infer<typeof PackValidationSchema>;

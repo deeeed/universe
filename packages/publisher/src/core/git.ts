@@ -38,7 +38,13 @@ export class GitService {
     const status = await this.git.status();
 
     if (this.config.requireCleanWorkingDirectory && !status.isClean()) {
-      throw new Error("Working directory is not clean");
+      const files = status.files.map((f) => f.path).join("\n- ");
+      throw new Error(
+        `Working directory is not clean. The following files have changes:\n- ${files}\n\n` +
+          `To proceed anyway, you can:\n` +
+          `1. Commit or stash your changes\n` +
+          `2. Run with --no-git-check to skip this check`,
+      );
     }
 
     if (this.config.requireUpToDate) {
@@ -52,7 +58,8 @@ export class GitService {
 
       if (!tracking) {
         throw new Error(
-          `Branch ${currentBranch} is not tracking a remote branch`,
+          `Branch ${currentBranch} is not tracking a remote branch. ` +
+            `To fix this, run: git branch --set-upstream-to=${this.config.remote}/${currentBranch} ${currentBranch}`,
         );
       }
 

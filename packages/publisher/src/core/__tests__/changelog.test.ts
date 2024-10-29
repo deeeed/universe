@@ -63,6 +63,12 @@ describe("ChangelogService", () => {
       hooks: {},
       versionStrategy: "independent",
       bumpStrategy: "prompt",
+      packValidation: {
+        enabled: true,
+        validateFiles: true,
+        validateBuildArtifacts: true,
+        requiredFiles: undefined,
+      },
     };
   });
 

@@ -105,6 +105,12 @@ describe("Config Loading", () => {
       packages: {},
       ignorePackages: [],
       maxConcurrency: 4,
+      packValidation: {
+        enabled: true,
+        validateFiles: true,
+        validateBuildArtifacts: true,
+        requiredFiles: ["README.md", "package.json"],
+      },
     };
 
     (fs.existsSync as jest.Mock).mockReturnValue(true);

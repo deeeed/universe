@@ -53,10 +53,19 @@ describe("GitService", () => {
       mockGit.status.mockResolvedValue({
         isClean: () => false,
         current: "main",
+        files: [
+          { path: "packages/my-package/src/index.ts" },
+          { path: "packages/my-package/package.json" },
+        ],
       });
 
       await expect(gitService.validateStatus()).rejects.toThrow(
-        "Working directory is not clean",
+        "Working directory is not clean. The following files have changes:\n" +
+          "- packages/my-package/src/index.ts\n" +
+          "- packages/my-package/package.json\n\n" +
+          "To proceed anyway, you can:\n" +
+          "1. Commit or stash your changes\n" +
+          "2. Run with --no-git-check to skip this check",
       );
     });
   });

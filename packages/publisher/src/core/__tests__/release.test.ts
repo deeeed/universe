@@ -70,6 +70,12 @@ describe("ReleaseService", () => {
         allowedBranches: ["main", "master"],
         remote: "origin",
       },
+      packValidation: {
+        enabled: true,
+        validateFiles: true,
+        validateBuildArtifacts: true,
+        requiredFiles: undefined,
+      },
       npm: defaultNpmConfig,
       hooks: {},
       packages: {},
@@ -379,6 +385,12 @@ describe("ReleaseService", () => {
           git: config.git,
           versionStrategy: "independent",
           bumpStrategy: "prompt",
+          packValidation: {
+            enabled: true,
+            validateFiles: true,
+            validateBuildArtifacts: true,
+            requiredFiles: undefined,
+          },
           npm: {
             publish: true,
             registry: "https://registry.npmjs.org",

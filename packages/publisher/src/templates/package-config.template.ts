@@ -37,6 +37,11 @@ export function generateDefaultConfig(
     bumpStrategy: options.bumpStrategy ?? "prompt",
     bumpType: options.bumpType,
     preReleaseId: options.preReleaseId,
+    packValidation: {
+      enabled: true,
+      validateFiles: true,
+      validateBuildArtifacts: true,
+    },
     git: {
       tagPrefix: `${options.packageJson.name}@`,
       requireCleanWorkingDirectory: true,

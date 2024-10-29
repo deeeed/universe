@@ -279,6 +279,24 @@ export class WorkspaceService {
         ...config.hooks,
         ...config.packages?.[packageName]?.hooks,
       },
+      packValidation: {
+        enabled:
+          config.packages?.[packageName]?.packValidation?.enabled ??
+          config.packValidation?.enabled ??
+          true,
+        validateFiles:
+          config.packages?.[packageName]?.packValidation?.validateFiles ??
+          config.packValidation?.validateFiles ??
+          true,
+        validateBuildArtifacts:
+          config.packages?.[packageName]?.packValidation
+            ?.validateBuildArtifacts ??
+          config.packValidation?.validateBuildArtifacts ??
+          true,
+        requiredFiles:
+          config.packages?.[packageName]?.packValidation?.requiredFiles ??
+          config.packValidation?.requiredFiles,
+      },
     };
   }
 

@@ -5,6 +5,7 @@ import { PackageJson } from "../../types/config";
 import { WorkspaceService } from "../workspace";
 import fs from "fs";
 import { Logger } from "../../utils/logger";
+import { MonorepoConfig } from "../../types/config";
 
 // Mock modules
 jest.mock("globby", () => ({
@@ -20,6 +21,44 @@ jest.mock("fs", () => ({
   existsSync: jest.fn(),
   readFileSync: jest.fn(),
 }));
+
+// Add mockConfig definition
+const mockConfig: MonorepoConfig = {
+  packageManager: "yarn",
+  conventionalCommits: true,
+  changelogFormat: "conventional",
+  versionStrategy: "independent",
+  bumpStrategy: "prompt",
+  changelogFile: "CHANGELOG.md",
+  maxConcurrency: 1,
+  packages: {},
+  ignorePackages: [],
+  hooks: {},
+  npm: {
+    publish: true,
+    access: "public",
+    tag: "latest",
+    registry: "https://registry.npmjs.org/",
+  },
+  packValidation: {
+    enabled: true,
+    validateFiles: true,
+    validateBuildArtifacts: true,
+    requiredFiles: ["dist/", "README.md"],
+  },
+  git: {
+    tagPrefix: "",
+    requireCleanWorkingDirectory: true,
+    requireUpToDate: true,
+    commit: true,
+    push: true,
+    tag: true,
+    commitMessage: "chore(release): release ${version}",
+    tagMessage: "",
+    allowedBranches: ["main", "master"],
+    remote: "origin",
+  },
+};
 
 describe("WorkspaceService", () => {
   let workspaceService: WorkspaceService;
@@ -235,28 +274,62 @@ describe("WorkspaceService", () => {
   describe("getPackageConfig", () => {
     it("should return package-specific config when it exists", async () => {
       const packageName = "@scope/pkg-a";
+      const packagePath = "packages/pkg-a";
+
+      // Initialize WorkspaceService with mockConfig
+      workspaceService = new WorkspaceService(mockConfig, mockLogger);
+
+      // Populate the package cache directly
       workspaceService["packageCache"].set(packageName, {
         name: packageName,
-        path: "packages/pkg-a",
+        path: packagePath,
         currentVersion: "1.0.0",
         dependencies: {},
         devDependencies: {},
         peerDependencies: {},
       });
 
-      jest.mock(
-        path.join(process.cwd(), "packages/pkg-a", "publisher.config.ts"),
-        () => ({
-          __esModule: true,
-          default: { packageManager: "yarn" },
-        }),
-        { virtual: true },
-      );
+      // Mock readFile for package.json
+      const readFileMock = readFile as jest.MockedFunction<typeof readFile>;
+      readFileMock.mockImplementation((filePath) => {
+        // Handle FileHandle case
+        if (
+          typeof filePath === "object" &&
+          filePath !== null &&
+          "fd" in filePath
+        ) {
+          throw new Error("FileHandle not supported in mock");
+        }
 
+        // Convert PathLike to string
+        const pathString = Buffer.isBuffer(filePath)
+          ? filePath.toString("utf8")
+          : filePath instanceof URL
+            ? filePath.pathname
+            : String(filePath);
+
+        if (pathString.endsWith("package.json")) {
+          return Promise.resolve(
+            JSON.stringify({
+              name: packageName,
+              version: "1.0.0",
+            }),
+          );
+        }
+        throw new Error(`Unexpected file read: ${pathString}`);
+      });
+
+      // Get the package config
       const config = await workspaceService.getPackageConfig(packageName);
 
       expect(config).toBeDefined();
       expect(config.packageManager).toBe("yarn");
+      expect(config.packValidation).toEqual({
+        enabled: true,
+        validateFiles: true,
+        validateBuildArtifacts: true,
+        requiredFiles: ["dist/", "README.md"],
+      });
     });
 
     it("should return default config when package-specific config does not exist", async () => {
@@ -274,6 +347,12 @@ describe("WorkspaceService", () => {
 
       expect(config).toBeDefined();
       expect(config.packageManager).toBe("yarn");
+      expect(config.packValidation).toEqual({
+        enabled: true,
+        validateFiles: true,
+        validateBuildArtifacts: true,
+        requiredFiles: undefined,
+      });
     });
   });
 });

@@ -6,6 +6,7 @@ import type {
   PackageContext,
   ReleaseConfig,
   ReleaseResult,
+  PackageJson,
 } from "../types/config";
 import { Logger } from "../utils/logger";
 import { Prompts } from "../utils/prompt";
@@ -59,6 +60,7 @@ export class ReleaseService {
       gitPush?: boolean;
       npmPublish?: boolean;
       checkIntegrity?: boolean;
+      skipGitCheck?: boolean;
     },
   ): Promise<ReleaseResult[]> {
     this.logger.info("Starting release process...");
@@ -92,7 +94,10 @@ export class ReleaseService {
     const results: ReleaseResult[] = [];
     for (const pkg of packages) {
       this.logger.info(`\nProcessing package ${pkg.name}...`);
-      const result = await this.releasePackage(pkg, options);
+      const result = await this.releasePackage(pkg, {
+        ...options,
+        publish: options.npmPublish,
+      });
       results.push(result);
     }
 
@@ -113,65 +118,85 @@ export class ReleaseService {
 
   private async releasePackage(
     context: PackageContext,
-    options: { dryRun?: boolean; gitPush?: boolean; publish?: boolean },
+    options: {
+      dryRun?: boolean;
+      gitPush?: boolean;
+      publish?: boolean;
+      skipGitCheck?: boolean;
+    },
   ): Promise<ReleaseResult> {
-    this.logger.info(`Loading package configuration...`);
-    const packageConfig: ReleaseConfig = await this.getEffectiveConfig(
-      context.name,
-    );
+    try {
+      this.logger.info(`Loading package configuration...`);
+      const packageConfig: ReleaseConfig = await this.getEffectiveConfig(
+        context.name,
+      );
 
-    this.logger.info("Validating environment...");
-    await this.validateEnvironment();
+      this.logger.info("Validating environment...");
+      await this.validateEnvironment({ skipGitCheck: options.skipGitCheck });
 
-    this.logger.info("Determining new version...");
-    context.newVersion = await this.determineVersion(context, packageConfig);
+      this.logger.info("Determining new version...");
+      context.newVersion = await this.determineVersion(context, packageConfig);
 
-    this.logger.info("Processing changelog...");
-    const changelogEntry = await this.handleChangelog(context, packageConfig);
+      this.logger.info("Processing changelog...");
+      const changelogEntry = await this.handleChangelog(context, packageConfig);
 
-    if (!options.dryRun && !(await this.prompts.confirmRelease())) {
-      throw new Error("Release cancelled");
-    }
-
-    if (options.dryRun) {
-      this.logger.info("Dry run completed");
-      return this.createDryRunResult(context);
-    }
-
-    await this.runHooks("preRelease", packageConfig, context);
-    await this.updateVersionAndDependencies(context, packageConfig);
-    if (changelogEntry) {
-      await this.changelog.update(context, changelogEntry, packageConfig);
-    }
-
-    const tag = await this.git.createTag(context);
-    const commit = await this.git.commitChanges(context);
-
-    if (options.gitPush) {
-      await this.git.push();
-    }
-
-    let publishResult;
-    if (options.publish) {
-      const packageFile = await this.packageManager.pack(context);
-      if (!packageFile) {
-        throw new Error("Failed to pack package");
+      if (!options.dryRun && !(await this.prompts.confirmRelease())) {
+        throw new Error("Release cancelled");
       }
 
-      publishResult = await this.packageManager.publish(context, {
-        npm: packageConfig.npm,
-      });
+      if (options.dryRun) {
+        this.logger.info("Dry run completed");
+        return this.createDryRunResult(context);
+      }
+
+      await this.runHooks("preRelease", packageConfig, context);
+      await this.updateVersionAndDependencies(context, packageConfig);
+      if (changelogEntry) {
+        await this.changelog.update(context, changelogEntry, packageConfig);
+      }
+
+      const tag = await this.git.createTag(context);
+      const commit = await this.git.commitChanges(context);
+
+      if (options.gitPush) {
+        await this.git.push();
+      }
+
+      if (options.publish) {
+        // Validate package contents before publishing
+        await this.validatePackageContents(context);
+
+        const publishResult = await this.packageManager.publish(context, {
+          npm: packageConfig.npm,
+        });
+
+        return {
+          packageName: context.name,
+          version: context.newVersion,
+          changelog: changelogEntry || "",
+          git: { tag, commit },
+          npm: publishResult,
+        };
+      }
+
+      await this.runHooks("postRelease", packageConfig, context);
+
+      return {
+        packageName: context.name,
+        version: context.newVersion,
+        changelog: changelogEntry || "",
+        git: { tag, commit },
+      };
+    } catch (error) {
+      // Enhanced error handling
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.debug("Release process failed:", error);
+      throw new Error(
+        `Release failed for ${context.name}:\n${errorMessage}\n\n` +
+          "For more details, run with DEBUG=true",
+      );
     }
-
-    await this.runHooks("postRelease", packageConfig, context);
-
-    return {
-      packageName: context.name,
-      version: context.newVersion,
-      changelog: changelogEntry || "",
-      git: { tag, commit },
-      npm: publishResult,
-    };
   }
 
   private async validateEnvironment(options?: {
@@ -434,6 +459,125 @@ export class ReleaseService {
         return this.changelog.generate(context, packageConfig);
       }
       return undefined;
+    }
+  }
+
+  private async validatePackageContents(
+    context: PackageContext,
+  ): Promise<void> {
+    const packageConfig = await this.getEffectiveConfig(context.name);
+    const validationConfig = packageConfig.packValidation;
+
+    if (!validationConfig?.enabled) {
+      this.logger.debug("Package validation skipped (disabled in config)");
+      return;
+    }
+
+    try {
+      this.logger.info("Validating package contents...");
+      const packageFile = await this.packageManager.pack(context);
+
+      if (!packageFile) {
+        throw new Error(
+          `Failed to pack ${context.name}. Common issues:\n` +
+            "1. Missing files in package.json 'files' field\n" +
+            "2. Build artifacts not generated\n" +
+            "3. Invalid package.json configuration",
+        );
+      }
+
+      if (validationConfig.validateFiles) {
+        await this.validatePackedContents(
+          packageFile,
+          context,
+          validationConfig,
+        );
+      }
+
+      this.logger.success("Package contents validation passed");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.debug("Pack operation failed:", error);
+      throw new Error(
+        `Package validation failed for ${context.name}:\n${errorMessage}`,
+      );
+    }
+  }
+
+  private async validatePackedContents(
+    packageFile: string,
+    context: PackageContext,
+    validationConfig: NonNullable<ReleaseConfig["packValidation"]>,
+  ): Promise<void> {
+    try {
+      type TarModule = {
+        extract: (options: { file: string; cwd: string }) => Promise<void>;
+      };
+      const tar = (await import("tar")) as TarModule;
+      const tempDir = path.join(process.cwd(), ".tmp-package-validation");
+
+      await fs.mkdir(tempDir, { recursive: true });
+      await tar.extract({
+        file: path.join(context.path, packageFile),
+        cwd: tempDir,
+      });
+
+      const packageJsonPath = path.join(tempDir, "package", "package.json");
+      const packageJsonContent = await fs.readFile(packageJsonPath, "utf8");
+      const packageJson = JSON.parse(packageJsonContent) as PackageJson;
+
+      const requiredFiles = [
+        packageJson.main,
+        packageJson.types,
+        packageJson.typings,
+        "README.md",
+        "CHANGELOG.md",
+      ].filter((file): file is string => Boolean(file));
+
+      for (const file of requiredFiles) {
+        const filePath = path.join(tempDir, "package", file);
+        try {
+          await fs.access(filePath);
+        } catch {
+          throw new Error(
+            `Required file '${file}' is missing from the packed contents`,
+          );
+        }
+      }
+
+      if (
+        validationConfig.validateBuildArtifacts &&
+        Array.isArray(packageJson.files)
+      ) {
+        const buildDirs = packageJson.files.filter(
+          (f: string) => f === "dist" || f === "build",
+        );
+
+        for (const buildDir of buildDirs) {
+          const buildPath = path.join(tempDir, "package", buildDir);
+          try {
+            await fs.access(buildPath);
+            const files = await fs.readdir(buildPath);
+            if (files.length === 0) {
+              throw new Error(`${buildDir} directory is empty`);
+            }
+          } catch (error) {
+            throw new Error(
+              `Build artifacts validation failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          }
+        }
+      }
+
+      await fs.rm(tempDir, { recursive: true, force: true });
+      await fs.unlink(path.join(context.path, packageFile));
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(`Package content validation failed: ${errorMessage}`);
     }
   }
 }

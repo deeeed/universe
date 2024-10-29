@@ -14,6 +14,7 @@ interface ReleaseCommandOptions {
   npmPublish?: boolean;
   showChanges?: boolean;
   checkIntegrity?: boolean;
+  gitCheck?: boolean;
 }
 
 export const releaseCommand = new Command()
@@ -33,6 +34,7 @@ export const releaseCommand = new Command()
   .option("--no-npm-publish", "Skip npm publish")
   .option("-s, --show-changes", "Show detailed changes before proceeding")
   .option("--check-integrity", "Run workspace integrity check before release")
+  .option("--no-git-check", "Skip git status validation")
   .action(async (packages: string[], commandOptions: ReleaseCommandOptions) => {
     const logger = new Logger();
     try {
@@ -123,6 +125,7 @@ export const releaseCommand = new Command()
         gitPush: commandOptions.gitPush,
         npmPublish: commandOptions.npmPublish,
         skipIntegrityCheck: commandOptions.checkIntegrity,
+        skipGitCheck: !commandOptions.gitCheck,
       };
 
       if (commandOptions.all) {

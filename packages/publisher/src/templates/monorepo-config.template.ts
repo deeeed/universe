@@ -29,6 +29,11 @@ export function generateMonorepoConfig(
     changelogFormat: options.changelogFormat ?? "conventional",
     versionStrategy: options.versionStrategy ?? "independent",
     bumpStrategy: options.bumpStrategy ?? "prompt",
+    packValidation: {
+      enabled: true,
+      validateFiles: true,
+      validateBuildArtifacts: true,
+    },
     git: {
       tagPrefix: `${options.packageJson.name}@`,
       requireCleanWorkingDirectory: true,
