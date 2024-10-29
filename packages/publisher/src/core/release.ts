@@ -7,6 +7,7 @@ import type {
   ReleaseConfig,
   ReleaseResult,
 } from "../types/config";
+import { findMonorepoRootSync } from "../utils";
 import { Logger } from "../utils/logger";
 import { Prompts } from "../utils/prompt";
 import { ChangelogService } from "./changelog";
@@ -18,7 +19,6 @@ import {
 } from "./package-manager";
 import { VersionService } from "./version";
 import { WorkspaceService } from "./workspace";
-import { findMonorepoRootSync } from "../utils";
 
 export class ReleaseService {
   private git: GitService;
@@ -137,6 +137,11 @@ export class ReleaseService {
       this.logger.info(`Loading package configuration...`);
       const packageConfig = await this.getEffectiveConfig(context.name);
 
+      const changelogPath = path.join(
+        context.path,
+        packageConfig.changelogFile || "CHANGELOG.md",
+      );
+
       this.logger.info("Validating environment...");
       await this.validateEnvironment({
         skipGitCheck: options.skipGitCheck,
@@ -146,7 +151,6 @@ export class ReleaseService {
       this.logger.info("Determining new version...");
       context.newVersion = await this.determineVersion(context, packageConfig);
 
-      // Store the current commit hash before making changes
       previousCommitHash = await this.git.getCurrentCommitHash();
 
       this.logger.info("Processing changelog...");
@@ -161,31 +165,24 @@ export class ReleaseService {
         return this.createDryRunResult(context);
       }
 
-      // Store original file contents for rollback
       tempFiles = await this.backupFiles(context, packageConfig);
 
       await this.runHooks("preRelease", packageConfig, context);
       await this.updateVersionAndDependencies(context, packageConfig);
+
       if (changelogEntry) {
         await this.changelog.update(context, changelogEntry, packageConfig);
       }
 
-      // Create tag
       await this.git.createTag(context, options.force);
       tagCreated = true;
 
-      // Commit changes
-      await this.git.commitChanges(
-        context,
-        this.config.changelogFile || "CHANGELOG.md",
-      );
+      await this.git.commitChanges(context, changelogPath);
 
-      // Push changes
       if (options.gitPush && this.config.git?.push !== false) {
         await this.git.push(options.force);
       }
 
-      // Publish package
       if (options.publish && this.config.npm?.publish !== false) {
         await this.packageManager.publish(context, { npm: this.config.npm });
       }
@@ -214,7 +211,6 @@ export class ReleaseService {
         await this.git.deleteTag(tagName, true);
       }
 
-      // Restore original files
       for (const file of tempFiles) {
         await fs.writeFile(file.path, file.content, "utf-8");
       }
