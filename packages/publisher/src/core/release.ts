@@ -540,8 +540,10 @@ export class ReleaseService {
       this.logger.debug(
         `Attempting to clean up package file: ${packageFilePath}`,
       );
-      await fs.unlink(packageFilePath);
-      this.logger.debug(`Package file cleaned up: ${packageFilePath}`);
+      if (packageFilePath) {
+        await fs.unlink(packageFilePath);
+        this.logger.debug(`Package file cleaned up: ${packageFilePath}`);
+      }
     } catch (error) {
       this.logger.error(
         `Package validation failed for ${context.name}:`,
