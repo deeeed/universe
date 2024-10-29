@@ -168,7 +168,22 @@ export const validateCommand = new Command()
         logger,
       );
 
-      await validateCommand.validate(packages, commandOptions);
+      try {
+        // If no packages specified and not --all flag, try to get current package
+        if (packages.length === 0 && !commandOptions.all) {
+          const currentPackage = await workspaceService.getCurrentPackage();
+          if (currentPackage) {
+            packages = [currentPackage.name];
+          }
+        }
+
+        await validateCommand.validate(packages, commandOptions);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.error("Validation failed:", errorMessage);
+        process.exit(1);
+      }
     },
   );
 
