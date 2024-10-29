@@ -527,11 +527,7 @@ export class ReleaseService {
       this.logger.debug(`Package file created: ${packageFile}`);
 
       // Clean up the package file after validation
-      const packageFilePath = path.join(
-        this.rootDir,
-        context.path,
-        packageFile,
-      ); // Use full path
+      const packageFilePath = path.join(this.rootDir, packageFile); // Use full path
       this.logger.debug(
         `Attempting to clean up package file: ${packageFilePath}`,
       );
@@ -554,7 +550,7 @@ export class ReleaseService {
           `Cleaned up package file after error: ${packageFilePath}`,
         );
       } catch (cleanupError) {
-        this.logger.error(`Failed to clean up package file:`, cleanupError);
+        this.logger.error(`Failed to clean up package file:`);
       }
 
       throw new Error(
