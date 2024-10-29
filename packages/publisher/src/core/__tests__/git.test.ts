@@ -278,6 +278,24 @@ describe("GitService", () => {
         "--follow-tags",
       ]);
     });
+
+    it("should push with force when specified", async () => {
+      await gitService.push(true);
+
+      expect(mockGit.push).toHaveBeenCalledWith("origin", undefined, [
+        "--follow-tags",
+        "--force",
+      ]);
+    });
+
+    it("should handle push rejection with helpful error", async () => {
+      mockGit.push.mockRejectedValue(new Error("rejected (non-fast-forward)"));
+      mockGit.status.mockResolvedValue({ current: "main" });
+
+      await expect(gitService.push()).rejects.toThrow(
+        /Push failed. Your branch is out of sync with remote/,
+      );
+    });
   });
 
   describe("deleteTag", () => {

@@ -36,6 +36,7 @@ export class GitService {
 
   async validateStatus(options?: {
     skipUpstreamTracking?: boolean;
+    force?: boolean;
   }): Promise<void> {
     const status = await this.git.status();
 
@@ -65,9 +66,11 @@ export class GitService {
       ) {
         throw new Error(
           `Branch ${currentBranch} is not tracking a remote branch.\n\n` +
-            `To fix this, run:\n` +
-            `  git branch --set-upstream-to=${this.config.remote}/${currentBranch} ${currentBranch}\n\n` +
-            `Or use --skip-upstream-tracking to skip this check`,
+            `To fix this, run either:\n` +
+            `1. git push -u ${this.config.remote} ${currentBranch}\n` +
+            `   OR\n` +
+            `2. git branch --set-upstream-to=${this.config.remote}/${currentBranch} ${currentBranch}\n\n` +
+            `Alternatively, use --skip-upstream-tracking to skip this check`,
         );
       }
 
@@ -217,8 +220,32 @@ export class GitService {
     return result.commit;
   }
 
-  async push(): Promise<void> {
-    await this.git.push(this.config.remote, undefined, ["--follow-tags"]);
+  async push(force?: boolean): Promise<void> {
+    const args = ["--follow-tags"];
+    if (force) {
+      args.push("--force");
+    }
+    try {
+      await this.git.push(this.config.remote, undefined, args);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes("rejected") &&
+        !force
+      ) {
+        throw new Error(
+          `Push failed. Your branch is out of sync with remote.\n` +
+            `To force push, run with --force flag or manually:\n` +
+            `  git push --force ${this.config.remote} ${await this.getCurrentBranch()}`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  private async getCurrentBranch(): Promise<string> {
+    const status = await this.git.status();
+    return status.current || "";
   }
 
   async checkTagExists(tagName: string): Promise<boolean> {
