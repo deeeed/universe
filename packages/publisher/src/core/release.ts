@@ -187,8 +187,8 @@ export class ReleaseService {
       const tag = await this.git.createTag(context, options.force);
       const commitHash = await this.git.commitChanges(context);
 
-      if (options.gitPush) {
-        await this.git.push();
+      if (options.gitPush && this.config.git?.push !== false) {
+        await this.git.push(options.force);
       }
 
       if (options.publish) {

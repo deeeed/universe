@@ -215,28 +215,22 @@ export class GitService {
         throw new Error("Not currently on any branch");
       }
 
-      // Build push options as an array of string arguments
-      const pushArgs = [];
-
-      // Add remote and branch ref
-      pushArgs.push(this.config.remote);
-      pushArgs.push(`HEAD:refs/heads/${currentBranch}`);
-
-      // Add options
-      pushArgs.push("--follow-tags");
+      // Prepare options
+      const options = ["--follow-tags"];
       if (force) {
-        pushArgs.push("--force");
+        options.push("--force");
       }
+
+      // Set upstream if branch is not tracking
       if (!status.tracking) {
         this.logger.debug(
           `Setting upstream for untracked branch ${currentBranch}`,
         );
-        pushArgs.push("--set-upstream");
-        pushArgs.push(this.config.remote);
-        pushArgs.push(currentBranch);
+        options.push("--set-upstream");
       }
 
-      await this.git.push(pushArgs);
+      // Push to remote with the correct arguments
+      await this.git.push(this.config.remote, currentBranch, options);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
