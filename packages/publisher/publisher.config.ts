@@ -1,6 +1,6 @@
 import type { ReleaseConfig } from "@siteed/publisher";
 
-const config: ReleaseConfig = {
+const config: Partial<ReleaseConfig> = {
   packageManager: "npm",
   changelogFile: "CHANGELOG.md",
   conventionalCommits: true,

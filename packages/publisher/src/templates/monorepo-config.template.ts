@@ -60,7 +60,7 @@ export function generateMonorepoConfig(
 
   return `import type { MonorepoConfig } from '@siteed/publisher';
 
-const config: MonorepoConfig = ${JSON.stringify(defaultConfig, null, 2)};
+const config: Partial<MonorepoConfig> = ${JSON.stringify(defaultConfig, null, 2)};
 
 export default config;`;
 }

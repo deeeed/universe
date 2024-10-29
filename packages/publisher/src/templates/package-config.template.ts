@@ -65,7 +65,7 @@ export function generatePackageConfig(
 
   return `import type { ReleaseConfig } from '@siteed/publisher';
 
-const config: ReleaseConfig = ${JSON.stringify(config, null, 2)};
+const config: Partial<ReleaseConfig> = ${JSON.stringify(config, null, 2)};
 
 export default config;`;
 }
