@@ -6,19 +6,18 @@ import type {
   PackageContext,
   ReleaseConfig,
   ReleaseResult,
-  PackageJson,
 } from "../types/config";
 import { Logger } from "../utils/logger";
 import { Prompts } from "../utils/prompt";
 import { ChangelogService } from "./changelog";
 import { GitService } from "./git";
+import { WorkspaceIntegrityService } from "./integrity";
 import {
   PackageManagerFactory,
   PackageManagerService,
 } from "./package-manager";
 import { VersionService } from "./version";
 import { WorkspaceService } from "./workspace";
-import { WorkspaceIntegrityService } from "./integrity";
 
 export class ReleaseService {
   private git: GitService;
@@ -473,119 +472,35 @@ export class ReleaseService {
   private async validatePackageContents(
     context: PackageContext,
   ): Promise<void> {
-    const packageConfig = await this.getEffectiveConfig(context.name);
-    const validationConfig = packageConfig.packValidation;
-
-    if (!validationConfig?.enabled) {
-      this.logger.debug("Package validation skipped (disabled in config)");
-      return;
-    }
-
     try {
-      this.logger.info("Validating package contents...");
-      const packageFile = await this.packageManager.pack(context);
-
-      if (!packageFile) {
-        throw new Error(
-          `Failed to pack ${context.name}. Common issues:\n` +
-            "1. Missing files in package.json 'files' field\n" +
-            "2. Build artifacts not generated\n" +
-            "3. Invalid package.json configuration",
-        );
-      }
-
-      if (validationConfig.validateFiles) {
-        await this.validatePackedContents(
-          packageFile,
-          context,
-          validationConfig,
-        );
-      }
-
-      this.logger.success("Package contents validation passed");
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.debug("Pack operation failed:", error);
-      throw new Error(
-        `Package validation failed for ${context.name}:\n${errorMessage}`,
-      );
-    }
-  }
-
-  private async validatePackedContents(
-    packageFile: string,
-    context: PackageContext,
-    validationConfig: NonNullable<ReleaseConfig["packValidation"]>,
-  ): Promise<void> {
-    try {
-      type TarModule = {
-        extract: (options: { file: string; cwd: string }) => Promise<void>;
-      };
-      const tar = (await import("tar")) as TarModule;
-      const tempDir = path.join(process.cwd(), ".tmp-package-validation");
-
-      await fs.mkdir(tempDir, { recursive: true });
-      await tar.extract({
-        file: path.join(context.path, packageFile),
-        cwd: tempDir,
-      });
-
-      const packageJsonPath = path.join(tempDir, "package", "package.json");
-      const packageJsonContent = await fs.readFile(packageJsonPath, "utf8");
-      const packageJson = JSON.parse(packageJsonContent) as PackageJson;
-
-      const requiredFiles = [
-        packageJson.main,
-        packageJson.types,
-        packageJson.typings,
-        "README.md",
-        "CHANGELOG.md",
-      ].filter((file): file is string => Boolean(file));
-
+      // Check for required files
+      const requiredFiles = ["LICENSE", "README.md"];
       for (const file of requiredFiles) {
-        const filePath = path.join(tempDir, "package", file);
+        const filePath = path.join(context.path, file);
         try {
           await fs.access(filePath);
         } catch {
-          throw new Error(
-            `Required file '${file}' is missing from the packed contents`,
-          );
+          throw new Error(`Required file ${file} is missing`);
         }
       }
 
-      if (
-        validationConfig.validateBuildArtifacts &&
-        Array.isArray(packageJson.files)
-      ) {
-        const buildDirs = packageJson.files.filter(
-          (f: string) => f === "dist" || f === "build",
-        );
+      // Pack the package to verify contents
+      const packageFile = await this.packageManager.pack(context);
 
-        for (const buildDir of buildDirs) {
-          const buildPath = path.join(tempDir, "package", buildDir);
-          try {
-            await fs.access(buildPath);
-            const files = await fs.readdir(buildPath);
-            if (files.length === 0) {
-              throw new Error(`${buildDir} directory is empty`);
-            }
-          } catch (error) {
-            throw new Error(
-              `Build artifacts validation failed: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-            );
-          }
-        }
-      }
-
-      await fs.rm(tempDir, { recursive: true, force: true });
+      // Clean up the package file after validation
       await fs.unlink(path.join(context.path, packageFile));
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      throw new Error(`Package content validation failed: ${errorMessage}`);
+      // Clean up on error as well
+      try {
+        const packageFile = path.join(context.path, "package.tgz");
+        await fs.unlink(packageFile);
+      } catch {
+        // Ignore cleanup errors
+      }
+
+      throw new Error(
+        `Package validation failed for ${context.name}:\n${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 }
