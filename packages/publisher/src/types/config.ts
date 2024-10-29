@@ -40,14 +40,14 @@ export const HooksSchema = z.object({
   postPublish: z.function().optional(),
 });
 
-// Package-specific release configuration schema
-export const ReleaseConfigSchema = z.object({
+// Package configuration schema
+export const PackageConfigSchema = z.object({
   packageManager: z.enum(["npm", "yarn", "pnpm"]).default("yarn"),
   changelogFile: z.string().default("CHANGELOG.md"),
   conventionalCommits: z.boolean().default(true),
-  git: GitConfigSchema.default({}),
-  npm: NpmConfigSchema.default({}),
-  hooks: HooksSchema.default({}),
+  changelogFormat: z
+    .enum(["conventional", "keep-a-changelog"])
+    .default("conventional"),
   versionStrategy: z.enum(["independent", "fixed"]).default("independent"),
   bumpStrategy: z.enum(["conventional", "prompt", "auto"]).default("prompt"),
   bumpType: z
@@ -59,14 +59,19 @@ export const ReleaseConfigSchema = z.object({
       "preminor",
       "premajor",
       "prerelease",
-      "custom",
     ])
     .optional(),
-  preReleaseId: z.string().optional(), // optional pre-release identifier
+  preReleaseId: z.string().optional(),
+  git: GitConfigSchema,
+  npm: NpmConfigSchema,
+  hooks: HooksSchema,
 });
 
-// Monorepo-wide configuration schema
-export const MonorepoConfigSchema = ReleaseConfigSchema.extend({
+// Release configuration schema (extends package config)
+export const ReleaseConfigSchema = PackageConfigSchema;
+
+// Monorepo configuration schema (extends package config)
+export const MonorepoConfigSchema = PackageConfigSchema.extend({
   packages: z.record(z.string(), ReleaseConfigSchema.partial()).default({}),
   ignorePackages: z.array(z.string()).default([]),
   maxConcurrency: z.number().default(4),
@@ -76,6 +81,7 @@ export const MonorepoConfigSchema = ReleaseConfigSchema.extend({
 export type GitConfig = z.infer<typeof GitConfigSchema>;
 export type NpmConfig = z.infer<typeof NpmConfigSchema>;
 export type Hooks = z.infer<typeof HooksSchema>;
+export type PackageConfig = z.infer<typeof PackageConfigSchema>;
 export type ReleaseConfig = z.infer<typeof ReleaseConfigSchema>;
 export type MonorepoConfig = z.infer<typeof MonorepoConfigSchema>;
 

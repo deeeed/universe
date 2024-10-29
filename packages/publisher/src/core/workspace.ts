@@ -5,6 +5,7 @@ import type { PackageJson } from "type-fest";
 import type { PackageContext, ReleaseConfig } from "../types/config";
 import { Logger } from "../utils/logger";
 import fs from "fs/promises";
+import { generatePackageConfig } from "../templates/package-config.template";
 
 export class WorkspaceService {
   private packageCache: Map<string, PackageContext> = new Map();
@@ -174,32 +175,28 @@ export class WorkspaceService {
       };
       return importedConfig.default;
     } catch {
-      // Return default config if no package-specific config exists
-      return {
+      // Generate default config using the template helper
+      const defaultConfig = generatePackageConfig({
+        packageJson: { name: packageName },
         packageManager: "yarn",
-        changelogFile: "CHANGELOG.md",
         conventionalCommits: true,
+        changelogFormat: "conventional",
         versionStrategy: "independent",
         bumpStrategy: "prompt",
-        git: {
-          tagPrefix: "v",
-          requireCleanWorkingDirectory: true,
-          requireUpToDate: true,
-          commit: true,
-          push: true,
-          commitMessage: "chore(release): release ${packageName}@${version}",
-          tag: true,
-          allowedBranches: ["main", "master"],
-          remote: "origin",
-        },
         npm: {
           publish: true,
-          registry: "https://registry.npmjs.org",
-          tag: "latest",
           access: "public",
         },
-        hooks: {},
-      };
+      });
+
+      // Parse the generated config string back to an object
+      // Remove the type declaration and export statement
+      const configString = defaultConfig
+        .replace(/import.*?;\n\n/g, "")
+        .replace("const config: ReleaseConfig = ", "")
+        .replace(";\n\nexport default config", "");
+
+      return JSON.parse(configString) as ReleaseConfig;
     }
   }
 

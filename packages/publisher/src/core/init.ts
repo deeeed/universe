@@ -2,9 +2,9 @@ import fs from "fs/promises";
 import inquirer from "inquirer";
 import path from "path";
 import {
-  changelogTemplate,
   generateMonorepoConfig,
   generatePackageConfig,
+  getChangelogTemplate,
   hooksTemplate,
 } from "../templates";
 import type {
@@ -25,6 +25,7 @@ interface InitOptions {
 interface BaseInteractiveAnswers {
   packageManager: PackageManager;
   conventionalCommits: boolean;
+  changelogFormat: "conventional" | "keep-a-changelog";
   versionStrategy: MonorepoConfig["versionStrategy"];
   bumpStrategy: MonorepoConfig["bumpStrategy"];
   npmPublish: boolean;
@@ -137,6 +138,16 @@ export class InitService {
       },
       {
         type: "list",
+        name: "changelogFormat",
+        message: "Choose changelog format:",
+        choices: [
+          { name: "Conventional Changelog", value: "conventional" },
+          { name: "Keep a Changelog", value: "keep-a-changelog" },
+        ] as const,
+        default: "conventional",
+      },
+      {
+        type: "list",
         name: "versionStrategy",
         message: "Choose version strategy:",
         choices: ["independent", "fixed"] as const,
@@ -190,6 +201,16 @@ export class InitService {
         name: "conventionalCommits",
         message: "Use conventional commits?",
         default: true,
+      },
+      {
+        type: "list",
+        name: "changelogFormat",
+        message: "Choose changelog format:",
+        choices: [
+          { name: "Conventional Changelog", value: "conventional" },
+          { name: "Keep a Changelog", value: "keep-a-changelog" },
+        ] as const,
+        default: "conventional",
       },
       {
         type: "list",
@@ -286,6 +307,7 @@ export class InitService {
           packageJson,
           packageManager,
           conventionalCommits: options?.conventionalCommits,
+          changelogFormat: options?.changelogFormat,
           versionStrategy: options?.versionStrategy,
           bumpStrategy: options?.bumpStrategy,
           npm: options
@@ -299,7 +321,9 @@ export class InitService {
       },
       {
         path: path.join(absolutePackagePath, "CHANGELOG.md"),
-        content: changelogTemplate,
+        content: getChangelogTemplate(
+          options?.changelogFormat ?? "conventional",
+        ),
         description: "changelog",
       },
       {

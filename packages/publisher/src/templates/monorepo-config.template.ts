@@ -9,6 +9,7 @@ interface GenerateMonorepoConfigOptions {
   packageJson: PackageJson;
   packageManager: PackageManager;
   conventionalCommits?: boolean;
+  changelogFormat?: "conventional" | "keep-a-changelog";
   versionStrategy?: MonorepoConfig["versionStrategy"];
   bumpStrategy?: MonorepoConfig["bumpStrategy"];
   packagesGlob?: string;
@@ -24,6 +25,7 @@ export function generateMonorepoConfig(
   const defaultConfig: MonorepoConfig = {
     packageManager: options.packageManager,
     conventionalCommits: options.conventionalCommits ?? true,
+    changelogFormat: options.changelogFormat ?? "conventional",
     versionStrategy: options.versionStrategy ?? "independent",
     bumpStrategy: options.bumpStrategy ?? "prompt",
     git: {

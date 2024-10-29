@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { z } from "zod";
+import { generateDefaultConfig } from "../templates/package-config.template";
 import type { MonorepoConfig } from "../types/config";
 import { MonorepoConfigSchema } from "../types/config";
 
@@ -44,7 +45,8 @@ function findConfigFile(): string | undefined {
 
 function validateConfig(config: unknown): MonorepoConfig {
   try {
-    return MonorepoConfigSchema.parse(config);
+    const validatedConfig = MonorepoConfigSchema.parse(config);
+    return validatedConfig;
   } catch (error) {
     if (error instanceof z.ZodError) {
       const issues = error.issues
@@ -57,32 +59,23 @@ function validateConfig(config: unknown): MonorepoConfig {
 }
 
 function getDefaultConfig(): MonorepoConfig {
-  return {
+  const baseConfig = generateDefaultConfig({
+    packageJson: { name: "root" },
     packageManager: "yarn",
-    changelogFile: "CHANGELOG.md",
     conventionalCommits: true,
-    git: {
-      tagPrefix: "v",
-      requireCleanWorkingDirectory: true,
-      requireUpToDate: true, // Added missing property
-      commit: true,
-      push: true,
-      commitMessage: "chore(release): release ${packageName}@${version}",
-      tag: true,
-      allowedBranches: ["main", "master"],
-      remote: "origin",
-    },
+    changelogFormat: "conventional",
+    versionStrategy: "independent",
+    bumpStrategy: "prompt",
     npm: {
       publish: true,
-      registry: "https://registry.npmjs.org",
-      tag: "latest",
       access: "public",
     },
-    hooks: {},
+  });
+
+  return {
+    ...baseConfig,
     packages: {},
     ignorePackages: [],
     maxConcurrency: 4,
-    versionStrategy: "independent",
-    bumpStrategy: "prompt",
   };
 }

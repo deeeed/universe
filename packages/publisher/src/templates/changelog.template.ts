@@ -1,4 +1,12 @@
-export const changelogTemplate = `# Changelog
+export const conventionalChangelogTemplate = `# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [Unreleased]
+
+[unreleased]: https://github.com/owner/repo/tree/HEAD`;
+
+export const keepAChangelogTemplate = `# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -21,3 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 [unreleased]: https://github.com/owner/repo/tree/HEAD`;
+
+export function getChangelogTemplate(
+  format: "conventional" | "keep-a-changelog",
+): string {
+  return format === "conventional"
+    ? conventionalChangelogTemplate
+    : keepAChangelogTemplate;
+}

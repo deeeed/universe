@@ -4,6 +4,7 @@ const config: ReleaseConfig = {
   packageManager: "npm",
   changelogFile: "CHANGELOG.md",
   conventionalCommits: true,
+  changelogFormat: "conventional",
   versionStrategy: "independent",
   bumpStrategy: "prompt",
   git: {

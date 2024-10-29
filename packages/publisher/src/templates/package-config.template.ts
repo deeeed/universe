@@ -2,34 +2,41 @@ import type {
   PackageManager,
   ReleaseConfig,
   PackageJson,
+  PackageConfig,
 } from "../types/config";
 
-interface GeneratePackageConfigOptions {
+export interface GeneratePackageConfigOptions {
   packageJson: PackageJson;
   packageManager: PackageManager;
   changelogFile?: string;
   conventionalCommits?: boolean;
+  changelogFormat?: "conventional" | "keep-a-changelog";
   versionStrategy?: ReleaseConfig["versionStrategy"];
   bumpStrategy?: ReleaseConfig["bumpStrategy"];
+  bumpType?: ReleaseConfig["bumpType"];
+  preReleaseId?: string;
   npm?: {
     publish: boolean;
     access: "public" | "restricted";
   };
 }
 
-export function generatePackageConfig(
+export function generateDefaultConfig(
   options: GeneratePackageConfigOptions,
-): string {
+): PackageConfig {
   if (!options.packageJson.name) {
     throw new Error("Package name is required");
   }
 
-  const defaultConfig: ReleaseConfig = {
+  return {
     packageManager: options.packageManager,
     changelogFile: options.changelogFile ?? "CHANGELOG.md",
     conventionalCommits: options.conventionalCommits ?? true,
+    changelogFormat: options.changelogFormat ?? "conventional",
     versionStrategy: options.versionStrategy ?? "independent",
     bumpStrategy: options.bumpStrategy ?? "prompt",
+    bumpType: options.bumpType,
+    preReleaseId: options.preReleaseId,
     git: {
       tagPrefix: `${options.packageJson.name}@`,
       requireCleanWorkingDirectory: true,
@@ -49,10 +56,16 @@ export function generatePackageConfig(
     },
     hooks: {},
   };
+}
+
+export function generatePackageConfig(
+  options: GeneratePackageConfigOptions,
+): string {
+  const config = generateDefaultConfig(options);
 
   return `import type { ReleaseConfig } from '@siteed/publisher';
 
-const config: ReleaseConfig = ${JSON.stringify(defaultConfig, null, 2)};
+const config: ReleaseConfig = ${JSON.stringify(config, null, 2)};
 
 export default config;`;
 }
