@@ -130,12 +130,11 @@ export class ReleaseService {
   ): Promise<ReleaseResult> {
     let tempFiles: { path: string; content: string }[] = [];
     let previousCommitHash: string | null = null;
+    let tagCreated = false;
 
     try {
       this.logger.info(`Loading package configuration...`);
-      const packageConfig: ReleaseConfig = await this.getEffectiveConfig(
-        context.name,
-      );
+      const packageConfig = await this.getEffectiveConfig(context.name);
 
       this.logger.info("Validating environment...");
       await this.validateEnvironment({
@@ -146,19 +145,8 @@ export class ReleaseService {
       this.logger.info("Determining new version...");
       context.newVersion = await this.determineVersion(context, packageConfig);
 
-      // Check for existing tag before proceeding
-      const tagName = `${context.name}@${context.newVersion}`;
-      const tagExists = await this.git.checkTagExists(tagName);
-      if (tagExists && !options.force) {
-        const shouldForce = await this.prompts.confirmTagOverwrite(
-          context.name,
-          context.newVersion || "",
-        );
-        if (!shouldForce) {
-          throw new Error("Release cancelled - tag exists");
-        }
-        options.force = true;
-      }
+      // Store the current commit hash before making changes
+      previousCommitHash = await this.git.getCurrentCommitHash();
 
       this.logger.info("Processing changelog...");
       const changelogEntry = await this.handleChangelog(context, packageConfig);
@@ -181,59 +169,57 @@ export class ReleaseService {
         await this.changelog.update(context, changelogEntry, packageConfig);
       }
 
-      // Store the current commit hash before making a new commit
-      previousCommitHash = await this.git.getCurrentCommitHash();
+      // Create tag
+      await this.git.createTag(context, options.force);
+      tagCreated = true;
 
-      const tag = await this.git.createTag(context, options.force);
-      const commitHash = await this.git.commitChanges(context);
+      // Commit changes
+      await this.git.commitChanges(context);
 
+      // Push changes
       if (options.gitPush && this.config.git?.push !== false) {
         await this.git.push(options.force);
       }
 
-      if (options.publish) {
-        await this.validatePackageContents(context);
-        const publishResult = await this.packageManager.publish(context, {
-          npm: packageConfig.npm,
-        });
-
-        await this.runHooks("postRelease", packageConfig, context);
-
-        return {
-          packageName: context.name,
-          version: context.newVersion,
-          changelog: changelogEntry || "",
-          git: { tag, commit: commitHash },
-          npm: publishResult,
-        };
+      // Publish package
+      if (options.publish && this.config.npm?.publish !== false) {
+        await this.packageManager.publish(context, { npm: this.config.npm });
       }
-
-      await this.runHooks("postRelease", packageConfig, context);
 
       return {
+        changelog: changelogEntry || "",
+        git: {
+          tag: context.newVersion,
+          commit: previousCommitHash,
+        },
         packageName: context.name,
         version: context.newVersion,
-        changelog: changelogEntry || "",
-        git: { tag, commit: commitHash },
       };
     } catch (error) {
-      // Rollback changes if files were modified
-      if (tempFiles.length > 0) {
-        await this.rollbackFiles(tempFiles);
+      if (error instanceof Error) {
+        this.logger.error(`Release process failed: ${error.message}`);
+      } else {
+        this.logger.error(`Release process failed: ${String(error)}`);
       }
+      this.logger.info("Rolling back changes...");
 
-      // Rollback to the previous commit if a new commit was made
       if (previousCommitHash) {
         await this.git.resetToCommit(previousCommitHash);
       }
 
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.debug("Release process failed:", error);
-      throw new Error(
-        `Release failed for ${context.name}:\n${errorMessage}\n\n` +
-          "For more details, run with DEBUG=true",
-      );
+      if (tagCreated && context.newVersion) {
+        const tagName = `${context.name}@${context.newVersion}`;
+        await this.git.deleteTag(tagName, true);
+      }
+
+      // Optionally, delete temporary branches if created
+
+      throw error;
+    } finally {
+      // Clean up temporary files
+      for (const file of tempFiles) {
+        await fs.unlink(file.path);
+      }
     }
   }
 
@@ -503,82 +489,6 @@ export class ReleaseService {
     }
   }
 
-  private async validatePackageContents(
-    context: PackageContext,
-  ): Promise<void> {
-    try {
-      const packageConfig = await this.getEffectiveConfig(context.name);
-      this.logger.debug(
-        `Validating package contents for ${context.name} with config:`,
-        packageConfig,
-      );
-
-      // Skip validation if packValidation is disabled or not configured
-      if (!packageConfig.packValidation?.enabled) {
-        this.logger.debug(`Package validation skipped for ${context.name}`);
-        return;
-      }
-
-      // Get required files from config
-      const requiredFiles = packageConfig.packValidation?.requiredFiles || [];
-      this.logger.debug(
-        `Required files for validation: ${requiredFiles.join(", ")}`,
-      );
-
-      // Skip file validation if no required files specified
-      if (requiredFiles.length === 0) {
-        this.logger.debug(
-          "No required files specified, skipping file validation",
-        );
-        return;
-      }
-
-      // Check for required files
-      for (const file of requiredFiles) {
-        const filePath = path.join(context.path, file);
-        this.logger.debug(`Checking existence of required file: ${filePath}`);
-        try {
-          await fs.access(filePath);
-        } catch {
-          throw new Error(`Required file ${file} is missing`);
-        }
-      }
-
-      // Pack the package to verify contents
-      this.logger.debug(`Packing package for validation: ${context.name}`);
-      const packageFile = await this.packageManager.pack(context);
-
-      // Skip cleanup if no package file was created
-      if (!packageFile) {
-        this.logger.debug("No package file created, skipping cleanup");
-        return;
-      }
-
-      // Clean up the package file after validation
-      try {
-        const packageFilePath = path.resolve(context.path, packageFile);
-        this.logger.debug(
-          `Attempting to clean up package file: ${packageFilePath}`,
-        );
-        await fs.unlink(packageFilePath);
-        this.logger.debug(`Package file cleaned up: ${packageFilePath}`);
-      } catch (cleanupError) {
-        // Log cleanup error but don't fail the validation
-        this.logger.warning(
-          `Failed to clean up package file: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
-        );
-      }
-    } catch (error) {
-      this.logger.error(
-        `Package validation failed for ${context.name}:`,
-        error,
-      );
-      throw new Error(
-        `Package validation failed for ${context.name}:\n${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
-
   private async backupFiles(
     context: PackageContext,
     config: ReleaseConfig,
@@ -598,17 +508,5 @@ export class ReleaseService {
       }
     }
     return backups;
-  }
-
-  private async rollbackFiles(
-    files: Array<{ path: string; content: string }>,
-  ): Promise<void> {
-    for (const file of files) {
-      try {
-        await fs.writeFile(file.path, file.content, "utf-8");
-      } catch (error) {
-        this.logger.debug(`Failed to rollback ${file.path}:`, error);
-      }
-    }
   }
 }
