@@ -31,6 +31,13 @@ jest.mock("../package-manager", () => ({
   },
 }));
 
+// Add mock for integrity service
+jest.mock("../integrity", () => ({
+  WorkspaceIntegrityService: jest.fn().mockImplementation(() => ({
+    check: jest.fn().mockResolvedValue(true),
+  })),
+}));
+
 describe("ReleaseService", () => {
   let releaseService: ReleaseService;
   let config: MonorepoConfig;
@@ -108,14 +115,56 @@ describe("ReleaseService", () => {
       expect(mockGetPackages).toHaveBeenCalledWith(["pkg1"]);
     });
 
-    it("should throw error when workspace integrity check fails", async () => {
+    it("should skip integrity check when not requested", async () => {
+      const mockCheck = jest.spyOn(releaseService["integrityService"], "check");
       jest
-        .spyOn(releaseService["packageManager"], "checkWorkspaceIntegrity")
+        .spyOn(releaseService["workspace"], "getPackages")
+        .mockResolvedValue([
+          { name: "pkg1", path: "/path/pkg1", currentVersion: "1.0.0" },
+        ]);
+      jest
+        .spyOn(releaseService["workspace"], "getPackageConfig")
+        .mockResolvedValue(config);
+      jest
+        .spyOn(releaseService["prompts"], "confirmRelease")
+        .mockResolvedValue(true);
+
+      await releaseService.releasePackages(["pkg1"], {});
+
+      expect(mockCheck).not.toHaveBeenCalled();
+    });
+
+    it("should perform integrity check when requested", async () => {
+      const mockCheck = jest
+        .spyOn(releaseService["integrityService"], "check")
+        .mockResolvedValue(true);
+      jest
+        .spyOn(releaseService["workspace"], "getPackages")
+        .mockResolvedValue([
+          { name: "pkg1", path: "/path/pkg1", currentVersion: "1.0.0" },
+        ]);
+      jest
+        .spyOn(releaseService["workspace"], "getPackageConfig")
+        .mockResolvedValue(config);
+      jest
+        .spyOn(releaseService["prompts"], "confirmRelease")
+        .mockResolvedValue(true);
+
+      await releaseService.releasePackages(["pkg1"], { checkIntegrity: true });
+
+      expect(mockCheck).toHaveBeenCalled();
+    });
+
+    it("should throw error when integrity check fails", async () => {
+      jest
+        .spyOn(releaseService["integrityService"], "check")
         .mockResolvedValue(false);
 
       await expect(
-        releaseService.releasePackages(["pkg1"], {}),
-      ).rejects.toThrow("Workspace integrity check failed");
+        releaseService.releasePackages(["pkg1"], { checkIntegrity: true }),
+      ).rejects.toThrow(
+        "Workspace integrity check failed. Please fix the issues above or run without --check-integrity",
+      );
     });
 
     it("should handle dry run mode", async () => {

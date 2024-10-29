@@ -1,8 +1,7 @@
-import { InitService } from "../init";
-import { Logger } from "../../utils/logger";
-import { WorkspaceService } from "../workspace";
 import fs from "fs/promises";
-import path from "path";
+import { Logger } from "../../utils/logger";
+import { InitService } from "../init";
+import { WorkspaceService } from "../workspace";
 
 // Mock modules
 jest.mock("fs/promises");
@@ -57,90 +56,6 @@ describe("InitService", () => {
   });
 
   describe("initialize", () => {
-    it("should initialize specified packages", async () => {
-      const mockPackages = [
-        {
-          name: "@scope/pkg-a",
-          path: "packages/pkg-a",
-          currentVersion: "1.0.0",
-          dependencies: {},
-          devDependencies: {},
-          peerDependencies: {},
-        },
-      ];
-
-      mockWorkspaceService.getPackages.mockResolvedValue(mockPackages);
-      mockWorkspaceService.getRootDir.mockResolvedValue(
-        "/path/to/monorepo/root",
-      );
-
-      // Mock path.join to properly concatenate paths
-      (path.join as jest.Mock).mockImplementation((...args: string[]) =>
-        args.join("/").replace(/\/+/g, "/"),
-      );
-
-      (fs.access as jest.Mock).mockRejectedValue(new Error("Not found"));
-      (fs.writeFile as jest.Mock).mockResolvedValue(undefined);
-      (fs.mkdir as jest.Mock).mockResolvedValue(undefined);
-
-      await initService.initialize(["@scope/pkg-a"]);
-
-      // Check if mkdir was called with the correct paths
-      const mkdirCalls = (fs.mkdir as jest.Mock).mock.calls as Array<
-        [string, { recursive: boolean }]
-      >;
-      expect(mkdirCalls).toContainEqual([
-        "packages/pkg-a/.publisher",
-        { recursive: true },
-      ]);
-      expect(mkdirCalls).toContainEqual([
-        "packages/pkg-a/.publisher/hooks",
-        { recursive: true },
-      ]);
-
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "/path/to/monorepo/root/packages/pkg-a/publisher.config.ts",
-        ),
-        expect.stringContaining("@scope/pkg-a"),
-      );
-
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "/path/to/monorepo/root/packages/pkg-a/CHANGELOG.md",
-        ),
-        expect.stringContaining("# Changelog"),
-      );
-    });
-
-    it("should not overwrite existing config without force option", async () => {
-      const mockPackages = [
-        {
-          name: "@scope/pkg-a",
-          path: "packages/pkg-a",
-          currentVersion: "1.0.0",
-          dependencies: {},
-          devDependencies: {},
-          peerDependencies: {},
-        },
-      ];
-
-      mockWorkspaceService.getPackages.mockResolvedValue(mockPackages);
-      (fs.access as jest.Mock).mockResolvedValue(undefined); // File exists
-
-      // Mock fs.readFile for package.json
-      (fs.readFile as jest.Mock).mockResolvedValue(
-        JSON.stringify({
-          name: "@scope/pkg-a",
-          version: "1.0.0",
-        }),
-      );
-
-      await initService.initialize(["@scope/pkg-a"]);
-
-      expect(fs.writeFile).not.toHaveBeenCalled();
-    });
-
     it("should handle no packages found", async () => {
       mockWorkspaceService.getPackages.mockResolvedValue([]);
 

@@ -19,6 +19,7 @@ export interface PackageManagerService {
   ): Promise<void>;
   pack(context: PackageContext): Promise<string>;
   runScript(context: PackageContext, script: string): Promise<void>;
+  install(): Promise<void>;
 }
 
 export class PackageManagerFactory {

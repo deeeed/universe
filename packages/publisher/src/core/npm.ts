@@ -147,4 +147,16 @@ export class NpmService implements PackageManagerService {
       throw new Error(`Failed to run script ${script}: Unknown error occurred`);
     }
   }
+
+  async install(): Promise<void> {
+    try {
+      const execa = (await import("execa")).default;
+      await execa("npm", ["install"]);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to install dependencies: ${error.message}`);
+      }
+      throw new Error("Failed to install dependencies: Unknown error occurred");
+    }
+  }
 }

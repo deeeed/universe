@@ -17,6 +17,7 @@ import {
 } from "./package-manager";
 import { VersionService } from "./version";
 import { WorkspaceService } from "./workspace";
+import { WorkspaceIntegrityService } from "./integrity";
 
 export class ReleaseService {
   private git: GitService;
@@ -25,6 +26,7 @@ export class ReleaseService {
   private changelog: ChangelogService;
   private workspace: WorkspaceService;
   private prompts: Prompts;
+  private integrityService: WorkspaceIntegrityService;
 
   constructor(
     private config: MonorepoConfig,
@@ -45,28 +47,42 @@ export class ReleaseService {
     this.changelog = new ChangelogService(logger);
     this.workspace = new WorkspaceService();
     this.prompts = new Prompts(logger);
+    this.integrityService = new WorkspaceIntegrityService(
+      this.packageManager,
+      logger,
+    );
   }
   async releasePackages(
     packageNames: string[],
-    options: { dryRun?: boolean; gitPush?: boolean; npmPublish?: boolean },
+    options: {
+      dryRun?: boolean;
+      gitPush?: boolean;
+      npmPublish?: boolean;
+      checkIntegrity?: boolean;
+    },
   ): Promise<ReleaseResult[]> {
     this.logger.info("Starting release process...");
-    this.logger.info("Validating workspace integrity...");
 
-    if (!(await this.packageManager.checkWorkspaceIntegrity())) {
-      throw new Error(
-        "Workspace integrity check failed. Please run yarn install",
-      );
+    if (options.checkIntegrity) {
+      const integrityCheck = await this.integrityService.check();
+      if (!integrityCheck) {
+        throw new Error(
+          "Workspace integrity check failed. Please fix the issues above or run without --check-integrity",
+        );
+      }
     }
 
     this.logger.info(
       `Finding packages matching: ${packageNames.join(", ")}...`,
     );
     const packages = await this.workspace.getPackages(packageNames);
-    this.logger.info(`Found ${packages.length} matching packages`);
+
+    if (packages.length === 0) {
+      this.logger.warning("No matching packages found");
+      return [];
+    }
 
     const results: ReleaseResult[] = [];
-
     for (const pkg of packages) {
       this.logger.info(`\nProcessing package ${pkg.name}...`);
       const result = await this.releasePackage(pkg, options);
@@ -151,9 +167,13 @@ export class ReleaseService {
     };
   }
 
-  private async validateEnvironment(): Promise<void> {
-    this.logger.info("Validating git status...");
-    await this.git.validateStatus();
+  private async validateEnvironment(options?: {
+    skipGitCheck?: boolean;
+  }): Promise<void> {
+    if (!options?.skipGitCheck) {
+      this.logger.info("Validating git status...");
+      await this.git.validateStatus();
+    }
 
     if (this.config.npm?.publish) {
       this.logger.info("Validating npm authentication...");

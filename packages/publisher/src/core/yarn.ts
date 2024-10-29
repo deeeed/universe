@@ -172,6 +172,18 @@ export class YarnService implements PackageManagerService {
     }
   }
 
+  async install(): Promise<void> {
+    try {
+      const execa = (await import("execa")).default;
+      await execa("yarn", ["install"]);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to install dependencies: ${error.message}`);
+      }
+      throw new Error("Failed to install dependencies: Unknown error occurred");
+    }
+  }
+
   private getEffectiveConfig(providedConfig?: { npm: NpmConfig }): NpmConfig {
     return providedConfig?.npm ?? this.config;
   }
