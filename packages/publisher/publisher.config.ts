@@ -8,7 +8,7 @@ const config: DeepPartial<ReleaseConfig> = {
   versionStrategy: "independent",
   bumpStrategy: "prompt",
   packValidation: {
-    enabled: false,
+    enabled: true,
     validateFiles: true,
     validateBuildArtifacts: true,
   },
@@ -16,12 +16,12 @@ const config: DeepPartial<ReleaseConfig> = {
     tagPrefix: "@siteed/publisher@",
     requireCleanWorkingDirectory: true,
     requireUpToDate: true,
-    requireUpstreamTracking: false,
+    requireUpstreamTracking: true,
     commit: true,
     push: true,
     commitMessage: "chore(release): release @siteed/publisher@${version}",
     tag: true,
-    allowedBranches: ["main", "master", "releaseit"],
+    allowedBranches: ["main", "master"],
     remote: "origin",
   },
   npm: {
