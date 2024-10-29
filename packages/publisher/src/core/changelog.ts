@@ -186,7 +186,6 @@ export class ChangelogService {
     const format = this.getFormat(config);
     const changelogPath = path.resolve(
       process.cwd(),
-      context.path,
       config.changelogFile || "CHANGELOG.md",
     );
 
