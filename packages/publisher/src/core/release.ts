@@ -18,6 +18,7 @@ import {
 } from "./package-manager";
 import { VersionService } from "./version";
 import { WorkspaceService } from "./workspace";
+import { findMonorepoRootSync } from "../utils";
 
 export class ReleaseService {
   private git: GitService;
@@ -38,7 +39,7 @@ export class ReleaseService {
       this.config.packageManager = "yarn";
     }
 
-    this.rootDir = process.cwd();
+    this.rootDir = findMonorepoRootSync(process.cwd());
     this.git = new GitService(config.git, this.rootDir, this.logger);
     this.packageManager = PackageManagerFactory.create(
       config.packageManager as "npm" | "yarn",
