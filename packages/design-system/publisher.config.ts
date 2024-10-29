@@ -1,4 +1,8 @@
-import type { ReleaseConfig, DeepPartial } from '@siteed/publisher';
+import type {
+  ReleaseConfig,
+  DeepPartial,
+  PackageContext,
+} from '@siteed/publisher';
 
 const config: DeepPartial<ReleaseConfig> = {
   packageManager: 'yarn',
@@ -30,7 +34,14 @@ const config: DeepPartial<ReleaseConfig> = {
     tag: 'latest',
     access: 'public',
   },
-  hooks: {},
+  hooks: {
+    preRelease: (context: PackageContext) => {
+      console.log('preRelease with context', JSON.stringify(context, null, 2));
+    },
+    postRelease: (context: PackageContext) => {
+      console.log('postRelease with context', JSON.stringify(context, null, 2));
+    },
+  },
 };
 
 export default config;
