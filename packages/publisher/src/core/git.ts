@@ -221,22 +221,36 @@ export class GitService {
   }
 
   async deleteTag(tagName: string, remote?: boolean): Promise<void> {
-    try {
-      // Delete local tag
-      await this.git.raw(["tag", "-d", tagName]);
+    // First check if local tag exists before trying to delete
+    const localTagExists = await this.checkTagExists(tagName);
 
-      // Delete remote tag if requested
+    try {
+      // Only try to delete local tag if it exists
+      if (localTagExists) {
+        await this.git.raw(["tag", "-d", tagName]);
+      }
+
+      // For remote tags, we can try to delete even if local doesn't exist
+      // as there might be only a remote tag
       if (remote && this.config.remote) {
-        await this.git.raw([
-          "push",
-          this.config.remote,
-          ":refs/tags/" + tagName,
-        ]);
+        try {
+          await this.git.raw([
+            "push",
+            this.config.remote,
+            ":refs/tags/" + tagName,
+          ]);
+        } catch (error) {
+          // Ignore errors from remote tag deletion as it might not exist
+          // and that's okay
+        }
       }
     } catch (error) {
-      throw new Error(
-        `Failed to delete tag ${tagName}: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      // Only throw if we tried to delete a local tag that existed
+      if (localTagExists) {
+        throw new Error(
+          `Failed to delete tag ${tagName}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
   }
 }

@@ -19,6 +19,7 @@ describe("GitService", () => {
     tags: jest.fn(),
     log: jest.fn(),
     show: jest.fn(),
+    raw: jest.fn(),
   };
 
   beforeEach(() => {
@@ -275,6 +276,40 @@ describe("GitService", () => {
 
       expect(mockGit.push).toHaveBeenCalledWith("origin", undefined, [
         "--follow-tags",
+      ]);
+    });
+  });
+
+  describe("deleteTag", () => {
+    it("should not throw when deleting non-existent tag", async () => {
+      const spyCheckTagExists = jest
+        .spyOn(gitService, "checkTagExists")
+        .mockResolvedValue(false);
+
+      await expect(
+        gitService.deleteTag("non-existent-tag", true),
+      ).resolves.not.toThrow();
+
+      expect(spyCheckTagExists).toHaveBeenCalledWith("non-existent-tag");
+      expect(mockGit.raw).not.toHaveBeenCalledWith([
+        "tag",
+        "-d",
+        "non-existent-tag",
+      ]);
+    });
+
+    it("should attempt remote deletion even if local tag doesn't exist", async () => {
+      const spyCheckTagExists = jest
+        .spyOn(gitService, "checkTagExists")
+        .mockResolvedValue(false);
+
+      await gitService.deleteTag("remote-only-tag", true);
+
+      expect(spyCheckTagExists).toHaveBeenCalledWith("remote-only-tag");
+      expect(mockGit.raw).toHaveBeenCalledWith([
+        "push",
+        "origin",
+        ":refs/tags/remote-only-tag",
       ]);
     });
   });
