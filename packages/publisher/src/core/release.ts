@@ -72,6 +72,13 @@ export class ReleaseService {
       }
     }
 
+    if (packageNames.length === 0) {
+      const currentPackage = await this.workspace.getCurrentPackage();
+      if (currentPackage) {
+        packageNames = [currentPackage.name];
+      }
+    }
+
     this.logger.info(
       `Finding packages matching: ${packageNames.join(", ")}...`,
     );
