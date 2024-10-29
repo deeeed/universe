@@ -53,6 +53,7 @@ describe("ChangelogService", () => {
         tag: true,
         allowedBranches: ["main", "master"],
         remote: "origin",
+        requireUpstreamTracking: true,
       },
       npm: {
         publish: true,

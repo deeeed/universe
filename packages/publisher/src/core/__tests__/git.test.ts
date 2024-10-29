@@ -28,6 +28,7 @@ describe("GitService", () => {
       requireCleanWorkingDirectory: true,
       requireUpToDate: true,
       commit: true,
+      requireUpstreamTracking: true,
       push: true,
       commitMessage: "chore(release): release ${packageName}@${version}",
       tag: true,

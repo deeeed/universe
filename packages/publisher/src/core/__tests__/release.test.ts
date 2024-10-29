@@ -65,6 +65,7 @@ describe("ReleaseService", () => {
         requireUpToDate: true,
         commit: true,
         push: true,
+        requireUpstreamTracking: true,
         commitMessage: "chore(release): release ${packageName}@${version}",
         tag: true,
         allowedBranches: ["main", "master"],

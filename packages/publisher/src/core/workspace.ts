@@ -245,6 +245,10 @@ export class WorkspaceService {
           config.packages?.[packageName]?.git?.tagPrefix ??
           config.git?.tagPrefix ??
           `${packageName}@`,
+        requireUpstreamTracking:
+          config.packages?.[packageName]?.git?.requireUpstreamTracking ??
+          config.git?.requireUpstreamTracking ??
+          true,
         requireCleanWorkingDirectory:
           config.packages?.[packageName]?.git?.requireCleanWorkingDirectory ??
           config.git?.requireCleanWorkingDirectory ??

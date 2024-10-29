@@ -124,6 +124,7 @@ export class ReleaseService {
       gitPush?: boolean;
       publish?: boolean;
       skipGitCheck?: boolean;
+      skipUpstreamTracking?: boolean;
     },
   ): Promise<ReleaseResult> {
     try {
@@ -133,7 +134,10 @@ export class ReleaseService {
       );
 
       this.logger.info("Validating environment...");
-      await this.validateEnvironment({ skipGitCheck: options.skipGitCheck });
+      await this.validateEnvironment({
+        skipGitCheck: options.skipGitCheck,
+        skipUpstreamTracking: options.skipUpstreamTracking,
+      });
 
       this.logger.info("Determining new version...");
       context.newVersion = await this.determineVersion(context, packageConfig);

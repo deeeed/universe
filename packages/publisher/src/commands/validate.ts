@@ -11,6 +11,7 @@ import { Logger } from "../utils/logger";
 
 interface ValidateCommandOptions {
   all?: boolean;
+  skipUpstreamTracking?: boolean;
 }
 
 interface PackageJsonContent {
@@ -47,7 +48,7 @@ export class ValidateCommand {
       this.logger.info("Validating packages...");
 
       for (const pkg of packagesToValidate) {
-        await this.validatePackage(pkg);
+        await this.validatePackage(pkg, options);
       }
 
       this.logger.success("\nAll validations passed successfully!");
@@ -59,7 +60,10 @@ export class ValidateCommand {
     }
   }
 
-  private async validatePackage(pkg: PackageContext): Promise<void> {
+  private async validatePackage(
+    pkg: PackageContext,
+    options: ValidateCommandOptions,
+  ): Promise<void> {
     this.logger.info(`\nValidating ${pkg.name}...`);
     const packageConfig = await this.workspaceService.getPackageConfig(
       pkg.name,
@@ -67,7 +71,9 @@ export class ValidateCommand {
 
     // Git checks
     try {
-      await this.gitService.validateStatus();
+      await this.gitService.validateStatus({
+        skipUpstreamTracking: options.skipUpstreamTracking,
+      });
       this.logger.success("Git status: OK");
     } catch (error) {
       const errorMessage =
@@ -144,6 +150,7 @@ export const validateCommand = new Command()
   .description("Validate package(s) release readiness")
   .argument("[packages...]", "Package names to validate")
   .option("-a, --all", "Validate all packages")
+  .option("-s, --skip-upstream-tracking", "Skip upstream tracking check")
   .action(
     async (packages: string[], commandOptions: ValidateCommandOptions) => {
       const logger = new Logger();

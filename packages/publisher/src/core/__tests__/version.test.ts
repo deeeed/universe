@@ -23,6 +23,7 @@ describe("VersionService", () => {
       requireUpToDate: false,
       commit: true,
       push: true,
+      requireUpstreamTracking: true,
       commitMessage: "chore: release v${version}",
       tag: true,
       tagMessage: "Release v${version}",

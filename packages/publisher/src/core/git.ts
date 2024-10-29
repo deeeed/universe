@@ -78,7 +78,7 @@ export class GitService {
       }
     }
 
-    if (this.config.allowedBranches?.length > 0) {
+    if (this.config.allowedBranches && this.config.allowedBranches.length > 0) {
       const currentBranch = status.current || "";
       if (!this.config.allowedBranches.includes(currentBranch)) {
         throw new Error(

@@ -7,10 +7,16 @@ const config: DeepPartial<ReleaseConfig> = {
   changelogFormat: "conventional",
   versionStrategy: "independent",
   bumpStrategy: "prompt",
+  packValidation: {
+    enabled: true,
+    validateFiles: true,
+    validateBuildArtifacts: true,
+  },
   git: {
     tagPrefix: "@siteed/publisher@",
     requireCleanWorkingDirectory: true,
     requireUpToDate: true,
+    requireUpstreamTracking: false,
     commit: true,
     push: true,
     commitMessage: "chore(release): release @siteed/publisher@${version}",

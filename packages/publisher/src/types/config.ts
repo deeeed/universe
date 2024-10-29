@@ -8,15 +8,13 @@ export const GitConfigSchema = z.object({
   tagPrefix: z.string().default("v"),
   requireCleanWorkingDirectory: z.boolean().default(true),
   requireUpToDate: z.boolean().default(true),
-  requireUpstreamTracking: z.boolean().optional(),
+  requireUpstreamTracking: z.boolean().default(true),
   commit: z.boolean().default(true),
   push: z.boolean().default(true),
-  commitMessage: z
-    .string()
-    .default("chore(release): release ${packageName}@${version}"),
+  commitMessage: z.string(),
   tag: z.boolean().default(true),
   tagMessage: z.string().optional(),
-  allowedBranches: z.array(z.string()).default(["main", "master"]),
+  allowedBranches: z.array(z.string()).optional(),
   remote: z.string().default("origin"),
 });
 

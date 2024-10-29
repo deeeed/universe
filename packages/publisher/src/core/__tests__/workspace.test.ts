@@ -48,6 +48,7 @@ const mockConfig: MonorepoConfig = {
   },
   git: {
     tagPrefix: "",
+    requireUpstreamTracking: true,
     requireCleanWorkingDirectory: true,
     requireUpToDate: true,
     commit: true,

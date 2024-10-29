@@ -46,6 +46,7 @@ export function generateDefaultConfig(
       tagPrefix: `${options.packageJson.name}@`,
       requireCleanWorkingDirectory: true,
       requireUpToDate: true,
+      requireUpstreamTracking: true,
       commit: true,
       push: true,
       commitMessage: `chore(release): release ${options.packageJson.name}@\${version}`,
