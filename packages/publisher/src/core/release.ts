@@ -472,6 +472,7 @@ export class ReleaseService {
       await fs.access(changelogPath);
 
       // Get unreleased changes from existing changelog
+      this.logger.info("Reading unreleased changes from changelog...");
       const unreleasedChanges = await this.changelog.getUnreleasedChanges(
         context,
         packageConfig,
@@ -489,8 +490,26 @@ export class ReleaseService {
       let finalChangelog: string;
 
       if (unreleasedChanges.length > 0) {
-        this.logger.info("Found existing unreleased changes in changelog");
-        finalChangelog = unreleasedChanges.join("\n");
+        this.logger.info(
+          `Found ${unreleasedChanges.length} unreleased changes in changelog:`,
+        );
+        this.logger.info(unreleasedChanges.join("\n"));
+
+        // Show preview of how it will look in the new version
+        const preview = this.formatChangelogPreview(
+          context.newVersion || "",
+          unreleasedChanges,
+        );
+        this.logger.info("\nChangelog entry will look like this:\n");
+        this.logger.info(preview);
+
+        const confirmed = await this.prompts.confirmChangelogContent(preview);
+        if (!confirmed) {
+          const manualChangelog = await this.prompts.getManualChangelogEntry();
+          finalChangelog = manualChangelog;
+        } else {
+          finalChangelog = preview;
+        }
       } else {
         // Generate changelog from git commits
         this.logger.info(
@@ -529,6 +548,11 @@ export class ReleaseService {
       }
       return undefined;
     }
+  }
+
+  private formatChangelogPreview(version: string, changes: string[]): string {
+    const dateStr = new Date().toISOString().split("T")[0];
+    return `## [${version}] - ${dateStr}\n\n${changes.join("\n")}`;
   }
 
   private async backupFiles(
