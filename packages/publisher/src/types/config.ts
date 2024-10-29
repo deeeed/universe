@@ -8,6 +8,7 @@ export const GitConfigSchema = z.object({
   tagPrefix: z.string().default("v"),
   requireCleanWorkingDirectory: z.boolean().default(true),
   requireUpToDate: z.boolean().default(true),
+  requireUpstreamTracking: z.boolean().optional(),
   commit: z.boolean().default(true),
   push: z.boolean().default(true),
   commitMessage: z

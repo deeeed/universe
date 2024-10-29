@@ -56,10 +56,12 @@ export class GitService {
         throw new Error("Not currently on any branch");
       }
 
-      if (!tracking) {
+      if (!tracking && this.config.requireUpstreamTracking !== false) {
         throw new Error(
-          `Branch ${currentBranch} is not tracking a remote branch. ` +
-            `To fix this, run: git branch --set-upstream-to=${this.config.remote}/${currentBranch} ${currentBranch}`,
+          `Branch ${currentBranch} is not tracking a remote branch.\n\n` +
+            `To fix this, run:\n` +
+            `  git branch --set-upstream-to=${this.config.remote}/${currentBranch} ${currentBranch}\n\n` +
+            `Or add "requireUpstreamTracking: false" to your git config to skip this check`,
         );
       }
 
