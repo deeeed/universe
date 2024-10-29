@@ -7,6 +7,7 @@ import simpleGit, {
 } from "simple-git";
 import type { GitConfig, PackageContext } from "../types/config";
 import { Logger } from "../utils/logger";
+import { promises as fs } from "fs";
 
 export interface GitCommit {
   hash: string;
@@ -192,7 +193,10 @@ export class GitService {
     }
   }
 
-  async commitChanges(context: PackageContext): Promise<string> {
+  async commitChanges(
+    context: PackageContext,
+    changelogFileName: string,
+  ): Promise<string> {
     if (!context.newVersion) {
       throw new Error("New version is required to create a commit message");
     }
@@ -201,7 +205,27 @@ export class GitService {
       .replace("${packageName}", context.name)
       .replace("${version}", context.newVersion);
 
-    await this.git.add(path.relative(this.rootDir, context.path));
+    const packageJsonPath = path.relative(
+      this.rootDir,
+      path.join(context.path, "package.json"),
+    );
+
+    const changelogPath = path.relative(
+      this.rootDir,
+      path.join(context.path, changelogFileName),
+    );
+
+    const filesToAdd: string[] = [packageJsonPath];
+
+    try {
+      await fs.access(changelogPath);
+      filesToAdd.push(changelogPath);
+    } catch {
+      // Changelog file does not exist; proceed without adding it
+    }
+
+    await this.git.add(filesToAdd);
+
     const result = await this.git.commit(message);
     return result.commit;
   }

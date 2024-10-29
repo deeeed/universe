@@ -174,7 +174,10 @@ export class ReleaseService {
       tagCreated = true;
 
       // Commit changes
-      await this.git.commitChanges(context);
+      await this.git.commitChanges(
+        context,
+        this.config.changelogFile || "CHANGELOG.md",
+      );
 
       // Push changes
       if (options.gitPush && this.config.git?.push !== false) {
