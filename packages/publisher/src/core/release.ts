@@ -129,6 +129,7 @@ export class ReleaseService {
     },
   ): Promise<ReleaseResult> {
     let tempFiles: { path: string; content: string }[] = [];
+    let previousCommitHash: string | null = null;
 
     try {
       this.logger.info(`Loading package configuration...`);
@@ -180,8 +181,11 @@ export class ReleaseService {
         await this.changelog.update(context, changelogEntry, packageConfig);
       }
 
+      // Store the current commit hash before making a new commit
+      previousCommitHash = await this.git.getCurrentCommitHash();
+
       const tag = await this.git.createTag(context, options.force);
-      const commit = await this.git.commitChanges(context);
+      const commitHash = await this.git.commitChanges(context);
 
       if (options.gitPush) {
         await this.git.push();
@@ -199,7 +203,7 @@ export class ReleaseService {
           packageName: context.name,
           version: context.newVersion,
           changelog: changelogEntry || "",
-          git: { tag, commit },
+          git: { tag, commit: commitHash },
           npm: publishResult,
         };
       }
@@ -210,12 +214,17 @@ export class ReleaseService {
         packageName: context.name,
         version: context.newVersion,
         changelog: changelogEntry || "",
-        git: { tag, commit },
+        git: { tag, commit: commitHash },
       };
     } catch (error) {
       // Rollback changes if files were modified
       if (tempFiles.length > 0) {
         await this.rollbackFiles(tempFiles);
+      }
+
+      // Rollback to the previous commit if a new commit was made
+      if (previousCommitHash) {
+        await this.git.resetToCommit(previousCommitHash);
       }
 
       const errorMessage =

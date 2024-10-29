@@ -253,4 +253,24 @@ export class GitService {
       }
     }
   }
+
+  private async runGitCommand(args: string[]): Promise<string> {
+    try {
+      const result = await this.git.raw(args);
+      return result.trim();
+    } catch (error) {
+      throw new Error(
+        `Git command failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  async getCurrentCommitHash(): Promise<string> {
+    const result: string = await this.runGitCommand(["rev-parse", "HEAD"]);
+    return result;
+  }
+
+  async resetToCommit(commitHash: string): Promise<void> {
+    await this.runGitCommand(["reset", "--hard", commitHash]);
+  }
 }
