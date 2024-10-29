@@ -255,7 +255,7 @@ export class ReleaseService {
     }
 
     if (config.bumpStrategy === "prompt") {
-      const bumpType = await this.prompts.getVersionBump();
+      const bumpType = await this.prompts.getVersionBump(context, this.version);
       return this.version.determineVersion(
         context,
         bumpType,

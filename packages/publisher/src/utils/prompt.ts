@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import inquirer from "inquirer";
-import type { BumpType } from "../types/config";
+import type { BumpType, PackageContext } from "../types/config";
 import { Logger } from "./logger";
+import { VersionService } from "../core/version";
 
 interface VersionBumpResponse {
   bumpType: BumpType;
@@ -22,18 +23,47 @@ interface PackagesResponse {
 export class Prompts {
   constructor(private logger: Logger) {}
 
-  async getVersionBump(): Promise<BumpType> {
+  async getVersionBump(
+    context: PackageContext,
+    versionService: VersionService,
+  ): Promise<BumpType> {
+    // Calculate all possible versions
+    const currentVersion = context.currentVersion;
+    const options = [
+      {
+        type: "patch" as const,
+        label: "Patch",
+        version: versionService.determineVersion(context, "patch"),
+        description: "Bug fixes",
+      },
+      {
+        type: "minor" as const,
+        label: "Minor",
+        version: versionService.determineVersion(context, "minor"),
+        description: "New features",
+      },
+      {
+        type: "major" as const,
+        label: "Major",
+        version: versionService.determineVersion(context, "major"),
+        description: "Breaking changes",
+      },
+    ];
+
+    const choices = [
+      ...options.map((opt) => ({
+        name: `${opt.label} (${opt.description}) ${currentVersion} → ${opt.version}`,
+        value: opt.type,
+      })),
+      { name: "Custom version", value: "custom" as const },
+    ];
+
     const { bumpType }: VersionBumpResponse = await inquirer.prompt([
       {
         type: "list",
         name: "bumpType",
         message: "Select version bump type:",
-        choices: [
-          { name: "Patch (Bug fixes) 1.0.x", value: "patch" },
-          { name: "Minor (New features) 1.x.0", value: "minor" },
-          { name: "Major (Breaking changes) x.0.0", value: "major" },
-          { name: "Custom version", value: "custom" },
-        ],
+        choices,
       },
     ]);
 
@@ -51,7 +81,7 @@ export class Prompts {
           },
         },
       ]);
-      return version as BumpType; // return a string here to cover custom versions
+      return version as BumpType;
     }
 
     return bumpType;
