@@ -205,24 +205,34 @@ export class GitService {
       .replace("${packageName}", context.name)
       .replace("${version}", context.newVersion);
 
+    this.logger.debug(`Context path: ${context.path}`);
+    this.logger.debug(`Git root directory: ${this.rootDir}`);
+
+    const packageJsonAbsolutePath = path.resolve(context.path, "package.json");
+    const changelogAbsolutePath = path.resolve(context.path, changelogFileName);
+
+    this.logger.debug(`Package JSON absolute path: ${packageJsonAbsolutePath}`);
+    this.logger.debug(`Changelog absolute path: ${changelogAbsolutePath}`);
+
     const packageJsonPath = path.relative(
       this.rootDir,
-      path.join(context.path, "package.json"),
+      packageJsonAbsolutePath,
     );
+    const changelogPath = path.relative(this.rootDir, changelogAbsolutePath);
 
-    const changelogPath = path.relative(
-      this.rootDir,
-      path.join(context.path, changelogFileName),
-    );
+    this.logger.debug(`Package JSON relative path: ${packageJsonPath}`);
+    this.logger.debug(`Changelog relative path: ${changelogPath}`);
 
     const filesToAdd: string[] = [packageJsonPath];
 
     try {
-      await fs.access(changelogPath);
+      await fs.access(changelogAbsolutePath);
       filesToAdd.push(changelogPath);
     } catch {
-      // Changelog file does not exist; proceed without adding it
+      this.logger.debug(`Changelog file not found at ${changelogAbsolutePath}`);
     }
+
+    this.logger.debug(`Files to add to Git: ${filesToAdd.join(", ")}`);
 
     await this.git.add(filesToAdd);
 
