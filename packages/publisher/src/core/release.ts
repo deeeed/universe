@@ -27,6 +27,7 @@ export class ReleaseService {
   private workspace: WorkspaceService;
   private prompts: Prompts;
   private integrityService: WorkspaceIntegrityService;
+  private rootDir: string;
 
   constructor(
     private config: MonorepoConfig,
@@ -37,8 +38,8 @@ export class ReleaseService {
       this.config.packageManager = "yarn";
     }
 
-    const rootDir = process.cwd();
-    this.git = new GitService(config.git, rootDir);
+    this.rootDir = process.cwd();
+    this.git = new GitService(config.git, this.rootDir);
     this.packageManager = PackageManagerFactory.create(
       config.packageManager as "npm" | "yarn",
       config.npm,
@@ -498,12 +499,21 @@ export class ReleaseService {
   ): Promise<void> {
     try {
       const packageConfig = await this.getEffectiveConfig(context.name);
+      this.logger.debug(
+        `Validating package contents for ${context.name} with config:`,
+        packageConfig,
+      );
+
       // Get required files from config or use default
       const requiredFiles = packageConfig.packValidation?.requiredFiles || [];
+      this.logger.debug(
+        `Required files for validation: ${requiredFiles.join(", ")}`,
+      );
 
       // Check for required files
       for (const file of requiredFiles) {
-        const filePath = path.join(context.path, file);
+        const filePath = path.join(this.rootDir, context.path, file); // Use full path
+        this.logger.debug(`Checking existence of required file: ${filePath}`);
         try {
           await fs.access(filePath);
         } catch {
@@ -512,17 +522,31 @@ export class ReleaseService {
       }
 
       // Pack the package to verify contents
+      this.logger.debug(`Packing package for validation: ${context.name}`);
       const packageFile = await this.packageManager.pack(context);
+      this.logger.debug(`Package file created: ${packageFile}`);
 
       // Clean up the package file after validation
-      await fs.unlink(path.join(context.path, packageFile));
+      await fs.unlink(path.join(this.rootDir, context.path, packageFile)); // Use full path
+      this.logger.debug(`Package file cleaned up: ${packageFile}`);
     } catch (error) {
+      this.logger.error(
+        `Package validation failed for ${context.name}:`,
+        error,
+      );
       // Clean up on error as well
       try {
-        const packageFile = path.join(context.path, "package.tgz");
+        const packageFile = path.join(
+          this.rootDir,
+          context.path,
+          "package.tgz",
+        ); // Use full path
         await fs.unlink(packageFile);
-      } catch {
-        // Ignore cleanup errors
+        this.logger.debug(
+          `Cleaned up package file after error: ${packageFile}`,
+        );
+      } catch (cleanupError) {
+        this.logger.error(`Failed to clean up package file:`, cleanupError);
       }
 
       throw new Error(
