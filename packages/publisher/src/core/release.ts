@@ -127,6 +127,8 @@ export class ReleaseService {
       force?: boolean;
     },
   ): Promise<ReleaseResult> {
+    let tempFiles: { path: string; content: string }[] = [];
+
     try {
       this.logger.info(`Loading package configuration...`);
       const packageConfig: ReleaseConfig = await this.getEffectiveConfig(
@@ -142,6 +144,20 @@ export class ReleaseService {
       this.logger.info("Determining new version...");
       context.newVersion = await this.determineVersion(context, packageConfig);
 
+      // Check for existing tag before proceeding
+      const tagName = `${context.name}@${context.newVersion}`;
+      const tagExists = await this.git.checkTagExists(tagName);
+      if (tagExists && !options.force) {
+        const shouldForce = await this.prompts.confirmTagOverwrite(
+          context.name,
+          context.newVersion || "",
+        );
+        if (!shouldForce) {
+          throw new Error("Release cancelled - tag exists");
+        }
+        options.force = true;
+      }
+
       this.logger.info("Processing changelog...");
       const changelogEntry = await this.handleChangelog(context, packageConfig);
 
@@ -153,6 +169,9 @@ export class ReleaseService {
         this.logger.info("Dry run completed");
         return this.createDryRunResult(context);
       }
+
+      // Store original file contents for rollback
+      tempFiles = await this.backupFiles(context, packageConfig);
 
       await this.runHooks("preRelease", packageConfig, context);
       await this.updateVersionAndDependencies(context, packageConfig);
@@ -168,12 +187,12 @@ export class ReleaseService {
       }
 
       if (options.publish) {
-        // Validate package contents before publishing
         await this.validatePackageContents(context);
-
         const publishResult = await this.packageManager.publish(context, {
           npm: packageConfig.npm,
         });
+
+        await this.runHooks("postRelease", packageConfig, context);
 
         return {
           packageName: context.name,
@@ -193,21 +212,13 @@ export class ReleaseService {
         git: { tag, commit },
       };
     } catch (error) {
-      // Enhanced error handling
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-
-      // Handle tag exists error specifically
-      if (errorMessage.includes("already exists")) {
-        const shouldForce = await this.prompts.confirmTagOverwrite(
-          context.name,
-          context.newVersion || "",
-        );
-        if (shouldForce) {
-          return this.releasePackage(context, { ...options, force: true });
-        }
+      // Rollback changes if files were modified
+      if (tempFiles.length > 0) {
+        await this.rollbackFiles(tempFiles);
       }
 
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.debug("Release process failed:", error);
       throw new Error(
         `Release failed for ${context.name}:\n${errorMessage}\n\n` +
@@ -514,6 +525,39 @@ export class ReleaseService {
       throw new Error(
         `Package validation failed for ${context.name}:\n${error instanceof Error ? error.message : String(error)}`,
       );
+    }
+  }
+
+  private async backupFiles(
+    context: PackageContext,
+    config: ReleaseConfig,
+  ): Promise<Array<{ path: string; content: string }>> {
+    const files = [
+      path.join(context.path, "package.json"),
+      path.join(context.path, config.changelogFile || "CHANGELOG.md"),
+    ];
+
+    const backups = [];
+    for (const filePath of files) {
+      try {
+        const content = await fs.readFile(filePath, "utf-8");
+        backups.push({ path: filePath, content });
+      } catch (error) {
+        // Ignore if file doesn't exist
+      }
+    }
+    return backups;
+  }
+
+  private async rollbackFiles(
+    files: Array<{ path: string; content: string }>,
+  ): Promise<void> {
+    for (const file of files) {
+      try {
+        await fs.writeFile(file.path, file.content, "utf-8");
+      } catch (error) {
+        this.logger.debug(`Failed to rollback ${file.path}:`, error);
+      }
     }
   }
 }

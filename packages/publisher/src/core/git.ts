@@ -213,7 +213,7 @@ export class GitService {
 
   async checkTagExists(tagName: string): Promise<boolean> {
     try {
-      await this.git.raw(["show-ref", "--tags", tagName]);
+      await this.git.raw(["rev-parse", `refs/tags/${tagName}`]);
       return true;
     } catch {
       return false;
