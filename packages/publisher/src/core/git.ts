@@ -159,7 +159,8 @@ export class GitService {
       throw new Error("Version is required to create a tag");
     }
 
-    const tagName = `${context.name}@${context.newVersion}`;
+    const tagPrefix = this.config.tagPrefix || "";
+    const tagName = `${tagPrefix}${context.name}@${context.newVersion}`;
     const tagMessage = `Release ${tagName}`;
 
     try {
