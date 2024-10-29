@@ -14,7 +14,8 @@
     ".storybook/main.ts",
     ".storybook/preview.tsx",
     "./rollup.config.js",
-    "release-it.js"
+    "release-it.js",
+    "publisher.config.ts"
   ],
   "exclude": ["dist/**", "node_modules"]
 }
