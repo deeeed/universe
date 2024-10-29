@@ -190,31 +190,48 @@ describe("GitService", () => {
   });
 
   describe("createTag", () => {
-    it("should create an annotated tag", async () => {
-      const context: PackageContext = {
-        name: "my-package",
-        newVersion: "1.2.0",
-        currentVersion: "1.1.0",
-        path: "/mock/project/root/packages/my-package",
-      };
+    const context: PackageContext = {
+      name: "my-package",
+      newVersion: "1.2.0",
+      currentVersion: "1.1.0",
+      path: "/mock/project/root/packages/my-package",
+    };
 
-      await gitService.createTag(context);
+    it("should check if tag exists before attempting to delete", async () => {
+      const spyCheckTagExists = jest
+        .spyOn(gitService, "checkTagExists")
+        .mockResolvedValue(false);
 
+      const spyDeleteTag = jest
+        .spyOn(gitService, "deleteTag")
+        .mockResolvedValue();
+
+      await gitService.createTag(context, true);
+
+      expect(spyCheckTagExists).toHaveBeenCalledWith("my-package@1.2.0");
+      expect(spyDeleteTag).not.toHaveBeenCalled();
       expect(mockGit.addAnnotatedTag).toHaveBeenCalledWith(
         "my-package@1.2.0",
         "Release my-package@1.2.0",
       );
     });
 
-    it("should throw if no new version provided", async () => {
-      const context: PackageContext = {
-        name: "my-package",
-        currentVersion: "1.1.0",
-        path: "/mock/project/root/packages/my-package",
-      };
+    it("should delete existing tag when force is true", async () => {
+      const spyCheckTagExists = jest
+        .spyOn(gitService, "checkTagExists")
+        .mockResolvedValue(true);
 
-      await expect(gitService.createTag(context)).rejects.toThrow(
-        "New version is required to create a tag",
+      const spyDeleteTag = jest
+        .spyOn(gitService, "deleteTag")
+        .mockResolvedValue();
+
+      await gitService.createTag(context, true);
+
+      expect(spyCheckTagExists).toHaveBeenCalledWith("my-package@1.2.0");
+      expect(spyDeleteTag).toHaveBeenCalledWith("my-package@1.2.0", true);
+      expect(mockGit.addAnnotatedTag).toHaveBeenCalledWith(
+        "my-package@1.2.0",
+        "Release my-package@1.2.0",
       );
     });
   });

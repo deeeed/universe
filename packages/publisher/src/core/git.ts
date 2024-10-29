@@ -163,9 +163,20 @@ export class GitService {
     const tagMessage = `Release ${tagName}`;
 
     try {
-      if (force) {
-        await this.deleteTag(tagName, true);
+      const tagExists = await this.checkTagExists(tagName);
+
+      if (tagExists) {
+        if (force) {
+          await this.deleteTag(tagName, true);
+        } else {
+          throw new Error(
+            `Tag ${tagName} already exists. Use --force to overwrite or manually delete the tag with:\n\n` +
+              `  git tag -d ${tagName}\n` +
+              `  git push ${this.config.remote} :refs/tags/${tagName}`,
+          );
+        }
       }
+
       await this.git.addAnnotatedTag(tagName, tagMessage);
       return tagName;
     } catch (error) {
