@@ -137,10 +137,14 @@ export class ReleaseService {
       this.logger.info(`Loading package configuration...`);
       const packageConfig = await this.getEffectiveConfig(context.name);
 
-      const changelogPath = path.join(
-        context.path,
+      const packagePath = path.resolve(this.rootDir, context.path);
+      const changelogPath = path.resolve(
+        packagePath,
         packageConfig.changelogFile || "CHANGELOG.md",
       );
+
+      this.logger.debug(`Package path: ${packagePath}`);
+      this.logger.debug(`Changelog path: ${changelogPath}`);
 
       this.logger.info("Validating environment...");
       await this.validateEnvironment({
