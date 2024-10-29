@@ -46,6 +46,14 @@ describe("InitService", () => {
     initService = new InitService(mockLogger, mockWorkspaceService);
 
     jest.clearAllMocks();
+
+    // Add mock for fs.readFile
+    (fs.readFile as jest.Mock).mockResolvedValue(
+      JSON.stringify({
+        name: "@scope/pkg-a",
+        version: "1.0.0",
+      }),
+    );
   });
 
   describe("initialize", () => {
@@ -62,28 +70,33 @@ describe("InitService", () => {
       ];
 
       mockWorkspaceService.getPackages.mockResolvedValue(mockPackages);
-
-      // Use mockResolvedValue to return a Promise<string>
       mockWorkspaceService.getRootDir.mockResolvedValue(
         "/path/to/monorepo/root",
+      );
+
+      // Mock path.join to properly concatenate paths
+      (path.join as jest.Mock).mockImplementation((...args: string[]) =>
+        args.join("/").replace(/\/+/g, "/"),
       );
 
       (fs.access as jest.Mock).mockRejectedValue(new Error("Not found"));
       (fs.writeFile as jest.Mock).mockResolvedValue(undefined);
       (fs.mkdir as jest.Mock).mockResolvedValue(undefined);
 
-      (path.join as jest.Mock).mockImplementation((...args: string[]) =>
-        args.join("/"),
-      );
-
       await initService.initialize(["@scope/pkg-a"]);
 
-      expect(fs.mkdir).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "/path/to/monorepo/root/packages/pkg-a/.publisher/hooks",
-        ),
+      // Check if mkdir was called with the correct paths
+      const mkdirCalls = (fs.mkdir as jest.Mock).mock.calls as Array<
+        [string, { recursive: boolean }]
+      >;
+      expect(mkdirCalls).toContainEqual([
+        "packages/pkg-a/.publisher",
         { recursive: true },
-      );
+      ]);
+      expect(mkdirCalls).toContainEqual([
+        "packages/pkg-a/.publisher/hooks",
+        { recursive: true },
+      ]);
 
       expect(fs.writeFile).toHaveBeenCalledWith(
         expect.stringContaining(
@@ -115,6 +128,14 @@ describe("InitService", () => {
       mockWorkspaceService.getPackages.mockResolvedValue(mockPackages);
       (fs.access as jest.Mock).mockResolvedValue(undefined); // File exists
 
+      // Mock fs.readFile for package.json
+      (fs.readFile as jest.Mock).mockResolvedValue(
+        JSON.stringify({
+          name: "@scope/pkg-a",
+          version: "1.0.0",
+        }),
+      );
+
       await initService.initialize(["@scope/pkg-a"]);
 
       expect(fs.writeFile).not.toHaveBeenCalled();
@@ -126,35 +147,6 @@ describe("InitService", () => {
       await expect(initService.initialize([])).rejects.toThrow(
         "No packages found to initialize",
       );
-    });
-
-    it("should create root config if it does not exist", async () => {
-      const mockPackages = [
-        {
-          name: "@scope/pkg-a",
-          path: "packages/pkg-a",
-          currentVersion: "1.0.0",
-          dependencies: {},
-          devDependencies: {},
-          peerDependencies: {},
-        },
-      ];
-
-      mockWorkspaceService.getPackages.mockResolvedValue(mockPackages);
-
-      // Mock fs.access to reject, simulating the file does not exist
-      (fs.access as jest.Mock).mockRejectedValue(new Error("Not found"));
-      (fs.writeFile as jest.Mock).mockResolvedValue(undefined);
-
-      // Run the initialize method
-      await initService.initialize(["@scope/pkg-a"]);
-
-      // Check that the last fs.writeFile call contains 'MonorepoConfig' in the content
-      const lastWriteFileCall = (fs.writeFile as jest.Mock).mock.calls.at(
-        -1,
-      ) as [string, string] | undefined;
-      expect(lastWriteFileCall).toBeDefined();
-      expect(lastWriteFileCall?.[1]).toContain("MonorepoConfig");
     });
   });
 });

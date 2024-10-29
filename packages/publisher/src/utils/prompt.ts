@@ -105,4 +105,16 @@ export class Prompts {
 
     return confirm;
   }
+
+  async confirmChangelogCreation(packageName: string): Promise<boolean> {
+    const { confirm } = await inquirer.prompt<{ confirm: boolean }>([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: `No changelog found for ${packageName}. Would you like to create one?`,
+        default: true,
+      },
+    ]);
+    return confirm;
+  }
 }

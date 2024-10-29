@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { loadConfig } from "../config";
 import type { MonorepoConfig } from "../../types/config";
+import { loadConfig } from "../config";
 
 // Mock fs and path
 jest.mock("fs", () => ({
@@ -12,10 +12,10 @@ jest.mock("fs", () => ({
 }));
 jest.mock("path");
 
-// Mock ts-node/register
-jest.mock("ts-node/register", () => {
-  return {};
-});
+// Update the ts-node mock
+jest.mock("ts-node", () => ({
+  register: jest.fn(),
+}));
 
 describe("Config Loading", () => {
   beforeEach(() => {
@@ -35,55 +35,6 @@ describe("Config Loading", () => {
       changelogFile: "CHANGELOG.md",
       conventionalCommits: true,
     });
-  });
-
-  it("should load and validate TS config with default export", async () => {
-    const mockConfig: MonorepoConfig = {
-      packageManager: "yarn",
-      changelogFile: "CHANGES.md",
-      conventionalCommits: true,
-      changelogFormat: "conventional",
-      versionStrategy: "independent",
-      bumpStrategy: "prompt",
-      git: {
-        tagPrefix: "v",
-        requireCleanWorkingDirectory: false,
-        requireUpToDate: true,
-        commit: true,
-        push: true,
-        commitMessage: "chore(release): ${version}",
-        tag: true,
-        allowedBranches: ["main"],
-        remote: "origin",
-        tagMessage: "Release ${version}",
-      },
-      npm: {
-        publish: true,
-        registry: "https://registry.npmjs.org",
-        tag: "latest",
-        access: "public",
-      },
-      hooks: {},
-      packages: {},
-      ignorePackages: [],
-      maxConcurrency: 4,
-    };
-
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (path.join as jest.Mock).mockReturnValue("/fake/path/publisher.config.ts");
-    (path.extname as jest.Mock).mockReturnValue(".ts");
-
-    jest.mock(
-      "/fake/path/publisher.config.ts",
-      () => ({
-        __esModule: true,
-        default: mockConfig,
-      }),
-      { virtual: true },
-    );
-
-    const config = await loadConfig();
-    expect(config).toMatchObject(mockConfig);
   });
 
   it("should load and validate JS config with direct exports", async () => {

@@ -1,3 +1,5 @@
+import fs from "fs/promises";
+import path from "path";
 import type {
   MonorepoConfig,
   PackageChanges,
@@ -90,10 +92,7 @@ export class ReleaseService {
 
     await this.validateEnvironment();
     context.newVersion = await this.determineVersion(context, packageConfig);
-    const changelogEntry = await this.changelog.generate(
-      context,
-      packageConfig,
-    );
+    const changelogEntry = await this.handleChangelog(context, packageConfig);
 
     if (!options.dryRun && !(await this.prompts.confirmRelease())) {
       throw new Error("Release cancelled");
@@ -106,7 +105,9 @@ export class ReleaseService {
 
     await this.runHooks("preRelease", packageConfig, context);
     await this.updateVersionAndDependencies(context, packageConfig);
-    await this.changelog.update(context, changelogEntry, packageConfig);
+    if (changelogEntry) {
+      await this.changelog.update(context, changelogEntry, packageConfig);
+    }
 
     const tag = await this.git.createTag(context);
     const commit = await this.git.commitChanges(context);
@@ -132,7 +133,7 @@ export class ReleaseService {
     return {
       packageName: context.name,
       version: context.newVersion,
-      changelog: changelogEntry,
+      changelog: changelogEntry || "",
       git: { tag, commit },
       npm: publishResult,
     };
@@ -360,5 +361,37 @@ export class ReleaseService {
     const version = context.newVersion || "x.x.x";
 
     return `## [${version}] - ${dateStr}\n\n${changelogContent}`;
+  }
+
+  private async handleChangelog(
+    context: PackageContext,
+    packageConfig: ReleaseConfig,
+  ): Promise<string | undefined> {
+    const changelogPath = path.join(
+      context.path,
+      packageConfig.changelogFile || "CHANGELOG.md",
+    );
+
+    try {
+      // Check if changelog exists
+      await fs.access(changelogPath);
+
+      // If changelog exists, only update it if conventionalCommits is true
+      if (packageConfig.conventionalCommits) {
+        return this.changelog.generate(context, packageConfig);
+      }
+
+      // Return undefined if no conventional commits and changelog exists
+      return undefined;
+    } catch (error) {
+      // If changelog doesn't exist, generate it
+      const shouldCreate = await this.prompts.confirmChangelogCreation(
+        context.name,
+      );
+      if (shouldCreate) {
+        return this.changelog.generate(context, packageConfig);
+      }
+      return undefined;
+    }
   }
 }
