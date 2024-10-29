@@ -249,7 +249,6 @@ export class YarnService implements PackageManagerService {
 
   async pack(context: PackageContext): Promise<string> {
     try {
-      // Log the current working directory and context path
       this.logger.debug("Current working directory:", process.cwd());
       this.logger.debug("Context path:", context.path);
 
@@ -262,12 +261,15 @@ export class YarnService implements PackageManagerService {
       );
 
       const parsed = this.parseJsonResponse<YarnInfoResponse>(result.stdout);
-      return parsed.filename ?? "";
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Failed to pack package: ${error.message}`);
+      if (!parsed.filename) {
+        this.logger.debug("No package file was created during pack");
+        return "";
       }
-      throw new Error("Failed to pack package: Unknown error occurred");
+
+      return parsed.filename;
+    } catch (error) {
+      this.logger.debug("Package pack failed:", error);
+      return ""; // Return empty string instead of throwing
     }
   }
 

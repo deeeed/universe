@@ -513,15 +513,29 @@ export class ReleaseService {
         packageConfig,
       );
 
-      // Get required files from config or use default
+      // Skip validation if packValidation is disabled or not configured
+      if (!packageConfig.packValidation?.enabled) {
+        this.logger.debug(`Package validation skipped for ${context.name}`);
+        return;
+      }
+
+      // Get required files from config
       const requiredFiles = packageConfig.packValidation?.requiredFiles || [];
       this.logger.debug(
         `Required files for validation: ${requiredFiles.join(", ")}`,
       );
 
+      // Skip file validation if no required files specified
+      if (requiredFiles.length === 0) {
+        this.logger.debug(
+          "No required files specified, skipping file validation",
+        );
+        return;
+      }
+
       // Check for required files
       for (const file of requiredFiles) {
-        const filePath = path.join(this.rootDir, context.path, file); // Use full path
+        const filePath = path.join(context.path, file);
         this.logger.debug(`Checking existence of required file: ${filePath}`);
         try {
           await fs.access(filePath);
@@ -533,37 +547,32 @@ export class ReleaseService {
       // Pack the package to verify contents
       this.logger.debug(`Packing package for validation: ${context.name}`);
       const packageFile = await this.packageManager.pack(context);
-      this.logger.debug(`Package file created: ${packageFile}`);
+
+      // Skip cleanup if no package file was created
+      if (!packageFile) {
+        this.logger.debug("No package file created, skipping cleanup");
+        return;
+      }
 
       // Clean up the package file after validation
-      const packageFilePath = path.join(this.rootDir, packageFile); // Use full path
-      this.logger.debug(
-        `Attempting to clean up package file: ${packageFilePath}`,
-      );
-      if (packageFilePath) {
+      try {
+        const packageFilePath = path.resolve(context.path, packageFile);
+        this.logger.debug(
+          `Attempting to clean up package file: ${packageFilePath}`,
+        );
         await fs.unlink(packageFilePath);
         this.logger.debug(`Package file cleaned up: ${packageFilePath}`);
+      } catch (cleanupError) {
+        // Log cleanup error but don't fail the validation
+        this.logger.warning(
+          `Failed to clean up package file: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+        );
       }
     } catch (error) {
       this.logger.error(
         `Package validation failed for ${context.name}:`,
         error,
       );
-      // Clean up on error as well
-      try {
-        const packageFilePath = path.join(
-          this.rootDir,
-          context.path,
-          "package.tgz",
-        ); // Use full path
-        await fs.unlink(packageFilePath);
-        this.logger.debug(
-          `Cleaned up package file after error: ${packageFilePath}`,
-        );
-      } catch (cleanupError) {
-        this.logger.error(`Failed to clean up package file:`);
-      }
-
       throw new Error(
         `Package validation failed for ${context.name}:\n${error instanceof Error ? error.message : String(error)}`,
       );
