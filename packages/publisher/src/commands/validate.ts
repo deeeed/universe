@@ -134,7 +134,8 @@ export class ValidateCommand {
     config: ReleaseConfig,
   ): Promise<void> {
     const changelogService = new ChangelogService(this.logger);
-    await changelogService.validate(pkg, config);
+    const rootDir = await this.workspaceService.getRootDir();
+    await changelogService.validate(pkg, config, rootDir);
   }
 }
 
@@ -163,3 +164,23 @@ export const validateCommand = new Command()
       await validateCommand.validate(packages, commandOptions);
     },
   );
+
+export async function validateChangelogs(
+  packages: PackageContext[],
+  config: ReleaseConfig,
+  monorepoRoot: string,
+): Promise<void> {
+  const changelogService = new ChangelogService();
+
+  if (!packages || packages.length === 0) {
+    throw new Error("No packages found to validate");
+  }
+
+  for (const pkg of packages) {
+    if (!pkg.path) {
+      throw new Error(`Invalid package path for ${pkg.name}`);
+    }
+
+    await changelogService.validate(pkg, config, monorepoRoot);
+  }
+}

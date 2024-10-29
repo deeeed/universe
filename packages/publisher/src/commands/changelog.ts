@@ -5,11 +5,13 @@ import { WorkspaceService } from "../core/workspace";
 import { Logger } from "../utils/logger";
 import chalk from "chalk";
 import { GitService, type GitCommit } from "../core/git";
+import { PackageContext } from "../types/config";
 
 interface ChangelogCommandOptions {
   format?: "conventional" | "keep-a-changelog";
   dryRun?: boolean;
   version?: string;
+  all?: boolean;
 }
 
 export const changelogCommand = new Command()
@@ -93,6 +95,55 @@ changelogCommand
         "Preview failed:",
         error instanceof Error ? error.message : String(error),
       );
+      process.exit(1);
+    }
+  });
+
+changelogCommand
+  .command("validate")
+  .description("Validate changelog files")
+  .argument("[packages...]", "Package names to validate (optional)")
+  .option("-a, --all", "Validate all packages")
+  .action(async (packages: string[], options: ChangelogCommandOptions) => {
+    const logger = new Logger();
+    try {
+      const config = await loadConfig();
+      const workspaceService = new WorkspaceService(config);
+      const changelogService = new ChangelogService(logger);
+
+      // Get packages to validate
+      let packagesToValidate: PackageContext[] = [];
+      if (options.all) {
+        packagesToValidate = await workspaceService.getPackages();
+      } else if (packages.length === 0) {
+        const currentPackage = await workspaceService.getCurrentPackage();
+        if (currentPackage) {
+          packagesToValidate = [currentPackage];
+        }
+      } else {
+        packagesToValidate = await workspaceService.getPackages(packages);
+      }
+
+      if (packagesToValidate.length === 0) {
+        logger.error("No packages found to validate");
+        process.exit(1);
+      }
+
+      logger.info("Validating changelogs...");
+
+      const monorepRoot = await workspaceService.getRootDir();
+
+      for (const pkg of packagesToValidate) {
+        const packageConfig = await workspaceService.getPackageConfig(pkg.name);
+        await changelogService.validate(pkg, packageConfig, monorepRoot);
+        logger.success(`✓ ${pkg.name}: Changelog is valid`);
+      }
+
+      logger.success("\nAll changelog validations passed successfully!");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      logger.error("\nChangelog validation failed:", errorMessage);
       process.exit(1);
     }
   });

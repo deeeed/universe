@@ -1,5 +1,5 @@
 import conventionalChangelog from "conventional-changelog";
-import { promises as fs } from "fs";
+import { promises as fs, Stats } from "fs";
 import path from "path";
 import * as semver from "semver";
 import type { Transform } from "stream";
@@ -130,7 +130,7 @@ export class ChangelogService {
   constructor(private logger: Logger = new Logger()) {}
 
   private getFormat(config: ReleaseConfig): ChangelogFormat {
-    return config.conventionalCommits
+    return config.changelogFormat === "conventional"
       ? CONVENTIONAL_CHANGELOG_FORMAT
       : KEEP_A_CHANGELOG_FORMAT;
   }
@@ -141,7 +141,7 @@ export class ChangelogService {
   ): Promise<string> {
     const format = this.getFormat(config);
 
-    if (config.conventionalCommits) {
+    if (config.changelogFormat === "conventional") {
       const conventionalContent =
         await this.generateConventionalChangelog(context);
       return format.parseConventionalContent
@@ -224,44 +224,92 @@ export class ChangelogService {
   async validate(
     context: PackageContext,
     config: ReleaseConfig,
+    monorepoRoot: string,
   ): Promise<void> {
+    if (!context.path) {
+      throw new Error(`Invalid package path for ${context.name}`);
+    }
+
     const format = this.getFormat(config);
     const changelogPath = path.join(
+      monorepoRoot,
       context.path,
       config.changelogFile || "CHANGELOG.md",
     );
 
-    try {
-      // Check file exists
-      const exists = await fs
-        .access(changelogPath)
-        .then(() => true)
-        .catch(() => false);
+    this.logger.debug(`Validating changelog at: ${changelogPath}`);
 
-      if (!exists) {
-        throw new Error("Changelog file not found");
+    try {
+      // Fix Stats type and isFile check
+      let stats: Stats;
+      try {
+        stats = await fs.stat(changelogPath);
+        if (!stats.isFile()) {
+          throw new Error(`${changelogPath} exists but is not a file`);
+        }
+      } catch (error) {
+        throw new Error(`Changelog file not found at: ${changelogPath}`);
       }
 
-      // Read file content
-      const content = await fs.readFile(changelogPath, "utf8");
+      // Fix error type casting
+      let content: string;
+      try {
+        content = await fs.readFile(changelogPath, "utf8");
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        throw new Error(
+          `Failed to read changelog at ${changelogPath}: ${errorMessage}`,
+        );
+      }
+
+      if (!content || content.trim().length === 0) {
+        throw new Error(`Changelog is empty at ${changelogPath}`);
+      }
 
       // Basic validation
       if (!content.includes("# Changelog")) {
-        throw new Error("Invalid changelog format: missing header");
+        throw new Error(
+          `Invalid changelog format in ${context.name}: missing header`,
+        );
       }
 
       if (!content.includes("## [Unreleased]")) {
-        throw new Error("Invalid changelog format: missing Unreleased section");
+        throw new Error(
+          `Invalid changelog format in ${context.name}: missing Unreleased section`,
+        );
+      }
+
+      // Format-specific validation
+      if (format.name === "keep-a-changelog") {
+        if (!content.includes("The format is based on [Keep a Changelog]")) {
+          throw new Error(
+            `Invalid changelog format in ${context.name}: missing Keep a Changelog reference`,
+          );
+        }
+
+        // Validate that all required section headers exist in the unreleased section
+        const unreleasedSection =
+          content.split("## [Unreleased]")[1]?.split("## ")[0] || "";
+        for (const header of format.sectionHeaders) {
+          if (!unreleasedSection.includes(header)) {
+            throw new Error(
+              `Invalid changelog format in ${context.name}: missing required section ${header} in Unreleased`,
+            );
+          }
+        }
       }
 
       // Validate version entries
-      this.validateVersionEntries(content, format);
+      this.validateVersionEntries(content, format, context.name);
 
-      this.logger.success("Changelog validation: OK");
+      this.logger.success(`Changelog validation for ${context.name}: OK`);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      this.logger.error(`Changelog validation failed: ${errorMessage}`);
+      this.logger.error(
+        `Changelog validation failed for ${context.name}: ${errorMessage}`,
+      );
       throw error;
     }
   }
@@ -269,29 +317,60 @@ export class ChangelogService {
   private validateVersionEntries(
     content: string,
     format: ChangelogFormat,
+    packageName: string,
   ): void {
-    const sections = content.split(/^## /m).slice(1); // Skip header
+    const lines = content.split("\n");
+
+    // Validate that there are no malformed headers (###asdf)
+    const malformedHeaderRegex = /^#{1,6}[^#\s].*/;
+    lines.forEach((line, index) => {
+      if (malformedHeaderRegex.test(line)) {
+        throw new Error(
+          `Invalid header format in ${packageName} at line ${index + 1}: "${line}"`,
+        );
+      }
+    });
+
+    // Validate version headers format
+    const versionHeaderRegex = /^## \[.*\](?:\s*-\s*\d{4}-\d{2}-\d{2})?$/;
+    lines.forEach((line, index) => {
+      if (line.startsWith("## ") && !line.startsWith("## [Unreleased]")) {
+        if (!versionHeaderRegex.test(line)) {
+          throw new Error(
+            `Invalid version header format in ${packageName} at line ${index + 1}: "${line}"`,
+          );
+        }
+      }
+    });
+
+    // Extract and validate versions
+    const sections = content.split(/^## /m).slice(1);
     const versions: string[] = [];
 
     for (const section of sections) {
-      const lines = section.split("\n");
-      const firstLine = lines[0].trim();
+      const sectionLines = section.split("\n");
+      const firstLine = sectionLines[0].trim();
 
       if (firstLine.toLowerCase() !== "[unreleased]") {
         const match = firstLine.match(format.versionRegex);
         if (!match) {
-          throw new Error("Invalid version header format");
+          throw new Error(
+            `Invalid version header format in ${packageName}: "${firstLine}"`,
+          );
         }
 
         const [, version, dateStr] = match;
-        if (dateStr) {
-          // Only validate date if the format requires it
-          const date = new Date(dateStr);
-          if (isNaN(date.getTime())) {
-            throw new Error(
-              `Invalid date format for version ${version}: ${dateStr}`,
-            );
-          }
+
+        if (!semver.valid(version)) {
+          throw new Error(
+            `Invalid semver version in ${packageName}: ${version}`,
+          );
+        }
+
+        if (format.name === "keep-a-changelog" && !dateStr) {
+          throw new Error(
+            `Missing date for version ${version} in ${packageName}`,
+          );
         }
 
         versions.push(version);
@@ -302,7 +381,7 @@ export class ChangelogService {
     for (let i = 0; i < versions.length - 1; i++) {
       if (!semver.gt(versions[i], versions[i + 1])) {
         throw new Error(
-          `Version ordering error: ${versions[i]} should be greater than ${versions[i + 1]}`,
+          `Version ordering error in ${packageName}: ${versions[i]} should be greater than ${versions[i + 1]}`,
         );
       }
     }
