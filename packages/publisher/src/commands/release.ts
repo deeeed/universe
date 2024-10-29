@@ -4,6 +4,7 @@ import { ReleaseService } from "../core/release";
 import { Logger } from "../utils/logger";
 import { Prompts } from "../utils/prompt";
 import chalk from "chalk";
+import { WorkspaceService } from "../core/workspace";
 
 interface ReleaseCommandOptions {
   all?: boolean;
@@ -16,8 +17,14 @@ interface ReleaseCommandOptions {
 
 export const releaseCommand = new Command()
   .name("release")
-  .description("Release one or more packages")
-  .argument("[packages...]", "Package names to release")
+  .description(
+    "Release packages. When run from within a package directory, defaults to the current package. " +
+      "In monorepo root, requires package names or --all flag.",
+  )
+  .argument(
+    "[packages...]",
+    "Package names to release (optional when in package directory)",
+  )
   .option("-a, --all", "Release all packages with changes")
   .option("-d, --dry-run", "Show what would be done without actually doing it")
   .option("-v, --version <version>", "Specify version explicitly")
@@ -29,17 +36,26 @@ export const releaseCommand = new Command()
     try {
       const config = await loadConfig();
       const releaseService = new ReleaseService(config, logger);
+      const workspaceService = new WorkspaceService();
 
       // Get packages to analyze
-      const packagesToAnalyze = commandOptions.all
-        ? (await releaseService["workspace"].getChangedPackages()).map(
-            (p) => p.name,
-          )
-        : packages;
+      let packagesToAnalyze: string[] = [];
+
+      if (commandOptions.all) {
+        const changedPackages = await workspaceService.getChangedPackages();
+        packagesToAnalyze = changedPackages.map((p) => p.name);
+      } else if (packages.length === 0) {
+        const currentPackage = await workspaceService.getCurrentPackage();
+        if (currentPackage) {
+          packagesToAnalyze = [currentPackage.name];
+        }
+      } else {
+        packagesToAnalyze = packages;
+      }
 
       if (packagesToAnalyze.length === 0) {
         logger.error(
-          "No packages to release. Use --all flag or specify package names.",
+          "No packages to release. Use --all flag, specify package names, or run from within a package directory.",
         );
         process.exit(1);
       }

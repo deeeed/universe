@@ -4,6 +4,7 @@ import { Command } from "commander";
 import { initCommand } from "../src/commands/init";
 import { releaseCommand } from "../src/commands/release";
 import { validateCommand } from "../src/commands/validate";
+import { changelogCommand } from "../src/commands/changelog";
 import pkg from "../package.json";
 import workspacesCommand from "../src/commands/workspaces";
 
@@ -18,5 +19,5 @@ program.addCommand(initCommand);
 program.addCommand(releaseCommand);
 program.addCommand(validateCommand);
 program.addCommand(workspacesCommand);
-
+program.addCommand(changelogCommand);
 program.parse(process.argv);

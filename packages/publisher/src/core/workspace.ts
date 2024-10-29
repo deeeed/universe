@@ -360,4 +360,17 @@ export class WorkspaceService {
       throw error;
     }
   }
+
+  async getCurrentPackage(): Promise<PackageContext | null> {
+    const currentDir = process.cwd();
+    const packages = await this.getPackages();
+
+    // Find package whose path matches the current directory
+    const currentPackage = packages.find((pkg) => {
+      const absolutePkgPath = path.resolve(this.rootDir || "", pkg.path);
+      return currentDir.startsWith(absolutePkgPath);
+    });
+
+    return currentPackage || null;
+  }
 }

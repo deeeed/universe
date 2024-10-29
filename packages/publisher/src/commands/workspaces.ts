@@ -120,14 +120,27 @@ workspacesCommand
 
 workspacesCommand
   .command("info")
-  .description("Show detailed information about specific packages")
-  .argument("<packages...>", "Package names to show info for")
+  .description(
+    "Show detailed information about packages. When run from within a package directory, defaults to the current package. " +
+      "In monorepo root, requires package names.",
+  )
+  .argument(
+    "[packages...]",
+    "Package names to show info for (optional when in package directory)",
+  )
   .option("-j, --json", "Output in JSON format")
   .action(async (packages: string[], options: WorkspacesCommandOptions) => {
     const logger = new Logger();
     const workspaceService = new WorkspaceService();
 
     try {
+      if (packages.length === 0) {
+        const currentPackage = await workspaceService.getCurrentPackage();
+        if (currentPackage) {
+          packages = [currentPackage.name];
+        }
+      }
+
       const packageInfos = await workspaceService.getPackages(packages);
 
       if (packageInfos.length === 0) {

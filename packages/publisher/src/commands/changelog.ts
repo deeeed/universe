@@ -18,8 +18,14 @@ export const changelogCommand = new Command()
 
 changelogCommand
   .command("preview")
-  .description("Preview changelog updates for packages")
-  .argument("[packages...]", "Package names to preview changelog for")
+  .description(
+    "Preview changelog updates for packages. When run from within a package directory, defaults to the current package. " +
+      "In monorepo root, requires package names.",
+  )
+  .argument(
+    "[packages...]",
+    "Package names to preview changelog for (optional when in package directory)",
+  )
   .option("-f, --format <format>", "Changelog format to use")
   .option("-v, --version <version>", "Specify version explicitly")
   .action(async (packages: string[], options: ChangelogCommandOptions) => {
@@ -30,11 +36,21 @@ changelogCommand
       const changelogService = new ChangelogService(logger);
       const git = new GitService(config.git, process.cwd());
 
+      // If no packages specified, try to get current package
+      if (packages.length === 0) {
+        const currentPackage = await workspaceService.getCurrentPackage();
+        if (currentPackage) {
+          packages = [currentPackage.name];
+        }
+      }
+
       // Get packages to analyze
       const packagesToAnalyze = await workspaceService.getPackages(packages);
 
       if (packagesToAnalyze.length === 0) {
-        logger.error("No packages found to analyze");
+        logger.error(
+          "No packages to analyze. Run from within a package directory or specify package names.",
+        );
         process.exit(1);
       }
 

@@ -2,6 +2,7 @@
 export { initCommand } from "./commands/init";
 export { releaseCommand } from "./commands/release";
 export { validateCommand } from "./commands/validate";
+export { changelogCommand } from "./commands/changelog";
 
 // Export core functionalities
 export * from "./core/changelog";
