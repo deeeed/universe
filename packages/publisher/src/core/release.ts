@@ -466,6 +466,7 @@ export class ReleaseService {
       context.path,
       packageConfig.changelogFile || "CHANGELOG.md",
     );
+    this.logger.debug(`Changelog path: ${changelogPath}`);
 
     try {
       await fs.access(changelogPath);
