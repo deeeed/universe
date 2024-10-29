@@ -359,4 +359,28 @@ export class ChangelogService {
 
     return content + "\n\n" + links.join("\n");
   }
+
+  async getUnreleasedChanges(
+    context: PackageContext,
+    config: ReleaseConfig,
+  ): Promise<string[]> {
+    const changelogPath = path.join(
+      context.path,
+      config.changelogFile || "CHANGELOG.md",
+    );
+    try {
+      const content = await fs.readFile(changelogPath, "utf-8");
+      const unreleasedSection = content
+        .split("## [Unreleased]")[1]
+        ?.split("## ")[0];
+      if (!unreleasedSection) return [];
+
+      return unreleasedSection
+        .split("\n")
+        .filter((line) => line.trim().startsWith("- "))
+        .map((line) => line.trim().substring(2));
+    } catch {
+      return [];
+    }
+  }
 }

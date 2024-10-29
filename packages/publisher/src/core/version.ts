@@ -1,13 +1,22 @@
+import type { Options as ExecaOptions, ExecaReturnValue } from "execa";
 import * as semver from "semver";
-import type { ExecaReturnValue, Options as ExecaOptions } from "execa";
 import type {
-  PackageContext,
-  ReleaseConfig,
   BumpType,
+  GitConfig,
+  PackageContext,
   PackageJson,
+  ReleaseConfig,
 } from "../types/config";
+import { GitService } from "./git";
 
 export class VersionService {
+  private git: GitService;
+
+  constructor(gitConfig: GitConfig) {
+    const rootDir = process.cwd(); // Or get it from workspace service
+    this.git = new GitService(gitConfig, rootDir);
+  }
+
   private async execCommand(
     command: string,
     args: string[],
@@ -111,6 +120,27 @@ export class VersionService {
           cwd: context.path,
         },
       );
+    }
+  }
+
+  async analyzeCommits(context: PackageContext): Promise<BumpType> {
+    try {
+      const lastTag = await this.git.getLastTag(context.name);
+      const commits = await this.git.getCommitsSinceTag(lastTag);
+
+      if (
+        commits.some((commit) => commit.message.includes("BREAKING CHANGE"))
+      ) {
+        return "major";
+      }
+
+      if (commits.some((commit) => commit.message.startsWith("feat"))) {
+        return "minor";
+      }
+
+      return "patch";
+    } catch {
+      return "patch";
     }
   }
 }

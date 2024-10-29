@@ -1,5 +1,6 @@
 import type {
   MonorepoConfig,
+  PackageChanges,
   PackageContext,
   ReleaseConfig,
   ReleaseResult,
@@ -32,13 +33,14 @@ export class ReleaseService {
       this.config.packageManager = "yarn";
     }
 
-    this.git = new GitService(config.git);
+    const rootDir = process.cwd();
+    this.git = new GitService(config.git, rootDir);
     this.packageManager = PackageManagerFactory.create(
       config.packageManager as "npm" | "yarn",
       config.npm,
     );
-    this.version = new VersionService();
-    this.changelog = new ChangelogService();
+    this.version = new VersionService(config.git);
+    this.changelog = new ChangelogService(logger);
     this.workspace = new WorkspaceService();
     this.prompts = new Prompts(logger);
   }
@@ -86,7 +88,7 @@ export class ReleaseService {
       context.name,
     );
 
-    await this.validateEnvironment(packageConfig);
+    await this.validateEnvironment();
     context.newVersion = await this.determineVersion(context, packageConfig);
     const changelogEntry = await this.changelog.generate(
       context,
@@ -106,13 +108,11 @@ export class ReleaseService {
     await this.updateVersionAndDependencies(context, packageConfig);
     await this.changelog.update(context, changelogEntry, packageConfig);
 
-    const tag = await this.git.createTag(context, { git: packageConfig.git });
-    const commit = await this.git.commitChanges(context, {
-      git: packageConfig.git,
-    });
+    const tag = await this.git.createTag(context);
+    const commit = await this.git.commitChanges(context);
 
     if (options.gitPush) {
-      await this.git.push({ git: packageConfig.git });
+      await this.git.push();
     }
 
     let publishResult;
@@ -138,10 +138,10 @@ export class ReleaseService {
     };
   }
 
-  private async validateEnvironment(config: ReleaseConfig): Promise<void> {
-    await this.git.validateStatus(config);
-    if (config.npm?.publish) {
-      await this.packageManager.validateAuth(config);
+  private async validateEnvironment(): Promise<void> {
+    await this.git.validateStatus();
+    if (this.config.npm?.publish) {
+      await this.packageManager.validateAuth(this.config);
     }
   }
 
@@ -156,22 +156,9 @@ export class ReleaseService {
         bumpType,
         config.preReleaseId,
       );
-    } else if (config.bumpStrategy === "conventional") {
-      // Use conventional commits to determine version
-      const bumpType = config.bumpType || "patch";
-      return this.version.determineVersion(
-        context,
-        bumpType,
-        config.preReleaseId,
-      );
-    } else {
-      // Auto strategy - use patch by default
-      return this.version.determineVersion(
-        context,
-        "patch",
-        config.preReleaseId,
-      );
     }
+
+    return this.determineSuggestedVersion(context, config);
   }
 
   private async updateVersionAndDependencies(
@@ -249,5 +236,118 @@ export class ReleaseService {
       changelog: "Dry run - no changes made",
       git: { tag: "dry-run", commit: "dry-run" },
     };
+  }
+
+  async analyzeChanges(packageNames: string[]): Promise<PackageChanges[]> {
+    const packages = await this.workspace.getPackages(packageNames);
+    const changes: PackageChanges[] = [];
+
+    for (const pkg of packages) {
+      const packageConfig = await this.getEffectiveConfig(pkg.name);
+      const suggestedVersion = await this.determineSuggestedVersion(
+        pkg,
+        packageConfig,
+      );
+      const gitChanges = await this.git.hasChanges(pkg.path);
+      const changelogEntries = await this.changelog.getUnreleasedChanges(
+        pkg,
+        packageConfig,
+      );
+
+      // Get workspace dependencies that need updates
+      const workspaceDeps = this.getWorkspaceDependencies(pkg);
+      const dependencyUpdates = await this.analyzeDependencyUpdates(
+        pkg,
+        workspaceDeps,
+      );
+
+      changes.push({
+        name: pkg.name,
+        currentVersion: pkg.currentVersion,
+        suggestedVersion,
+        dependencies: dependencyUpdates,
+        hasGitChanges: gitChanges,
+        changelogEntries,
+      });
+    }
+
+    return changes;
+  }
+
+  private async determineSuggestedVersion(
+    context: PackageContext,
+    config: ReleaseConfig,
+  ): Promise<string> {
+    if (config.bumpStrategy === "conventional") {
+      const bumpType = await this.version.analyzeCommits(context);
+      return this.version.determineVersion(
+        context,
+        bumpType,
+        config.preReleaseId,
+      );
+    }
+    return this.version.determineVersion(context, "patch", config.preReleaseId);
+  }
+
+  private async analyzeDependencyUpdates(
+    context: PackageContext,
+    dependencies: string[],
+  ): Promise<
+    Array<{ name: string; currentVersion: string; newVersion: string }>
+  > {
+    const updates = [];
+    for (const dep of dependencies) {
+      const currentVersion =
+        context.dependencies?.[dep] ||
+        context.devDependencies?.[dep] ||
+        context.peerDependencies?.[dep];
+      if (currentVersion) {
+        const latestVersion = await this.packageManager.getLatestVersion(dep);
+        if (latestVersion !== currentVersion) {
+          updates.push({
+            name: dep,
+            currentVersion,
+            newVersion: latestVersion,
+          });
+        }
+      }
+    }
+    return updates;
+  }
+
+  async getGitChanges(
+    packageName: string,
+  ): Promise<Array<{ message: string }>> {
+    const packages = await this.workspace.getPackages([packageName]);
+    const pkg = packages[0];
+
+    if (!pkg) {
+      return [];
+    }
+
+    const lastTag = await this.git.getLastTag(packageName);
+    return this.git.getCommitsSinceTag(lastTag);
+  }
+
+  async previewChangelog(packageName: string): Promise<string> {
+    const pkg = await this.workspace.getPackages([packageName]);
+    if (pkg.length === 0) {
+      throw new Error(`Package ${packageName} not found`);
+    }
+
+    const packageConfig = await this.workspace.getPackageConfig(packageName);
+    const context = pkg[0];
+
+    // Generate changelog content
+    const changelogContent = await this.changelog.generate(
+      context,
+      packageConfig,
+    );
+
+    // Format the preview to show how it would look in the changelog
+    const dateStr = new Date().toISOString().split("T")[0];
+    const version = context.newVersion || "x.x.x";
+
+    return `## [${version}] - ${dateStr}\n\n${changelogContent}`;
   }
 }

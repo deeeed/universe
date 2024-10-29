@@ -96,6 +96,19 @@ export type BumpType =
   | "prerelease"
   | "custom";
 
+export interface PackageChanges {
+  name: string;
+  currentVersion: string;
+  suggestedVersion: string;
+  dependencies: Array<{
+    name: string;
+    currentVersion: string;
+    newVersion: string;
+  }>;
+  hasGitChanges: boolean;
+  changelogEntries: string[];
+}
+
 // Package release context
 export interface PackageContext {
   name: string;

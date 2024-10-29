@@ -1,23 +1,48 @@
-import simpleGit, { SimpleGit } from "simple-git";
-import type { GitConfig } from "../types/config";
-import type { PackageContext } from "../types/config";
+import path from "path";
+import simpleGit, {
+  DefaultLogFields,
+  ListLogLine,
+  SimpleGit,
+  SimpleGitOptions,
+} from "simple-git";
+import type { GitConfig, PackageContext } from "../types/config";
+
+export interface GitCommit {
+  hash: string;
+  date: string;
+  message: string;
+  body: string | null;
+  files: string[];
+}
 
 export class GitService {
   private git: SimpleGit;
+  private rootDir: string;
+  private config: GitConfig;
 
-  constructor(_config: GitConfig) {
-    this.git = simpleGit();
+  constructor(config: GitConfig, rootDir: string) {
+    const gitOptions: SimpleGitOptions = {
+      baseDir: rootDir,
+      binary: "git",
+      maxConcurrentProcesses: 6,
+      config: [],
+      trimmed: false,
+    };
+
+    this.git = simpleGit(gitOptions);
+    this.rootDir = rootDir;
+    this.config = config;
   }
 
-  async validateStatus(config: { git: GitConfig }): Promise<void> {
+  async validateStatus(): Promise<void> {
     const status = await this.git.status();
 
-    if (config.git.requireCleanWorkingDirectory && !status.isClean()) {
+    if (this.config.requireCleanWorkingDirectory && !status.isClean()) {
       throw new Error("Working directory is not clean");
     }
 
-    if (config.git.requireUpToDate) {
-      await this.git.fetch();
+    if (this.config.requireUpToDate) {
+      await this.git.fetch(this.config.remote);
       const currentBranch = status.current || "";
       const tracking = status.tracking;
 
@@ -38,54 +63,109 @@ export class GitService {
       }
     }
 
-    if (config.git.allowedBranches?.length > 0) {
+    if (this.config.allowedBranches?.length > 0) {
       const currentBranch = status.current || "";
-
-      if (!currentBranch) {
-        throw new Error("Not currently on any branch");
-      }
-
-      if (!config.git.allowedBranches.includes(currentBranch)) {
+      if (!this.config.allowedBranches.includes(currentBranch)) {
         throw new Error(
-          `Current branch ${currentBranch} is not in allowed branches: ${config.git.allowedBranches.join(", ")}`,
+          `Current branch ${currentBranch} is not in allowed branches: ${this.config.allowedBranches.join(", ")}`,
         );
       }
     }
   }
 
-  async createTag(
-    context: PackageContext,
-    config: { git: GitConfig },
-  ): Promise<string> {
+  async hasChanges(packagePath: string): Promise<boolean> {
+    const relativePath = path.relative(this.rootDir, packagePath);
+    const status = await this.git.status();
+
+    const hasUncommittedChanges = status.files.some((file) =>
+      file.path.startsWith(relativePath),
+    );
+
+    if (hasUncommittedChanges) {
+      return true;
+    }
+
+    const lastTag = await this.getLastTag(path.basename(packagePath));
+    const commits = await this.getCommitsSinceTag(lastTag);
+
+    return commits.some((commit) =>
+      commit.files.some((file) => file.startsWith(relativePath)),
+    );
+  }
+
+  async getLastTag(packageName: string): Promise<string> {
+    const tags = await this.git.tags();
+    const packageTags = tags.all.filter(
+      (tag) => tag.includes(packageName) || tag.startsWith("v"),
+    );
+
+    return packageTags.length > 0 ? packageTags[packageTags.length - 1] : "";
+  }
+
+  async getCommitsSinceTag(tag: string): Promise<GitCommit[]> {
+    if (!tag) {
+      const log = await this.git.log();
+      return this.parseCommits([...log.all]);
+    }
+
+    const log = await this.git.log({ from: tag });
+    return this.parseCommits([...log.all]);
+  }
+
+  private async parseCommits(
+    commits: Array<DefaultLogFields & ListLogLine>,
+  ): Promise<GitCommit[]> {
+    return Promise.all(
+      commits.map(async (commit) => {
+        const show = await this.git.show([
+          commit.hash,
+          "--name-only",
+          "--format=%H%n%ai%n%B",
+        ]);
+        const [hash, date, ...rest] = show.split("\n");
+        const messageEnd = rest.findIndex((line) => line === "");
+        const message = rest.slice(0, messageEnd).join("\n");
+        const body = rest.slice(messageEnd + 1, -1).join("\n") || null;
+        const files = rest.slice(-1);
+
+        return {
+          hash,
+          date,
+          message,
+          body,
+          files,
+        };
+      }),
+    );
+  }
+
+  async createTag(context: PackageContext): Promise<string> {
     if (!context.newVersion) {
       throw new Error("New version is required to create a tag");
     }
 
-    const tagName = `${config.git.tagPrefix}${context.newVersion}`;
+    const tagName = `${context.name}@${context.newVersion}`;
     const message =
-      config.git.tagMessage ?? `Release ${context.name}@${context.newVersion}`;
+      this.config.tagMessage ?? `Release ${context.name}@${context.newVersion}`;
     await this.git.addAnnotatedTag(tagName, message);
     return tagName;
   }
 
-  async commitChanges(
-    context: PackageContext,
-    config: { git: GitConfig },
-  ): Promise<string> {
+  async commitChanges(context: PackageContext): Promise<string> {
     if (!context.newVersion) {
       throw new Error("New version is required to create a commit message");
     }
 
-    const message = config.git.commitMessage
+    const message = this.config.commitMessage
       .replace("${packageName}", context.name)
       .replace("${version}", context.newVersion);
 
-    await this.git.add(".");
+    await this.git.add(path.relative(this.rootDir, context.path));
     const result = await this.git.commit(message);
     return result.commit;
   }
 
-  async push(config: { git: GitConfig }): Promise<void> {
-    await this.git.push(config.git.remote, undefined, ["--follow-tags"]);
+  async push(): Promise<void> {
+    await this.git.push(this.config.remote, undefined, ["--follow-tags"]);
   }
 }

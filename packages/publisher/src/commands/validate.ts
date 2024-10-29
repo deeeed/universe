@@ -67,7 +67,7 @@ export class ValidateCommand {
 
     // Git checks
     try {
-      await this.gitService.validateStatus(packageConfig);
+      await this.gitService.validateStatus();
       this.logger.success("Git status: OK");
     } catch (error) {
       const errorMessage =
@@ -147,9 +147,10 @@ export const validateCommand = new Command()
     async (packages: string[], commandOptions: ValidateCommandOptions) => {
       const logger = new Logger();
       const config = await loadConfig();
+      const rootDir = process.cwd();
 
       const workspaceService = new WorkspaceService(config, logger);
-      const gitService = new GitService(config.git);
+      const gitService = new GitService(config.git, rootDir);
       const npmService = new NpmService(config.npm);
 
       const validateCommand = new ValidateCommand(
