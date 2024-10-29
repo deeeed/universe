@@ -11,6 +11,10 @@ interface GeneratePackageConfigOptions {
   conventionalCommits?: boolean;
   versionStrategy?: ReleaseConfig["versionStrategy"];
   bumpStrategy?: ReleaseConfig["bumpStrategy"];
+  npm?: {
+    publish: boolean;
+    access: "public" | "restricted";
+  };
 }
 
 export function generatePackageConfig(
@@ -38,10 +42,10 @@ export function generatePackageConfig(
       remote: "origin",
     },
     npm: {
-      publish: true,
+      publish: options.npm?.publish ?? true,
       registry: "https://registry.npmjs.org",
       tag: "latest",
-      access: "public",
+      access: options.npm?.access ?? "public",
     },
     hooks: {},
   };

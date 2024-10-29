@@ -1,15 +1,49 @@
 import fs from "fs/promises";
+import inquirer from "inquirer";
 import path from "path";
 import {
   changelogTemplate,
-  hooksTemplate,
-  generatePackageConfig,
   generateMonorepoConfig,
+  generatePackageConfig,
+  hooksTemplate,
 } from "../templates";
+import type {
+  MonorepoConfig,
+  PackageJson,
+  PackageManager,
+} from "../types/config";
 import { Logger } from "../utils/logger";
-import { WorkspaceService } from "./workspace";
 import { PackageManagerDetector } from "../utils/packageManagerDetector";
-import type { PackageJson } from "../types/config";
+import { WorkspaceService } from "./workspace";
+
+interface InitOptions {
+  force?: boolean;
+  interactive?: boolean;
+}
+
+// Base shared options
+interface BaseInteractiveAnswers {
+  packageManager: PackageManager;
+  conventionalCommits: boolean;
+  versionStrategy: MonorepoConfig["versionStrategy"];
+  bumpStrategy: MonorepoConfig["bumpStrategy"];
+  npmPublish: boolean;
+  npmAccess: "public" | "restricted";
+}
+
+// Package-specific options
+interface PackageInteractiveAnswers extends BaseInteractiveAnswers {
+  changelogFile?: string;
+  // Add any other package-specific options
+}
+
+// Monorepo-specific options
+interface MonorepoInteractiveAnswers extends BaseInteractiveAnswers {
+  packagesGlob: string;
+  maxConcurrency: number;
+  ignorePackages: string[];
+  // Add any other monorepo-specific options
+}
 
 export class InitService {
   private packageManagerDetector: PackageManagerDetector;
@@ -23,9 +57,27 @@ export class InitService {
 
   async initialize(
     packages: string[],
-    options: { force?: boolean } = {},
+    options: InitOptions = {},
   ): Promise<void> {
     try {
+      let packageOptions: PackageInteractiveAnswers | undefined;
+      let monorepoOptions: MonorepoInteractiveAnswers | undefined;
+
+      if (options.interactive) {
+        const isRoot =
+          process.cwd() === (await this.workspaceService.getRootDir());
+        if (isRoot) {
+          monorepoOptions = await this.promptForMonorepoOptions();
+          // Use monorepo answers as defaults for package options
+          packageOptions = {
+            ...monorepoOptions,
+            changelogFile: "CHANGELOG.md",
+          };
+        } else {
+          packageOptions = await this.promptForPackageOptions();
+        }
+      }
+
       // Get packages to initialize
       const packagesToInit =
         packages.length > 0
@@ -44,13 +96,17 @@ export class InitService {
         await this.createDirectoryStructure(pkg.path);
 
         // Initialize package files
-        await this.initializePackageFiles(pkg.path, options.force);
+        await this.initializePackageFiles(
+          pkg.path,
+          options.force,
+          packageOptions,
+        );
 
         this.logger.success(`Initialized ${pkg.name}`);
       }
 
       // Create root config if it doesn't exist
-      await this.initializeRootConfig(options.force);
+      await this.initializeRootConfig(options.force, monorepoOptions);
 
       this.logger.success("\nInitialization completed successfully!");
       this.logger.info("\nNext steps:");
@@ -66,18 +122,151 @@ export class InitService {
     }
   }
 
+  private async promptForPackageOptions(): Promise<PackageInteractiveAnswers> {
+    const packageManager =
+      await this.packageManagerDetector.detectPackageManager();
+
+    const answers = await inquirer.prompt<
+      Omit<PackageInteractiveAnswers, "packageManager">
+    >([
+      {
+        type: "confirm",
+        name: "conventionalCommits",
+        message: "Use conventional commits?",
+        default: true,
+      },
+      {
+        type: "list",
+        name: "versionStrategy",
+        message: "Choose version strategy:",
+        choices: ["independent", "fixed"] as const,
+        default: "independent",
+      },
+      {
+        type: "list",
+        name: "bumpStrategy",
+        message: "Choose bump strategy:",
+        choices: ["conventional", "prompt", "auto"] as const,
+        default: "prompt",
+      },
+      {
+        type: "confirm",
+        name: "npmPublish",
+        message: "Publish to npm?",
+        default: true,
+      },
+      {
+        type: "list",
+        name: "npmAccess",
+        message: "npm package access:",
+        choices: ["public", "restricted"] as const,
+        default: "public",
+        when: (answers: Partial<PackageInteractiveAnswers>) =>
+          answers.npmPublish,
+      },
+      {
+        type: "input",
+        name: "changelogFile",
+        message: "Changelog file path:",
+        default: "CHANGELOG.md",
+      },
+    ]);
+
+    return {
+      ...answers,
+      packageManager,
+    };
+  }
+
+  private async promptForMonorepoOptions(): Promise<MonorepoInteractiveAnswers> {
+    const packageManager =
+      await this.packageManagerDetector.detectPackageManager();
+
+    const baseAnswers = await inquirer.prompt<
+      Omit<BaseInteractiveAnswers, "packageManager">
+    >([
+      {
+        type: "confirm",
+        name: "conventionalCommits",
+        message: "Use conventional commits?",
+        default: true,
+      },
+      {
+        type: "list",
+        name: "versionStrategy",
+        message: "Choose version strategy:",
+        choices: ["independent", "fixed"] as const,
+        default: "independent",
+      },
+      {
+        type: "list",
+        name: "bumpStrategy",
+        message: "Choose bump strategy:",
+        choices: ["conventional", "prompt", "auto"] as const,
+        default: "prompt",
+      },
+      {
+        type: "confirm",
+        name: "npmPublish",
+        message: "Publish to npm?",
+        default: true,
+      },
+      {
+        type: "list",
+        name: "npmAccess",
+        message: "npm package access:",
+        choices: ["public", "restricted"] as const,
+        default: "public",
+        when: (answers: Partial<BaseInteractiveAnswers>) => answers.npmPublish,
+      },
+    ]);
+
+    const monorepoSpecific = await inquirer.prompt<
+      Omit<MonorepoInteractiveAnswers, keyof BaseInteractiveAnswers>
+    >([
+      {
+        type: "input",
+        name: "packagesGlob",
+        message: "Packages glob pattern:",
+        default: "packages/*",
+      },
+      {
+        type: "number",
+        name: "maxConcurrency",
+        message: "Maximum concurrent package operations:",
+        default: 4,
+      },
+      {
+        type: "input",
+        name: "ignorePackages",
+        message: "Packages to ignore (comma-separated):",
+        default: "",
+        filter: (input: string) =>
+          input ? input.split(",").map((p) => p.trim()) : [],
+      },
+    ]);
+
+    return {
+      ...baseAnswers,
+      ...monorepoSpecific,
+      packageManager,
+    };
+  }
+
   private async initializePackageFiles(
     packagePath: string,
     force = false,
+    options?: PackageInteractiveAnswers,
   ): Promise<void> {
     const rootDir = await this.workspaceService.getRootDir();
     const absolutePackagePath = path.isAbsolute(packagePath)
       ? packagePath
       : path.join(rootDir, packagePath);
 
-    // Get async dependencies first
     const packageManager =
-      await this.packageManagerDetector.detectPackageManager();
+      options?.packageManager ??
+      (await this.packageManagerDetector.detectPackageManager());
+
     const packageJsonPath = path.join(absolutePackagePath, "package.json");
     const packageJson = await fs
       .readFile(packageJsonPath, "utf-8")
@@ -96,6 +285,15 @@ export class InitService {
         content: generatePackageConfig({
           packageJson,
           packageManager,
+          conventionalCommits: options?.conventionalCommits,
+          versionStrategy: options?.versionStrategy,
+          bumpStrategy: options?.bumpStrategy,
+          npm: options
+            ? {
+                publish: options.npmPublish,
+                access: options.npmAccess,
+              }
+            : undefined,
         }),
         description: "package configuration",
       },
@@ -129,7 +327,10 @@ export class InitService {
     }
   }
 
-  private async initializeRootConfig(force = false): Promise<void> {
+  private async initializeRootConfig(
+    force = false,
+    options?: MonorepoInteractiveAnswers,
+  ): Promise<void> {
     const rootDir = await this.workspaceService.getRootDir();
     const currentDir = process.cwd();
 
@@ -152,9 +353,10 @@ export class InitService {
       // File doesn't exist, continue
     }
 
-    // Get async dependencies first
     const packageManager =
-      await this.packageManagerDetector.detectPackageManager();
+      options?.packageManager ??
+      (await this.packageManagerDetector.detectPackageManager());
+
     const packageJsonPath = path.join(rootDir, "package.json");
     const packageJson = await fs
       .readFile(packageJsonPath, "utf-8")
@@ -166,7 +368,10 @@ export class InitService {
     const content = generateMonorepoConfig({
       packageJson,
       packageManager,
-      packagesGlob: "packages/*", // You might want to make this configurable
+      conventionalCommits: options?.conventionalCommits,
+      versionStrategy: options?.versionStrategy,
+      bumpStrategy: options?.bumpStrategy,
+      packagesGlob: "packages/*",
     });
 
     await fs.writeFile(rootConfigPath, content);
