@@ -73,7 +73,17 @@ export class GitService {
 
       if (status.behind > 0) {
         throw new Error(
-          `Branch ${currentBranch} is behind ${tracking} by ${status.behind} commits`,
+          `Branch ${currentBranch} is behind ${tracking} by ${status.behind} commits.\n` +
+            `Please run 'git pull' to update your local branch.`,
+        );
+      }
+
+      const ahead = status.ahead || 0;
+      if (ahead > 0) {
+        throw new Error(
+          `Branch ${currentBranch} has diverged from ${tracking}.\n` +
+            `Local branch is ahead by ${ahead} commits.\n` +
+            `Please push your changes or merge with remote first.`,
         );
       }
     }
