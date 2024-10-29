@@ -1,40 +1,64 @@
 // templates/monorepo-config.ts
-export const monorepoConfigTemplate = `import type { MonorepoConfig } from '@siteed/publisher';
+import type {
+  PackageManager,
+  MonorepoConfig,
+  PackageJson,
+} from "../types/config";
 
-const config: MonorepoConfig = {
-  packageManager: 'yarn',
-  conventionalCommits: true,
-  versionStrategy: 'independent',
-  bumpStrategy: 'prompt',
-  git: {
-    tagPrefix: 'v',
-    requireCleanWorkingDirectory: true,
-    requireUpToDate: true,
-    commit: true,
-    push: true,
-    commitMessage: 'chore(release): release \${packageName}@\${version}',
-    tag: true,
-    allowedBranches: ['main', 'master'],
-    remote: 'origin'
-  },
-  npm: {
-    publish: true,
-    registry: 'https://registry.npmjs.org',
-    tag: 'latest',
-    access: 'public'
-  },
-  packages: {
-    'packages/*': {
-      changelogFile: 'CHANGELOG.md',
-      conventionalCommits: true,
-      npm: {
-        publish: true,
-        access: 'public'
-      }
-    }
-  },
-  ignorePackages: [],
-  maxConcurrency: 4
-};
+interface GenerateMonorepoConfigOptions {
+  packageJson: PackageJson;
+  packageManager: PackageManager;
+  conventionalCommits?: boolean;
+  versionStrategy?: MonorepoConfig["versionStrategy"];
+  bumpStrategy?: MonorepoConfig["bumpStrategy"];
+  packagesGlob?: string;
+}
+
+export function generateMonorepoConfig(
+  options: GenerateMonorepoConfigOptions,
+): string {
+  if (!options.packageJson.name) {
+    throw new Error("Package name is required");
+  }
+
+  const defaultConfig: MonorepoConfig = {
+    packageManager: options.packageManager,
+    conventionalCommits: options.conventionalCommits ?? true,
+    versionStrategy: options.versionStrategy ?? "independent",
+    bumpStrategy: options.bumpStrategy ?? "prompt",
+    git: {
+      tagPrefix: `${options.packageJson.name}@`,
+      requireCleanWorkingDirectory: true,
+      requireUpToDate: true,
+      commit: true,
+      push: true,
+      commitMessage: `chore(release): release ${options.packageJson.name}@\${version}`,
+      tag: true,
+      allowedBranches: ["main", "master"],
+      remote: "origin",
+    },
+    npm: {
+      publish: true,
+      registry: "https://registry.npmjs.org",
+      tag: "latest",
+      access: "public",
+    },
+    packages: options.packagesGlob
+      ? {
+          [options.packagesGlob]: {
+            changelogFile: "CHANGELOG.md",
+          },
+        }
+      : {},
+    ignorePackages: [],
+    maxConcurrency: 4,
+    changelogFile: "CHANGELOG.md",
+    hooks: {},
+  };
+
+  return `import type { MonorepoConfig } from '@siteed/publisher';
+
+const config: MonorepoConfig = ${JSON.stringify(defaultConfig, null, 2)};
 
 export default config;`;
+}

@@ -1,6 +1,8 @@
 // packages/publisher/src/types/config.ts
 import { z } from "zod";
 
+export type PackageManager = "yarn" | "npm" | "pnpm";
+
 // Git configuration schema
 export const GitConfigSchema = z.object({
   tagPrefix: z.string().default("v"),

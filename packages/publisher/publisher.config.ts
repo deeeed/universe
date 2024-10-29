@@ -1,35 +1,29 @@
-import type { ReleaseConfig } from '@siteed/publisher';
+import type { ReleaseConfig } from "@siteed/publisher";
 
 const config: ReleaseConfig = {
-  packageManager: 'yarn',
-  changelogFile: 'CHANGELOG.md',
+  packageManager: "npm",
+  changelogFile: "CHANGELOG.md",
   conventionalCommits: true,
-  versionStrategy: 'independent',
-  bumpStrategy: 'prompt',
+  versionStrategy: "independent",
+  bumpStrategy: "prompt",
   git: {
-    tagPrefix: '@siteed/publisher-v',
+    tagPrefix: "@siteed/publisher@",
     requireCleanWorkingDirectory: true,
     requireUpToDate: true,
     commit: true,
     push: true,
-    commitMessage: 'chore(@siteed/publisher): release v0.1.0',
+    commitMessage: "chore(release): release @siteed/publisher@${version}",
     tag: true,
-    allowedBranches: ['main', 'master'],
-    remote: 'origin',
+    allowedBranches: ["main", "master"],
+    remote: "origin",
   },
   npm: {
     publish: true,
-    registry: 'https://registry.npmjs.org',
-    tag: 'latest',
-    access: 'public',
+    registry: "https://registry.npmjs.org",
+    tag: "latest",
+    access: "public",
   },
-  hooks: {
-    preRelease: async () => {
-      // Add your pre-release checks here
-      // await exec('yarn test');
-      // await exec('yarn build');
-    },
-  },
+  hooks: {},
 };
 
 export default config;
