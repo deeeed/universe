@@ -527,8 +527,16 @@ export class ReleaseService {
       this.logger.debug(`Package file created: ${packageFile}`);
 
       // Clean up the package file after validation
-      await fs.unlink(path.join(this.rootDir, context.path, packageFile)); // Use full path
-      this.logger.debug(`Package file cleaned up: ${packageFile}`);
+      const packageFilePath = path.join(
+        this.rootDir,
+        context.path,
+        packageFile,
+      ); // Use full path
+      this.logger.debug(
+        `Attempting to clean up package file: ${packageFilePath}`,
+      );
+      await fs.unlink(packageFilePath);
+      this.logger.debug(`Package file cleaned up: ${packageFilePath}`);
     } catch (error) {
       this.logger.error(
         `Package validation failed for ${context.name}:`,
@@ -536,14 +544,14 @@ export class ReleaseService {
       );
       // Clean up on error as well
       try {
-        const packageFile = path.join(
+        const packageFilePath = path.join(
           this.rootDir,
           context.path,
           "package.tgz",
         ); // Use full path
-        await fs.unlink(packageFile);
+        await fs.unlink(packageFilePath);
         this.logger.debug(
-          `Cleaned up package file after error: ${packageFile}`,
+          `Cleaned up package file after error: ${packageFilePath}`,
         );
       } catch (cleanupError) {
         this.logger.error(`Failed to clean up package file:`, cleanupError);
