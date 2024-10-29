@@ -6,6 +6,7 @@ import simpleGit, {
   SimpleGitOptions,
 } from "simple-git";
 import type { GitConfig, PackageContext } from "../types/config";
+import { Logger } from "../utils/logger";
 
 export interface GitCommit {
   hash: string;
@@ -19,8 +20,9 @@ export class GitService {
   private git: SimpleGit;
   private rootDir: string;
   private config: GitConfig;
+  private logger: Logger;
 
-  constructor(config: GitConfig, rootDir: string) {
+  constructor(config: GitConfig, rootDir: string, logger?: Logger) {
     const gitOptions: SimpleGitOptions = {
       baseDir: rootDir,
       binary: "git",
@@ -32,6 +34,7 @@ export class GitService {
     this.git = simpleGit(gitOptions);
     this.rootDir = rootDir;
     this.config = config;
+    this.logger = logger || new Logger();
   }
 
   async validateStatus(options?: {
@@ -50,48 +53,31 @@ export class GitService {
       );
     }
 
+    if (
+      !status.tracking &&
+      (options?.skipUpstreamTracking || !this.config.requireUpToDate)
+    ) {
+      this.logger.debug("Skipping remote checks for untracked branch");
+      return;
+    }
+
     if (this.config.requireUpToDate) {
       await this.git.fetch(this.config.remote);
       const currentBranch = status.current || "";
-      const tracking = status.tracking;
 
       if (!currentBranch) {
         throw new Error("Not currently on any branch");
       }
 
-      if (
-        !tracking &&
-        !options?.skipUpstreamTracking &&
-        this.config.requireUpstreamTracking !== false
-      ) {
+      if (status.tracking && status.behind > 0 && !options?.force) {
         throw new Error(
-          `Branch ${currentBranch} is not tracking a remote branch.\n\n` +
-            `To fix this, run either:\n` +
-            `1. git push -u ${this.config.remote} ${currentBranch}\n` +
-            `   OR\n` +
-            `2. git branch --set-upstream-to=${this.config.remote}/${currentBranch} ${currentBranch}\n\n` +
-            `Alternatively, use --skip-upstream-tracking to skip this check`,
-        );
-      }
-
-      if (status.behind > 0) {
-        throw new Error(
-          `Branch ${currentBranch} is behind ${tracking} by ${status.behind} commits.\n` +
-            `Please run 'git pull' to update your local branch.`,
-        );
-      }
-
-      const ahead = status.ahead || 0;
-      if (ahead > 0) {
-        throw new Error(
-          `Branch ${currentBranch} has diverged from ${tracking}.\n` +
-            `Local branch is ahead by ${ahead} commits.\n` +
-            `Please push your changes or merge with remote first.`,
+          `Branch ${currentBranch} is behind ${status.tracking} by ${status.behind} commits.\n` +
+            `Please run 'git pull' to update your local branch or use --force to override.`,
         );
       }
     }
 
-    if (this.config.allowedBranches && this.config.allowedBranches.length > 0) {
+    if (this.config.allowedBranches?.length && !options?.force) {
       const currentBranch = status.current || "";
       if (!this.config.allowedBranches.includes(currentBranch)) {
         throw new Error(
@@ -221,25 +207,38 @@ export class GitService {
   }
 
   async push(force?: boolean): Promise<void> {
-    const args = ["--follow-tags"];
-    if (force) {
-      args.push("--force");
-    }
     try {
-      await this.git.push(this.config.remote, undefined, args);
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("rejected") &&
-        !force
-      ) {
-        throw new Error(
-          `Push failed. Your branch is out of sync with remote.\n` +
-            `To force push, run with --force flag or manually:\n` +
-            `  git push --force ${this.config.remote} ${await this.getCurrentBranch()}`,
+      const status = await this.git.status();
+      const currentBranch = status.current;
+
+      if (!currentBranch) {
+        throw new Error("Not currently on any branch");
+      }
+
+      const pushArgs = ["push", this.config.remote, currentBranch];
+      if (force) {
+        pushArgs.push("--force");
+      }
+
+      // If branch is not tracked, set upstream
+      if (!status.tracking) {
+        pushArgs.push("--set-upstream");
+        this.logger.debug(
+          `Setting upstream for untracked branch`,
+          currentBranch,
         );
       }
-      throw error;
+
+      await this.git.push(pushArgs);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Push failed. Your branch is out of sync with remote.\n` +
+          `To force push, run with --force flag or manually:\n` +
+          `  git push --force ${this.config.remote} ${await this.getCurrentBranch()}\n\n` +
+          `Original error: ${errorMessage}`,
+      );
     }
   }
 

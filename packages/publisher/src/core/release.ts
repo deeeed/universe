@@ -39,18 +39,18 @@ export class ReleaseService {
     }
 
     this.rootDir = process.cwd();
-    this.git = new GitService(config.git, this.rootDir);
+    this.git = new GitService(config.git, this.rootDir, this.logger);
     this.packageManager = PackageManagerFactory.create(
       config.packageManager as "npm" | "yarn",
       config.npm,
     );
     this.version = new VersionService(config.git);
-    this.changelog = new ChangelogService(logger);
-    this.workspace = new WorkspaceService();
-    this.prompts = new Prompts(logger);
+    this.changelog = new ChangelogService(this.logger);
+    this.workspace = new WorkspaceService(config, this.logger);
+    this.prompts = new Prompts(this.logger);
     this.integrityService = new WorkspaceIntegrityService(
       this.packageManager,
-      logger,
+      this.logger,
     );
   }
   async releasePackages(
