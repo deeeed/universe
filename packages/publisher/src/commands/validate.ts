@@ -101,7 +101,8 @@ export class ValidateCommand {
     const missingFields: string[] = [];
 
     try {
-      const packageJsonPath = path.join(pkg.path, "package.json");
+      const rootDir = await this.workspaceService.getRootDir();
+      const packageJsonPath = path.join(rootDir, pkg.path, "package.json");
       const content = await fsPromises.readFile(packageJsonPath, "utf8");
       const packageJson = JSON.parse(content) as PackageJsonContent;
 

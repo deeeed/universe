@@ -173,65 +173,113 @@ export class WorkspaceService {
 
     const config = await this.configPromise;
 
-    // Use config from monorepo config if available
-    if (config.packages?.[packageName]) {
-      const packageConfig = config.packages[packageName];
-      // Ensure all required fields are present with defaults
-      return {
+    // If no config exists at all, generate a default one
+    if (!config || Object.keys(config).length === 0) {
+      const pkgJson = await this.readPackageJson(packagePath);
+      return generateDefaultConfig({
+        packageJson: {
+          name: pkgJson.name ?? packageName,
+          version: pkgJson.version,
+        },
+        packageManager: "yarn",
+        conventionalCommits: true,
+        changelogFormat: "conventional",
+        versionStrategy: "independent",
+        bumpStrategy: "prompt",
         npm: {
-          tag: packageConfig.npm?.tag ?? "latest",
-          publish: packageConfig.npm?.publish ?? true,
-          registry:
-            packageConfig.npm?.registry ?? "https://registry.npmjs.org/",
-          access: packageConfig.npm?.access ?? "public",
-          otp: packageConfig.npm?.otp,
+          publish: true,
+          access: "public",
         },
-        packageManager: packageConfig.packageManager ?? "yarn",
-        changelogFile: packageConfig.changelogFile ?? "CHANGELOG.md",
-        conventionalCommits: packageConfig.conventionalCommits ?? true,
-        changelogFormat: packageConfig.changelogFormat ?? "conventional",
-        versionStrategy: packageConfig.versionStrategy ?? "independent",
-        bumpStrategy: packageConfig.bumpStrategy ?? "prompt",
-        preReleaseId: packageConfig.preReleaseId,
-        git: {
-          tagPrefix: packageConfig.git?.tagPrefix ?? `${packageName}@`,
-          requireCleanWorkingDirectory:
-            packageConfig.git?.requireCleanWorkingDirectory ?? true,
-          requireUpToDate: packageConfig.git?.requireUpToDate ?? true,
-          commit: packageConfig.git?.commit ?? true,
-          push: packageConfig.git?.push ?? true,
-          commitMessage:
-            packageConfig.git?.commitMessage ??
-            `chore(release): release ${packageName}@\${version}`,
-          tag: packageConfig.git?.tag ?? true,
-          tagMessage: packageConfig.git?.tagMessage,
-          allowedBranches: packageConfig.git?.allowedBranches ?? [
-            "main",
-            "master",
-          ],
-          remote: packageConfig.git?.remote ?? "origin",
-        },
-        hooks: packageConfig.hooks ?? {},
-      };
+      });
     }
 
-    // Generate default config if not found
-    const pkgJson = await this.readPackageJson(packagePath);
-    return generateDefaultConfig({
-      packageJson: {
-        name: pkgJson.name ?? packageName,
-        version: pkgJson.version,
-      },
-      packageManager: "yarn",
-      conventionalCommits: true,
-      changelogFormat: "conventional",
-      versionStrategy: "independent",
-      bumpStrategy: "prompt",
+    // Use package-specific config if available, otherwise use monorepo config
+    return {
       npm: {
-        publish: true,
-        access: "public",
+        tag:
+          config.packages?.[packageName]?.npm?.tag ??
+          config.npm?.tag ??
+          "latest",
+        publish:
+          config.packages?.[packageName]?.npm?.publish ??
+          config.npm?.publish ??
+          true,
+        registry:
+          config.packages?.[packageName]?.npm?.registry ??
+          config.npm?.registry ??
+          "https://registry.npmjs.org/",
+        access:
+          config.packages?.[packageName]?.npm?.access ??
+          config.npm?.access ??
+          "public",
+        otp: config.packages?.[packageName]?.npm?.otp ?? config.npm?.otp,
       },
-    });
+      packageManager:
+        config.packages?.[packageName]?.packageManager ??
+        config.packageManager ??
+        "yarn",
+      changelogFile:
+        config.packages?.[packageName]?.changelogFile ??
+        config.changelogFile ??
+        "CHANGELOG.md",
+      conventionalCommits:
+        config.packages?.[packageName]?.conventionalCommits ??
+        config.conventionalCommits ??
+        true,
+      changelogFormat:
+        config.packages?.[packageName]?.changelogFormat ??
+        config.changelogFormat ??
+        "conventional",
+      versionStrategy:
+        config.packages?.[packageName]?.versionStrategy ??
+        config.versionStrategy ??
+        "independent",
+      bumpStrategy:
+        config.packages?.[packageName]?.bumpStrategy ??
+        config.bumpStrategy ??
+        "prompt",
+      preReleaseId:
+        config.packages?.[packageName]?.preReleaseId ?? config.preReleaseId,
+      git: {
+        tagPrefix:
+          config.packages?.[packageName]?.git?.tagPrefix ??
+          config.git?.tagPrefix ??
+          `${packageName}@`,
+        requireCleanWorkingDirectory:
+          config.packages?.[packageName]?.git?.requireCleanWorkingDirectory ??
+          config.git?.requireCleanWorkingDirectory ??
+          true,
+        requireUpToDate:
+          config.packages?.[packageName]?.git?.requireUpToDate ??
+          config.git?.requireUpToDate ??
+          true,
+        commit:
+          config.packages?.[packageName]?.git?.commit ??
+          config.git?.commit ??
+          true,
+        push:
+          config.packages?.[packageName]?.git?.push ?? config.git?.push ?? true,
+        commitMessage:
+          config.packages?.[packageName]?.git?.commitMessage ??
+          config.git?.commitMessage ??
+          `chore(release): release ${packageName}@\${version}`,
+        tag:
+          config.packages?.[packageName]?.git?.tag ?? config.git?.tag ?? true,
+        tagMessage:
+          config.packages?.[packageName]?.git?.tagMessage ??
+          config.git?.tagMessage,
+        allowedBranches: config.packages?.[packageName]?.git?.allowedBranches ??
+          config.git?.allowedBranches ?? ["main", "master"],
+        remote:
+          config.packages?.[packageName]?.git?.remote ??
+          config.git?.remote ??
+          "origin",
+      },
+      hooks: {
+        ...config.hooks,
+        ...config.packages?.[packageName]?.hooks,
+      },
+    };
   }
 
   private async readPackageJson(packagePath: string): Promise<PackageJson> {

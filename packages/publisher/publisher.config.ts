@@ -9,13 +9,13 @@ const config: DeepPartial<ReleaseConfig> = {
   bumpStrategy: "prompt",
   git: {
     tagPrefix: "@siteed/publisher@",
-    requireCleanWorkingDirectory: true,
-    requireUpToDate: true,
+    requireCleanWorkingDirectory: false,
+    requireUpToDate: false,
     commit: true,
     push: true,
     commitMessage: "chore(release): release @siteed/publisher@${version}",
     tag: true,
-    allowedBranches: ["main", "master"],
+    allowedBranches: ["main", "master", "releaseit"],
     remote: "origin",
   },
   npm: {
