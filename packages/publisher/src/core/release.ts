@@ -50,17 +50,25 @@ export class ReleaseService {
     packageNames: string[],
     options: { dryRun?: boolean; gitPush?: boolean; npmPublish?: boolean },
   ): Promise<ReleaseResult[]> {
-    // Validate workspace integrity before proceeding
+    this.logger.info("Starting release process...");
+    this.logger.info("Validating workspace integrity...");
+
     if (!(await this.packageManager.checkWorkspaceIntegrity())) {
       throw new Error(
         "Workspace integrity check failed. Please run yarn install",
       );
     }
 
+    this.logger.info(
+      `Finding packages matching: ${packageNames.join(", ")}...`,
+    );
     const packages = await this.workspace.getPackages(packageNames);
+    this.logger.info(`Found ${packages.length} matching packages`);
+
     const results: ReleaseResult[] = [];
 
     for (const pkg of packages) {
+      this.logger.info(`\nProcessing package ${pkg.name}...`);
       const result = await this.releasePackage(pkg, options);
       results.push(result);
     }
@@ -84,14 +92,18 @@ export class ReleaseService {
     context: PackageContext,
     options: { dryRun?: boolean; gitPush?: boolean; publish?: boolean },
   ): Promise<ReleaseResult> {
-    this.logger.info(`\nPreparing release for ${context.name}...`);
-
+    this.logger.info(`Loading package configuration...`);
     const packageConfig: ReleaseConfig = await this.getEffectiveConfig(
       context.name,
     );
 
+    this.logger.info("Validating environment...");
     await this.validateEnvironment();
+
+    this.logger.info("Determining new version...");
     context.newVersion = await this.determineVersion(context, packageConfig);
+
+    this.logger.info("Processing changelog...");
     const changelogEntry = await this.handleChangelog(context, packageConfig);
 
     if (!options.dryRun && !(await this.prompts.confirmRelease())) {
@@ -140,8 +152,11 @@ export class ReleaseService {
   }
 
   private async validateEnvironment(): Promise<void> {
+    this.logger.info("Validating git status...");
     await this.git.validateStatus();
+
     if (this.config.npm?.publish) {
+      this.logger.info("Validating npm authentication...");
       await this.packageManager.validateAuth(this.config);
     }
   }
