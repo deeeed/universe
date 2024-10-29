@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "lib": ["ES2022"],
+    "outDir": "dist",
+    "rootDir": ".",
+    "strict": true,
+    "declaration": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "sourceMap": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["node","jest"],
+    "composite": true,
+    "paths": {
+      "@siteed/publisher": ["./src/index.ts"]
+    },
+  },
+  "include": [
+    "src/**/*",
+    "bin/**/*",
+    "publisher.config.ts",
+    ".publisher/**/*",
+    "package.json",
+    "jest.config.ts",
+    "jest.setup.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}
