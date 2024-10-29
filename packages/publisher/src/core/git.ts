@@ -154,16 +154,32 @@ export class GitService {
     );
   }
 
-  async createTag(context: PackageContext): Promise<string> {
+  async createTag(context: PackageContext, force?: boolean): Promise<string> {
     if (!context.newVersion) {
-      throw new Error("New version is required to create a tag");
+      throw new Error("Version is required to create a tag");
     }
 
     const tagName = `${context.name}@${context.newVersion}`;
-    const message =
-      this.config.tagMessage ?? `Release ${context.name}@${context.newVersion}`;
-    await this.git.addAnnotatedTag(tagName, message);
-    return tagName;
+    const tagMessage = `Release ${tagName}`;
+
+    try {
+      if (force) {
+        await this.deleteTag(tagName, true);
+      }
+      await this.git.addAnnotatedTag(tagName, tagMessage);
+      return tagName;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("already exists")) {
+        throw new Error(
+          `Tag ${tagName} already exists. Use --force to overwrite or manually delete the tag with:\n\n` +
+            `  git tag -d ${tagName}\n` +
+            `  git push ${this.config.remote} :refs/tags/${tagName}`,
+        );
+      }
+      throw error;
+    }
   }
 
   async commitChanges(context: PackageContext): Promise<string> {
@@ -182,5 +198,34 @@ export class GitService {
 
   async push(): Promise<void> {
     await this.git.push(this.config.remote, undefined, ["--follow-tags"]);
+  }
+
+  async checkTagExists(tagName: string): Promise<boolean> {
+    try {
+      await this.git.raw(["show-ref", "--tags", tagName]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async deleteTag(tagName: string, remote?: boolean): Promise<void> {
+    try {
+      // Delete local tag
+      await this.git.raw(["tag", "-d", tagName]);
+
+      // Delete remote tag if requested
+      if (remote && this.config.remote) {
+        await this.git.raw([
+          "push",
+          this.config.remote,
+          ":refs/tags/" + tagName,
+        ]);
+      }
+    } catch (error) {
+      throw new Error(
+        `Failed to delete tag ${tagName}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 }

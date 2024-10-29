@@ -117,4 +117,20 @@ export class Prompts {
     ]);
     return confirm;
   }
+
+  async confirmTagOverwrite(
+    packageName: string,
+    version: string,
+  ): Promise<boolean> {
+    const { confirm } = await inquirer.prompt<{ confirm: boolean }>([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: `Tag ${packageName}@${version} already exists. Would you like to overwrite it?`,
+        default: false,
+      },
+    ]);
+
+    return confirm;
+  }
 }

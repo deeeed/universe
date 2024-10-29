@@ -16,6 +16,7 @@ interface ReleaseCommandOptions {
   checkIntegrity?: boolean;
   gitCheck?: boolean;
   skipUpstreamTracking?: boolean;
+  force?: boolean;
 }
 
 export const releaseCommand = new Command()
@@ -37,6 +38,10 @@ export const releaseCommand = new Command()
   .option("--check-integrity", "Run workspace integrity check before release")
   .option("--no-git-check", "Skip git status validation")
   .option("--skip-upstream-tracking", "Skip git upstream tracking check")
+  .option(
+    "-f, --force",
+    "Force release, overwriting existing tags if necessary",
+  )
   .action(async (packages: string[], commandOptions: ReleaseCommandOptions) => {
     const logger = new Logger();
     try {
@@ -129,6 +134,7 @@ export const releaseCommand = new Command()
         skipIntegrityCheck: commandOptions.checkIntegrity,
         skipGitCheck: !commandOptions.gitCheck,
         skipUpstreamTracking: commandOptions.skipUpstreamTracking,
+        force: commandOptions.force,
       };
 
       if (commandOptions.all) {

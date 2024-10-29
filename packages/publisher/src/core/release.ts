@@ -124,6 +124,7 @@ export class ReleaseService {
       publish?: boolean;
       skipGitCheck?: boolean;
       skipUpstreamTracking?: boolean;
+      force?: boolean;
     },
   ): Promise<ReleaseResult> {
     try {
@@ -159,7 +160,7 @@ export class ReleaseService {
         await this.changelog.update(context, changelogEntry, packageConfig);
       }
 
-      const tag = await this.git.createTag(context);
+      const tag = await this.git.createTag(context, options.force);
       const commit = await this.git.commitChanges(context);
 
       if (options.gitPush) {
@@ -195,6 +196,18 @@ export class ReleaseService {
       // Enhanced error handling
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+
+      // Handle tag exists error specifically
+      if (errorMessage.includes("already exists")) {
+        const shouldForce = await this.prompts.confirmTagOverwrite(
+          context.name,
+          context.newVersion || "",
+        );
+        if (shouldForce) {
+          return this.releasePackage(context, { ...options, force: true });
+        }
+      }
+
       this.logger.debug("Release process failed:", error);
       throw new Error(
         `Release failed for ${context.name}:\n${errorMessage}\n\n` +
