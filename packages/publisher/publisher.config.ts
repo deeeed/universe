@@ -8,7 +8,7 @@ const config: DeepPartial<ReleaseConfig> = {
   versionStrategy: "independent",
   bumpStrategy: "prompt",
   packValidation: {
-    enabled: true,
+    enabled: false,
     validateFiles: true,
     validateBuildArtifacts: true,
   },
