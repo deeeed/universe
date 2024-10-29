@@ -163,4 +163,44 @@ export class Prompts {
 
     return confirm;
   }
+
+  async confirmChangelogContent(preview: string): Promise<boolean> {
+    this.logger.info("\nProposed changelog entries:");
+    this.logger.info("----------------------------------------");
+    this.logger.info(preview);
+    this.logger.info("----------------------------------------\n");
+
+    const { confirmed } = await inquirer.prompt<{ confirmed: boolean }>([
+      {
+        type: "confirm",
+        name: "confirmed",
+        message:
+          "Would you like to use these changelog entries? (No will open editor for manual entry)",
+        default: true,
+      },
+    ]);
+    return confirmed;
+  }
+
+  async getManualChangelogEntry(currentChanges?: string): Promise<string> {
+    const { content } = await inquirer.prompt<{ content: string }>([
+      {
+        type: "editor",
+        name: "content",
+        message: "Enter changelog content (opens in your default editor):",
+        default: currentChanges || `### Added\n\n### Changed\n\n### Fixed\n`,
+        postfix: ".md",
+        validate: (input: string): boolean | string => {
+          if (input.trim().length === 0) {
+            return "Changelog content cannot be empty";
+          }
+          if (!input.includes("###")) {
+            return "Changelog must contain at least one section (e.g., ### Added)";
+          }
+          return true;
+        },
+      },
+    ]);
+    return content;
+  }
 }

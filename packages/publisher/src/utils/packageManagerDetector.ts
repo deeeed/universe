@@ -12,7 +12,6 @@ export class PackageManagerDetector {
     while (currentDir !== path.parse(currentDir).root) {
       const yarnLockPath = path.join(currentDir, "yarn.lock");
       const packageLockPath = path.join(currentDir, "package-lock.json");
-      const pnpmLockPath = path.join(currentDir, "pnpm-lock.yaml");
 
       try {
         await fs.access(yarnLockPath);
@@ -24,13 +23,6 @@ export class PackageManagerDetector {
       try {
         await fs.access(packageLockPath);
         return "npm";
-      } catch {
-        // Continue checking other lock files
-      }
-
-      try {
-        await fs.access(pnpmLockPath);
-        return "pnpm";
       } catch {
         // Continue checking other lock files
       }

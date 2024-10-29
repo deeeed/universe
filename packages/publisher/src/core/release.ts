@@ -471,12 +471,56 @@ export class ReleaseService {
     try {
       await fs.access(changelogPath);
 
-      if (packageConfig.conventionalCommits) {
-        return this.changelog.generate(context, packageConfig);
+      // Get unreleased changes from existing changelog
+      const unreleasedChanges = await this.changelog.getUnreleasedChanges(
+        context,
+        packageConfig,
+      );
+
+      // Get git changes since last release
+      const gitChanges = await this.getGitChanges(context.name);
+
+      this.logger.debug(
+        "Unreleased changes from changelog:",
+        unreleasedChanges,
+      );
+      this.logger.debug("Git changes since last release:", gitChanges);
+
+      let finalChangelog: string;
+
+      if (unreleasedChanges.length > 0) {
+        this.logger.info("Found existing unreleased changes in changelog");
+        finalChangelog = unreleasedChanges.join("\n");
+      } else {
+        // Generate changelog from git commits
+        this.logger.info(
+          "No unreleased changes found, analyzing git commits...",
+        );
+        if (packageConfig.conventionalCommits) {
+          finalChangelog = await this.changelog.generate(
+            context,
+            packageConfig,
+          );
+        } else {
+          // Show preview and ask for confirmation
+          const preview = await this.previewChangelog(context.name);
+          this.logger.info("\nProposed changelog entries:\n");
+          this.logger.info(preview);
+
+          const confirmed = await this.prompts.confirmChangelogContent(preview);
+          if (!confirmed) {
+            const manualChangelog =
+              await this.prompts.getManualChangelogEntry();
+            finalChangelog = manualChangelog;
+          } else {
+            finalChangelog = preview;
+          }
+        }
       }
 
-      return undefined;
+      return finalChangelog;
     } catch (error) {
+      // Handle new changelog creation
       const shouldCreate = await this.prompts.confirmChangelogCreation(
         context.name,
       );

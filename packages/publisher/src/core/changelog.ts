@@ -4,6 +4,7 @@ import path from "path";
 import type { Transform } from "stream";
 import type { PackageContext, ReleaseConfig } from "../types/config";
 import { Logger } from "../utils/logger";
+import { WorkspaceService } from "./workspace";
 
 interface ChangelogFormat {
   name: string;
@@ -126,7 +127,14 @@ All notable changes to this project will be documented in this file.
 };
 
 export class ChangelogService {
-  constructor(private logger: Logger = new Logger()) {}
+  private readonly workspaceService: WorkspaceService;
+
+  constructor(
+    private readonly logger: Logger = new Logger(),
+    workspaceService?: WorkspaceService,
+  ) {
+    this.workspaceService = workspaceService ?? new WorkspaceService();
+  }
 
   private getFormat(config: ReleaseConfig): ChangelogFormat {
     return config.changelogFormat === "conventional"
@@ -201,11 +209,12 @@ export class ChangelogService {
     }
 
     const dateStr = new Date().toISOString().split("T")[0];
-    const newEntry = format.formatVersion(context.newVersion, dateStr);
+    const versionEntry = format.formatVersion(context.newVersion, dateStr);
 
+    // Use insertNewEntry to add the new version
     const updatedContent = this.insertNewEntry(
       currentContent,
-      `${newEntry}\n\n${newContent}`,
+      `${versionEntry}\n\n${newContent}`,
     );
 
     const finalContent = this.updateComparisonLinks(
@@ -215,7 +224,32 @@ export class ChangelogService {
       format,
     );
 
+    this.logger.debug("Final changelog content:", finalContent);
     await fs.writeFile(changelogPath, finalContent);
+  }
+
+  private insertNewEntry(currentContent: string, newEntry: string): string {
+    // Find the Unreleased section
+    const unreleasedMatch = currentContent.match(/## \[Unreleased\]/);
+    if (unreleasedMatch) {
+      // Split content at Unreleased section
+      const parts = currentContent.split(/## \[Unreleased\]/);
+      // Insert new entry after Unreleased section
+      return `${parts[0]}## [Unreleased]\n\n${newEntry}\n\n${parts[1]}`;
+    }
+
+    // No Unreleased section, insert at the top after the header
+    const parts = currentContent.split("\n");
+    const headerEnd = parts.findIndex((line) => line.startsWith("# ")) + 1;
+    return [
+      ...parts.slice(0, headerEnd),
+      "",
+      "## [Unreleased]",
+      "",
+      newEntry,
+      "",
+      ...parts.slice(headerEnd),
+    ].join("\n");
   }
 
   async validate(
@@ -381,29 +415,6 @@ export class ChangelogService {
     return 0;
   }
 
-  private insertNewEntry(currentContent: string, newEntry: string): string {
-    const unreleasedMatch = currentContent.match(/## \[Unreleased\]/i);
-
-    if (unreleasedMatch) {
-      // Insert after the Unreleased section
-      const parts = currentContent.split(/## \[Unreleased\]/i);
-      return `${parts[0]}## [Unreleased]\n\n${newEntry}\n\n${parts[1]}`;
-    }
-
-    // No Unreleased section, insert at the top after the header
-    const parts = currentContent.split("\n");
-    const headerEnd = parts.findIndex((line) => line.startsWith("# ")) + 1;
-    return [
-      ...parts.slice(0, headerEnd),
-      "",
-      "## [Unreleased]",
-      "",
-      newEntry,
-      "",
-      ...parts.slice(headerEnd),
-    ].join("\n");
-  }
-
   private updateComparisonLinks(
     content: string,
     context: PackageContext,
@@ -437,25 +448,60 @@ export class ChangelogService {
     context: PackageContext,
     config: ReleaseConfig,
   ): Promise<string[]> {
-    const changelogPath = path.resolve(
-      process.cwd(),
-      context.path,
-      config.changelogFile || "CHANGELOG.md",
-    );
+    try {
+      // Get root directory with proper type safety
+      const rootDir = await this.workspaceService.getRootDir();
 
+      const changelogPath = path.join(
+        rootDir,
+        context.path,
+        config.changelogFile || "CHANGELOG.md",
+      );
+
+      // Log the path being used
+      this.logger.debug("Reading changelog from:", changelogPath);
+
+      const content = await fs.readFile(changelogPath, "utf-8");
+      this.logger.debug("Changelog content:", content);
+
+      // Rest of the code remains the same
+      const unreleasedRegex = /## \[Unreleased\]([^]*?)(?=\n## \[|$)/;
+      const unreleasedMatch = content.match(unreleasedRegex);
+
+      if (!unreleasedMatch || !unreleasedMatch[1]) {
+        this.logger.debug("No unreleased section found or section is empty");
+        return [];
+      }
+
+      const unreleasedContent = unreleasedMatch[1].trim();
+      this.logger.debug("Raw unreleased content:", unreleasedContent);
+
+      const changes = unreleasedContent
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => {
+          if (line.startsWith("###") || line.length === 0) return false;
+          return line.startsWith("-") || line.startsWith("*");
+        });
+
+      this.logger.debug("Processed unreleased changes:", changes);
+      return changes;
+    } catch (error) {
+      this.logger.debug("Error reading changelog:", error);
+      return [];
+    }
+  }
+
+  async getLatestVersion(context: PackageContext): Promise<string | null> {
+    const changelogPath = path.join(context.path, "CHANGELOG.md");
     try {
       const content = await fs.readFile(changelogPath, "utf-8");
-      const unreleasedSection = content
-        .split("## [Unreleased]")[1]
-        ?.split("## ")[0];
-      if (!unreleasedSection) return [];
-
-      return unreleasedSection
-        .split("\n")
-        .filter((line) => line.trim().startsWith("- "))
-        .map((line) => line.trim().substring(2));
+      const versionMatch = content.match(
+        /## \[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]/,
+      );
+      return versionMatch ? versionMatch[1] : null;
     } catch {
-      return [];
+      return null;
     }
   }
 }

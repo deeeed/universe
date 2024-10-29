@@ -1,7 +1,7 @@
 // packages/publisher/src/types/config.ts
 import { z } from "zod";
 
-export type PackageManager = "yarn" | "npm" | "pnpm";
+export type PackageManager = "yarn" | "npm";
 
 // Git configuration schema
 export const GitConfigSchema = z.object({
@@ -41,7 +41,7 @@ export const HooksSchema = z.object({
 
 // Package configuration schema
 export const PackageConfigSchema = z.object({
-  packageManager: z.enum(["npm", "yarn", "pnpm"]).default("yarn"),
+  packageManager: z.enum(["npm", "yarn"]).default("yarn"),
   changelogFile: z.string().default("CHANGELOG.md"),
   conventionalCommits: z.boolean().default(true),
   changelogFormat: z

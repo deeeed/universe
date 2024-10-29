@@ -31,4 +31,8 @@ export class Logger {
   table(data: Record<string, unknown>[]): void {
     console.table(data);
   }
+
+  warn(message: string, ...args: unknown[]): void {
+    console.warn(chalk.yellow("⚠"), message, ...args);
+  }
 }

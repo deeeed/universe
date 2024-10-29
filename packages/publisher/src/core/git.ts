@@ -109,21 +109,44 @@ export class GitService {
 
   async getLastTag(packageName: string): Promise<string> {
     const tags = await this.git.tags();
-    const packageTags = tags.all.filter(
-      (tag) => tag.includes(packageName) || tag.startsWith("v"),
-    );
+    const packageTags = tags.all
+      .filter((tag) => tag.startsWith(`${packageName}@`))
+      .sort((a, b) => {
+        const versionA = a.split("@").pop() || "";
+        const versionB = b.split("@").pop() || "";
+        return this.compareVersions(versionB, versionA);
+      });
 
-    return packageTags.length > 0 ? packageTags[packageTags.length - 1] : "";
+    return packageTags.length > 0 ? packageTags[0] : "";
+  }
+
+  private compareVersions(a: string, b: string): number {
+    const partsA = a.split(".").map(Number);
+    const partsB = b.split(".").map(Number);
+
+    for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+      const numA = partsA[i] || 0;
+      const numB = partsB[i] || 0;
+      if (numA !== numB) {
+        return numA - numB;
+      }
+    }
+    return 0;
   }
 
   async getCommitsSinceTag(tag: string): Promise<GitCommit[]> {
-    if (!tag) {
-      const log = await this.git.log();
-      return this.parseCommits([...log.all]);
-    }
+    try {
+      if (!tag) {
+        const log = await this.git.log();
+        return this.parseCommits([...log.all]);
+      }
 
-    const log = await this.git.log({ from: tag });
-    return this.parseCommits([...log.all]);
+      const log = await this.git.log({ from: tag, to: "HEAD" });
+      return this.parseCommits([...log.all]);
+    } catch (error) {
+      this.logger.error(`Failed to get commits since tag ${tag}:`, error);
+      return [];
+    }
   }
 
   private async parseCommits(
@@ -322,5 +345,15 @@ export class GitService {
 
   async resetToCommit(commitHash: string): Promise<void> {
     await this.runGitCommand(["reset", "--hard", commitHash]);
+  }
+
+  async getAllCommits(): Promise<GitCommit[]> {
+    try {
+      const log = await this.git.log();
+      return this.parseCommits([...log.all]);
+    } catch (error) {
+      this.logger.error("Failed to get all commits:", error);
+      return [];
+    }
   }
 }

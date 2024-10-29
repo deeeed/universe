@@ -304,7 +304,7 @@ export class WorkspaceService {
     };
   }
 
-  private async readPackageJson(packagePath: string): Promise<PackageJson> {
+  public async readPackageJson(packagePath: string): Promise<PackageJson> {
     const rootDir = await this.getRootDir();
     const fullPath = path.join(rootDir, packagePath, "package.json");
     try {
