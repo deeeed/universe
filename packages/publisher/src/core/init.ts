@@ -284,6 +284,9 @@ export class InitService {
       ? packagePath
       : path.join(rootDir, packagePath);
 
+    // Ensure directory structure exists
+    await this.createDirectoryStructure(absolutePackagePath);
+
     const packageManager =
       options?.packageManager ??
       (await this.packageManagerDetector.detectPackageManager());
@@ -300,7 +303,8 @@ export class InitService {
 
     this.logger.debug(`Creating files in: ${absolutePackagePath}`);
 
-    const files = [
+    // Ensure all parent directories exist for each file
+    for (const file of [
       {
         path: path.join(absolutePackagePath, "publisher.config.ts"),
         content: generatePackageConfig({
@@ -331,23 +335,33 @@ export class InitService {
         content: hooksTemplate,
         description: "release hooks",
       },
-    ];
-
-    for (const file of files) {
+    ]) {
       try {
-        await fs.access(file.path);
-        if (!force) {
-          this.logger.warning(
-            `${file.description} already exists for ${packagePath}. Use --force to overwrite.`,
-          );
-          continue;
-        }
-      } catch {
-        // File doesn't exist, continue with creation
-      }
+        // Ensure parent directory exists
+        await fs.mkdir(path.dirname(file.path), { recursive: true });
 
-      await fs.writeFile(file.path, file.content);
-      this.logger.info(`Created ${file.description} for ${packagePath}`);
+        // Check if file exists
+        try {
+          await fs.access(file.path);
+          if (!force) {
+            this.logger.warning(
+              `${file.description} already exists for ${packagePath}. Use --force to overwrite.`,
+            );
+            continue;
+          }
+        } catch {
+          // File doesn't exist, continue with creation
+        }
+
+        await fs.writeFile(file.path, file.content);
+        this.logger.info(`Created ${file.description} for ${packagePath}`);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        throw new Error(
+          `Failed to create ${file.description}: ${errorMessage}`,
+        );
+      }
     }
   }
 
@@ -407,10 +421,25 @@ export class InitService {
     const hooksDir = path.join(publisherDir, "hooks");
 
     try {
+      // Create directories with recursive option
       await fs.mkdir(publisherDir, { recursive: true });
       await fs.mkdir(hooksDir, { recursive: true });
+
+      // Verify directories were created
+      const publisherStats = await fs.stat(publisherDir);
+      const hooksStats = await fs.stat(hooksDir);
+
+      if (!publisherStats.isDirectory() || !hooksStats.isDirectory()) {
+        throw new Error(
+          "Failed to create directory structure - not a directory",
+        );
+      }
     } catch (error) {
-      throw new Error(`Failed to create directory structure`, { cause: error });
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to create directory structure: ${errorMessage}`, {
+        cause: error,
+      });
     }
   }
 }
