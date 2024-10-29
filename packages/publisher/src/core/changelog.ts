@@ -184,7 +184,8 @@ export class ChangelogService {
     config: ReleaseConfig,
   ): Promise<void> {
     const format = this.getFormat(config);
-    const changelogPath = path.join(
+    const changelogPath = path.resolve(
+      process.cwd(),
       context.path,
       config.changelogFile || "CHANGELOG.md",
     );
@@ -203,13 +204,11 @@ export class ChangelogService {
     const dateStr = new Date().toISOString().split("T")[0];
     const newEntry = format.formatVersion(context.newVersion, dateStr);
 
-    // Update the content
     const updatedContent = this.insertNewEntry(
       currentContent,
       `${newEntry}\n\n${newContent}`,
     );
 
-    // Update the comparison links
     const finalContent = this.updateComparisonLinks(
       updatedContent,
       context,
@@ -439,10 +438,12 @@ export class ChangelogService {
     context: PackageContext,
     config: ReleaseConfig,
   ): Promise<string[]> {
-    const changelogPath = path.join(
+    const changelogPath = path.resolve(
+      process.cwd(),
       context.path,
       config.changelogFile || "CHANGELOG.md",
     );
+
     try {
       const content = await fs.readFile(changelogPath, "utf-8");
       const unreleasedSection = content
