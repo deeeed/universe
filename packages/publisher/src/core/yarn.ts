@@ -137,50 +137,70 @@ export class YarnService implements PackageManagerService {
       access: effectiveConfig.access,
     });
 
-    const publishArgs =
-      version.major === 1
-        ? [
-            "publish",
-            "--registry",
-            effectiveConfig.registry,
-            "--tag",
-            effectiveConfig.tag,
-            "--access",
-            effectiveConfig.access,
-          ]
-        : [
-            "npm",
-            "publish",
-            "--registry",
-            effectiveConfig.registry,
-            "--tag",
-            effectiveConfig.tag,
-            "--access",
-            effectiveConfig.access,
-          ];
-
-    if (effectiveConfig.otp) {
-      publishArgs.push("--otp", effectiveConfig.otp);
-      this.logger.debug("Using OTP for publishing");
-    }
-
     try {
-      this.logger.debug("Executing publish command:", publishArgs.join(" "));
-      await this.execYarnCommand(publishArgs);
+      // First attempt with Yarn
+      const publishArgs =
+        version.major === 1
+          ? [
+              "publish",
+              "--registry",
+              effectiveConfig.registry,
+              "--tag",
+              effectiveConfig.tag,
+              "--access",
+              effectiveConfig.access,
+            ]
+          : [
+              "npm",
+              "publish",
+              "--tag",
+              effectiveConfig.tag,
+              "--access",
+              effectiveConfig.access,
+            ];
 
-      const result = {
-        published: true,
-        registry: effectiveConfig.registry,
-      };
-      this.logger.debug("Package published successfully:", result);
-      return result;
-    } catch (error) {
-      this.logger.error("Failed to publish package:", error);
-      if (error instanceof Error) {
-        throw new Error(`Failed to publish package: ${error.message}`);
+      if (effectiveConfig.otp) {
+        publishArgs.push("--otp", effectiveConfig.otp);
       }
-      throw new Error("Failed to publish package: Unknown error occurred");
+
+      this.logger.debug("Attempting Yarn publish:", publishArgs.join(" "));
+      await this.execYarnCommand(publishArgs);
+    } catch (error) {
+      // If Yarn publish fails, fallback to npm
+      this.logger.debug("Yarn publish failed, falling back to npm:", error);
+
+      const npmArgs = [
+        "publish",
+        "--registry",
+        effectiveConfig.registry,
+        "--tag",
+        effectiveConfig.tag,
+        "--access",
+        effectiveConfig.access,
+      ];
+
+      if (effectiveConfig.otp) {
+        npmArgs.push("--otp", effectiveConfig.otp);
+      }
+
+      try {
+        this.logger.debug("Attempting npm publish:", npmArgs.join(" "));
+        await execa("npm", npmArgs, { cwd: context.path });
+      } catch (npmError) {
+        this.logger.error("Failed to publish package with npm:", npmError);
+        if (npmError instanceof Error) {
+          throw new Error(`Failed to publish package: ${npmError.message}`);
+        }
+        throw new Error("Failed to publish package: Unknown error occurred");
+      }
     }
+
+    const result = {
+      published: true,
+      registry: effectiveConfig.registry,
+    };
+    this.logger.debug("Package published successfully:", result);
+    return result;
   }
 
   async getLatestVersion(
