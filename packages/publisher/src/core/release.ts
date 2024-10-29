@@ -497,8 +497,11 @@ export class ReleaseService {
     context: PackageContext,
   ): Promise<void> {
     try {
+      const packageConfig = await this.getEffectiveConfig(context.name);
+      // Get required files from config or use default
+      const requiredFiles = packageConfig.packValidation?.requiredFiles || [];
+
       // Check for required files
-      const requiredFiles = ["LICENSE", "README.md"];
       for (const file of requiredFiles) {
         const filePath = path.join(context.path, file);
         try {
