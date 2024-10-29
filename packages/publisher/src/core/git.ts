@@ -7,7 +7,6 @@ import simpleGit, {
 } from "simple-git";
 import type { GitConfig, PackageContext } from "../types/config";
 import { Logger } from "../utils/logger";
-import { promises as fs } from "fs";
 
 export interface GitCommit {
   hash: string;
@@ -195,49 +194,29 @@ export class GitService {
 
   async commitChanges(
     context: PackageContext,
-    changelogFileName: string,
-  ): Promise<string> {
-    if (!context.newVersion) {
-      throw new Error("New version is required to create a commit message");
-    }
-
-    const message = this.config.commitMessage
-      .replace("${packageName}", context.name)
-      .replace("${version}", context.newVersion);
-
-    this.logger.debug(`Context path: ${context.path}`);
-    this.logger.debug(`Git root directory: ${this.rootDir}`);
-
-    const packageJsonAbsolutePath = path.resolve(context.path, "package.json");
-    const changelogAbsolutePath = path.resolve(context.path, changelogFileName);
-
-    this.logger.debug(`Package JSON absolute path: ${packageJsonAbsolutePath}`);
-    this.logger.debug(`Changelog absolute path: ${changelogAbsolutePath}`);
-
-    const packageJsonPath = path.relative(
-      this.rootDir,
-      packageJsonAbsolutePath,
-    );
-    const changelogPath = path.relative(this.rootDir, changelogAbsolutePath);
-
-    this.logger.debug(`Package JSON relative path: ${packageJsonPath}`);
-    this.logger.debug(`Changelog relative path: ${changelogPath}`);
-
-    const filesToAdd: string[] = [packageJsonPath];
+    changelogPath: string,
+  ): Promise<void> {
+    const filesToAdd = [
+      path.join(context.path, "package.json"),
+      changelogPath,
+    ].filter(Boolean);
 
     try {
-      await fs.access(changelogAbsolutePath);
-      filesToAdd.push(changelogPath);
-    } catch {
-      this.logger.debug(`Changelog file not found at ${changelogAbsolutePath}`);
+      // Add files
+      await this.git.add(filesToAdd);
+
+      // Create commit with the configured message
+      const commitMessage = this.config.commitMessage.replace(
+        "${version}",
+        context.newVersion || "",
+      );
+
+      await this.git.commit(commitMessage);
+    } catch (error) {
+      throw new Error(
+        `Failed to commit changes: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
-
-    this.logger.debug(`Files to add to Git: ${filesToAdd.join(", ")}`);
-
-    await this.git.add(filesToAdd);
-
-    const result = await this.git.commit(message);
-    return result.commit;
   }
 
   async push(force?: boolean): Promise<void> {
