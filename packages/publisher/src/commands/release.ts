@@ -15,6 +15,7 @@ interface ReleaseCommandOptions {
   showChanges?: boolean;
   checkIntegrity?: boolean;
   gitCheck?: boolean;
+  skipUpstreamTracking?: boolean;
 }
 
 export const releaseCommand = new Command()
@@ -35,6 +36,7 @@ export const releaseCommand = new Command()
   .option("-s, --show-changes", "Show detailed changes before proceeding")
   .option("--check-integrity", "Run workspace integrity check before release")
   .option("--no-git-check", "Skip git status validation")
+  .option("--skip-upstream-tracking", "Skip git upstream tracking check")
   .action(async (packages: string[], commandOptions: ReleaseCommandOptions) => {
     const logger = new Logger();
     try {
@@ -126,12 +128,20 @@ export const releaseCommand = new Command()
         npmPublish: commandOptions.npmPublish,
         skipIntegrityCheck: commandOptions.checkIntegrity,
         skipGitCheck: !commandOptions.gitCheck,
+        skipUpstreamTracking: commandOptions.skipUpstreamTracking,
       };
 
       if (commandOptions.all) {
         await releaseService.releaseAll(releaseOptions);
       } else {
-        await releaseService.releasePackages(packages, releaseOptions);
+        const results = await releaseService.releasePackages(
+          packagesToAnalyze,
+          releaseOptions,
+        );
+        logger.info("Release results:");
+        for (const result of results) {
+          logger.info(`  ${result.packageName}: ${result.version}`);
+        }
       }
     } catch (error) {
       logger.error(

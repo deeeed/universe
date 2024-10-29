@@ -61,6 +61,7 @@ export class ReleaseService {
       npmPublish?: boolean;
       checkIntegrity?: boolean;
       skipGitCheck?: boolean;
+      skipUpstreamTracking?: boolean;
     },
   ): Promise<ReleaseResult[]> {
     this.logger.info("Starting release process...");
@@ -199,12 +200,15 @@ export class ReleaseService {
     }
   }
 
-  private async validateEnvironment(options?: {
+  private async validateEnvironment(options: {
     skipGitCheck?: boolean;
+    skipUpstreamTracking?: boolean;
   }): Promise<void> {
-    if (!options?.skipGitCheck) {
+    if (!options.skipGitCheck) {
       this.logger.info("Validating git status...");
-      await this.git.validateStatus();
+      await this.git.validateStatus({
+        skipUpstreamTracking: options.skipUpstreamTracking,
+      });
     }
 
     if (this.config.npm?.publish) {

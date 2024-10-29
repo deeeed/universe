@@ -34,7 +34,9 @@ export class GitService {
     this.config = config;
   }
 
-  async validateStatus(): Promise<void> {
+  async validateStatus(options?: {
+    skipUpstreamTracking?: boolean;
+  }): Promise<void> {
     const status = await this.git.status();
 
     if (this.config.requireCleanWorkingDirectory && !status.isClean()) {
@@ -56,12 +58,16 @@ export class GitService {
         throw new Error("Not currently on any branch");
       }
 
-      if (!tracking && this.config.requireUpstreamTracking !== false) {
+      if (
+        !tracking &&
+        !options?.skipUpstreamTracking &&
+        this.config.requireUpstreamTracking !== false
+      ) {
         throw new Error(
           `Branch ${currentBranch} is not tracking a remote branch.\n\n` +
             `To fix this, run:\n` +
             `  git branch --set-upstream-to=${this.config.remote}/${currentBranch} ${currentBranch}\n\n` +
-            `Or add "requireUpstreamTracking: false" to your git config to skip this check`,
+            `Or use --skip-upstream-tracking to skip this check`,
         );
       }
 
