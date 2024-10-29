@@ -149,6 +149,16 @@ export class ReleaseService {
     context: PackageContext,
     config: ReleaseConfig,
   ): Promise<string> {
+    if (config.bumpStrategy === "conventional") {
+      const analyzedBumpType = await this.version.analyzeCommits(context);
+      const bumpType = config.bumpType || analyzedBumpType;
+      return this.version.determineVersion(
+        context,
+        bumpType,
+        config.preReleaseId,
+      );
+    }
+
     if (config.bumpStrategy === "prompt") {
       const bumpType = await this.prompts.getVersionBump();
       return this.version.determineVersion(
@@ -158,7 +168,7 @@ export class ReleaseService {
       );
     }
 
-    return this.determineSuggestedVersion(context, config);
+    return this.version.determineVersion(context, "patch", config.preReleaseId);
   }
 
   private async updateVersionAndDependencies(
@@ -279,7 +289,8 @@ export class ReleaseService {
     config: ReleaseConfig,
   ): Promise<string> {
     if (config.bumpStrategy === "conventional") {
-      const bumpType = await this.version.analyzeCommits(context);
+      const bumpType =
+        config.bumpType || (await this.version.analyzeCommits(context));
       return this.version.determineVersion(
         context,
         bumpType,

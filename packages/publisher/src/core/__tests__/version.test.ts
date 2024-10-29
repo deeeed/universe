@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { VersionService } from "../version";
-import type { PackageContext } from "../../types/config";
+import type { PackageContext, GitConfig } from "../../types/config";
 import {
   jest,
   expect,
@@ -17,7 +17,19 @@ describe("VersionService", () => {
   let mockExecCommand: jest.MockedFunction<MockFunction>;
 
   beforeEach(() => {
-    versionService = new VersionService();
+    const mockGitConfig: GitConfig = {
+      tagPrefix: "v",
+      requireCleanWorkingDirectory: false,
+      requireUpToDate: false,
+      commit: true,
+      push: true,
+      commitMessage: "chore: release v${version}",
+      tag: true,
+      tagMessage: "Release v${version}",
+      allowedBranches: ["main", "master"],
+      remote: "origin",
+    };
+    versionService = new VersionService(mockGitConfig);
   });
 
   describe("determineVersion", () => {

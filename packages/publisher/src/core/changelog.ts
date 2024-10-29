@@ -1,7 +1,6 @@
 import conventionalChangelog from "conventional-changelog";
 import { promises as fs, Stats } from "fs";
 import path from "path";
-import * as semver from "semver";
 import type { Transform } from "stream";
 import type { PackageContext, ReleaseConfig } from "../types/config";
 import { Logger } from "../utils/logger";
@@ -301,7 +300,7 @@ export class ChangelogService {
       }
 
       // Validate version entries
-      this.validateVersionEntries(content, format, context.name);
+      this.validateVersionEntries(context.name, content);
 
       this.logger.success(`Changelog validation for ${context.name}: OK`);
     } catch (error) {
@@ -314,77 +313,74 @@ export class ChangelogService {
     }
   }
 
-  private validateVersionEntries(
-    content: string,
-    format: ChangelogFormat,
-    packageName: string,
-  ): void {
-    const lines = content.split("\n");
+  private validateVersionEntries(packageName: string, content: string): void {
+    const lines: string[] = content.split("\n");
+    const versionRegex =
+      /^## \[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\](?: - (\d{4}-\d{2}-\d{2}))?$/;
 
-    // Validate that there are no malformed headers (###asdf)
-    const malformedHeaderRegex = /^#{1,6}[^#\s].*/;
-    lines.forEach((line, index) => {
-      if (malformedHeaderRegex.test(line)) {
-        throw new Error(
-          `Invalid header format in ${packageName} at line ${index + 1}: "${line}"`,
-        );
-      }
-    });
+    const versions: { version: string; date?: string; line: string }[] = [];
 
-    // Validate version headers format
-    const versionHeaderRegex = /^## \[.*\](?:\s*-\s*\d{4}-\d{2}-\d{2})?$/;
-    lines.forEach((line, index) => {
-      if (line.startsWith("## ") && !line.startsWith("## [Unreleased]")) {
-        if (!versionHeaderRegex.test(line)) {
-          throw new Error(
-            `Invalid version header format in ${packageName} at line ${index + 1}: "${line}"`,
-          );
-        }
-      }
-    });
-
-    // Extract and validate versions
-    const sections = content.split(/^## /m).slice(1);
-    const versions: string[] = [];
-
-    for (const section of sections) {
-      const sectionLines = section.split("\n");
-      const firstLine = sectionLines[0].trim();
-
-      if (firstLine.toLowerCase() !== "[unreleased]") {
-        const match = firstLine.match(format.versionRegex);
+    // Collect all version entries
+    for (const line of lines) {
+      if (line.startsWith("## [") && !line.includes("[Unreleased]")) {
+        const firstLine: string = line.trim();
+        const match = firstLine.match(versionRegex);
         if (!match) {
           throw new Error(
             `Invalid version header format in ${packageName}: "${firstLine}"`,
           );
         }
 
-        const [, version, dateStr] = match;
-
-        if (!semver.valid(version)) {
-          throw new Error(
-            `Invalid semver version in ${packageName}: ${version}`,
-          );
+        // If date is present, validate its format
+        if (match[2]) {
+          const date = new Date(match[2]);
+          if (isNaN(date.getTime())) {
+            throw new Error(
+              `Invalid date format in version header in ${packageName}: "${firstLine}"`,
+            );
+          }
         }
 
-        if (format.name === "keep-a-changelog" && !dateStr) {
-          throw new Error(
-            `Missing date for version ${version} in ${packageName}`,
-          );
-        }
-
-        versions.push(version);
+        versions.push({
+          version: match[1],
+          date: match[2],
+          line: firstLine,
+        });
       }
     }
 
-    // Validate version ordering
-    for (let i = 0; i < versions.length - 1; i++) {
-      if (!semver.gt(versions[i], versions[i + 1])) {
+    // Check version order (newer versions should come first)
+    for (let i = 1; i < versions.length; i++) {
+      const current = versions[i].version;
+      const previous = versions[i - 1].version;
+
+      if (this.compareVersions(current, previous) > 0) {
         throw new Error(
-          `Version ordering error in ${packageName}: ${versions[i]} should be greater than ${versions[i + 1]}`,
+          `Version entries are not in descending order in ${packageName}. Found ${previous} before ${current}`,
         );
       }
     }
+  }
+
+  private compareVersions(a: string, b: string): number {
+    const partsA = a.split(/[-+]/, 1)[0].split(".").map(Number);
+    const partsB = b.split(/[-+]/, 1)[0].split(".").map(Number);
+
+    for (let i = 0; i < 3; i++) {
+      if (partsA[i] > partsB[i]) return 1;
+      if (partsA[i] < partsB[i]) return -1;
+    }
+
+    // If versions are equal in their numeric parts, compare pre-release tags
+    const preA = a.includes("-") ? a.split("-")[1] : "";
+    const preB = b.includes("-") ? b.split("-")[1] : "";
+
+    if (!preA && preB) return 1;
+    if (preA && !preB) return -1;
+    if (preA < preB) return -1;
+    if (preA > preB) return 1;
+
+    return 0;
   }
 
   private insertNewEntry(currentContent: string, newEntry: string): string {

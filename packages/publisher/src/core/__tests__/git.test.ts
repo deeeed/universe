@@ -1,8 +1,10 @@
-import { GitService } from "../git";
 import simpleGit from "simple-git";
-import type { GitConfig } from "../../types/config";
+import type { GitConfig, PackageContext } from "../../types/config";
+import { GitService } from "../git";
 
 jest.mock("simple-git");
+
+const MOCK_CWD = "/mock/project/root";
 
 describe("GitService", () => {
   let gitService: GitService;
@@ -14,6 +16,9 @@ describe("GitService", () => {
     commit: jest.fn(),
     push: jest.fn(),
     addAnnotatedTag: jest.fn(),
+    tags: jest.fn(),
+    log: jest.fn(),
+    show: jest.fn(),
   };
 
   beforeEach(() => {
@@ -29,7 +34,7 @@ describe("GitService", () => {
       allowedBranches: ["main"],
       remote: "origin",
     };
-    gitService = new GitService(config);
+    gitService = new GitService(config, MOCK_CWD);
   });
 
   describe("validateStatus", () => {
@@ -41,21 +46,7 @@ describe("GitService", () => {
         behind: 0,
       });
 
-      await expect(
-        gitService.validateStatus({
-          git: {
-            tagPrefix: "v",
-            requireCleanWorkingDirectory: true,
-            requireUpToDate: true,
-            commit: true,
-            push: true,
-            commitMessage: "chore(release): release ${packageName}@${version}",
-            tag: true,
-            allowedBranches: ["main"],
-            remote: "origin",
-          },
-        }),
-      ).resolves.not.toThrow();
+      await expect(gitService.validateStatus()).resolves.not.toThrow();
     });
 
     it("should throw error for dirty working directory", async () => {
@@ -64,35 +55,10 @@ describe("GitService", () => {
         current: "main",
       });
 
-      await expect(
-        gitService.validateStatus({
-          git: {
-            tagPrefix: "v",
-            requireCleanWorkingDirectory: true,
-            requireUpToDate: true,
-            commit: true,
-            push: true,
-            commitMessage: "chore(release): release ${packageName}@${version}",
-            tag: true,
-            allowedBranches: ["main"],
-            remote: "origin",
-          },
-        }),
-      ).rejects.toThrow("Working directory is not clean");
+      await expect(gitService.validateStatus()).rejects.toThrow(
+        "Working directory is not clean",
+      );
     });
-  });
-
-  // Additional test helpers
-  const createDefaultGitConfig = (): GitConfig => ({
-    tagPrefix: "v",
-    requireCleanWorkingDirectory: true,
-    requireUpToDate: true,
-    commit: true,
-    push: true,
-    commitMessage: "chore(release): release ${packageName}@${version}",
-    tag: true,
-    allowedBranches: ["main"],
-    remote: "origin",
   });
 
   describe("additional validation scenarios", () => {
@@ -104,8 +70,7 @@ describe("GitService", () => {
         behind: 0,
       });
 
-      const config = createDefaultGitConfig();
-      await expect(gitService.validateStatus({ git: config })).rejects.toThrow(
+      await expect(gitService.validateStatus()).rejects.toThrow(
         "Current branch feature is not in allowed branches: main",
       );
     });
@@ -118,11 +83,172 @@ describe("GitService", () => {
         behind: 2,
       });
 
-      const config = createDefaultGitConfig();
-      config.requireUpToDate = true;
-      await expect(gitService.validateStatus({ git: config })).rejects.toThrow(
+      await expect(gitService.validateStatus()).rejects.toThrow(
         "Branch main is behind origin/main by 2 commits",
       );
+    });
+  });
+
+  describe("hasChanges", () => {
+    const packagePath = "/mock/project/root/packages/my-package";
+
+    it("should return true if there are uncommitted changes", async () => {
+      mockGit.status.mockResolvedValue({
+        files: [{ path: "packages/my-package/src/index.ts" }],
+      });
+
+      const result = await gitService.hasChanges(packagePath);
+      expect(result).toBe(true);
+    });
+
+    it("should check commits since last tag if no uncommitted changes", async () => {
+      mockGit.status.mockResolvedValue({ files: [] });
+      mockGit.tags.mockResolvedValue({ all: ["my-package@1.0.0"] });
+      mockGit.log.mockResolvedValue({
+        all: [{ hash: "abc123" }],
+      });
+      mockGit.show.mockResolvedValue(
+        "abc123\n2024-01-01\ncommit message\n\npackages/my-package/file.ts",
+      );
+
+      const result = await gitService.hasChanges(packagePath);
+      expect(result).toBe(true);
+    });
+
+    it("should return false if no changes found", async () => {
+      mockGit.status.mockResolvedValue({ files: [] });
+      mockGit.tags.mockResolvedValue({ all: ["my-package@1.0.0"] });
+      mockGit.log.mockResolvedValue({
+        all: [{ hash: "abc123" }],
+      });
+      mockGit.show.mockResolvedValue(
+        "abc123\n2024-01-01\ncommit message\n\nother-package/file.ts",
+      );
+
+      const result = await gitService.hasChanges(packagePath);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("getLastTag", () => {
+    it("should return the latest tag for a package", async () => {
+      mockGit.tags.mockResolvedValue({
+        all: ["my-package@1.0.0", "my-package@1.1.0", "other-package@2.0.0"],
+      });
+
+      const result = await gitService.getLastTag("my-package");
+      expect(result).toBe("my-package@1.1.0");
+    });
+
+    it("should return empty string if no tags found", async () => {
+      mockGit.tags.mockResolvedValue({ all: [] });
+
+      const result = await gitService.getLastTag("my-package");
+      expect(result).toBe("");
+    });
+  });
+
+  describe("getCommitsSinceTag", () => {
+    it("should return commits since specified tag", async () => {
+      mockGit.log.mockResolvedValue({
+        all: [{ hash: "abc123" }, { hash: "def456" }],
+      });
+      mockGit.show
+        .mockResolvedValueOnce("abc123\n2024-01-01\nfirst commit\n\nfile1.ts")
+        .mockResolvedValueOnce("def456\n2024-01-02\nsecond commit\n\nfile2.ts");
+
+      const commits = await gitService.getCommitsSinceTag("v1.0.0");
+      expect(commits).toHaveLength(2);
+      expect(commits[0]).toEqual({
+        hash: "abc123",
+        date: "2024-01-01",
+        message: "first commit",
+        body: null,
+        files: ["file1.ts"],
+      });
+    });
+
+    it("should return all commits if no tag specified", async () => {
+      mockGit.log.mockResolvedValue({
+        all: [{ hash: "abc123" }],
+      });
+      mockGit.show.mockResolvedValue("abc123\n2024-01-01\ncommit\n\nfile.ts");
+
+      const commits = await gitService.getCommitsSinceTag("");
+      expect(commits).toHaveLength(1);
+    });
+  });
+
+  describe("createTag", () => {
+    it("should create an annotated tag", async () => {
+      const context: PackageContext = {
+        name: "my-package",
+        newVersion: "1.2.0",
+        currentVersion: "1.1.0",
+        path: "/mock/project/root/packages/my-package",
+      };
+
+      await gitService.createTag(context);
+
+      expect(mockGit.addAnnotatedTag).toHaveBeenCalledWith(
+        "my-package@1.2.0",
+        "Release my-package@1.2.0",
+      );
+    });
+
+    it("should throw if no new version provided", async () => {
+      const context: PackageContext = {
+        name: "my-package",
+        currentVersion: "1.1.0",
+        path: "/mock/project/root/packages/my-package",
+      };
+
+      await expect(gitService.createTag(context)).rejects.toThrow(
+        "New version is required to create a tag",
+      );
+    });
+  });
+
+  describe("commitChanges", () => {
+    it("should commit changes with formatted message", async () => {
+      const context: PackageContext = {
+        name: "my-package",
+        newVersion: "1.2.0",
+        currentVersion: "1.1.0",
+        path: "/mock/project/root/packages/my-package",
+      };
+
+      mockGit.commit.mockResolvedValue({ commit: "abc123" });
+
+      const result = await gitService.commitChanges(context);
+
+      expect(mockGit.add).toHaveBeenCalledWith("packages/my-package");
+      expect(mockGit.commit).toHaveBeenCalledWith(
+        "chore(release): release my-package@1.2.0",
+      );
+      expect(result).toBe("abc123");
+    });
+
+    it("should throw if no new version provided", async () => {
+      const context: PackageContext = {
+        name: "my-package",
+        currentVersion: "1.1.0",
+        path: "/mock/project/root/packages/my-package",
+      };
+
+      await expect(gitService.commitChanges(context)).rejects.toThrow(
+        "New version is required to create a commit message",
+      );
+    });
+  });
+
+  describe("push", () => {
+    it("should push with follow-tags", async () => {
+      await gitService.push();
+
+      expect(mockGit.push).toHaveBeenCalledWith("origin", undefined, [
+        "--follow-tags",
+      ]);
     });
   });
 });

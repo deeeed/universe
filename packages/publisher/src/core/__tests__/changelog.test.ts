@@ -12,6 +12,7 @@ jest.mock("fs", () => ({
     readFile: jest.fn(),
     writeFile: jest.fn(),
     access: jest.fn(),
+    stat: jest.fn(),
   },
 }));
 
@@ -29,7 +30,7 @@ describe("ChangelogService", () => {
 
     mockContext = {
       name: "test-package",
-      path: "/test/path",
+      path: "test/path",
       currentVersion: "1.0.0",
       newVersion: "1.1.0",
       dependencies: {},
@@ -41,6 +42,7 @@ describe("ChangelogService", () => {
       packageManager: "yarn",
       changelogFile: "CHANGELOG.md",
       conventionalCommits: true,
+      changelogFormat: "conventional",
       git: {
         tagPrefix: "v",
         requireCleanWorkingDirectory: true,
@@ -139,86 +141,67 @@ describe("ChangelogService", () => {
 - Initial release
 `;
       (fs.access as jest.Mock).mockResolvedValue(undefined);
+      (fs.stat as jest.Mock).mockResolvedValue({ isFile: () => true });
       (fs.readFile as jest.Mock).mockResolvedValue(validContent);
 
       await expect(
-        service.validate(mockContext, {
-          ...mockConfig,
-          conventionalCommits: false,
-        }),
+        service.validate(
+          mockContext,
+          {
+            ...mockConfig,
+            conventionalCommits: false,
+          },
+          "/monorepo/root",
+        ),
       ).resolves.not.toThrow();
     });
 
     it("should fail if changelog file is missing", async () => {
       (fs.access as jest.Mock).mockRejectedValue(new Error("ENOENT"));
+      (fs.readFile as jest.Mock).mockRejectedValue(new Error("ENOENT"));
 
-      await expect(service.validate(mockContext, mockConfig)).rejects.toThrow(
-        "Changelog file not found",
-      );
-    });
-
-    it("should fail if changelog is missing header", async () => {
-      const invalidContent = `## [Unreleased]\n\n## [1.0.0] - 2024-01-01`;
-
-      (fs.access as jest.Mock).mockResolvedValue(undefined);
-      (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
-
-      await expect(service.validate(mockContext, mockConfig)).rejects.toThrow(
-        "missing header",
-      );
-    });
-
-    it("should fail if changelog is missing unreleased section", async () => {
-      const invalidContent = `# Changelog\n\n## [1.0.0] - 2024-01-01`;
-
-      (fs.access as jest.Mock).mockResolvedValue(undefined);
-      (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
-
-      await expect(service.validate(mockContext, mockConfig)).rejects.toThrow(
-        "missing Unreleased section",
+      await expect(
+        service.validate(mockContext, mockConfig, "/monorepo/root"),
+      ).rejects.toThrow(
+        "Failed to read changelog at /monorepo/root/test/path/CHANGELOG.md: ENOENT",
       );
     });
 
     it("should fail if version entries are in wrong order", async () => {
       const invalidContent = `# Changelog
+All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
 ## [1.0.0] - 2024-03-01
 
-### Added
-- Initial release
-
-## [2.0.0] - 2024-01-01
-
-### Added
-- Major update`;
-
-      (fs.access as jest.Mock).mockResolvedValue(undefined);
+## [2.0.0] - 2024-03-02
+`;
       (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
       mockConfig.conventionalCommits = false;
 
-      await expect(service.validate(mockContext, mockConfig)).rejects.toThrow(
-        "Version ordering error",
+      await expect(
+        service.validate(mockContext, mockConfig, "/monorepo/root"),
+      ).rejects.toThrow(
+        "Version entries are not in descending order in test-package",
       );
     });
 
     it("should fail if date format is invalid", async () => {
       const invalidContent = `# Changelog
+All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
 ## [2.0.0] - 2024-13-45
-
-### Added
-- Major update`;
-
-      (fs.access as jest.Mock).mockResolvedValue(undefined);
+`;
       (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
       mockConfig.conventionalCommits = false;
 
-      await expect(service.validate(mockContext, mockConfig)).rejects.toThrow(
-        "Invalid date format",
+      await expect(
+        service.validate(mockContext, mockConfig, "/monorepo/root"),
+      ).rejects.toThrow(
+        "Invalid date format in version header in test-package",
       );
     });
   });

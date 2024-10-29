@@ -49,7 +49,8 @@ describe("WorkspaceService", () => {
       JSON.stringify({ workspaces: ["packages/*"] }),
     );
 
-    workspaceService = new WorkspaceService(mockLogger);
+    // Create workspace service with undefined config and logger
+    workspaceService = new WorkspaceService(undefined, mockLogger);
   });
 
   describe("getPackages", () => {
@@ -247,7 +248,7 @@ describe("WorkspaceService", () => {
         path.join(process.cwd(), "packages/pkg-a", "publisher.config.ts"),
         () => ({
           __esModule: true,
-          default: { packageManager: "npm" },
+          default: { packageManager: "yarn" },
         }),
         { virtual: true },
       );
@@ -255,7 +256,7 @@ describe("WorkspaceService", () => {
       const config = await workspaceService.getPackageConfig(packageName);
 
       expect(config).toBeDefined();
-      expect(config.packageManager).toBe("npm");
+      expect(config.packageManager).toBe("yarn");
     });
 
     it("should return default config when package-specific config does not exist", async () => {
@@ -272,7 +273,7 @@ describe("WorkspaceService", () => {
       const config = await workspaceService.getPackageConfig(packageName);
 
       expect(config).toBeDefined();
-      expect(config.packageManager).toBe("npm"); // Default value
+      expect(config.packageManager).toBe("yarn");
     });
   });
 });

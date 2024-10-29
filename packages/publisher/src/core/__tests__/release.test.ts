@@ -51,6 +51,7 @@ describe("ReleaseService", () => {
       packageManager: "yarn",
       conventionalCommits: true,
       versionStrategy: "independent",
+      changelogFormat: "conventional",
       git: {
         tagPrefix: "v",
         requireCleanWorkingDirectory: true,
@@ -238,12 +239,19 @@ describe("ReleaseService", () => {
     it("should use conventional commits when bumpStrategy is conventional", async () => {
       mockConfig.bumpStrategy = "conventional";
       mockConfig.bumpType = "major";
+
+      // Mock analyzeCommits to return "major"
+      const spyAnalyzeCommits = jest
+        .spyOn(releaseService["version"], "analyzeCommits")
+        .mockResolvedValue("major");
+
       const spyVersion = jest
         .spyOn(releaseService["version"], "determineVersion")
         .mockReturnValue("2.0.0");
 
       await releaseService["determineVersion"](mockContext, mockConfig);
 
+      expect(spyAnalyzeCommits).toHaveBeenCalledWith(mockContext);
       expect(spyVersion).toHaveBeenCalledWith(mockContext, "major", undefined);
     });
 
@@ -295,6 +303,7 @@ describe("ReleaseService", () => {
             packageManager: "yarn",
             changelogFile: "CHANGELOG.md",
             conventionalCommits: true,
+            changelogFormat: "conventional",
             git: config.git,
             versionStrategy: "independent",
             bumpStrategy: "prompt",
@@ -317,6 +326,7 @@ describe("ReleaseService", () => {
           packageManager: "yarn",
           changelogFile: "CHANGELOG.md",
           conventionalCommits: true,
+          changelogFormat: "conventional",
           git: config.git,
           versionStrategy: "independent",
           bumpStrategy: "prompt",
