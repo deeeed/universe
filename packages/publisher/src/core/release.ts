@@ -461,24 +461,21 @@ export class ReleaseService {
     context: PackageContext,
     packageConfig: ReleaseConfig,
   ): Promise<string | undefined> {
-    const changelogPath = path.join(
+    const changelogPath = path.resolve(
+      this.rootDir,
       context.path,
       packageConfig.changelogFile || "CHANGELOG.md",
     );
 
     try {
-      // Check if changelog exists
       await fs.access(changelogPath);
 
-      // If changelog exists, only update it if conventionalCommits is true
       if (packageConfig.conventionalCommits) {
         return this.changelog.generate(context, packageConfig);
       }
 
-      // Return undefined if no conventional commits and changelog exists
       return undefined;
     } catch (error) {
-      // If changelog doesn't exist, generate it
       const shouldCreate = await this.prompts.confirmChangelogCreation(
         context.name,
       );
