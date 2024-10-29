@@ -196,11 +196,9 @@ export class ReleaseService {
         version: context.newVersion,
       };
     } catch (error) {
-      if (error instanceof Error) {
-        this.logger.error(`Release process failed: ${error.message}`);
-      } else {
-        this.logger.error(`Release process failed: ${String(error)}`);
-      }
+      this.logger.error(
+        `Release process failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       this.logger.info("Rolling back changes...");
 
       if (previousCommitHash) {
@@ -212,14 +210,12 @@ export class ReleaseService {
         await this.git.deleteTag(tagName, true);
       }
 
-      // Optionally, delete temporary branches if created
+      // Restore original files
+      for (const file of tempFiles) {
+        await fs.writeFile(file.path, file.content, "utf-8");
+      }
 
       throw error;
-    } finally {
-      // Clean up temporary files
-      for (const file of tempFiles) {
-        await fs.unlink(file.path);
-      }
     }
   }
 
