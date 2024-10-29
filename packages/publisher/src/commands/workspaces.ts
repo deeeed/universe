@@ -18,7 +18,7 @@ workspacesCommand
   .option("-f, --full", "Show full package details")
   .action(async (options: WorkspacesCommandOptions) => {
     const logger = new Logger();
-    const workspaceService = new WorkspaceService(logger);
+    const workspaceService = new WorkspaceService();
 
     try {
       const packages = await workspaceService.getPackages();
@@ -84,7 +84,7 @@ workspacesCommand
   .option("-j, --json", "Output in JSON format")
   .action(async (options: WorkspacesCommandOptions) => {
     const logger = new Logger();
-    const workspaceService = new WorkspaceService(logger);
+    const workspaceService = new WorkspaceService();
 
     try {
       const changedPackages = await workspaceService.getChangedPackages();
@@ -125,7 +125,7 @@ workspacesCommand
   .option("-j, --json", "Output in JSON format")
   .action(async (packages: string[], options: WorkspacesCommandOptions) => {
     const logger = new Logger();
-    const workspaceService = new WorkspaceService(logger);
+    const workspaceService = new WorkspaceService();
 
     try {
       const packageInfos = await workspaceService.getPackages(packages);

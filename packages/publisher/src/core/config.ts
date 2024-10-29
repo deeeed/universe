@@ -10,7 +10,14 @@ const CONFIG_FILES = [
   "publisher.config.ts",
   ".publisher.js",
   ".publisher.ts",
+  "publisher.config.json",
+  ".publisher.json",
 ];
+
+interface ConfigModule {
+  default?: MonorepoConfig;
+  [key: string]: unknown;
+}
 
 export async function loadConfig(): Promise<MonorepoConfig> {
   const configPath = findConfigFile();
@@ -20,13 +27,47 @@ export async function loadConfig(): Promise<MonorepoConfig> {
   }
 
   try {
-    const module = (await import(configPath)) as { default: unknown };
-    const config = validateConfig(module.default);
-    return config;
+    const extension = path.extname(configPath);
+    let config: unknown;
+
+    if (extension === ".json") {
+      const jsonContent = await fs.promises.readFile(configPath, "utf-8");
+      config = JSON.parse(jsonContent);
+    } else if (extension === ".ts") {
+      // For TypeScript files, register ts-node with proper configuration
+      const tsNode = await import("ts-node");
+      tsNode.register({
+        transpileOnly: true,
+        compilerOptions: {
+          module: "commonjs",
+          moduleResolution: "node",
+          esModuleInterop: true,
+          allowJs: true,
+        },
+      });
+
+      // Delete require cache to ensure fresh load
+      const resolvedPath = require.resolve(configPath);
+      delete require.cache[resolvedPath];
+
+      // Load the TypeScript config file
+      const tsModule = (await import(configPath)) as ConfigModule;
+      config = tsModule.default ?? tsModule;
+    } else if (extension === ".js") {
+      const jsModule = (await import(configPath)) as ConfigModule;
+      config = jsModule.default ?? jsModule;
+    } else {
+      throw new Error(`Unsupported config file extension: ${extension}`);
+    }
+
+    return validateConfig(config);
   } catch (error) {
-    throw new Error(
-      `Failed to load config from ${configPath}: ${(error as Error).message}`,
-    );
+    if (error instanceof Error) {
+      throw new Error(
+        `Failed to load config from ${configPath}: ${error.message}`,
+      );
+    }
+    throw new Error(`Failed to load config from ${configPath}`);
   }
 }
 

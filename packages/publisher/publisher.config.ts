@@ -1,6 +1,6 @@
-import type { ReleaseConfig } from "@siteed/publisher";
+import type { ReleaseConfig, DeepPartial } from "@siteed/publisher";
 
-const config: Partial<ReleaseConfig> = {
+const config: DeepPartial<ReleaseConfig> = {
   packageManager: "npm",
   changelogFile: "CHANGELOG.md",
   conventionalCommits: true,

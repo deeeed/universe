@@ -63,9 +63,9 @@ export function generatePackageConfig(
 ): string {
   const config = generateDefaultConfig(options);
 
-  return `import type { ReleaseConfig } from '@siteed/publisher';
+  return `import type { ReleaseConfig, DeepPartial } from '@siteed/publisher';
 
-const config: Partial<ReleaseConfig> = ${JSON.stringify(config, null, 2)};
+const config: DeepPartial<ReleaseConfig> = ${JSON.stringify(config, null, 2)};
 
 export default config;`;
 }

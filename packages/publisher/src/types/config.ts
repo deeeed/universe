@@ -148,3 +148,10 @@ export interface ReleaseResult {
     registry: string;
   };
 }
+
+// Add this at the top of the file
+export type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;

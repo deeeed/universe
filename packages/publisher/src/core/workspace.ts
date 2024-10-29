@@ -1,20 +1,27 @@
 import type { ExecaReturnValue } from "execa";
+import fs from "fs/promises";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { PackageJson } from "type-fest";
-import type { PackageContext, ReleaseConfig } from "../types/config";
+import { generateDefaultConfig } from "../templates/package-config.template";
+import { loadConfig } from "./config";
+import type {
+  MonorepoConfig,
+  PackageContext,
+  ReleaseConfig,
+} from "../types/config";
 import { Logger } from "../utils/logger";
-import fs from "fs/promises";
-import { generatePackageConfig } from "../templates/package-config.template";
 
 export class WorkspaceService {
   private packageCache: Map<string, PackageContext> = new Map();
-  private logger: Logger;
   private rootDir: string | undefined;
+  private configPromise: Promise<MonorepoConfig>;
 
-  constructor(logger?: Logger) {
-    this.logger = logger ?? new Logger();
-    // Initialize rootDir later asynchronously
+  constructor(
+    config?: MonorepoConfig,
+    private readonly logger: Logger = new Logger(),
+  ) {
+    this.configPromise = config ? Promise.resolve(config) : loadConfig();
   }
 
   async getRootDir(): Promise<string> {
@@ -164,40 +171,67 @@ export class WorkspaceService {
       throw new Error(`Package ${packageName} not found in workspace`);
     }
 
-    try {
-      const configPath = path.join(
-        process.cwd(),
-        packagePath,
-        "publisher.config.ts",
-      );
-      const importedConfig = (await import(configPath)) as {
-        default: ReleaseConfig;
-      };
-      return importedConfig.default;
-    } catch {
-      // Generate default config using the template helper
-      const defaultConfig = generatePackageConfig({
-        packageJson: { name: packageName },
-        packageManager: "yarn",
-        conventionalCommits: true,
-        changelogFormat: "conventional",
-        versionStrategy: "independent",
-        bumpStrategy: "prompt",
+    const config = await this.configPromise;
+
+    // Use config from monorepo config if available
+    if (config.packages?.[packageName]) {
+      const packageConfig = config.packages[packageName];
+      // Ensure all required fields are present with defaults
+      return {
         npm: {
-          publish: true,
-          access: "public",
+          tag: packageConfig.npm?.tag ?? "latest",
+          publish: packageConfig.npm?.publish ?? true,
+          registry:
+            packageConfig.npm?.registry ?? "https://registry.npmjs.org/",
+          access: packageConfig.npm?.access ?? "public",
+          otp: packageConfig.npm?.otp,
         },
-      });
-
-      // Parse the generated config string back to an object
-      // Remove the type declaration and export statement
-      const configString = defaultConfig
-        .replace(/import.*?;\n\n/g, "")
-        .replace("const config: ReleaseConfig = ", "")
-        .replace(";\n\nexport default config", "");
-
-      return JSON.parse(configString) as ReleaseConfig;
+        packageManager: packageConfig.packageManager ?? "yarn",
+        changelogFile: packageConfig.changelogFile ?? "CHANGELOG.md",
+        conventionalCommits: packageConfig.conventionalCommits ?? true,
+        changelogFormat: packageConfig.changelogFormat ?? "conventional",
+        versionStrategy: packageConfig.versionStrategy ?? "independent",
+        bumpStrategy: packageConfig.bumpStrategy ?? "prompt",
+        preReleaseId: packageConfig.preReleaseId,
+        git: {
+          tagPrefix: packageConfig.git?.tagPrefix ?? `${packageName}@`,
+          requireCleanWorkingDirectory:
+            packageConfig.git?.requireCleanWorkingDirectory ?? true,
+          requireUpToDate: packageConfig.git?.requireUpToDate ?? true,
+          commit: packageConfig.git?.commit ?? true,
+          push: packageConfig.git?.push ?? true,
+          commitMessage:
+            packageConfig.git?.commitMessage ??
+            `chore(release): release ${packageName}@\${version}`,
+          tag: packageConfig.git?.tag ?? true,
+          tagMessage: packageConfig.git?.tagMessage,
+          allowedBranches: packageConfig.git?.allowedBranches ?? [
+            "main",
+            "master",
+          ],
+          remote: packageConfig.git?.remote ?? "origin",
+        },
+        hooks: packageConfig.hooks ?? {},
+      };
     }
+
+    // Generate default config if not found
+    const pkgJson = await this.readPackageJson(packagePath);
+    return generateDefaultConfig({
+      packageJson: {
+        name: pkgJson.name ?? packageName,
+        version: pkgJson.version,
+      },
+      packageManager: "yarn",
+      conventionalCommits: true,
+      changelogFormat: "conventional",
+      versionStrategy: "independent",
+      bumpStrategy: "prompt",
+      npm: {
+        publish: true,
+        access: "public",
+      },
+    });
   }
 
   private async readPackageJson(packagePath: string): Promise<PackageJson> {

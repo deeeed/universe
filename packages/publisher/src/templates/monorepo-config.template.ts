@@ -3,6 +3,7 @@ import type {
   PackageManager,
   MonorepoConfig,
   PackageJson,
+  DeepPartial,
 } from "../types/config";
 
 interface GenerateMonorepoConfigOptions {
@@ -22,7 +23,7 @@ export function generateMonorepoConfig(
     throw new Error("Package name is required");
   }
 
-  const defaultConfig: MonorepoConfig = {
+  const defaultConfig: DeepPartial<MonorepoConfig> = {
     packageManager: options.packageManager,
     conventionalCommits: options.conventionalCommits ?? true,
     changelogFormat: options.changelogFormat ?? "conventional",
@@ -60,7 +61,12 @@ export function generateMonorepoConfig(
 
   return `import type { MonorepoConfig } from '@siteed/publisher';
 
-const config: Partial<MonorepoConfig> = ${JSON.stringify(defaultConfig, null, 2)};
+// Use DeepPartial for flexible configuration
+type DeepPartial<T> = T extends object ? {
+    [P in keyof T]?: DeepPartial<T[P]>;
+} : T;
+
+const config: DeepPartial<MonorepoConfig> = ${JSON.stringify(defaultConfig, null, 2)};
 
 export default config;`;
 }
