@@ -21,7 +21,7 @@ const config: DeepPartial<ReleaseConfig> = {
     push: true,
     commitMessage: "chore(release): release @siteed/publisher@${version}",
     tag: true,
-    allowedBranches: ["main", "master"],
+    allowedBranches: ["main", "master", "releaseit"],
     remote: "origin",
   },
   npm: {
