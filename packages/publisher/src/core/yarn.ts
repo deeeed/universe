@@ -249,6 +249,10 @@ export class YarnService implements PackageManagerService {
 
   async pack(context: PackageContext): Promise<string> {
     try {
+      // Log the current working directory and context path
+      this.logger.debug("Current working directory:", process.cwd());
+      this.logger.debug("Context path:", context.path);
+
       const result: ExecaReturnValue<string> = await execa(
         "yarn",
         ["pack", "--json"],
