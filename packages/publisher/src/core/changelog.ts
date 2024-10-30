@@ -1,11 +1,11 @@
 import conventionalChangelog from "conventional-changelog";
 import { promises as fs } from "fs";
 import path from "path";
+import semver from "semver";
 import type { Transform } from "stream";
 import type { PackageContext, ReleaseConfig } from "../types/config";
 import { Logger } from "../utils/logger";
 import { WorkspaceService } from "./workspace";
-import { Stats } from "fs";
 
 interface ChangelogFormat {
   name: string;
@@ -138,6 +138,9 @@ export class ChangelogService {
   }
 
   private getFormat(config: ReleaseConfig): ChangelogFormat {
+    if (!config.changelogFormat) {
+      throw new Error("Changelog format is not defined in the configuration.");
+    }
     return config.changelogFormat === "conventional"
       ? CONVENTIONAL_CHANGELOG_FORMAT
       : KEEP_A_CHANGELOG_FORMAT;
@@ -369,6 +372,12 @@ export class ChangelogService {
     return filteredLinks;
   }
 
+  /**
+   * Validates the changelog for the given package context and configuration.
+   * @param context - The package context.
+   * @param config - The release configuration.
+   * @param monorepoRoot - The root directory of the monorepo.
+   */
   async validate(
     context: PackageContext,
     config: ReleaseConfig,
@@ -388,29 +397,15 @@ export class ChangelogService {
     this.logger.debug(`Validating changelog at: ${changelogPath}`);
 
     try {
-      let stats: Stats;
-      try {
-        stats = await fs.stat(changelogPath);
-        if (!stats || typeof stats.isFile !== "function" || !stats.isFile()) {
-          throw new Error(`${changelogPath} exists but is not a file`);
-        }
-      } catch (error) {
-        throw new Error(`Changelog file not found at: ${changelogPath}`);
+      const stats = await fs.stat(changelogPath);
+      if (!stats.isFile()) {
+        throw new Error(`${changelogPath} exists but is not a file`);
       }
 
-      let content: string;
-      try {
-        content = await fs.readFile(changelogPath, "utf8");
-        this.logger.debug("Raw changelog content:", content);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        throw new Error(
-          `Failed to read changelog at ${changelogPath}: ${errorMessage}`,
-        );
-      }
+      const content = await fs.readFile(changelogPath, "utf8");
+      this.logger.debug("Raw changelog content:", content);
 
-      if (!content || content.trim().length === 0) {
+      if (!content.trim()) {
         throw new Error(`Changelog is empty at ${changelogPath}`);
       }
 
@@ -433,13 +428,6 @@ export class ChangelogService {
       if (format.name === "keep-a-changelog") {
         this.logger.debug("Validating Keep a Changelog format...");
 
-        if (!content.includes("The format is based on [Keep a Changelog]")) {
-          throw new Error(
-            `Invalid changelog format in ${context.name}: missing Keep a Changelog reference`,
-          );
-        }
-
-        // Extract and validate unreleased section with debug info
         const unreleasedSection = this.extractUnreleasedSection(content);
         this.logger.debug("Extracted unreleased section:", unreleasedSection);
 
@@ -455,119 +443,37 @@ export class ChangelogService {
       this.validateVersionEntries(context.name, content);
 
       this.logger.success(`Changelog validation for ${context.name}: OK`);
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage =
-        error instanceof Error ? error.message : String(error);
+        error instanceof Error ? error.message : "Unknown error";
       this.logger.error(
         `Changelog validation failed for ${context.name}: ${errorMessage}`,
       );
-      throw error;
+      throw new Error(`Validation failed: ${errorMessage}`);
     }
   }
 
-  private validateVersionEntries(packageName: string, content: string): void {
-    // Get the unreleased section content
+  /**
+   * Extracts the "Unreleased" section from the changelog content.
+   * @param content - The full changelog content as a string.
+   * @returns The content of the "Unreleased" section.
+   */
+  private extractUnreleasedSection(content: string): string {
     const unreleasedMatch = content.match(
-      /## \[Unreleased\]([^]*?)(?=\n## \[|$)/,
+      /##\s*\[Unreleased\]([^]*?)(?=\n##\s*\[|$)/i,
     );
-    if (!unreleasedMatch) {
-      throw new Error(
-        `Invalid changelog format in ${packageName}: missing Unreleased section`,
-      );
-    }
-
-    const unreleasedContent = unreleasedMatch[1];
-
-    // Check if there are any changes in the unreleased section
-    const changes = unreleasedContent
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith("###"));
-
-    if (changes.length === 0) {
-      throw new Error(
-        `Invalid changelog format in ${packageName}: Unreleased section must contain at least one change`,
-      );
-    }
-
-    // Continue with version validation...
-    const lines: string[] = content.split("\n");
-    const versionRegex =
-      /^## \[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\](?: - (\d{4}-\d{2}-\d{2}))?$/;
-
-    const versions: { version: string; date?: string; line: string }[] = [];
-
-    // Collect all version entries
-    for (const line of lines) {
-      if (line.startsWith("## [") && !line.includes("[Unreleased]")) {
-        const firstLine: string = line.trim();
-        const match = firstLine.match(versionRegex);
-        if (!match) {
-          throw new Error(
-            `Invalid version header format in ${packageName}: "${firstLine}"`,
-          );
-        }
-
-        // If date is present, validate its format
-        if (match[2]) {
-          const date = new Date(match[2]);
-          if (isNaN(date.getTime())) {
-            throw new Error(
-              `Invalid date format in version header in ${packageName}: "${firstLine}"`,
-            );
-          }
-        }
-
-        versions.push({
-          version: match[1],
-          date: match[2],
-          line: firstLine,
-        });
-      }
-    }
-
-    // Add check for duplicate versions
-    const versionSet = new Set<string>();
-    for (const { version } of versions) {
-      if (versionSet.has(version)) {
-        throw new Error(
-          `Duplicate version entry found in ${packageName} for version ${version}`,
-        );
-      }
-      versionSet.add(version);
-    }
-
-    // Check version order (newer versions should come first)
-    for (let i = 1; i < versions.length; i++) {
-      const current = versions[i].version;
-      const previous = versions[i - 1].version;
-
-      if (this.compareVersions(current, previous) > 0) {
-        throw new Error(
-          `Version entries are not in descending order in ${packageName}. Found ${previous} before ${current}`,
-        );
-      }
-    }
+    return unreleasedMatch ? unreleasedMatch[1].trim() : "";
   }
 
+  /**
+   * Compares two semantic version strings.
+   * @param a - The first version string.
+   * @param b - The second version string.
+   * @returns 1 if a > b, -1 if a < b, 0 if equal.
+   */
   private compareVersions(a: string, b: string): number {
-    const partsA = a.split(/[-+]/, 1)[0].split(".").map(Number);
-    const partsB = b.split(/[-+]/, 1)[0].split(".").map(Number);
-
-    for (let i = 0; i < 3; i++) {
-      if (partsA[i] > partsB[i]) return 1;
-      if (partsA[i] < partsB[i]) return -1;
-    }
-
-    // If versions are equal in their numeric parts, compare pre-release tags
-    const preA = a.includes("-") ? a.split("-")[1] : "";
-    const preB = b.includes("-") ? b.split("-")[1] : "";
-
-    if (!preA && preB) return 1;
-    if (preA && !preB) return -1;
-    if (preA < preB) return -1;
-    if (preA > preB) return 1;
-
+    if (semver.gt(a, b)) return 1;
+    if (semver.lt(a, b)) return -1;
     return 0;
   }
 
@@ -664,10 +570,88 @@ export class ChangelogService {
     }
   }
 
-  private extractUnreleasedSection(content: string): string {
+  private validateVersionEntries(packageName: string, content: string): void {
+    // Get the unreleased section content
     const unreleasedMatch = content.match(
       /## \[Unreleased\]([^]*?)(?=\n## \[|$)/,
     );
-    return unreleasedMatch ? unreleasedMatch[1].trim() : "";
+    if (!unreleasedMatch) {
+      throw new Error(
+        `Invalid changelog format in ${packageName}: missing Unreleased section`,
+      );
+    }
+
+    const unreleasedContent = unreleasedMatch[1];
+
+    // Check if there are any changes in the unreleased section
+    const changes = unreleasedContent
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith("###"));
+
+    if (changes.length === 0) {
+      throw new Error(
+        `Invalid changelog format in ${packageName}: Unreleased section must contain at least one change`,
+      );
+    }
+
+    // Continue with version validation...
+    const lines: string[] = content.split("\n");
+    const versionRegex =
+      /^## \[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\](?: - (\d{4}-\d{2}-\d{2}))?$/;
+
+    const versions: { version: string; date?: string; line: string }[] = [];
+
+    // Collect all version entries
+    for (const line of lines) {
+      if (line.startsWith("## [") && !line.includes("[Unreleased]")) {
+        const firstLine: string = line.trim();
+        const match = firstLine.match(versionRegex);
+        if (!match) {
+          throw new Error(
+            `Invalid version header format in ${packageName}: "${firstLine}"`,
+          );
+        }
+
+        // If date is present, validate its format
+        if (match[2]) {
+          const date = new Date(match[2]);
+          if (isNaN(date.getTime())) {
+            throw new Error(
+              `Invalid date format in version header in ${packageName}: "${firstLine}"`,
+            );
+          }
+        }
+
+        versions.push({
+          version: match[1],
+          date: match[2],
+          line: firstLine,
+        });
+      }
+    }
+
+    // Add check for duplicate versions
+    const versionSet = new Set<string>();
+    for (const { version } of versions) {
+      if (versionSet.has(version)) {
+        throw new Error(
+          `Duplicate version entry found in ${packageName} for version ${version}`,
+        );
+      }
+      versionSet.add(version);
+    }
+
+    // Check version order (newer versions should come first)
+    for (let i = 1; i < versions.length; i++) {
+      const current = versions[i].version;
+      const previous = versions[i - 1].version;
+
+      if (this.compareVersions(current, previous) > 0) {
+        throw new Error(
+          `Version entries are not in descending order in ${packageName}. Found ${previous} before ${current}`,
+        );
+      }
+    }
   }
 }
