@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.2]
+
+## [0.3.2] - 2024-10-30
+
+- feat: more changelog validation
+
 - feat: more changelog validation
 
 ## [0.3.1] - 2024-10-30
@@ -23,5 +29,10 @@ All notable changes to this project will be documented in this file.
 
 - Figuring out initial functionalities
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.3.1...HEAD
-[0.3.1]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.3.0...@siteed/publisher@0.3.1
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.2...HEAD
+[0.3.2]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.2...@siteed/publisher@@siteed/publisher@0.3.2
+[0.3.2]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.1...@siteed/publisher@@siteed/publisher@0.3.2
+[0.3.1]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.0...@siteed/publisher@@siteed/publisher@0.3.1
+[0.3.0]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.2.18...@siteed/publisher@@siteed/publisher@0.3.0
+[0.2.18]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.2.17...@siteed/publisher@@siteed/publisher@0.2.18
+[0.2.17]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.1...@siteed/publisher@@siteed/publisher@0.2.17
