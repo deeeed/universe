@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.4]
+
+## [0.4.4] - 2024-10-30
+
+- feat: differentiate dated and non dated version header
+
 - feat: differentiate dated and non dated version header
 
 ## [0.4.3] - 2024-10-30
@@ -72,7 +78,8 @@ All notable changes to this project will be documented in this file.
 
 - Figuring out initial functionalities
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.3...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.4...HEAD
+[0.4.4]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.3...@siteed/publisher@@siteed/publisher@0.4.4
 [0.4.3]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.2...@siteed/publisher@@siteed/publisher@0.4.3
 [0.4.2]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.1...@siteed/publisher@@siteed/publisher@0.4.2
 [0.4.1]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.0...@siteed/publisher@@siteed/publisher@0.4.1
