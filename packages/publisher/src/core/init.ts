@@ -65,8 +65,7 @@ export class InitService {
       let monorepoOptions: MonorepoInteractiveAnswers | undefined;
 
       if (options.interactive) {
-        const isRoot =
-          process.cwd() === (await this.workspaceService.getRootDir());
+        const isRoot = process.cwd() === this.workspaceService.getRootDir();
         if (isRoot) {
           monorepoOptions = await this.promptForMonorepoOptions();
           // Use monorepo answers as defaults for package options
@@ -273,7 +272,7 @@ export class InitService {
     force = false,
     options?: PackageInteractiveAnswers,
   ): Promise<void> {
-    const rootDir = await this.workspaceService.getRootDir();
+    const rootDir = this.workspaceService.getRootDir();
     const absolutePackagePath = path.isAbsolute(packagePath)
       ? packagePath
       : path.join(rootDir, packagePath);
@@ -359,7 +358,7 @@ export class InitService {
     force = false,
     options?: MonorepoInteractiveAnswers,
   ): Promise<void> {
-    const rootDir = await this.workspaceService.getRootDir();
+    const rootDir = this.workspaceService.getRootDir();
     const currentDir = process.cwd();
 
     if (rootDir !== currentDir) {
