@@ -294,9 +294,9 @@ export class ChangelogService {
   }
 
   private insertNewEntry(currentContent: string, newEntry: string): string {
-    // Split content into main sections
-    const [headerSection, ...contentSections] =
-      currentContent.split(/(?=## \[)/);
+    // Split content into lines for easier processing
+    const lines = currentContent.split("\n");
+    const newLines: string[] = [];
 
     // Extract version from new entry
     const versionMatch = newEntry.match(/^## \[([^\]]+)\]/);
@@ -305,31 +305,62 @@ export class ChangelogService {
     }
     const version = versionMatch[1];
 
-    // Escape version string for use in regex
-    const escapedVersion = this.escapeRegExp(version);
+    let isSkippingExistingVersion = false;
+    let hasAddedNewEntry = false;
 
-    // Remove any existing entries for the same version (with or without date)
-    const filteredSections = contentSections.filter(
-      (section) =>
-        !section.match(
-          new RegExp(`## \\[${escapedVersion}\\](?: - \\d{4}-\\d{2}-\\d{2})?`),
-        ) && !section.startsWith("## [Unreleased]"),
+    // Process the changelog line by line
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Always include header section
+      if (i === 0 || line.startsWith("# ")) {
+        newLines.push(line);
+        continue;
+      }
+
+      // Handle Unreleased section
+      if (line.startsWith("## [Unreleased]")) {
+        newLines.push(line);
+        if (!hasAddedNewEntry) {
+          // Add new entry after Unreleased
+          newLines.push("");
+          newLines.push(newEntry.trim());
+          newLines.push("");
+          hasAddedNewEntry = true;
+        }
+        continue;
+      }
+
+      // Check if we're at an existing entry for the same version
+      if (line.startsWith(`## [${version}]`)) {
+        isSkippingExistingVersion = true;
+        continue;
+      }
+
+      // Start of a different version entry
+      if (line.startsWith("## [") && isSkippingExistingVersion) {
+        isSkippingExistingVersion = false;
+      }
+
+      // Add line if we're not skipping
+      if (!isSkippingExistingVersion) {
+        newLines.push(line);
+      }
+    }
+
+    // Ensure proper spacing and line endings
+    return (
+      newLines
+        .filter((line, index, array) => {
+          // Remove consecutive empty lines
+          if (line.trim() === "" && array[index - 1]?.trim() === "") {
+            return false;
+          }
+          return true;
+        })
+        .join("\n")
+        .trim() + "\n"
     );
-
-    // Construct the new content
-    const parts = [
-      headerSection.trim(),
-      "## [Unreleased]",
-      newEntry.trim(),
-      ...filteredSections,
-    ];
-
-    // Join sections with proper spacing
-    return parts.filter((part) => part.trim()).join("\n\n") + "\n";
-  }
-
-  private escapeRegExp(s: string): string {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   private extractUnreleasedSection(content: string): string {
