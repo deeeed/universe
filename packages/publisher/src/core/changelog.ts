@@ -253,106 +253,90 @@ export class ChangelogService {
     config: ReleaseConfig,
   ): string {
     const format = this.getFormat(config);
-    const lines: string[] = currentContent.split("\n");
+    const lines = currentContent.split("\n");
     const newLines: string[] = [];
 
-    let hasAddedNewEntry = false;
-    let skipUntilNextVersion = false;
     let hasUnreleasedSection = false;
+    let currentSection: string | null = null;
 
-    // Helper function to check if a line is a version header
-    const isVersionHeader = (line: string): boolean => {
-      return /^##\s*\[\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?\](?:\s*-\s*\d{4}-\d{2}-\d{2})?$/.test(
-        line,
-      );
-    };
-
-    // Helper function to extract version from header
-    const extractVersion = (line: string): string | null => {
-      const match = line.match(/\[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]/);
-      return match ? match[1] : null;
-    };
-
+    // Process line by line
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const trimmedLine = line.trim();
+      const line = lines[i].trim();
 
-      // Always include header section
-      if (i === 0 || /^#\s+Changelog/i.test(trimmedLine)) {
+      // Keep changelog header
+      if (line.startsWith("# Changelog")) {
         newLines.push(line);
         continue;
       }
 
-      // Handle Unreleased section
-      if (format.unreleasedHeaderPattern.test(trimmedLine)) {
+      // Handle Unreleased section using format pattern
+      if (format.unreleasedHeaderPattern.test(line)) {
         hasUnreleasedSection = true;
         newLines.push(line);
-        if (!hasAddedNewEntry) {
-          newLines.push("");
-          newLines.push(newEntry.trim());
-          newLines.push("");
-          hasAddedNewEntry = true;
-        }
+        newLines.push("");
+        newLines.push(newEntry);
+        currentSection = "unreleased";
         continue;
       }
 
-      // Handle version headers
-      if (isVersionHeader(trimmedLine)) {
-        const headerVersion = extractVersion(trimmedLine);
-        if (headerVersion === version) {
-          skipUntilNextVersion = true;
+      // Check for version headers using format pattern
+      const versionMatch = line.match(format.versionHeaderPattern);
+      if (versionMatch) {
+        // If this is the version we're adding, skip it and its content
+        if (versionMatch[1] === version) {
+          currentSection = "skip";
           continue;
-        } else {
-          skipUntilNextVersion = false;
         }
+        // Otherwise, include this version section
+        currentSection = "other";
+        newLines.push(line);
+        continue;
       }
 
-      // Include line if we're not skipping
-      if (!skipUntilNextVersion) {
+      // Handle content based on current section
+      if (currentSection === "skip") {
+        continue; // Skip all content for the version we're adding
+      } else if (currentSection === "other" || !line.trim()) {
         newLines.push(line);
       }
     }
 
-    // If no Unreleased section was found, create a new changelog
+    // If no Unreleased section exists, create one using format template
     if (!hasUnreleasedSection) {
-      if (newLines.length > 0) newLines.unshift("");
-      newLines.unshift(newEntry.trim());
-      newLines.unshift("");
-      newLines.unshift("## [Unreleased]");
-      if (!newLines[0]?.includes("# Changelog")) {
-        newLines.unshift("");
-        newLines.unshift("# Changelog");
+      const templateLines = format.template.split("\n");
+      const hasHeader = newLines.find((line) => line.startsWith("# Changelog"));
+
+      if (!hasHeader) {
+        // Add template content if no header exists
+        newLines.unshift(...templateLines);
+      } else {
+        // Only add unreleased section if header exists
+        newLines.unshift("## [Unreleased]", "", newEntry);
       }
     }
 
-    // Normalize and clean up the content
-    return this.normalizeContent(
-      newLines
-        .filter((line, index, arr) => {
-          // Remove consecutive empty lines
-          if (line.trim() === "" && arr[index - 1]?.trim() === "") {
-            return false;
-          }
-          return true;
-        })
-        .join("\n"),
-    );
+    // Clean up the content
+    return this.cleanContent(newLines.join("\n"));
   }
 
-  /**
-   * Normalizes the content by removing consecutive empty lines and ensuring proper spacing
-   */
-  private normalizeContent(content: string): string {
-    // Split content into lines, filter out empty lines at start/end
+  private cleanContent(content: string): string {
+    // Split into lines and remove empty lines at start/end
     const lines = content.split("\n").filter((line, index, arr) => {
-      if (index === 0 || index === arr.length - 1) {
-        return line.trim() !== "";
+      // Keep non-empty lines
+      if (line.trim()) return true;
+
+      // Keep single empty lines between sections
+      if (index > 0 && index < arr.length - 1) {
+        const prevLine = arr[index - 1].trim();
+        const nextLine = arr[index + 1].trim();
+        if (prevLine && nextLine) return true;
       }
-      return true;
+
+      return false;
     });
 
-    // Ensure single newline at the end
-    return lines.join("\n").trim() + "\n";
+    // Ensure proper spacing between sections
+    return lines.join("\n") + "\n";
   }
 
   private async getRepositoryUrl(
