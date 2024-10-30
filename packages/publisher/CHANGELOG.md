@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+
+
+## [0.3.5]
+
+- prevent malformed spacing in changelog
+
+
+
 - prevent malformed spacing in changelog
 ## [0.3.4] - 2024-10-30
 - feat: prevent duplicate changelog entries
@@ -33,7 +41,8 @@ All notable changes to this project will be documented in this file.
 
 - Figuring out initial functionalities
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.4...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.5...HEAD
+[0.3.5]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.4...@siteed/publisher@@siteed/publisher@0.3.5
 [0.3.4]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.3...@siteed/publisher@@siteed/publisher@0.3.4
 [0.3.3]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.2...@siteed/publisher@@siteed/publisher@0.3.3
 [0.3.2]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.2...@siteed/publisher@@siteed/publisher@0.3.2
