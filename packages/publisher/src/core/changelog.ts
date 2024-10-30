@@ -208,16 +208,23 @@ export class ChangelogService {
       throw new Error("New version is required to update changelog");
     }
 
+    // Get unreleased content and clear it
+    const unreleasedContent = this.extractUnreleasedSection(currentContent);
+
     const dateStr = new Date().toISOString().split("T")[0];
     const versionEntry = format.formatVersion(context.newVersion, dateStr);
 
-    // Use insertNewEntry to add the new version
+    // Create new version entry with both unreleased and new content
+    const combinedContent = [unreleasedContent, newContent]
+      .filter((content) => content.trim())
+      .join("\n");
+
+    // Insert the new version with combined content
     const updatedContent = this.insertNewEntry(
       currentContent,
-      `${versionEntry}\n\n${newContent}`,
+      `${versionEntry}\n${combinedContent}`,
     );
 
-    // Only update the comparison links for the new version
     const finalContent = await this.updateVersionComparisonLinks(
       updatedContent,
       context,
@@ -289,25 +296,6 @@ export class ChangelogService {
     const [headerSection, ...contentSections] =
       currentContent.split(/(?=## \[)/);
 
-    // Find and remove the Unreleased section
-    const unreleasedIndex = contentSections.findIndex((section) =>
-      section.startsWith("## [Unreleased]"),
-    );
-
-    // Get unreleased content (if any)
-    let unreleasedContent = "";
-    if (unreleasedIndex !== -1) {
-      const unreleasedSection = contentSections[unreleasedIndex];
-      const match = unreleasedSection.match(
-        /## \[Unreleased\]\n\n([\s\S]*?)(?=\n\n##|$)/,
-      );
-      if (match) {
-        unreleasedContent = match[1].trim();
-      }
-      // Remove the Unreleased section from contentSections
-      contentSections.splice(unreleasedIndex, 1);
-    }
-
     // Extract version from new entry
     const versionMatch = newEntry.match(/^## \[([^\]]+)\]/);
     if (!versionMatch) {
@@ -315,25 +303,28 @@ export class ChangelogService {
     }
     const version = versionMatch[1];
 
-    // Remove any existing entries for the same version
+    // Remove any existing entries for the same version and unreleased section
     const filteredSections = contentSections.filter(
-      (section) => !section.startsWith(`## [${version}]`),
+      (section) =>
+        !section.startsWith(`## [${version}]`) &&
+        !section.startsWith("## [Unreleased]"),
     );
 
     // Construct the new content
     const parts = [
       headerSection.trim(),
       "## [Unreleased]",
-      unreleasedContent,
+      "",
       newEntry.trim(),
       ...filteredSections,
     ];
 
-    // Join sections with proper spacing and ensure single newline at end
+    // Join sections with proper spacing
     return (
       parts
-        .filter((part) => part.trim()) // Remove empty sections
-        .join("\n\n") + "\n"
+        .filter((part) => part.trim())
+        .join("\n\n")
+        .replace(/\n{3,}/g, "\n\n") + "\n"
     );
   }
 

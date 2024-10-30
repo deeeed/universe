@@ -6,7 +6,6 @@ All notable changes to this project will be documented in this file.
 
 - another attempt at fixing changelog
 
-## [0.3.7]
 
 ## [0.3.7] - 2024-10-30
 
