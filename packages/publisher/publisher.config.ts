@@ -13,7 +13,7 @@ const config: DeepPartial<ReleaseConfig> = {
     validateBuildArtifacts: true,
   },
   git: {
-    tagPrefix: "@siteed/publisher@",
+    tagPrefix: "",
     requireCleanWorkingDirectory: true,
     requireUpToDate: true,
     requireUpstreamTracking: true,
