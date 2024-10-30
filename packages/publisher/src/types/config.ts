@@ -118,13 +118,17 @@ export type BumpType =
 
 export interface PackageChanges {
   name: string;
+  path: string;
   currentVersion: string;
   suggestedVersion: string;
   dependencies: Array<{
     name: string;
     currentVersion: string;
     newVersion: string;
+    type: "dependencies" | "devDependencies" | "peerDependencies";
   }>;
+  devDependencies: Record<string, string>;
+  peerDependencies: Record<string, string>;
   hasGitChanges: boolean;
   changelogEntries: string[];
 }
@@ -253,6 +257,12 @@ export interface DryRunReport {
 }
 
 export interface DryRunOptions {
+  dryRun: boolean;
+  gitPush?: boolean;
+  publish?: boolean;
+  skipGitCheck?: boolean;
+  skipUpstreamTracking?: boolean;
+  force?: boolean;
   newVersion: string;
   changelog?: string;
   commitHash?: string;

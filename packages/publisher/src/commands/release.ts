@@ -75,40 +75,90 @@ export const releaseCommand = new Command()
       if (commandOptions.showChanges || commandOptions.dryRun) {
         const changes = await releaseService.analyzeChanges(packagesToAnalyze);
 
-        logger.info("\nPackages to be released:");
         for (const pkg of changes) {
-          logger.info(`\n📦 ${pkg.name}`);
-          logger.info(`  Current version: ${pkg.currentVersion}`);
-          logger.info(`  Suggested version: ${pkg.suggestedVersion}`);
+          if (commandOptions.dryRun) {
+            // Get the dry run report
+            const dryRunReport = await releaseService.createDryRunPreview(pkg, {
+              dryRun: true,
+              gitPush: commandOptions.gitPush,
+              publish: commandOptions.npmPublish,
+              skipGitCheck: !commandOptions.gitCheck,
+              skipUpstreamTracking: commandOptions.skipUpstreamTracking,
+              force: commandOptions.force,
+              newVersion: pkg.suggestedVersion,
+            });
 
-          // Preview changelog changes
-          logger.info("\n  📝 Changelog Preview:");
-          logger.info(chalk.gray("  ----------------------------------------"));
-          const changelogContent = await releaseService.previewChangelog(
-            pkg.name,
-          );
-          logger.info(
-            changelogContent
-              .split("\n")
-              .map((line) => `  ${line}`)
-              .join("\n"),
-          );
-          logger.info(chalk.gray("  ----------------------------------------"));
+            // Display the full dry run report
+            logger.info("\n📦 Dry Run Report");
+            logger.info("━".repeat(50));
+            logger.info(`Package: ${dryRunReport.packageName}`);
+            logger.info(
+              `Version: ${dryRunReport.version} → ${dryRunReport.newVersion}`,
+            );
+            logger.info(`Git Tag: ${dryRunReport.git.tag}`);
+            logger.info(
+              `Git Push: ${dryRunReport.git.willPush ? "Yes" : "No"}`,
+            );
 
-          if (pkg.hasGitChanges) {
-            logger.info("\n  📝 Git Changes:");
-            const gitChanges = await releaseService.getGitChanges(pkg.name);
-            for (const commit of gitChanges) {
-              logger.info(`    - ${commit.message}`);
-            }
-          }
-
-          if (pkg.dependencies.length > 0) {
-            logger.info("\n  🔄 Dependency Updates:");
-            for (const dep of pkg.dependencies) {
+            if (dryRunReport.npm) {
               logger.info(
-                `    - ${dep.name}: ${dep.currentVersion} -> ${dep.newVersion}`,
+                `NPM Publish: ${dryRunReport.npm.willPublish ? "Yes" : "No"}`,
               );
+            }
+
+            if (
+              dryRunReport.dependencies &&
+              dryRunReport.dependencies.length > 0
+            ) {
+              logger.info("\nDependency Updates:");
+              for (const dep of dryRunReport.dependencies) {
+                logger.info(
+                  `  ${dep.name}: ${dep.currentVersion} → ${dep.newVersion} (${dep.type})`,
+                );
+              }
+            }
+
+            logger.info("\n📝 Changelog Preview:");
+            logger.info("━".repeat(50));
+            logger.info(dryRunReport.changelog);
+          } else {
+            logger.info(`\n📦 ${pkg.name}`);
+            logger.info(`  Current version: ${pkg.currentVersion}`);
+            logger.info(`  Suggested version: ${pkg.suggestedVersion}`);
+
+            // Preview changelog changes
+            logger.info("\n  📝 Changelog Preview:");
+            logger.info(
+              chalk.gray("  ----------------------------------------"),
+            );
+            const changelogContent = await releaseService.previewChangelog(
+              pkg.name,
+            );
+            logger.info(
+              changelogContent
+                .split("\n")
+                .map((line) => `  ${line}`)
+                .join("\n"),
+            );
+            logger.info(
+              chalk.gray("  ----------------------------------------"),
+            );
+
+            if (pkg.hasGitChanges) {
+              logger.info("\n  📝 Git Changes:");
+              const gitChanges = await releaseService.getGitChanges(pkg.name);
+              for (const commit of gitChanges) {
+                logger.info(`    - ${commit.message}`);
+              }
+            }
+
+            if (pkg.dependencies.length > 0) {
+              logger.info("\n  🔄 Dependency Updates:");
+              for (const dep of pkg.dependencies) {
+                logger.info(
+                  `    - ${dep.name}: ${dep.currentVersion} -> ${dep.newVersion}`,
+                );
+              }
             }
           }
         }

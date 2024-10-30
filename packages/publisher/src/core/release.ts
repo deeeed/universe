@@ -169,48 +169,18 @@ export class ReleaseService {
 
       if (options.dryRun) {
         this.logger.info("Generating dry run report...");
+        const newVersion =
+          context.newVersion ||
+          (await this.determineVersion(context, packageConfig));
         const dryRunReport = await this.createDryRunReport(
           context,
           packageConfig,
           {
-            newVersion:
-              context.newVersion ||
-              (await this.determineVersion(context, packageConfig)),
-            changelog: changelogEntry,
-            commitHash:
-              previousCommitHash || (await this.git.getCurrentCommitHash()),
-            config: packageConfig,
+            dryRun: true,
+            ...options,
+            newVersion,
           },
         );
-
-        // Display the dry run report
-        this.logger.info("\n📦 Dry Run Report");
-        this.logger.info("━".repeat(50));
-        this.logger.info(`Package: ${dryRunReport.packageName}`);
-        this.logger.info(
-          `Version: ${dryRunReport.currentVersion} → ${dryRunReport.newVersion}`,
-        );
-        this.logger.info(`Git Tag: ${dryRunReport.git.tag}`);
-        this.logger.info(
-          `Git Push: ${dryRunReport.git.willPush ? "Yes" : "No"}`,
-        );
-        this.logger.info(
-          `NPM Publish: ${dryRunReport.npm.willPublish ? "Yes" : "No"}`,
-        );
-
-        if (dryRunReport.dependencies.length > 0) {
-          this.logger.info("\nDependency Updates:");
-          for (const dep of dryRunReport.dependencies) {
-            this.logger.info(
-              `  ${dep.name}: ${dep.currentVersion} → ${dep.newVersion} (${dep.type})`,
-            );
-          }
-        }
-
-        this.logger.info("\n📝 Changelog Preview:");
-        this.logger.info("━".repeat(50));
-        this.logger.info(dryRunReport.changelog);
-
         return dryRunReport;
       }
 
@@ -458,7 +428,7 @@ export class ReleaseService {
       packageName: context.name,
       currentVersion: context.currentVersion,
       newVersion: options.newVersion,
-      version: options.newVersion,
+      version: context.currentVersion,
       changelog: changelogContent,
       git: {
         tag: tagName,
@@ -499,9 +469,12 @@ export class ReleaseService {
 
       changes.push({
         name: pkg.name,
+        path: pkg.path,
         currentVersion: pkg.currentVersion,
         suggestedVersion,
         dependencies: dependencyUpdates,
+        devDependencies: pkg.devDependencies || {},
+        peerDependencies: pkg.peerDependencies || {},
         hasGitChanges: gitChanges,
         changelogEntries,
       });
@@ -530,21 +503,41 @@ export class ReleaseService {
     context: PackageContext,
     dependencies: string[],
   ): Promise<
-    Array<{ name: string; currentVersion: string; newVersion: string }>
+    Array<{
+      name: string;
+      currentVersion: string;
+      newVersion: string;
+      type: "dependencies" | "devDependencies" | "peerDependencies";
+    }>
   > {
     const updates = [];
     for (const dep of dependencies) {
-      const currentVersion =
-        context.dependencies?.[dep] ||
-        context.devDependencies?.[dep] ||
-        context.peerDependencies?.[dep];
-      if (currentVersion) {
+      let depType:
+        | "dependencies"
+        | "devDependencies"
+        | "peerDependencies"
+        | undefined;
+      let currentVersion: string | undefined;
+
+      if (context.dependencies?.[dep]) {
+        depType = "dependencies";
+        currentVersion = context.dependencies[dep];
+      } else if (context.devDependencies?.[dep]) {
+        depType = "devDependencies";
+        currentVersion = context.devDependencies[dep];
+      } else if (context.peerDependencies?.[dep]) {
+        depType = "peerDependencies";
+        currentVersion = context.peerDependencies[dep];
+      }
+
+      if (currentVersion && depType) {
         const latestVersion = await this.packageManager.getLatestVersion(dep);
         if (latestVersion !== currentVersion) {
           updates.push({
             name: dep,
             currentVersion,
             newVersion: latestVersion,
+            type: depType,
           });
         }
       }
@@ -816,5 +809,36 @@ export class ReleaseService {
     config: ReleaseConfig,
   ): Promise<void> {
     await this.version.bump(context, config);
+  }
+
+  public async createDryRunPreview(
+    pkg: PackageChanges,
+    options: DryRunOptions,
+  ): Promise<DryRunReport> {
+    const context: PackageContext = {
+      name: pkg.name,
+      path: pkg.path,
+      currentVersion: pkg.currentVersion,
+      newVersion: pkg.suggestedVersion,
+      dependencies: pkg.dependencies.reduce(
+        (acc, dep) => {
+          if (dep.type === "dependencies") {
+            acc[dep.name] = dep.currentVersion;
+          }
+          return acc;
+        },
+        {} as Record<string, string>,
+      ),
+      devDependencies: pkg.devDependencies,
+      peerDependencies: pkg.peerDependencies,
+    };
+
+    const config = await this.getEffectiveConfig(pkg.name);
+
+    return this.createDryRunReport(context, config, {
+      ...options,
+      newVersion: pkg.suggestedVersion,
+      changelog: await this.previewChangelog(pkg.name),
+    });
   }
 }
