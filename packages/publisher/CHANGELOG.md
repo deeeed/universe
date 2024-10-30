@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.4]
+## [0.3.4] - 2024-10-30
+- feat: prevent duplicate changelog entries
+
 - feat: prevent duplicate changelog entries
 
 ## [0.3.3] - 2024-10-30
@@ -31,7 +35,8 @@ All notable changes to this project will be documented in this file.
 
 - Figuring out initial functionalities
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.3...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.4...HEAD
+[0.3.4]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.3...@siteed/publisher@@siteed/publisher@0.3.4
 [0.3.3]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.2...@siteed/publisher@@siteed/publisher@0.3.3
 [0.3.2]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.2...@siteed/publisher@@siteed/publisher@0.3.2
 [0.3.2]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.1...@siteed/publisher@@siteed/publisher@0.3.2
