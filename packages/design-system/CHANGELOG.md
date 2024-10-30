@@ -24,6 +24,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/design-system-v0.29.4...HEAD
 [unreleased]: https://github.com/deeeed/universe/compare/design-system-v0.30.0...HEAD
 [0.30.0]: https://github.com/deeeed/universe/compare/design-system-v0.29.4...design-system-v0.30.0

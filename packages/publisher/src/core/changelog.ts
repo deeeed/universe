@@ -252,6 +252,16 @@ export class ChangelogService {
     ].join("\n");
   }
 
+  private extractUnreleasedSection(content: string): string {
+    const unreleasedMatch = content.match(
+      /## \[Unreleased\]([^]*?)(?=\n## \[|$)/,
+    );
+    if (!unreleasedMatch || !unreleasedMatch[1]) {
+      return "";
+    }
+    return unreleasedMatch[1].trim();
+  }
+
   async validate(
     context: PackageContext,
     config: ReleaseConfig,
@@ -271,7 +281,6 @@ export class ChangelogService {
     this.logger.debug(`Validating changelog at: ${changelogPath}`);
 
     try {
-      // Fix Stats type and isFile check
       let stats: Stats;
       try {
         stats = await fs.stat(changelogPath);
@@ -282,10 +291,10 @@ export class ChangelogService {
         throw new Error(`Changelog file not found at: ${changelogPath}`);
       }
 
-      // Fix error type casting
       let content: string;
       try {
         content = await fs.readFile(changelogPath, "utf8");
+        this.logger.debug("Raw changelog content:", content);
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
@@ -298,40 +307,44 @@ export class ChangelogService {
         throw new Error(`Changelog is empty at ${changelogPath}`);
       }
 
-      // Basic validation
+      // Basic validation with debug logs
+      this.logger.debug("Checking for header...");
       if (!content.includes("# Changelog")) {
         throw new Error(
           `Invalid changelog format in ${context.name}: missing header`,
         );
       }
 
+      this.logger.debug("Checking for Unreleased section...");
       if (!content.includes("## [Unreleased]")) {
         throw new Error(
           `Invalid changelog format in ${context.name}: missing Unreleased section`,
         );
       }
 
-      // Format-specific validation
+      // Format-specific validation with improved debugging
       if (format.name === "keep-a-changelog") {
+        this.logger.debug("Validating Keep a Changelog format...");
+
         if (!content.includes("The format is based on [Keep a Changelog]")) {
           throw new Error(
             `Invalid changelog format in ${context.name}: missing Keep a Changelog reference`,
           );
         }
 
-        // Validate that all required section headers exist in the unreleased section
-        const unreleasedSection =
-          content.split("## [Unreleased]")[1]?.split("## ")[0] || "";
-        for (const header of format.sectionHeaders) {
-          if (!unreleasedSection.includes(header)) {
-            throw new Error(
-              `Invalid changelog format in ${context.name}: missing required section ${header} in Unreleased`,
-            );
-          }
-        }
+        // Extract and validate unreleased section with debug info
+        const unreleasedSection = this.extractUnreleasedSection(content);
+        this.logger.debug("Extracted unreleased section:", unreleasedSection);
+
+        this.validateUnreleasedSections(
+          context.name,
+          unreleasedSection,
+          format,
+        );
       }
 
-      // Validate version entries
+      // Validate version entries with debug info
+      this.logger.debug("Validating version entries...");
       this.validateVersionEntries(context.name, content);
 
       this.logger.success(`Changelog validation for ${context.name}: OK`);
@@ -346,6 +359,38 @@ export class ChangelogService {
   }
 
   private validateVersionEntries(packageName: string, content: string): void {
+    // Get the unreleased section content
+    const unreleasedMatch = content.match(
+      /## \[Unreleased\]([^]*?)(?=\n## \[|$)/,
+    );
+    if (!unreleasedMatch) {
+      throw new Error(
+        `Invalid changelog format in ${packageName}: missing Unreleased section`,
+      );
+    }
+
+    const unreleasedContent = unreleasedMatch[1];
+    // Check if at least one valid section exists
+    const validSections = [
+      "### Added",
+      "### Changed",
+      "### Deprecated",
+      "### Removed",
+      "### Fixed",
+      "### Security",
+    ];
+
+    const hasValidSection = validSections.some((section) =>
+      unreleasedContent.toLowerCase().includes(section.toLowerCase()),
+    );
+
+    if (!hasValidSection) {
+      throw new Error(
+        `Invalid changelog format in ${packageName}: at least one valid section (Added, Changed, Deprecated, Removed, Fixed, Security) is required in Unreleased`,
+      );
+    }
+
+    // Continue with version validation...
     const lines: string[] = content.split("\n");
     const versionRegex =
       /^## \[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\](?: - (\d{4}-\d{2}-\d{2}))?$/;
@@ -502,6 +547,38 @@ export class ChangelogService {
       return versionMatch ? versionMatch[1] : null;
     } catch {
       return null;
+    }
+  }
+
+  private validateUnreleasedSections(
+    packageName: string,
+    unreleasedSection: string,
+    format: ChangelogFormat,
+  ): void {
+    if (format.name === "keep-a-changelog") {
+      this.logger.debug("Validating Keep a Changelog format...");
+
+      const foundHeaders = unreleasedSection
+        .split("\n")
+        .filter((line) => line.startsWith("###"))
+        .map((line) => line.trim());
+
+      this.logger.debug("Found section headers:", foundHeaders);
+
+      // Only validate that if a section exists, it matches one of the allowed headers
+      if (foundHeaders.length > 0) {
+        for (const header of foundHeaders) {
+          if (!format.sectionHeaders.includes(header)) {
+            throw new Error(
+              `Invalid changelog format in ${packageName}: invalid section header "${header}" in Unreleased. Must be one of: ${format.sectionHeaders.join(", ")}`,
+            );
+          }
+        }
+      } else {
+        throw new Error(
+          `Invalid changelog format in ${packageName}: Unreleased section must contain at least one valid section header`,
+        );
+      }
     }
   }
 }
