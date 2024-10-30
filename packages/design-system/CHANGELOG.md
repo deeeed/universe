@@ -1,19 +1,5 @@
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [Unreleased]
 
-### Added
-- Integrate @siteed/publisher package
-
-## [0.30.0] - 2024-10-28
-
-### Changed
-- drawer styling to match darkMode automatically
 
 ## [0.29.4] - 2024-10-28
 
@@ -24,5 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/design-system-v0.30.0...HEAD
+
+
+
+## [0.30.0] - 2024-10-28
+
+### Changed
+- drawer styling to match darkMode automatically
+
+
+## [0.30.1] - 2024-10-30
+- Integrate @siteed/publisher package
+
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@@siteed/design-system@0.30.1...HEAD
+[0.30.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@@siteed/design-system@0.30.0...@siteed/design-system@@siteed/design-system@0.30.1
+[0.30.0]: https://github.com/deeeed/universe/compare/design-system-v0.29.4...design-system-v0.30.0
 [0.30.0]: https://github.com/deeeed/universe/compare/design-system-v0.29.4...design-system-v0.30.0
