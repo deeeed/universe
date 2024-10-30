@@ -1,10 +1,11 @@
 import conventionalChangelog from "conventional-changelog";
-import { promises as fs, Stats } from "fs";
+import { promises as fs } from "fs";
 import path from "path";
 import type { Transform } from "stream";
 import type { PackageContext, ReleaseConfig } from "../types/config";
 import { Logger } from "../utils/logger";
 import { WorkspaceService } from "./workspace";
+import { Stats } from "fs";
 
 interface ChangelogFormat {
   name: string;
@@ -56,7 +57,7 @@ All notable changes to this project will be documented in this file.
 `,
   sectionHeaders: [],
   versionRegex: /^\[([\d.]+(?:-[a-zA-Z0-9.]+)?)\]$/,
-  formatVersion: (version: string) => `## [${version}]`,
+  formatVersion: (version: string, _date: string) => `## [${version}]`,
   formatLinks: (versions, config) => [
     `[unreleased]: ${config.repoUrl}/compare/${config.tagPrefix}${versions.current}...HEAD`,
     `[${versions.current}]: ${config.repoUrl}/compare/${config.tagPrefix}${versions.previous}...${config.tagPrefix}${versions.current}`,
@@ -208,25 +209,19 @@ export class ChangelogService {
       throw new Error("New version is required to update changelog");
     }
 
-    // Get unreleased content and clear it
-    const unreleasedContent = this.extractUnreleasedSection(currentContent);
-
+    // Generate the new entry
     const dateStr = new Date().toISOString().split("T")[0];
-    // Always create version entry with date
     const versionEntry = format.formatVersion(context.newVersion, dateStr);
+    const newEntry = [versionEntry, newContent].join("\n\n");
 
-    // Create new version entry with both unreleased and new content
-    const combinedContent = [unreleasedContent, newContent]
-      .filter((content) => content.trim())
-      .map((content) => content.trim())
-      .join("\n");
-
-    // Insert the new version with combined content
+    // Insert the new entry into the changelog
     const updatedContent = this.insertNewEntry(
       currentContent,
-      `${versionEntry}\n\n${combinedContent}`,
+      newEntry,
+      context.newVersion,
     );
 
+    // Update the version comparison links
     const finalContent = await this.updateVersionComparisonLinks(
       updatedContent,
       context,
@@ -236,81 +231,21 @@ export class ChangelogService {
     await fs.writeFile(changelogPath, finalContent);
   }
 
-  // New method to only update links for the current version
-  private async updateVersionComparisonLinks(
-    content: string,
-    context: PackageContext,
-    config: ReleaseConfig,
-  ): Promise<string> {
-    if (!context.newVersion) {
-      throw new Error("New version is required to update changelog");
-    }
-
-    // Get repository URL (reusing existing logic)
-    let repoUrl: string;
-    try {
-      const pkgJson = await this.workspaceService.readPackageJson(context.path);
-      repoUrl =
-        (typeof pkgJson.repository === "string"
-          ? pkgJson.repository
-          : pkgJson.repository?.url) ??
-        config.repository?.url ??
-        "https://github.com/deeeed/universe";
-
-      repoUrl = repoUrl.replace(/^git\+/, "").replace(/\.git$/, "");
-    } catch (error) {
-      this.logger.debug(
-        "Error reading package.json for repository URL:",
-        error,
-      );
-      repoUrl = "https://github.com/deeeed/universe";
-    }
-
-    const tagPrefix = config.git?.tagPrefix ?? "";
-    const packagePrefix = context.name ? `${context.name}@` : "";
-
-    // Update only the unreleased and current version links
-    const currentVersionLinks = [
-      `[unreleased]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.newVersion}...HEAD`,
-      `[${context.newVersion}]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.currentVersion}...${tagPrefix}${packagePrefix}${context.newVersion}`,
-    ];
-
-    // Keep existing links except for unreleased and current version
-    const existingLinks =
-      content
-        .match(/\[.+\]: .+$/gm)
-        ?.filter(
-          (link) =>
-            !link.startsWith("[unreleased]:") &&
-            !link.startsWith(`[${context.newVersion}]:`),
-        ) || [];
-
-    // Combine new and existing links
-    const allLinks = [...currentVersionLinks, ...existingLinks];
-
-    // Replace or append links section
-    const contentWithoutLinks = content.replace(/\[.+\]: .+$/gm, "").trim();
-    return `${contentWithoutLinks}\n\n${allLinks.join("\n")}\n`;
-  }
-
-  private insertNewEntry(currentContent: string, newEntry: string): string {
+  private insertNewEntry(
+    currentContent: string,
+    newEntry: string,
+    version: string,
+  ): string {
     // Split content into lines for easier processing
-    const lines = currentContent.split("\n");
+    const lines: string[] = currentContent.split("\n");
     const newLines: string[] = [];
-
-    // Extract version from new entry
-    const versionMatch = newEntry.match(/^## \[([^\]]+)\]/);
-    if (!versionMatch) {
-      throw new Error("Invalid new entry format: missing version header");
-    }
-    const version = versionMatch[1];
 
     let isSkippingExistingVersion = false;
     let hasAddedNewEntry = false;
 
     // Process the changelog line by line
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+      const line: string = lines[i];
 
       // Always include header section
       if (i === 0 || line.startsWith("# ")) {
@@ -349,7 +284,7 @@ export class ChangelogService {
     }
 
     // Ensure proper spacing and line endings
-    return (
+    const result =
       newLines
         .filter((line, index, array) => {
           // Remove consecutive empty lines
@@ -359,18 +294,79 @@ export class ChangelogService {
           return true;
         })
         .join("\n")
-        .trim() + "\n"
-    );
+        .trim() + "\n";
+
+    return result;
   }
 
-  private extractUnreleasedSection(content: string): string {
-    const unreleasedMatch = content.match(
-      /## \[Unreleased\]([^]*?)(?=\n## \[|$)/,
-    );
-    if (!unreleasedMatch || !unreleasedMatch[1]) {
-      return "";
+  private async updateVersionComparisonLinks(
+    content: string,
+    context: PackageContext,
+    config: ReleaseConfig,
+  ): Promise<string> {
+    if (!context.newVersion) {
+      throw new Error("New version is required to update changelog");
     }
-    return unreleasedMatch[1].trim();
+
+    // Get repository URL
+    let repoUrl: string;
+    try {
+      const pkgJson = await this.workspaceService.readPackageJson(context.path);
+      repoUrl =
+        (typeof pkgJson.repository === "string"
+          ? pkgJson.repository
+          : pkgJson.repository?.url) ??
+        config.repository?.url ??
+        "https://github.com/deeeed/universe";
+
+      repoUrl = repoUrl.replace(/^git\+/, "").replace(/\.git$/, "");
+    } catch (error) {
+      this.logger.debug(
+        "Error reading package.json for repository URL:",
+        error,
+      );
+      repoUrl = "https://github.com/deeeed/universe";
+    }
+
+    const tagPrefix = config.git?.tagPrefix ?? "";
+    const packagePrefix = context.name ? `${context.name}@` : "";
+
+    // Update only the unreleased and current version links
+    const currentVersionLinks: string[] = [
+      `[unreleased]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.newVersion}...HEAD`,
+      `[${context.newVersion}]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.currentVersion}...${tagPrefix}${packagePrefix}${context.newVersion}`,
+    ];
+
+    // Keep existing links except for unreleased and current version
+    const existingLinks: string[] = this.extractExistingLinks(content, context);
+
+    // Combine new and existing links
+    const allLinks: string[] = [...currentVersionLinks, ...existingLinks];
+
+    // Replace or append links section
+    const contentWithoutLinks: string = content
+      .replace(/\[.+\]: .+$/gm, "")
+      .trim();
+    return `${contentWithoutLinks}\n\n${allLinks.join("\n")}\n`;
+  }
+
+  private extractExistingLinks(
+    content: string,
+    context: PackageContext,
+  ): string[] {
+    const linkPattern = /\[.+\]: .+$/gm;
+    const allLinks = content.match(linkPattern) || [];
+    const filteredLinks = allLinks.filter((link) => {
+      // Exclude unreleased and current version links
+      if (
+        link.startsWith("[unreleased]:") ||
+        link.startsWith(`[${context.newVersion}]:`)
+      ) {
+        return false;
+      }
+      return true;
+    });
+    return filteredLinks;
   }
 
   async validate(
@@ -395,7 +391,7 @@ export class ChangelogService {
       let stats: Stats;
       try {
         stats = await fs.stat(changelogPath);
-        if (!stats.isFile()) {
+        if (!stats || typeof stats.isFile !== "function" || !stats.isFile()) {
           throw new Error(`${changelogPath} exists but is not a file`);
         }
       } catch (error) {
@@ -666,5 +662,12 @@ export class ChangelogService {
         );
       }
     }
+  }
+
+  private extractUnreleasedSection(content: string): string {
+    const unreleasedMatch = content.match(
+      /## \[Unreleased\]([^]*?)(?=\n## \[|$)/,
+    );
+    return unreleasedMatch ? unreleasedMatch[1].trim() : "";
   }
 }
