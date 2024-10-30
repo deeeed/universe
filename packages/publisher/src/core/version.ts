@@ -1,3 +1,4 @@
+import execa from "execa";
 import type { Options as ExecaOptions, ExecaReturnValue } from "execa";
 import * as semver from "semver";
 import type {
@@ -22,8 +23,6 @@ export class VersionService {
     args: string[],
     options: ExecaOptions,
   ): Promise<ExecaReturnValue> {
-    const execaDefault = await import("execa");
-    const execa = execaDefault.default;
     return execa(command, args, options);
   }
 
