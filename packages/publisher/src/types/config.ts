@@ -227,3 +227,34 @@ export interface DependencyValidationReport {
     externalUpdates: number;
   };
 }
+
+export interface DryRunReport {
+  packageName: string;
+  currentVersion: string;
+  newVersion: string;
+  version: string;
+  changelog: string;
+  git: {
+    tag: string;
+    commit: string;
+    willPush: boolean;
+  };
+  npm: {
+    willPublish: boolean;
+    registry: string;
+    tag: string;
+  };
+  dependencies: Array<{
+    name: string;
+    currentVersion: string;
+    newVersion: string;
+    type: "dependencies" | "devDependencies" | "peerDependencies";
+  }>;
+}
+
+export interface DryRunOptions {
+  newVersion: string;
+  changelog?: string;
+  commitHash?: string;
+  config?: ReleaseConfig;
+}

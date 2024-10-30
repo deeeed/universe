@@ -1,6 +1,8 @@
 import fs from "fs/promises";
 import path from "path";
 import type {
+  DryRunOptions,
+  DryRunReport,
   MonorepoConfig,
   PackageChanges,
   PackageContext,
@@ -19,12 +21,6 @@ import {
 } from "./package-manager";
 import { VersionService } from "./version";
 import { WorkspaceService } from "./workspace";
-
-export interface DryRunOptions {
-  newVersion: string;
-  changelog?: string;
-  commitHash?: string;
-}
 
 export class ReleaseService {
   private git: GitService;
@@ -70,7 +66,7 @@ export class ReleaseService {
       skipGitCheck?: boolean;
       skipUpstreamTracking?: boolean;
     },
-  ): Promise<ReleaseResult[]> {
+  ): Promise<Array<ReleaseResult | DryRunReport>> {
     this.logger.info("Starting release process...");
 
     if (options.checkIntegrity) {
@@ -99,7 +95,7 @@ export class ReleaseService {
       return [];
     }
 
-    const results: ReleaseResult[] = [];
+    const results: Array<ReleaseResult | DryRunReport> = [];
     for (const pkg of packages) {
       this.logger.info(`\nProcessing package ${pkg.name}...`);
       const result = await this.releasePackage(pkg, {
@@ -116,7 +112,7 @@ export class ReleaseService {
     dryRun?: boolean;
     gitPush?: boolean;
     npmPublish?: boolean;
-  }): Promise<ReleaseResult[]> {
+  }): Promise<Array<ReleaseResult | DryRunReport>> {
     const changedPackages = await this.workspace.getChangedPackages();
     return this.releasePackages(
       changedPackages.map((p) => p.name),
@@ -135,7 +131,7 @@ export class ReleaseService {
       checkIntegrity?: boolean;
       force?: boolean;
     },
-  ): Promise<ReleaseResult> {
+  ): Promise<ReleaseResult | DryRunReport> {
     let tempFiles: { path: string; content: string }[] = [];
     let previousCommitHash: string | null = null;
     let tagCreated = false;
@@ -172,16 +168,50 @@ export class ReleaseService {
       }
 
       if (options.dryRun) {
-        this.logger.info("Dry run completed");
-        const dryRunOptions = {
-          newVersion:
-            context.newVersion ||
-            (await this.determineVersion(context, packageConfig)),
-          changelog: changelogEntry,
-          commitHash:
-            previousCommitHash || (await this.git.getCurrentCommitHash()),
-        };
-        return this.createDryRunResult(context, dryRunOptions);
+        this.logger.info("Generating dry run report...");
+        const dryRunReport = await this.createDryRunReport(
+          context,
+          packageConfig,
+          {
+            newVersion:
+              context.newVersion ||
+              (await this.determineVersion(context, packageConfig)),
+            changelog: changelogEntry,
+            commitHash:
+              previousCommitHash || (await this.git.getCurrentCommitHash()),
+            config: packageConfig,
+          },
+        );
+
+        // Display the dry run report
+        this.logger.info("\n📦 Dry Run Report");
+        this.logger.info("━".repeat(50));
+        this.logger.info(`Package: ${dryRunReport.packageName}`);
+        this.logger.info(
+          `Version: ${dryRunReport.currentVersion} → ${dryRunReport.newVersion}`,
+        );
+        this.logger.info(`Git Tag: ${dryRunReport.git.tag}`);
+        this.logger.info(
+          `Git Push: ${dryRunReport.git.willPush ? "Yes" : "No"}`,
+        );
+        this.logger.info(
+          `NPM Publish: ${dryRunReport.npm.willPublish ? "Yes" : "No"}`,
+        );
+
+        if (dryRunReport.dependencies.length > 0) {
+          this.logger.info("\nDependency Updates:");
+          for (const dep of dryRunReport.dependencies) {
+            this.logger.info(
+              `  ${dep.name}: ${dep.currentVersion} → ${dep.newVersion} (${dep.type})`,
+            );
+          }
+        }
+
+        this.logger.info("\n📝 Changelog Preview:");
+        this.logger.info("━".repeat(50));
+        this.logger.info(dryRunReport.changelog);
+
+        return dryRunReport;
       }
 
       tempFiles = await this.backupFiles(context, packageConfig);
@@ -378,24 +408,69 @@ export class ReleaseService {
     return new RegExp(`^${regexPattern}$`).test(packageName);
   }
 
-  private async createDryRunResult(
+  private async createDryRunReport(
     context: PackageContext,
+    config: ReleaseConfig,
     options: DryRunOptions,
-  ): Promise<ReleaseResult> {
+  ): Promise<DryRunReport> {
     const tagName = this.git.getTagName(context.name, options.newVersion);
+    const currentCommit = await this.git.getCurrentCommitHash();
 
-    // Generate the changelog content that would be created
+    // Generate the changelog content
     const changelogContent =
       options.changelog || (await this.previewChangelog(context.name));
 
+    // Get dependency updates
+    const dependencyUpdates: Array<{
+      name: string;
+      currentVersion: string;
+      newVersion: string;
+      type: "dependencies" | "devDependencies" | "peerDependencies";
+    }> = [];
+
+    // Process each dependency type
+    const dependencyTypes = {
+      dependencies: context.dependencies,
+      devDependencies: context.devDependencies,
+      peerDependencies: context.peerDependencies,
+    };
+
+    for (const [type, deps] of Object.entries(dependencyTypes)) {
+      if (deps) {
+        for (const [name, currentVersion] of Object.entries(deps)) {
+          const update = await this.packageManager.getLatestVersion(name);
+          if (update && update !== currentVersion) {
+            dependencyUpdates.push({
+              name,
+              currentVersion,
+              newVersion: update,
+              type: type as
+                | "dependencies"
+                | "devDependencies"
+                | "peerDependencies",
+            });
+          }
+        }
+      }
+    }
+
     return {
       packageName: context.name,
+      currentVersion: context.currentVersion,
+      newVersion: options.newVersion,
       version: options.newVersion,
       changelog: changelogContent,
       git: {
         tag: tagName,
-        commit: options.commitHash || (await this.git.getCurrentCommitHash()),
+        commit: currentCommit,
+        willPush: config.git.push,
       },
+      npm: {
+        willPublish: config.npm.publish,
+        registry: config.npm.registry,
+        tag: config.npm.tag,
+      },
+      dependencies: dependencyUpdates,
     };
   }
 
