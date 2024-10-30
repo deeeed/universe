@@ -370,23 +370,16 @@ export class ChangelogService {
     }
 
     const unreleasedContent = unreleasedMatch[1];
-    // Check if at least one valid section exists
-    const validSections = [
-      "### Added",
-      "### Changed",
-      "### Deprecated",
-      "### Removed",
-      "### Fixed",
-      "### Security",
-    ];
 
-    const hasValidSection = validSections.some((section) =>
-      unreleasedContent.toLowerCase().includes(section.toLowerCase()),
-    );
+    // Check if there are any changes in the unreleased section
+    const changes = unreleasedContent
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith("###"));
 
-    if (!hasValidSection) {
+    if (changes.length === 0) {
       throw new Error(
-        `Invalid changelog format in ${packageName}: at least one valid section (Added, Changed, Deprecated, Removed, Fixed, Security) is required in Unreleased`,
+        `Invalid changelog format in ${packageName}: Unreleased section must contain at least one change`,
       );
     }
 
