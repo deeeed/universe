@@ -1,6 +1,7 @@
 import type { NpmConfig, PackageContext } from "../types/config";
 import { NpmService } from "./npm";
 import { YarnService } from "./yarn";
+import { Logger } from "../utils/logger";
 
 export interface PackageManagerService {
   validateAuth(config?: { npm: NpmConfig }): Promise<void>;
@@ -23,20 +24,35 @@ export interface PackageManagerService {
 }
 
 export class PackageManagerFactory {
+  private static logger = new Logger();
+
   static create(
     packageManager: "npm" | "yarn",
     config: NpmConfig,
   ): PackageManagerService {
+    this.logger.debug("Creating package manager service:", {
+      type: packageManager,
+      registry: config.registry,
+      access: config.access,
+    });
+
+    let service: PackageManagerService;
+
     switch (packageManager) {
       case "npm":
-        return new NpmService(config);
+        this.logger.debug("Initializing NPM service");
+        service = new NpmService(config);
+        break;
       case "yarn":
-        return new YarnService(config);
-      // Since packageManager is typed as 'npm' | 'yarn', this case is technically unreachable
-      // but we include it to satisfy TypeScript's exhaustive check
+        this.logger.debug("Initializing Yarn service");
+        service = new YarnService(config);
+        break;
       default: {
         throw new Error("Unsupported package manager");
       }
     }
+
+    this.logger.debug("Package manager service created successfully");
+    return service;
   }
 }

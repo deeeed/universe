@@ -72,52 +72,38 @@ export class YarnService implements PackageManagerService {
 
   async validateAuth(config?: { npm: NpmConfig }): Promise<void> {
     const effectiveConfig = this.getEffectiveConfig(config);
+    this.logger.debug("Starting npm authentication validation", {
+      registry: effectiveConfig.registry,
+    });
+
     try {
       const version = await this.getYarnVersion();
-      this.logger.debug("Using Yarn version:", version);
+      this.logger.debug("Configuring auth command for Yarn version:", version);
 
-      // For Yarn Berry (v2+), we need to use different command format
       const args =
         version.major === 1
           ? ["whoami", "--registry", effectiveConfig.registry]
-          : ["npm", "whoami", "--publish"]; // Add --publish flag for Yarn Berry
+          : ["npm", "whoami", "--publish"];
 
-      this.logger.debug("Executing auth command:", args.join(" "));
+      this.logger.debug("Executing auth validation command:", {
+        command: `yarn ${args.join(" ")}`,
+        cwd: process.cwd(),
+      });
+
       const result = await this.execYarnCommand(args);
+      const username = result.stdout.toString().trim();
 
-      if (!result.stdout || result.stdout.toString().trim() === "") {
+      if (!username) {
         throw new Error("Not authenticated to npm registry");
       }
+
+      this.logger.debug("Authentication successful", { username });
     } catch (error) {
-      const yarnVersion = await this.getYarnVersion();
-      const isYarnBerry = yarnVersion.major >= 2;
-
-      let errorMessage = "npm authentication failed.\n\n";
-      errorMessage += "To fix this issue:\n";
-
-      if (isYarnBerry) {
-        errorMessage += `1. Run 'yarn npm login --publish' to authenticate with the npm registry
-2. Make sure you have the correct npm credentials
-3. If you're using a custom registry, configure it using:
-   yarn config set npmRegistryServer ${effectiveConfig.registry}
-4. For organizations, you might need to run:
-   yarn npm login --scope=@your-org --publish\n`;
-      } else {
-        errorMessage += `1. Run 'yarn login' to authenticate with the npm registry
-2. Make sure you have the correct npm credentials
-3. If you're using a custom registry, use:
-   yarn login --registry ${effectiveConfig.registry}\n`;
-      }
-
-      errorMessage += "\nOriginal error: ";
-      if (error instanceof Error) {
-        errorMessage += error.message;
-      } else {
-        errorMessage += "Unknown error occurred";
-      }
-
-      this.logger.error("Authentication failed:", error);
-      throw new Error(errorMessage);
+      this.logger.error("Authentication validation failed:", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        registry: effectiveConfig.registry,
+      });
+      throw error;
     }
   }
 
@@ -128,70 +114,41 @@ export class YarnService implements PackageManagerService {
     const effectiveConfig = this.getEffectiveConfig(config);
     const version = await this.getYarnVersion();
 
-    this.logger.debug("Publishing package:", {
-      name: context.name,
+    this.logger.debug("Starting package publication process", {
+      package: context.name,
       version: context.currentVersion,
-      path: context.path,
       registry: effectiveConfig.registry,
-      tag: effectiveConfig.tag,
-      access: effectiveConfig.access,
+      yarnVersion: version,
     });
 
     try {
-      // First attempt with Yarn
-      const publishArgs =
-        version.major === 1
-          ? [
-              "publish",
-              "--registry",
-              effectiveConfig.registry,
-              "--tag",
-              effectiveConfig.tag,
-              "--access",
-              effectiveConfig.access,
-            ]
-          : [
-              "npm",
-              "publish",
-              "--tag",
-              effectiveConfig.tag,
-              "--access",
-              effectiveConfig.access,
-            ];
+      const publishArgs = this.getPublishArgs(version, effectiveConfig);
+      this.logger.debug("Attempting Yarn publish with args:", {
+        command: `yarn ${publishArgs.join(" ")}`,
+        cwd: context.path,
+      });
 
-      if (effectiveConfig.otp) {
-        publishArgs.push("--otp", effectiveConfig.otp);
-      }
-
-      this.logger.debug("Attempting Yarn publish:", publishArgs.join(" "));
       await this.execYarnCommand(publishArgs);
+      this.logger.debug("Package published successfully with Yarn");
     } catch (error) {
-      // If Yarn publish fails, fallback to npm
-      this.logger.debug("Yarn publish failed, falling back to npm:", error);
+      this.logger.warn("Yarn publish failed, attempting npm fallback", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
 
-      const npmArgs = [
-        "publish",
-        "--registry",
-        effectiveConfig.registry,
-        "--tag",
-        effectiveConfig.tag,
-        "--access",
-        effectiveConfig.access,
-      ];
-
-      if (effectiveConfig.otp) {
-        npmArgs.push("--otp", effectiveConfig.otp);
-      }
+      const npmArgs = this.getNpmPublishArgs(effectiveConfig);
+      this.logger.debug("Attempting npm publish with args:", {
+        command: `npm ${npmArgs.join(" ")}`,
+        cwd: context.path,
+      });
 
       try {
-        this.logger.debug("Attempting npm publish:", npmArgs.join(" "));
         await execa("npm", npmArgs, { cwd: context.path });
+        this.logger.debug("Package published successfully with npm fallback");
       } catch (npmError) {
-        this.logger.error("Failed to publish package with npm:", npmError);
-        if (npmError instanceof Error) {
-          throw new Error(`Failed to publish package: ${npmError.message}`);
-        }
-        throw new Error("Failed to publish package: Unknown error occurred");
+        this.logger.error("Publication failed with both Yarn and npm", {
+          error: npmError instanceof Error ? npmError.message : "Unknown error",
+        });
+        throw npmError;
       }
     }
 
@@ -199,8 +156,41 @@ export class YarnService implements PackageManagerService {
       published: true,
       registry: effectiveConfig.registry,
     };
-    this.logger.debug("Package published successfully:", result);
+
+    this.logger.debug("Publication completed successfully", result);
     return result;
+  }
+
+  private getPublishArgs(version: YarnVersion, config: NpmConfig): string[] {
+    return version.major === 1
+      ? [
+          "publish",
+          "--registry",
+          config.registry,
+          "--tag",
+          config.tag,
+          "--access",
+          config.access,
+        ]
+      : ["npm", "publish", "--tag", config.tag, "--access", config.access];
+  }
+
+  private getNpmPublishArgs(config: NpmConfig): string[] {
+    const args = [
+      "publish",
+      "--registry",
+      config.registry,
+      "--tag",
+      config.tag,
+      "--access",
+      config.access,
+    ];
+
+    if (config.otp) {
+      args.push("--otp", config.otp);
+    }
+
+    return args;
   }
 
   async getLatestVersion(
