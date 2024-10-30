@@ -285,21 +285,27 @@ export class ChangelogService {
   }
 
   private insertNewEntry(currentContent: string, newEntry: string): string {
-    // Find the Unreleased section
-    const unreleasedMatch = currentContent.match(/## \[Unreleased\]/);
-    if (!unreleasedMatch) {
-      // No Unreleased section, insert at the top after the header
-      const parts = currentContent.split("\n");
-      const headerEnd = parts.findIndex((line) => line.startsWith("# ")) + 1;
-      return [
-        ...parts.slice(0, headerEnd),
-        "",
-        "## [Unreleased]",
-        "",
-        newEntry,
-        "",
-        ...parts.slice(headerEnd),
-      ].join("\n");
+    // Split content into main sections
+    const [headerSection, ...contentSections] =
+      currentContent.split(/(?=## \[)/);
+
+    // Find and remove the Unreleased section
+    const unreleasedIndex = contentSections.findIndex((section) =>
+      section.startsWith("## [Unreleased]"),
+    );
+
+    // Get unreleased content (if any)
+    let unreleasedContent = "";
+    if (unreleasedIndex !== -1) {
+      const unreleasedSection = contentSections[unreleasedIndex];
+      const match = unreleasedSection.match(
+        /## \[Unreleased\]\n\n([\s\S]*?)(?=\n\n##|$)/,
+      );
+      if (match) {
+        unreleasedContent = match[1].trim();
+      }
+      // Remove the Unreleased section from contentSections
+      contentSections.splice(unreleasedIndex, 1);
     }
 
     // Extract version from new entry
@@ -309,37 +315,25 @@ export class ChangelogService {
     }
     const version = versionMatch[1];
 
-    // Split content into sections
-    const sections = currentContent.split(/(?=## \[)/);
-    const header = sections[0];
-    const rest = sections.slice(1);
-
     // Remove any existing entries for the same version
-    const filteredRest = rest.filter(
+    const filteredSections = contentSections.filter(
       (section) => !section.startsWith(`## [${version}]`),
     );
 
-    // Process new entry content
-    const [entryHeader, ...contentLines] = newEntry.split("\n");
-    const uniqueLines = Array.from(
-      new Set(
-        contentLines
-          .filter((line) => line.trim())
-          .filter((line) => !line.startsWith("## [")),
-      ),
-    );
+    // Construct the new content
+    const parts = [
+      headerSection.trim(),
+      "## [Unreleased]",
+      unreleasedContent,
+      newEntry.trim(),
+      ...filteredSections,
+    ];
 
-    // Reconstruct the entry with proper spacing
-    const deduplicatedEntry = [
-      entryHeader,
-      ...uniqueLines.filter((line) => line.trim()),
-    ].join("\n");
-
-    // Combine all parts with proper spacing
+    // Join sections with proper spacing and ensure single newline at end
     return (
-      [header.trim(), "## [Unreleased]", "", deduplicatedEntry, ...filteredRest]
-        .join("\n\n")
-        .trim() + "\n"
+      parts
+        .filter((part) => part.trim()) // Remove empty sections
+        .join("\n\n") + "\n"
     );
   }
 
