@@ -340,26 +340,6 @@ export class ChangelogService {
     return contentWithoutLinks + linksSection + "\n";
   }
 
-  private cleanContent(content: string): string {
-    // Split into lines and remove empty lines at start/end
-    const lines = content.split("\n").filter((line, index, arr) => {
-      // Keep non-empty lines
-      if (line.trim()) return true;
-
-      // Keep single empty lines between sections
-      if (index > 0 && index < arr.length - 1) {
-        const prevLine = arr[index - 1].trim();
-        const nextLine = arr[index + 1].trim();
-        if (prevLine && nextLine) return true;
-      }
-
-      return false;
-    });
-
-    // Ensure proper spacing between sections
-    return lines.join("\n") + "\n";
-  }
-
   private async getRepositoryUrl(
     context: PackageContext,
     config: ChangelogConfig,
