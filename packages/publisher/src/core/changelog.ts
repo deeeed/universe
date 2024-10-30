@@ -256,8 +256,9 @@ export class ChangelogService {
     const lines: string[] = currentContent.split("\n");
     const newLines: string[] = [];
 
-    let isSkippingExistingVersion = false;
     let hasAddedNewEntry = false;
+    let isSkippingExistingVersion = false;
+    let hasUnreleasedSection = false;
 
     for (let i = 0; i < lines.length; i++) {
       const line: string = lines[i];
@@ -269,9 +270,11 @@ export class ChangelogService {
         continue;
       }
 
-      // Handle Unreleased section with more flexible matching
+      // Handle Unreleased section
       if (format.unreleasedHeaderPattern.test(trimmedLine)) {
+        hasUnreleasedSection = true;
         newLines.push(line);
+        // Only add new entry after Unreleased if we haven't already
         if (!hasAddedNewEntry) {
           newLines.push("");
           newLines.push(newEntry.trim());
@@ -281,24 +284,30 @@ export class ChangelogService {
         continue;
       }
 
-      // Check for version entries with more flexible matching
+      // Check for existing version entries
       const versionMatch = trimmedLine.match(format.versionHeaderPattern);
       if (versionMatch) {
         const entryVersion = versionMatch[1];
         if (entryVersion === version) {
+          // Skip this version and its content as we're adding it new
           isSkippingExistingVersion = true;
           continue;
+        } else {
+          isSkippingExistingVersion = false;
         }
-      }
-
-      // Start of a different version entry
-      if (format.versionHeaderPattern.test(trimmedLine)) {
-        isSkippingExistingVersion = false;
       }
 
       if (!isSkippingExistingVersion) {
         newLines.push(line);
       }
+    }
+
+    // If no Unreleased section was found, add it with the new entry
+    if (!hasUnreleasedSection) {
+      newLines.unshift("");
+      newLines.unshift(newEntry.trim());
+      newLines.unshift("## [Unreleased]");
+      newLines.unshift(format.template);
     }
 
     return this.normalizeContent(newLines);
