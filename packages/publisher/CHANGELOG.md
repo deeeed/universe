@@ -4,11 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.4.2]
+- feat: track existing version in changelog
 
 ## [0.4.2] - 2024-10-30
-
-- feat: hopeless changelog
 
 - feat: hopeless changelog
 
