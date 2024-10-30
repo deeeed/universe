@@ -234,9 +234,15 @@ export class YarnService implements PackageManagerService {
     try {
       this.logger.debug("Checking Yarn workspace integrity...");
       const startTime = performance.now();
+      const version = await this.getYarnVersion();
 
-      // Use --frozen-lockfile for faster checks
-      await execa("yarn", ["install", "--frozen-lockfile", "--check-files"]);
+      // Use different commands based on Yarn version
+      if (version.major === 1) {
+        await execa("yarn", ["install", "--frozen-lockfile", "--check-files"]);
+      } else {
+        // Yarn Berry uses different flags
+        await execa("yarn", ["install", "--immutable"]);
+      }
 
       const duration = ((performance.now() - startTime) / 1000).toFixed(2);
       this.logger.debug(`Yarn integrity check completed in ${duration}s`);
