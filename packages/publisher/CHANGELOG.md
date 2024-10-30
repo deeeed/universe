@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.2]
+
+## [0.4.2] - 2024-10-30
+
+- feat: hopeless changelog
+
 - feat: hopeless changelog
 
 ## [0.4.1] - 2024-10-30
@@ -19,74 +25,53 @@ All notable changes to this project will be documented in this file.
 
 - spacing and regex fixes for changelog
 
-
-
 ## [0.3.8] - 2024-10-30
 
 - another attempt at fixing changelog
-
-
 
 ## [0.3.7] - 2024-10-30
 
 - another attempt at fixing changelog
 
-
-
 ## [0.3.6] - 2024-10-30
 
 - another attempt at fixing changelog
-
-
 
 ## [0.3.5] - 2024-10-30
 
 - prevent malformed spacing in changelog
 
-
-
 ## [0.3.4] - 2024-10-30
 
 - feat: prevent duplicate changelog entries
-
-
 
 ## [0.3.3] - 2024-10-30
 
 - feat: only update current version in changelog
 
-
-
 ## [0.3.2] - 2024-10-30
 
 - feat: more changelog validation
-
-
 
 ## [0.3.1] - 2024-10-30
 
 - feat: improved changelog validation
 
-
-
 ## [0.3.0] - 2024-10-30
 
 - still figuring out the release process
-
-
 
 ## [0.2.18] - 2024-10-29
 
 - feat: default to current active package
 - chore(release): release @siteed/publisher@0.2.17
 
-
-
 ## [0.2.17] - 2024-10-29
 
 - Figuring out initial functionalities
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.1...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.2...HEAD
+[0.4.2]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.1...@siteed/publisher@@siteed/publisher@0.4.2
 [0.4.1]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.0...@siteed/publisher@@siteed/publisher@0.4.1
 [0.4.0]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.9...@siteed/publisher@@siteed/publisher@0.4.0
 [0.3.9]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.8...@siteed/publisher@@siteed/publisher@0.3.9
