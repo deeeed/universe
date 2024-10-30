@@ -5768,6 +5768,7 @@ __metadata:
     chalk: "npm:4.1.2"
     commander: "npm:^11.1.0"
     conventional-changelog: "npm:^5.1.0"
+    date-fns: "npm:^4.1.0"
     eslint: "npm:^8.56.0"
     eslint-config-prettier: "npm:^9.0.0"
     eslint-plugin-prettier: "npm:^5.0.1"
@@ -12132,6 +12133,13 @@ __metadata:
   version: 4.0.0-beta.1
   resolution: "date-fns@npm:4.0.0-beta.1"
   checksum: 10c0/3171f4e8f2f4522706f18ae0fe9b8fed12e3f114ce93045c40dba4ed332003aaa715b3eb673d4666d03cdb3e8817a8962a9b2af492ce8f5896f9a5be6d3c4df5
+  languageName: node
+  linkType: hard
+
+"date-fns@npm:^4.1.0":
+  version: 4.1.0
+  resolution: "date-fns@npm:4.1.0"
+  checksum: 10c0/b79ff32830e6b7faa009590af6ae0fb8c3fd9ffad46d930548fbb5acf473773b4712ae887e156ba91a7b3dc30591ce0f517d69fd83bd9c38650fdc03b4e0bac8
   languageName: node
   linkType: hard
 

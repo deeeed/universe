@@ -4,13 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.4.8]
+- new feature: validate changelog format
 
 ## [0.4.8] - 2024-10-30
 
 - last call before release
 
-- last call before release
 
 ## [0.4.7] - 2024-10-30
 

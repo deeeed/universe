@@ -126,6 +126,7 @@ export class ReleaseService {
       publish?: boolean;
       skipGitCheck?: boolean;
       skipUpstreamTracking?: boolean;
+      checkIntegrity?: boolean;
       force?: boolean;
     },
   ): Promise<ReleaseResult> {
@@ -150,6 +151,7 @@ export class ReleaseService {
       await this.validateEnvironment({
         skipGitCheck: options.skipGitCheck,
         skipUpstreamTracking: options.skipUpstreamTracking,
+        checkIntegrity: options.checkIntegrity,
       });
 
       this.logger.info("Determining new version...");
@@ -227,16 +229,14 @@ export class ReleaseService {
   private async validateEnvironment(options: {
     skipGitCheck?: boolean;
     skipUpstreamTracking?: boolean;
+    checkIntegrity?: boolean;
   }): Promise<void> {
     const context = await this.workspace.getCurrentPackage();
     if (!context) {
       throw new Error("No package found in current directory");
     }
 
-    await this.validateWithProgress(context, {
-      skipGitCheck: options.skipGitCheck,
-      skipUpstreamTracking: options.skipUpstreamTracking,
-    });
+    await this.validateWithProgress(context, options);
   }
 
   private async determineVersion(
@@ -473,19 +473,7 @@ export class ReleaseService {
     }
 
     const packageConfig = await this.workspace.getPackageConfig(packageName);
-    const context = pkg[0];
-
-    // Generate changelog content
-    const changelogContent = await this.changelog.generate(
-      context,
-      packageConfig,
-    );
-
-    // Format the preview to show how it would look in the changelog
-    const dateStr = new Date().toISOString().split("T")[0];
-    const version = context.newVersion || "x.x.x";
-
-    return `## [${version}] - ${dateStr}\n\n${changelogContent}`;
+    return this.changelog.previewChangelog(pkg[0], packageConfig);
   }
 
   private async handleChangelog(
@@ -527,17 +515,16 @@ export class ReleaseService {
         this.logger.info(unreleasedChanges.join("\n"));
 
         // Show preview of how it will look in the new version
-        const preview = this.formatChangelogPreview(
-          context.newVersion || "",
-          unreleasedChanges,
+        const preview = await this.changelog.previewChangelog(
+          context,
+          packageConfig,
         );
         this.logger.info("\nChangelog entry will look like this:\n");
         this.logger.info(preview);
 
         const confirmed = await this.prompts.confirmChangelogContent(preview);
         if (!confirmed) {
-          const manualChangelog = await this.prompts.getManualChangelogEntry();
-          finalChangelog = manualChangelog;
+          finalChangelog = await this.prompts.getManualChangelogEntry();
         } else {
           finalChangelog = preview;
         }
@@ -553,15 +540,16 @@ export class ReleaseService {
           );
         } else {
           // Show preview and ask for confirmation
-          const preview = await this.previewChangelog(context.name);
+          const preview = await this.changelog.previewChangelog(
+            context,
+            packageConfig,
+          );
           this.logger.info("\nProposed changelog entries:\n");
           this.logger.info(preview);
 
           const confirmed = await this.prompts.confirmChangelogContent(preview);
           if (!confirmed) {
-            const manualChangelog =
-              await this.prompts.getManualChangelogEntry();
-            finalChangelog = manualChangelog;
+            finalChangelog = await this.prompts.getManualChangelogEntry();
           } else {
             finalChangelog = preview;
           }
@@ -579,11 +567,6 @@ export class ReleaseService {
       }
       return undefined;
     }
-  }
-
-  private formatChangelogPreview(version: string, changes: string[]): string {
-    const dateStr = new Date().toISOString().split("T")[0];
-    return `## [${version}] - ${dateStr}\n\n${changes.join("\n")}`;
   }
 
   private async backupFiles(
@@ -612,6 +595,7 @@ export class ReleaseService {
     options: {
       skipGitCheck?: boolean;
       skipUpstreamTracking?: boolean;
+      checkIntegrity?: boolean;
     },
   ): Promise<void> {
     const validations = [
@@ -637,7 +621,7 @@ export class ReleaseService {
       },
       {
         name: "Dependencies",
-        skip: false,
+        skip: !options.checkIntegrity,
         validate: async (): Promise<void> => {
           this.logger.info("Validating workspace dependencies...");
           const result = await this.integrityService.checkWithDetails(true);
