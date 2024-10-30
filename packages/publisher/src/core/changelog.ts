@@ -296,8 +296,15 @@ export class ChangelogService {
       const versionRegex = new RegExp(`${versionHeader}[^]*?(?=## \\[|$)`, "g");
       parts[1] = parts[1].replace(versionRegex, "");
 
+      // Deduplicate the new entry content
+      const [header, ...contentLines] = newEntry.split("\n");
+      const uniqueLines = Array.from(
+        new Set(contentLines.filter((line) => line.trim())),
+      );
+      const deduplicatedEntry = [header, ...uniqueLines].join("\n");
+
       // Insert new entry after Unreleased section
-      return `${parts[0]}## [Unreleased]\n\n${newEntry}\n\n${parts[1].trim()}`;
+      return `${parts[0]}## [Unreleased]\n\n${deduplicatedEntry}\n\n${parts[1].trim()}`;
     }
 
     // No Unreleased section, insert at the top after the header
