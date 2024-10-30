@@ -240,6 +240,14 @@ export class WorkspaceService {
         "prompt",
       preReleaseId:
         config.packages?.[packageName]?.preReleaseId ?? config.preReleaseId,
+      updateDependenciesOnRelease:
+        config.packages?.[packageName]?.updateDependenciesOnRelease ??
+        config.updateDependenciesOnRelease ??
+        false,
+      dependencyUpdateStrategy:
+        config.packages?.[packageName]?.dependencyUpdateStrategy ??
+        config.dependencyUpdateStrategy ??
+        "none",
       git: {
         tagPrefix:
           config.packages?.[packageName]?.git?.tagPrefix ??

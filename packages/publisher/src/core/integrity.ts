@@ -1,16 +1,9 @@
-import { Logger } from "../utils/logger";
 import { PackageManagerService } from "./package-manager";
-
-interface IntegrityIssue {
-  message: string;
-  solution?: string;
-  severity: "error" | "warning";
-}
-
-interface IntegrityResult {
-  isValid: boolean;
-  issues: IntegrityIssue[];
-}
+import { Logger } from "../utils/logger";
+import type {
+  DependencyUpdate,
+  DependencyValidationReport,
+} from "../types/config";
 
 export class WorkspaceIntegrityService {
   constructor(
@@ -23,8 +16,15 @@ export class WorkspaceIntegrityService {
     return result.isValid;
   }
 
-  async checkWithDetails(verbose: boolean = false): Promise<IntegrityResult> {
-    const issues: IntegrityIssue[] = [];
+  async checkWithDetails(
+    verbose: boolean = false,
+  ): Promise<DependencyValidationReport> {
+    const issues: Array<{
+      message: string;
+      solution?: string;
+      severity: "error" | "warning";
+    }> = [];
+    const updates: DependencyUpdate[] = [];
 
     try {
       if (verbose) {
@@ -32,13 +32,10 @@ export class WorkspaceIntegrityService {
       }
 
       const startTime = performance.now();
+
+      // Check basic workspace integrity
       const integrityCheck =
         await this.packageManager.checkWorkspaceIntegrity();
-      const duration = ((performance.now() - startTime) / 1000).toFixed(2);
-
-      if (verbose) {
-        this.logger.info(`Dependency check completed in ${duration}s`);
-      }
 
       if (!integrityCheck) {
         issues.push({
@@ -48,16 +45,65 @@ export class WorkspaceIntegrityService {
         });
       }
 
+      // Get dependency updates
+      const dependencyUpdates =
+        await this.packageManager.getDependencyUpdates();
+      updates.push(...dependencyUpdates);
+
+      // Analyze updates and create warnings
+      for (const update of updates) {
+        if (update.updateAvailable) {
+          const message = update.isWorkspaceDependency
+            ? `Workspace dependency ${update.name} can be updated from ${update.currentVersion} to ${update.latestVersion}`
+            : `External dependency ${update.name} can be updated from ${update.currentVersion} to ${update.latestVersion}`;
+
+          issues.push({
+            message,
+            solution: `Run 'yarn up ${update.name}' to update this dependency`,
+            severity: "warning",
+          });
+        }
+      }
+
+      const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+      if (verbose) {
+        this.logger.info(`Dependency check completed in ${duration}s`);
+      }
+
+      // Calculate summary
+      const summary = {
+        total: updates.length,
+        outdated: updates.filter((u) => u.updateAvailable).length,
+        workspaceUpdates: updates.filter(
+          (u) => u.isWorkspaceDependency && u.updateAvailable,
+        ).length,
+        externalUpdates: updates.filter(
+          (u) => !u.isWorkspaceDependency && u.updateAvailable,
+        ).length,
+      };
+
       return {
-        isValid: issues.length === 0,
+        isValid: issues.filter((i) => i.severity === "error").length === 0,
         issues,
+        updates,
+        summary,
       };
     } catch (error) {
       issues.push({
         message: error instanceof Error ? error.message : String(error),
         severity: "error",
       });
-      return { isValid: false, issues };
+      return {
+        isValid: false,
+        issues,
+        updates: [],
+        summary: {
+          total: 0,
+          outdated: 0,
+          workspaceUpdates: 0,
+          externalUpdates: 0,
+        },
+      };
     }
   }
 

@@ -61,6 +61,8 @@ export function generateDefaultConfig(
       access: options.npm?.access ?? "public",
     },
     hooks: {},
+    updateDependenciesOnRelease: false,
+    dependencyUpdateStrategy: "none",
   };
 }
 

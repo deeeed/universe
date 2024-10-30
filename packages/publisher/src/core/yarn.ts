@@ -1,5 +1,9 @@
 import execa, { ExecaReturnValue } from "execa";
-import type { NpmConfig, PackageContext } from "../types/config";
+import type {
+  DependencyUpdate,
+  NpmConfig,
+  PackageContext,
+} from "../types/config";
 import { Logger } from "../utils/logger";
 import { PackageArchiveInfo, PackageManagerService } from "./package-manager";
 
@@ -276,10 +280,48 @@ export class YarnService implements PackageManagerService {
     context: PackageContext,
     dependencies: string[],
   ): Promise<void> {
+    const version = await this.getYarnVersion();
+
+    if (version.major >= 2) {
+      // Use new strategy for Yarn 2+
+      await this.updateDependenciesWithStrategy(context, dependencies);
+    } else {
+      // Fallback for Yarn 1.x
+      try {
+        await execa("yarn", ["add", ...dependencies], {
+          cwd: context.path,
+        });
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new Error(`Failed to update dependencies: ${error.message}`);
+        }
+        throw new Error(
+          "Failed to update dependencies: Unknown error occurred",
+        );
+      }
+    }
+  }
+
+  private async updateDependenciesWithStrategy(
+    context: PackageContext,
+    dependencies: string[],
+  ): Promise<void> {
     try {
-      await execa("yarn", ["up", ...dependencies], {
-        cwd: context.path,
-      });
+      // For each dependency, first try to resolve if it's a workspace package
+      for (const dep of dependencies) {
+        const args = ["up"];
+
+        // If it's a workspace dependency, force latest version
+        if (dep.startsWith("@siteed/")) {
+          args.push("--mode=update-lockfile");
+        }
+
+        args.push(dep);
+
+        await execa("yarn", args, {
+          cwd: context.path,
+        });
+      }
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Failed to update dependencies: ${error.message}`);
@@ -420,6 +462,52 @@ export class YarnService implements PackageManagerService {
       return JSON.parse(stdout) as T;
     } catch {
       return {} as T;
+    }
+  }
+
+  async getDependencyUpdates(): Promise<DependencyUpdate[]> {
+    try {
+      const version = await this.getYarnVersion();
+      const updates: DependencyUpdate[] = [];
+
+      let result: ExecaReturnValue<string>;
+
+      if (version.major === 1) {
+        result = await execa("yarn", ["outdated", "--json"]);
+      } else {
+        result = await execa("yarn", ["upgrade-interactive", "--json"]);
+      }
+
+      const outdated = this.parseJsonResponse<
+        Array<{
+          name: string;
+          current: string;
+          latest: string;
+          type: string;
+          workspace: boolean;
+        }>
+      >(result.stdout);
+
+      for (const dep of outdated) {
+        updates.push({
+          name: dep.name,
+          currentVersion: dep.current,
+          latestVersion: dep.latest,
+          type: dep.type as
+            | "dependencies"
+            | "devDependencies"
+            | "peerDependencies",
+          isWorkspaceDependency: dep.workspace,
+          updateAvailable: dep.current !== dep.latest,
+        });
+      }
+
+      return updates;
+    } catch (error) {
+      this.logger.debug("Failed to check for dependency updates", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      return [];
     }
   }
 }

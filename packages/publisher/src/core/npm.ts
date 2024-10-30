@@ -1,7 +1,21 @@
 import execa, { ExecaReturnValue } from "execa";
-import type { NpmConfig, PackageContext } from "../types/config";
+import type {
+  DependencyUpdate,
+  NpmConfig,
+  PackageContext,
+} from "../types/config";
 import { PackageArchiveInfo, PackageManagerService } from "./package-manager";
 import { Logger } from "../utils/logger";
+
+interface NpmOutdatedResponse {
+  [key: string]: {
+    current: string;
+    wanted: string;
+    latest: string;
+    dependent: string;
+    type: "dependencies" | "devDependencies" | "peerDependencies";
+  };
+}
 
 export class NpmService implements PackageManagerService {
   private readonly logger: Logger;
@@ -278,6 +292,43 @@ export class NpmService implements PackageManagerService {
           error instanceof Error ? error.message : "Unknown error"
         }`,
       );
+    }
+  }
+
+  private parseJsonResponse<T>(stdout: string): T {
+    try {
+      return JSON.parse(stdout) as T;
+    } catch {
+      return {} as T;
+    }
+  }
+
+  async getDependencyUpdates(): Promise<DependencyUpdate[]> {
+    try {
+      const result = await execa("npm", ["outdated", "--json"]);
+      const outdated = this.parseJsonResponse<NpmOutdatedResponse>(
+        result.stdout,
+      );
+      const updates: DependencyUpdate[] = [];
+
+      for (const [name, info] of Object.entries(outdated)) {
+        updates.push({
+          name,
+          currentVersion: info.current,
+          latestVersion: info.latest,
+          type: info.type,
+          isWorkspaceDependency:
+            name.startsWith("@siteed/") || name.startsWith("@your-scope/"),
+          updateAvailable: info.current !== info.latest,
+        });
+      }
+
+      return updates;
+    } catch (error) {
+      this.logger.debug("Failed to check for dependency updates", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      return [];
     }
   }
 }

@@ -203,4 +203,39 @@ export class Prompts {
     ]);
     return content;
   }
+
+  async confirmDependencyUpdates(
+    packageName: string,
+    dependencies: Array<{
+      name: string;
+      currentVersion: string;
+      newVersion: string;
+    }>,
+  ): Promise<boolean> {
+    if (dependencies.length === 0) {
+      return false;
+    }
+
+    this.logger.info("\nDependency updates available for", packageName);
+    this.logger.info("----------------------------------------");
+
+    for (const dep of dependencies) {
+      this.logger.info(
+        `${dep.name}: ${dep.currentVersion} → ${dep.newVersion}`,
+      );
+    }
+
+    this.logger.info("----------------------------------------\n");
+
+    const { confirmed } = await inquirer.prompt<{ confirmed: boolean }>([
+      {
+        type: "confirm",
+        name: "confirmed",
+        message: "Would you like to update these dependencies?",
+        default: false,
+      },
+    ]);
+
+    return confirmed;
+  }
 }

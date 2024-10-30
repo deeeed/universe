@@ -1,4 +1,8 @@
-import type { NpmConfig, PackageContext } from "../types/config";
+import type {
+  NpmConfig,
+  PackageContext,
+  DependencyUpdate,
+} from "../types/config";
 import { NpmService } from "./npm";
 import { YarnService } from "./yarn";
 import { Logger } from "../utils/logger";
@@ -29,6 +33,7 @@ export interface PackageManagerService {
     config?: { npm: NpmConfig },
   ): Promise<string>;
   checkWorkspaceIntegrity(): Promise<boolean>;
+  getDependencyUpdates(): Promise<DependencyUpdate[]>;
   updateDependencies(
     context: PackageContext,
     dependencies: string[],

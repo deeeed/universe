@@ -38,6 +38,8 @@ interface ValidateCommandOptions {
   skipPublishCheck?: boolean;
   skipDependencyCheck?: boolean;
   validatePack?: boolean;
+  depsReport?: boolean;
+  depsReportJson?: boolean;
 }
 
 interface ValidationResult {
@@ -347,21 +349,73 @@ export class ValidateCommand {
 
     try {
       const result = await integrityService.checkWithDetails(true);
-      if (!result.isValid) {
-        const messages = result.issues
-          .map(
-            (issue) =>
-              `${issue.severity.toUpperCase()}: ${issue.message}${issue.solution ? `\nSolution: ${issue.solution}` : ""}`,
-          )
-          .join("\n");
-        throw new Error(`Dependency validation failed:\n${messages}`);
+
+      // Handle JSON report mode
+      if (options.depsReportJson) {
+        // eslint-disable-next-line no-console
+        console.log(JSON.stringify(result, null, 2));
+        return;
       }
-      this.logger.success("Dependencies validation: OK");
-    } catch (error) {
-      this.logger.error(
-        `Dependencies validation: ${error instanceof Error ? error.message : String(error)}`,
+
+      // Display dependency report
+      this.logger.info("\n📦 Dependency Report:");
+
+      // Display issues
+      if (result.issues.length > 0) {
+        this.logger.info("\nIssues found:");
+        for (const issue of result.issues) {
+          const icon = issue.severity === "error" ? "❌" : "⚠️";
+          this.logger.info(`${icon} ${issue.message}`);
+          if (issue.solution) {
+            this.logger.info(`   └─ Solution: ${issue.solution}`);
+          }
+        }
+      }
+
+      // Display update summary
+      this.logger.info("\nDependency Updates Summary:");
+      this.logger.info(`Total dependencies: ${result.summary.total}`);
+      this.logger.info(`Outdated dependencies: ${result.summary.outdated}`);
+      this.logger.info(
+        `Workspace updates available: ${result.summary.workspaceUpdates}`,
       );
-      throw error;
+      this.logger.info(
+        `External updates available: ${result.summary.externalUpdates}`,
+      );
+
+      // Display detailed updates if any
+      if (result.updates.length > 0) {
+        this.logger.info("\nDetailed Update Information:");
+        for (const update of result.updates) {
+          if (update.updateAvailable) {
+            const icon = update.isWorkspaceDependency ? "🏠" : "📦";
+            this.logger.info(
+              `${icon} ${update.name} (${update.type}): ${update.currentVersion} → ${update.latestVersion}`,
+            );
+          }
+        }
+      }
+
+      // Only throw error if not in report-only mode
+      if (
+        !options.depsReport &&
+        result.issues.some((i) => i.severity === "error")
+      ) {
+        throw new Error(
+          `Dependency validation failed. Please address the issues above.`,
+        );
+      }
+
+      if (!options.depsReport) {
+        this.logger.success("Dependencies validation: OK");
+      }
+    } catch (error) {
+      if (!options.depsReport) {
+        this.logger.error(
+          `Dependencies validation: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        throw error;
+      }
     }
   }
 
@@ -457,6 +511,11 @@ export const validateCommand = new Command()
     "--validate-pack",
     "Include package pack validation (creates temporary .tgz file)",
   )
+  .option(
+    "--deps-report",
+    "Generate a detailed dependency report without validation",
+  )
+  .option("--deps-report-json", "Generate a dependency report in JSON format")
   .addHelpText(
     "after",
     `
@@ -468,14 +527,14 @@ Available validations:
   - changelog: Changelog existence and format
   - publish:   Publish readiness (version uniqueness, pack validation)
 
+Additional Features:
+  - deps-report:     Generate detailed dependency report
+  - deps-report-json: Generate dependency report in JSON format
+
 Examples:
   $ publisher validate                  # Validate current package (all checks)
-  $ publisher validate pkg1 pkg2        # Validate specific packages
-  $ publisher validate --all            # Validate all workspace packages
-  $ publisher validate --auth-only      # Only check authentication
-  $ publisher validate --git-only       # Only check Git status
-  $ publisher validate --skip-git       # Run all checks except Git
-  $ publisher validate --skip-git --skip-publish  # Skip multiple checks`,
+  $ publisher validate --deps-report    # Only generate dependency report
+  $ publisher validate --deps-report-json > deps.json  # Export report to JSON`,
   )
   .action(
     async (packages: string[], commandOptions: ValidateCommandOptions) => {

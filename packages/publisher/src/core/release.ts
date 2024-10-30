@@ -172,7 +172,8 @@ export class ReleaseService {
       tempFiles = await this.backupFiles(context, packageConfig);
 
       await this.runHooks("preRelease", packageConfig, context);
-      await this.updateVersionAndDependencies(context, packageConfig);
+      await this.updateVersion(context, packageConfig);
+      await this.updateDependencies(context, packageConfig);
 
       if (changelogEntry) {
         await this.changelog.update(context, changelogEntry, packageConfig);
@@ -264,13 +265,45 @@ export class ReleaseService {
     return this.version.determineVersion(context, "patch", config.preReleaseId);
   }
 
-  private async updateVersionAndDependencies(
+  private async updateDependencies(
     context: PackageContext,
     config: ReleaseConfig,
   ): Promise<void> {
-    await this.version.bump(context, config);
+    if (!config.updateDependenciesOnRelease) {
+      return;
+    }
+
     const workspaceDependencies = this.getWorkspaceDependencies(context);
-    if (workspaceDependencies.length > 0) {
+    if (workspaceDependencies.length === 0) {
+      return;
+    }
+
+    const updates = await this.analyzeDependencyUpdates(
+      context,
+      workspaceDependencies,
+    );
+    if (updates.length === 0) {
+      return;
+    }
+
+    let shouldUpdate = false;
+    switch (config.dependencyUpdateStrategy) {
+      case "auto":
+        shouldUpdate = true;
+        break;
+      case "prompt":
+        shouldUpdate = await this.prompts.confirmDependencyUpdates(
+          context.name,
+          updates,
+        );
+        break;
+      case "none":
+      default:
+        shouldUpdate = false;
+        break;
+    }
+
+    if (shouldUpdate) {
       await this.packageManager.updateDependencies(
         context,
         workspaceDependencies,
@@ -694,5 +727,12 @@ export class ReleaseService {
       if (timeoutId) clearTimeout(timeoutId);
       throw error;
     }
+  }
+
+  private async updateVersion(
+    context: PackageContext,
+    config: ReleaseConfig,
+  ): Promise<void> {
+    await this.version.bump(context, config);
   }
 }

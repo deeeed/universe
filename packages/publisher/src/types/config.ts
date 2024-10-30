@@ -83,6 +83,8 @@ export const PackageConfigSchema = z.object({
       directory: z.string().optional(),
     })
     .optional(),
+  updateDependenciesOnRelease: z.boolean().default(false),
+  dependencyUpdateStrategy: z.enum(["auto", "prompt", "none"]).default("none"),
 });
 
 // Release configuration schema (extends package config)
@@ -200,3 +202,28 @@ export const PackValidationSchema = z.object({
 
 // Add type export
 export type PackValidation = z.infer<typeof PackValidationSchema>;
+
+export interface DependencyUpdate {
+  name: string;
+  currentVersion: string;
+  latestVersion: string;
+  type: "dependencies" | "devDependencies" | "peerDependencies";
+  isWorkspaceDependency: boolean;
+  updateAvailable: boolean;
+}
+
+export interface DependencyValidationReport {
+  isValid: boolean;
+  issues: Array<{
+    message: string;
+    solution?: string;
+    severity: "error" | "warning";
+  }>;
+  updates: DependencyUpdate[];
+  summary: {
+    total: number;
+    outdated: number;
+    workspaceUpdates: number;
+    externalUpdates: number;
+  };
+}
