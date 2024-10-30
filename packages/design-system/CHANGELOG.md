@@ -11,8 +11,6 @@
 - Storybook deployment workflow
 
 
-
-
 ## [0.30.0] - 2024-10-28
 
 ### Changed

@@ -46,6 +46,7 @@
     "@babel/eslint-parser": "^7.24.8",
     "@commitlint/config-conventional": "^17.0.2",
     "@evilmartians/lefthook": "^1.2.2",
+    "@siteed/publisher": "workspace:^",
     "@types/jest": "^29.5.13",
     "@typescript-eslint/eslint-plugin": "^7.17.0",
     "@typescript-eslint/parser": "^7.17.0",
