@@ -18,6 +18,8 @@ interface ChangelogFormat {
     config: { repoUrl: string; tagPrefix: string },
   ) => string[];
   parseConventionalContent?: (content: string) => string;
+  versionHeaderPattern: RegExp;
+  unreleasedHeaderPattern: RegExp;
 }
 
 const KEEP_A_CHANGELOG_FORMAT: ChangelogFormat = {
@@ -45,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `[unreleased]: ${config.repoUrl}/compare/${config.tagPrefix}${versions.current}...HEAD`,
     `[${versions.current}]: ${config.repoUrl}/compare/${config.tagPrefix}${versions.previous}...${config.tagPrefix}${versions.current}`,
   ],
+  versionHeaderPattern:
+    /^##\s*\[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\](?:\s*-\s*(\d{4}-\d{2}-\d{2}))?$/i,
+  unreleasedHeaderPattern: /^##\s*\[unreleased\]/i,
 };
 
 const CONVENTIONAL_CHANGELOG_FORMAT: ChangelogFormat = {
@@ -125,7 +130,13 @@ All notable changes to this project will be documented in this file.
 
     return result.join("\n");
   },
+  versionHeaderPattern: /^##\s*\[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]$/i,
+  unreleasedHeaderPattern: /^##\s*\[unreleased\]/i,
 };
+
+interface ChangelogConfig extends ReleaseConfig {
+  fallbackRepoUrl?: string;
+}
 
 export class ChangelogService {
   private readonly workspaceService: WorkspaceService;
@@ -222,6 +233,7 @@ export class ChangelogService {
       currentContent,
       newEntry,
       context.newVersion,
+      config,
     );
 
     // Update the version comparison links
@@ -238,29 +250,29 @@ export class ChangelogService {
     currentContent: string,
     newEntry: string,
     version: string,
+    config: ReleaseConfig,
   ): string {
-    // Split content into lines for easier processing
+    const format = this.getFormat(config);
     const lines: string[] = currentContent.split("\n");
     const newLines: string[] = [];
 
     let isSkippingExistingVersion = false;
     let hasAddedNewEntry = false;
 
-    // Process the changelog line by line
     for (let i = 0; i < lines.length; i++) {
       const line: string = lines[i];
+      const trimmedLine = line.trim();
 
       // Always include header section
-      if (i === 0 || line.startsWith("# ")) {
+      if (i === 0 || /^#\s+/i.test(trimmedLine)) {
         newLines.push(line);
         continue;
       }
 
-      // Handle Unreleased section
-      if (line.startsWith("## [Unreleased]")) {
+      // Handle Unreleased section with more flexible matching
+      if (format.unreleasedHeaderPattern.test(trimmedLine)) {
         newLines.push(line);
         if (!hasAddedNewEntry) {
-          // Add new entry after Unreleased
           newLines.push("");
           newLines.push(newEntry.trim());
           newLines.push("");
@@ -269,88 +281,130 @@ export class ChangelogService {
         continue;
       }
 
-      // Check if we're at an existing entry for the same version
-      if (line.startsWith(`## [${version}]`)) {
-        isSkippingExistingVersion = true;
-        continue;
+      // Check for version entries with more flexible matching
+      const versionMatch = trimmedLine.match(format.versionHeaderPattern);
+      if (versionMatch) {
+        const entryVersion = versionMatch[1];
+        if (entryVersion === version) {
+          isSkippingExistingVersion = true;
+          continue;
+        }
       }
 
       // Start of a different version entry
-      if (line.startsWith("## [") && isSkippingExistingVersion) {
+      if (format.versionHeaderPattern.test(trimmedLine)) {
         isSkippingExistingVersion = false;
       }
 
-      // Add line if we're not skipping
       if (!isSkippingExistingVersion) {
         newLines.push(line);
       }
     }
 
-    // Ensure proper spacing and line endings
-    const result =
-      newLines
-        .filter((line, index, array) => {
-          // Remove consecutive empty lines
-          if (line.trim() === "" && array[index - 1]?.trim() === "") {
-            return false;
-          }
-          return true;
-        })
-        .join("\n")
-        .trim() + "\n";
+    return this.normalizeContent(newLines);
+  }
 
-    return result;
+  /**
+   * Normalizes the content by removing consecutive empty lines and ensuring proper spacing
+   */
+  private normalizeContent(lines: string[]): string {
+    return (
+      lines
+        .reduce((acc: string[], line: string) => {
+          const lastLine = acc[acc.length - 1];
+          if (line.trim() === "" && lastLine?.trim() === "") {
+            return acc;
+          }
+          acc.push(line);
+          return acc;
+        }, [])
+        .join("\n")
+        .trim() + "\n"
+    );
+  }
+
+  private async getRepositoryUrl(
+    context: PackageContext,
+    config: ChangelogConfig,
+  ): Promise<string> {
+    try {
+      const pkgJson = await this.workspaceService.readPackageJson(context.path);
+
+      // Try to get the repository URL from various sources
+      const repoUrl =
+        (typeof pkgJson.repository === "string"
+          ? pkgJson.repository
+          : pkgJson.repository?.url) ??
+        config.repository?.url ??
+        config.fallbackRepoUrl;
+
+      if (!repoUrl) {
+        throw new Error(
+          "Repository URL could not be determined. Please specify it in package.json or in the release configuration.",
+        );
+      }
+
+      // Clean up the repository URL
+      return repoUrl.replace(/^git\+/, "").replace(/\.git$/, "");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to determine repository URL: ${errorMessage}`);
+    }
   }
 
   private async updateVersionComparisonLinks(
     content: string,
     context: PackageContext,
-    config: ReleaseConfig,
+    config: ChangelogConfig,
   ): Promise<string> {
     if (!context.newVersion) {
       throw new Error("New version is required to update changelog");
     }
 
-    // Get repository URL
-    let repoUrl: string;
     try {
-      const pkgJson = await this.workspaceService.readPackageJson(context.path);
-      repoUrl =
-        (typeof pkgJson.repository === "string"
-          ? pkgJson.repository
-          : pkgJson.repository?.url) ??
-        config.repository?.url ??
-        "https://github.com/deeeed/universe";
+      const repoUrl = await this.getRepositoryUrl(context, config);
+      const tagPrefix = config.git?.tagPrefix ?? "";
+      const packagePrefix = context.name ? `${context.name}@` : "";
 
-      repoUrl = repoUrl.replace(/^git\+/, "").replace(/\.git$/, "");
-    } catch (error) {
-      this.logger.debug(
-        "Error reading package.json for repository URL:",
-        error,
+      // Update only the unreleased and current version links
+      const currentVersionLinks: string[] = [
+        `[unreleased]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.newVersion}...HEAD`,
+      ];
+
+      if (context.currentVersion) {
+        // When there is a previous version, create a compare link
+        currentVersionLinks.push(
+          `[${context.newVersion}]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.currentVersion}...${tagPrefix}${packagePrefix}${context.newVersion}`,
+        );
+      } else {
+        // If no previous version, link directly to the new version tag
+        currentVersionLinks.push(
+          `[${context.newVersion}]: ${repoUrl}/releases/tag/${tagPrefix}${packagePrefix}${context.newVersion}`,
+        );
+      }
+
+      // Keep existing links except for unreleased and current version
+      const existingLinks: string[] = this.extractExistingLinks(
+        content,
+        context,
       );
-      repoUrl = "https://github.com/deeeed/universe";
+
+      // Combine new and existing links
+      const allLinks: string[] = [...currentVersionLinks, ...existingLinks];
+
+      // Replace or append links section
+      const contentWithoutLinks: string = content
+        .replace(/\[.+\]: .+$/gm, "")
+        .trim();
+      return `${contentWithoutLinks}\n\n${allLinks.join("\n")}\n`;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Failed to update version comparison links: ${errorMessage}`,
+      );
     }
-
-    const tagPrefix = config.git?.tagPrefix ?? "";
-    const packagePrefix = context.name ? `${context.name}@` : "";
-
-    // Update only the unreleased and current version links
-    const currentVersionLinks: string[] = [
-      `[unreleased]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.newVersion}...HEAD`,
-      `[${context.newVersion}]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.currentVersion}...${tagPrefix}${packagePrefix}${context.newVersion}`,
-    ];
-
-    // Keep existing links except for unreleased and current version
-    const existingLinks: string[] = this.extractExistingLinks(content, context);
-
-    // Combine new and existing links
-    const allLinks: string[] = [...currentVersionLinks, ...existingLinks];
-
-    // Replace or append links section
-    const contentWithoutLinks: string = content
-      .replace(/\[.+\]: .+$/gm, "")
-      .trim();
-    return `${contentWithoutLinks}\n\n${allLinks.join("\n")}\n`;
   }
 
   private extractExistingLinks(
@@ -543,28 +597,25 @@ export class ChangelogService {
     unreleasedSection: string,
     format: ChangelogFormat,
   ): void {
-    if (format.name === "keep-a-changelog") {
-      this.logger.debug("Validating Keep a Changelog format...");
+    const hasContent = unreleasedSection
+      .split("\n")
+      .some((line) => line.trim() && !line.startsWith("###"));
 
-      const foundHeaders = unreleasedSection
-        .split("\n")
-        .filter((line) => line.startsWith("###"))
-        .map((line) => line.trim());
+    if (!hasContent) {
+      throw new Error(
+        `Invalid changelog format in ${packageName}: Unreleased section must contain at least one change`,
+      );
+    }
 
-      this.logger.debug("Found section headers:", foundHeaders);
+    const foundHeaders = unreleasedSection
+      .split("\n")
+      .filter((line) => line.startsWith("###"))
+      .map((line) => line.trim());
 
-      // Only validate that if a section exists, it matches one of the allowed headers
-      if (foundHeaders.length > 0) {
-        for (const header of foundHeaders) {
-          if (!format.sectionHeaders.includes(header)) {
-            throw new Error(
-              `Invalid changelog format in ${packageName}: invalid section header "${header}" in Unreleased. Must be one of: ${format.sectionHeaders.join(", ")}`,
-            );
-          }
-        }
-      } else {
+    for (const header of foundHeaders) {
+      if (!format.sectionHeaders.includes(header)) {
         throw new Error(
-          `Invalid changelog format in ${packageName}: Unreleased section must contain at least one valid section header`,
+          `Invalid changelog format in ${packageName}: invalid section header "${header}" in Unreleased. Must be one of: ${format.sectionHeaders.join(", ")}`,
         );
       }
     }
