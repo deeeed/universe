@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+
+## [0.3.1]
+
+## [0.3.1] - 2024-10-30
+
+- feat: improved changelog validation
+
+
 - feat: improved changelog validation
 
 ## [0.3.0]
@@ -30,5 +38,8 @@ All notable changes to this project will be documented in this file.
 
 
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.3.0...HEAD
-[0.3.0]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.2.18...@siteed/publisher@0.3.0
+
+
+
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.3.1...HEAD
+[0.3.1]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.3.0...@siteed/publisher@0.3.1
