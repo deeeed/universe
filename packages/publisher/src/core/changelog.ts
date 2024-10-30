@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `[${versions.current}]: ${config.repoUrl}/compare/${config.tagPrefix}${versions.previous}...${config.tagPrefix}${versions.current}`,
   ],
   versionHeaderPattern:
-    /^##\s*\[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\](?:\s*-\s*(\d{4}-\d{2}-\d{2}))?$/i,
+    /^##\s*\[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\](?:\s*-\s*\d{4}-\d{2}-\d{2})?$/i,
   unreleasedHeaderPattern: /^##\s*\[unreleased\]/i,
 };
 
@@ -257,23 +257,24 @@ export class ChangelogService {
     const newLines: string[] = [];
 
     let hasAddedNewEntry = false;
-    let isSkippingExistingVersion = false;
+    let skipUntilNextVersion = false;
     let hasUnreleasedSection = false;
 
-    // Helper function to check if a line is a version header (with or without date)
-    const isVersionHeader = (line: string, targetVersion: string): boolean => {
-      const withDateMatch = line.match(format.versionHeaderPattern);
-      const withoutDateMatch = line.match(
-        /^##\s*\[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]$/,
-      );
-      return (
-        withDateMatch?.[1] === targetVersion ||
-        withoutDateMatch?.[1] === targetVersion
+    // Helper function to check if a line is a version header
+    const isVersionHeader = (line: string): boolean => {
+      return /^##\s*\[\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?\](?:\s*-\s*\d{4}-\d{2}-\d{2})?$/.test(
+        line,
       );
     };
 
+    // Helper function to extract version from header
+    const extractVersion = (line: string): string | null => {
+      const match = line.match(/\[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]/);
+      return match ? match[1] : null;
+    };
+
     for (let i = 0; i < lines.length; i++) {
-      const line: string = lines[i];
+      const line = lines[i];
       const trimmedLine = line.trim();
 
       // Always include header section
@@ -286,7 +287,6 @@ export class ChangelogService {
       if (format.unreleasedHeaderPattern.test(trimmedLine)) {
         hasUnreleasedSection = true;
         newLines.push(line);
-        // Only add new entry after Unreleased if we haven't already
         if (!hasAddedNewEntry) {
           newLines.push("");
           newLines.push(newEntry.trim());
@@ -296,54 +296,63 @@ export class ChangelogService {
         continue;
       }
 
-      // Check for existing version entries (both with and without date)
-      if (isVersionHeader(trimmedLine, version)) {
-        // Skip this version and its content as we're adding it new
-        isSkippingExistingVersion = true;
-        continue;
+      // Handle version headers
+      if (isVersionHeader(trimmedLine)) {
+        const headerVersion = extractVersion(trimmedLine);
+        if (headerVersion === version) {
+          skipUntilNextVersion = true;
+          continue;
+        } else {
+          skipUntilNextVersion = false;
+        }
       }
 
-      // If we hit a different version header, stop skipping
-      if (
-        trimmedLine.startsWith("## [") &&
-        !isVersionHeader(trimmedLine, version)
-      ) {
-        isSkippingExistingVersion = false;
-      }
-
-      if (!isSkippingExistingVersion) {
+      // Include line if we're not skipping
+      if (!skipUntilNextVersion) {
         newLines.push(line);
       }
     }
 
     // If no Unreleased section was found, create a new changelog
     if (!hasUnreleasedSection) {
-      newLines.unshift("");
+      if (newLines.length > 0) newLines.unshift("");
       newLines.unshift(newEntry.trim());
+      newLines.unshift("");
       newLines.unshift("## [Unreleased]");
-      newLines.unshift(format.template);
+      if (!newLines[0]?.includes("# Changelog")) {
+        newLines.unshift("");
+        newLines.unshift("# Changelog");
+      }
     }
 
-    return this.normalizeContent(newLines);
+    // Normalize and clean up the content
+    return this.normalizeContent(
+      newLines
+        .filter((line, index, arr) => {
+          // Remove consecutive empty lines
+          if (line.trim() === "" && arr[index - 1]?.trim() === "") {
+            return false;
+          }
+          return true;
+        })
+        .join("\n"),
+    );
   }
 
   /**
    * Normalizes the content by removing consecutive empty lines and ensuring proper spacing
    */
-  private normalizeContent(lines: string[]): string {
-    return (
-      lines
-        .reduce((acc: string[], line: string) => {
-          const lastLine = acc[acc.length - 1];
-          if (line.trim() === "" && lastLine?.trim() === "") {
-            return acc;
-          }
-          acc.push(line);
-          return acc;
-        }, [])
-        .join("\n")
-        .trim() + "\n"
-    );
+  private normalizeContent(content: string): string {
+    // Split content into lines, filter out empty lines at start/end
+    const lines = content.split("\n").filter((line, index, arr) => {
+      if (index === 0 || index === arr.length - 1) {
+        return line.trim() !== "";
+      }
+      return true;
+    });
+
+    // Ensure single newline at the end
+    return lines.join("\n").trim() + "\n";
   }
 
   private async getRepositoryUrl(

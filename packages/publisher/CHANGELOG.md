@@ -4,11 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.4.4]
+- feat: simplified regexp for version header
 
 ## [0.4.4] - 2024-10-30
-
-- feat: differentiate dated and non dated version header
 
 - feat: differentiate dated and non dated version header
 
