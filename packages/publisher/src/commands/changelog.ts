@@ -211,7 +211,7 @@ changelogCommand
 
       logger.info("Validating changelogs...");
 
-      const monorepRoot = await workspaceService.getRootDir();
+      const monorepRoot = workspaceService.getRootDir();
 
       for (const pkg of packagesToValidate) {
         const packageConfig = await workspaceService.getPackageConfig(pkg.name);

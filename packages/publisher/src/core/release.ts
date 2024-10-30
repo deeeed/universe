@@ -138,13 +138,12 @@ export class ReleaseService {
       this.logger.info(`Loading package configuration...`);
       const packageConfig = await this.getEffectiveConfig(context.name);
 
-      const packagePath = path.resolve(this.rootDir, context.path);
-      const changelogPath = path.resolve(
-        packagePath,
+      const changelogPath = path.join(
+        context.path,
         packageConfig.changelogFile || "CHANGELOG.md",
       );
 
-      this.logger.debug(`Package path: ${packagePath}`);
+      this.logger.debug(`Package path: ${context.path}`);
       this.logger.debug(`Changelog path: ${changelogPath}`);
 
       this.logger.info("Validating environment...");
@@ -467,21 +466,20 @@ export class ReleaseService {
   }
 
   async previewChangelog(packageName: string): Promise<string> {
-    const pkg = await this.workspace.getPackages([packageName]);
-    if (pkg.length === 0) {
+    const packages = await this.workspace.getPackages([packageName]);
+    if (packages.length === 0) {
       throw new Error(`Package ${packageName} not found`);
     }
 
-    const packageConfig = await this.workspace.getPackageConfig(packageName);
-    return this.changelog.previewChangelog(pkg[0], packageConfig);
+    const packageConfig = await this.getEffectiveConfig(packageName);
+    return this.changelog.previewChangelog(packages[0], packageConfig);
   }
 
   private async handleChangelog(
     context: PackageContext,
     packageConfig: ReleaseConfig,
   ): Promise<string | undefined> {
-    const changelogPath = path.resolve(
-      this.rootDir,
+    const changelogPath = path.join(
       context.path,
       packageConfig.changelogFile || "CHANGELOG.md",
     );
@@ -652,7 +650,6 @@ export class ReleaseService {
           await this.changelog.validate(
             context,
             await this.getEffectiveConfig(context.name),
-            this.rootDir,
           );
         },
       },

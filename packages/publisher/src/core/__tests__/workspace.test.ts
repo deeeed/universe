@@ -6,6 +6,7 @@ import { WorkspaceService } from "../workspace";
 import fs from "fs";
 import { Logger } from "../../utils/logger";
 import { MonorepoConfig } from "../../types/config";
+import { generateDefaultConfig } from "../../templates/package-config.template";
 
 // Mock modules
 jest.mock("globby", () => ({
@@ -24,40 +25,26 @@ jest.mock("fs", () => ({
 
 // Add mockConfig definition
 const mockConfig: MonorepoConfig = {
-  packageManager: "yarn",
-  conventionalCommits: true,
-  changelogFormat: "conventional",
-  versionStrategy: "independent",
-  bumpStrategy: "prompt",
-  changelogFile: "CHANGELOG.md",
+  ...generateDefaultConfig({
+    packageJson: { name: "test-package" },
+    packageManager: "yarn",
+    conventionalCommits: true,
+    changelogFormat: "conventional",
+    versionStrategy: "independent",
+    bumpStrategy: "prompt",
+    npm: {
+      publish: true,
+      access: "public",
+    },
+  }),
   maxConcurrency: 1,
   packages: {},
   ignorePackages: [],
-  hooks: {},
-  npm: {
-    publish: true,
-    access: "public",
-    tag: "latest",
-    registry: "https://registry.npmjs.org/",
-  },
   packValidation: {
     enabled: true,
     validateFiles: true,
     validateBuildArtifacts: true,
     requiredFiles: ["dist/", "README.md"],
-  },
-  git: {
-    tagPrefix: "",
-    requireUpstreamTracking: true,
-    requireCleanWorkingDirectory: true,
-    requireUpToDate: true,
-    commit: true,
-    push: true,
-    tag: true,
-    commitMessage: "chore(release): release ${version}",
-    tagMessage: "",
-    allowedBranches: ["main", "master"],
-    remote: "origin",
   },
 };
 

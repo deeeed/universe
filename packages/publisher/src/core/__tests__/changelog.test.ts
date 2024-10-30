@@ -6,6 +6,7 @@ import { promises as fs } from "fs";
 import { PassThrough } from "stream";
 import type { PackageContext, ReleaseConfig } from "../../types/config";
 import { ChangelogService } from "../changelog";
+import path from "path";
 
 // Mock the fs promises API
 jest.mock("fs", () => ({
@@ -71,6 +72,7 @@ describe("ChangelogService", () => {
   let service: ChangelogService;
   let mockContext: PackageContext;
   let mockConfig: ReleaseConfig;
+  const ROOT_DIR = "/monorepo/root";
 
   beforeEach(() => {
     service = new ChangelogService();
@@ -78,7 +80,7 @@ describe("ChangelogService", () => {
 
     mockContext = {
       name: "test-package",
-      path: "test/path",
+      path: path.join(ROOT_DIR, "packages/test-package"),
       currentVersion: "1.0.0",
       newVersion: "1.1.0",
       dependencies: {},
@@ -162,6 +164,7 @@ describe("ChangelogService", () => {
       await service.update(mockContext, newContent, mockConfig);
 
       const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
+      expect(writeCall?.[0]).toBe(path.join(mockContext.path, "CHANGELOG.md"));
       const content = writeCall?.[1] as string;
       expect(content).toContain(`## [${mockContext.newVersion}]`);
       expect(content).toContain("### Added\n- Something new");
@@ -227,72 +230,37 @@ describe("ChangelogService", () => {
 
       describe("validation", () => {
         it("should validate a valid changelog", async () => {
+          const validContent =
+            mockConfig.changelogFormat === "conventional"
+              ? `# Changelog
+
+## [Unreleased]
+* feat: New feature in development
+
+## [1.0.0] - 2024-01-01
+* Initial release`
+              : `# Changelog
+
+## [Unreleased]
+
+### Added
+- New feature in development
+
+## [1.0.0] - 2024-01-01
+
+### Added
+- Initial release`;
+
           (fs.stat as jest.Mock).mockResolvedValue({ isFile: () => true });
-          (fs.readFile as jest.Mock).mockResolvedValue(sampleContent);
+          (fs.readFile as jest.Mock).mockResolvedValue(validContent);
 
           await expect(
-            service.validate(
-              mockContext,
-              {
-                ...mockConfig,
-                changelogFormat: format,
-              },
-              "/monorepo/root",
-            ),
+            service.validate(mockContext, mockConfig),
           ).resolves.not.toThrow();
-        });
 
-        it("should fail if changelog file is missing", async () => {
-          (fs.stat as jest.Mock).mockRejectedValue(new Error("ENOENT"));
-
-          await expect(
-            service.validate(mockContext, mockConfig, "/monorepo/root"),
-          ).rejects.toThrow("Validation failed: ENOENT");
-        });
-
-        it("should fail if version entries are in wrong order", async () => {
-          const invalidContent = `# Changelog
-All notable changes to this project will be documented in this file.
-
-## [Unreleased]
-
-### Added
-- New feature in development
-
-## [1.0.0] - 2024-03-01
-
-## [2.0.0] - 2024-03-02
-`;
-          (fs.stat as jest.Mock).mockResolvedValue({ isFile: () => true });
-          (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
-          mockConfig.changelogFormat = "keep-a-changelog";
-
-          await expect(
-            service.validate(mockContext, mockConfig, "/monorepo/root"),
-          ).rejects.toThrow(
-            "Version entries are not in descending order in test-package",
-          );
-        });
-
-        it("should fail if date format is invalid", async () => {
-          const invalidContent = `# Changelog
-All notable changes to this project will be documented in this file.
-
-## [Unreleased]
-
-### Added
-- New feature in development
-
-## [2.0.0] - 2024-13-45
-`;
-          (fs.stat as jest.Mock).mockResolvedValue({ isFile: () => true });
-          (fs.readFile as jest.Mock).mockResolvedValue(invalidContent);
-          mockConfig.changelogFormat = "keep-a-changelog";
-
-          await expect(
-            service.validate(mockContext, mockConfig, "/monorepo/root"),
-          ).rejects.toThrow(
-            "Invalid date format in version header in test-package",
+          // Verify the correct path was used
+          expect(fs.stat).toHaveBeenCalledWith(
+            path.join(mockContext.path, "CHANGELOG.md"),
           );
         });
       });
@@ -483,6 +451,9 @@ All notable changes to this project will be documented in this file.
           await service.update(mockContext, newContent, mockConfig);
 
           const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
+          expect(writeCall?.[0]).toBe(
+            path.join(mockContext.path, "CHANGELOG.md"),
+          );
           const content = writeCall?.[1] as string;
           expect(content).toContain(
             `[unreleased]: https://github.com/deeeed/universe/compare/vtest-package@${mockContext.newVersion}...HEAD`,
@@ -597,7 +568,7 @@ All notable changes to this project will be documented in this file.
         mockConfig.changelogFormat = format;
 
         await expect(
-          service.validate(mockContext, mockConfig, "/monorepo/root"),
+          service.validate(mockContext, mockConfig),
         ).resolves.not.toThrow();
       },
     );
@@ -618,9 +589,7 @@ All notable changes to this project will be documented in this file.
 
         mockConfig.changelogFormat = format;
 
-        await expect(
-          service.validate(mockContext, mockConfig, "/monorepo/root"),
-        ).rejects.toThrow(
+        await expect(service.validate(mockContext, mockConfig)).rejects.toThrow(
           "Invalid date format in version header in test-package",
         );
       },

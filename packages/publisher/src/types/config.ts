@@ -5,7 +5,7 @@ export type PackageManager = "yarn" | "npm";
 
 // Git configuration schema
 export const GitConfigSchema = z.object({
-  tagPrefix: z.string().default("v"),
+  tagPrefix: z.string().default(""),
   requireCleanWorkingDirectory: z.boolean().default(true),
   requireUpToDate: z.boolean().default(true),
   requireUpstreamTracking: z.boolean().default(true),

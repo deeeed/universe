@@ -225,7 +225,6 @@ export class ChangelogService {
   ): Promise<void> {
     try {
       const changelogPath = path.join(
-        this.workspaceService.getRootDir(),
         context.path,
         config.changelogFile || "CHANGELOG.md",
       );
@@ -508,12 +507,10 @@ export class ChangelogService {
    * Validates the changelog for the given package context and configuration.
    * @param context - The package context.
    * @param config - The release configuration.
-   * @param monorepoRoot - The root directory of the monorepo.
    */
   async validate(
     context: PackageContext,
     config: ReleaseConfig,
-    monorepoRoot: string,
   ): Promise<void> {
     if (!context.path) {
       throw new Error(`Invalid package path for ${context.name}`);
@@ -521,7 +518,6 @@ export class ChangelogService {
 
     const format = this.getFormat(config);
     const changelogPath = path.join(
-      monorepoRoot,
       context.path,
       config.changelogFile || "CHANGELOG.md",
     );
@@ -612,11 +608,7 @@ export class ChangelogService {
     config: ReleaseConfig,
   ): Promise<string[]> {
     try {
-      // Get root directory with proper type safety
-      const rootDir = this.workspaceService.getRootDir();
-
       const changelogPath = path.join(
-        rootDir,
         context.path,
         config.changelogFile || "CHANGELOG.md",
       );
@@ -656,11 +648,7 @@ export class ChangelogService {
   }
 
   async getLatestVersion(context: PackageContext): Promise<string | null> {
-    const changelogPath = path.join(
-      this.workspaceService.getRootDir(),
-      context.path,
-      "CHANGELOG.md",
-    );
+    const changelogPath = path.join(context.path, "CHANGELOG.md");
     try {
       const content = await fs.readFile(changelogPath, "utf-8");
       const versionMatch = content.match(
@@ -805,10 +793,7 @@ export class ChangelogService {
     config: ReleaseConfig,
   ): Promise<string> {
     try {
-      // Get root directory and construct full path
-      const rootDir = this.workspaceService.getRootDir();
       const changelogPath = path.join(
-        rootDir,
         context.path,
         config.changelogFile || "CHANGELOG.md",
       );
@@ -1070,11 +1055,7 @@ export class ChangelogService {
 
     try {
       const content = await fs.readFile(
-        path.join(
-          this.workspaceService.getRootDir(),
-          context.path,
-          config.changelogFile,
-        ),
+        path.join(context.path, config.changelogFile),
         "utf8",
       );
 

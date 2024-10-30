@@ -77,8 +77,8 @@ describe("Config Loading", () => {
   });
 
   it("should load and validate JSON config", async () => {
-    const mockConfig: MonorepoConfig = {
-      packageManager: "pnpm",
+    const mockConfig: Partial<MonorepoConfig> = {
+      packageManager: "yarn",
       changelogFile: "CHANGELOG.md",
       conventionalCommits: true,
       changelogFormat: "conventional",

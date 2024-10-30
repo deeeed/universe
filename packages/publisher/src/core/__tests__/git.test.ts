@@ -209,11 +209,11 @@ describe("GitService", () => {
 
       await gitService.createTag(context, true);
 
-      expect(spyCheckTagExists).toHaveBeenCalledWith("my-package@1.2.0");
+      expect(spyCheckTagExists).toHaveBeenCalledWith("vmy-package@1.2.0");
       expect(spyDeleteTag).not.toHaveBeenCalled();
       expect(mockGit.addAnnotatedTag).toHaveBeenCalledWith(
-        "my-package@1.2.0",
-        "Release my-package@1.2.0",
+        "vmy-package@1.2.0",
+        "Release vmy-package@1.2.0",
       );
     });
 
@@ -228,11 +228,11 @@ describe("GitService", () => {
 
       await gitService.createTag(context, true);
 
-      expect(spyCheckTagExists).toHaveBeenCalledWith("my-package@1.2.0");
-      expect(spyDeleteTag).toHaveBeenCalledWith("my-package@1.2.0", true);
+      expect(spyCheckTagExists).toHaveBeenCalledWith("vmy-package@1.2.0");
+      expect(spyDeleteTag).toHaveBeenCalledWith("vmy-package@1.2.0", true);
       expect(mockGit.addAnnotatedTag).toHaveBeenCalledWith(
-        "my-package@1.2.0",
-        "Release my-package@1.2.0",
+        "vmy-package@1.2.0",
+        "Release vmy-package@1.2.0",
       );
     });
   });
@@ -245,16 +245,20 @@ describe("GitService", () => {
         currentVersion: "1.1.0",
         path: "/mock/project/root/packages/my-package",
       };
+      const changelogPath =
+        "/mock/project/root/packages/my-package/CHANGELOG.md";
 
       mockGit.commit.mockResolvedValue({ commit: "abc123" });
 
-      const result = await gitService.commitChanges(context);
+      await gitService.commitChanges(context, changelogPath);
 
-      expect(mockGit.add).toHaveBeenCalledWith("packages/my-package");
+      expect(mockGit.add).toHaveBeenCalledWith([
+        "packages/my-package/package.json",
+        "packages/my-package/CHANGELOG.md",
+      ]);
       expect(mockGit.commit).toHaveBeenCalledWith(
         "chore(release): release my-package@1.2.0",
       );
-      expect(result).toBe("abc123");
     });
 
     it("should throw if no new version provided", async () => {
@@ -263,10 +267,12 @@ describe("GitService", () => {
         currentVersion: "1.1.0",
         path: "/mock/project/root/packages/my-package",
       };
+      const changelogPath =
+        "/mock/project/root/packages/my-package/CHANGELOG.md";
 
-      await expect(gitService.commitChanges(context)).rejects.toThrow(
-        "New version is required to create a commit message",
-      );
+      await expect(
+        gitService.commitChanges(context, changelogPath),
+      ).rejects.toThrow("New version is required to create a commit message");
     });
   });
 

@@ -5,7 +5,11 @@ import { WorkspaceService } from "../workspace";
 
 // Mock modules
 jest.mock("fs/promises");
-jest.mock("path");
+jest.mock("path", () => ({
+  resolve: jest.fn().mockReturnValue("/mock/path"),
+  parse: jest.fn().mockReturnValue({ root: "/" }),
+  join: jest.fn().mockImplementation((...args) => args.join("/")),
+}));
 
 // Mock the Logger class
 jest.mock("../../utils/logger", () => {
@@ -15,7 +19,7 @@ jest.mock("../../utils/logger", () => {
       warning: jest.fn(),
       error: jest.fn(),
       success: jest.fn(),
-      debug: jest.fn(), // Add debug method if your Logger uses it
+      debug: jest.fn(),
     })),
   };
 });
@@ -25,8 +29,7 @@ jest.mock("../workspace", () => {
   return {
     WorkspaceService: jest.fn().mockImplementation(() => ({
       getPackages: jest.fn(),
-      getRootDir: jest.fn(), // Mock getRootDir
-      // Add other methods if necessary
+      getRootDir: jest.fn().mockReturnValue("/mock/path"),
     })),
   };
 });
@@ -41,6 +44,9 @@ describe("InitService", () => {
     mockLogger = new Logger() as jest.Mocked<Logger>;
     mockWorkspaceService =
       new WorkspaceService() as jest.Mocked<WorkspaceService>;
+
+    // Mock getRootDir to return a consistent path
+    mockWorkspaceService.getRootDir.mockReturnValue("/mock/path");
 
     initService = new InitService(mockLogger, mockWorkspaceService);
 

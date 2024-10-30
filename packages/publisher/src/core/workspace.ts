@@ -82,7 +82,7 @@ export class WorkspaceService {
 
           const context: PackageContext = {
             name: pkgJson.name,
-            path: packagePath,
+            path: path.resolve(rootDir, packagePath),
             currentVersion: pkgJson.version ?? "0.0.0",
             dependencies,
             devDependencies,
@@ -91,7 +91,7 @@ export class WorkspaceService {
 
           this.packageCache.set(pkgJson.name, context);
           this.logger.debug(
-            `Found valid package: ${pkgJson.name} at ${packagePath}`,
+            `Found valid package: ${pkgJson.name} at ${context.path}`,
           );
           return context;
         } catch (error) {
@@ -140,10 +140,13 @@ export class WorkspaceService {
       "HEAD^",
     ]);
     const changedFiles = result.stdout.split("\n").filter(Boolean);
+    const rootDir = this.getRootDir();
 
     const packages = await this.getPackages();
     return packages.filter((pkg) =>
-      changedFiles.some((file: string) => file.startsWith(pkg.path)),
+      changedFiles.some((file: string) =>
+        file.startsWith(path.relative(rootDir, pkg.path)),
+      ),
     );
   }
 
@@ -296,7 +299,7 @@ export class WorkspaceService {
 
   public async readPackageJson(packagePath: string): Promise<PackageJson> {
     const rootDir = this.getRootDir();
-    const fullPath = path.join(rootDir, packagePath, "package.json");
+    const fullPath = path.resolve(rootDir, packagePath, "package.json");
     try {
       const content = await readFile(fullPath, "utf-8");
       const parsed = JSON.parse(content) as PackageJson;
@@ -362,7 +365,7 @@ export class WorkspaceService {
     data: PackageJson,
   ): Promise<void> {
     const rootDir = this.getRootDir();
-    const fullPath = path.join(rootDir, packagePath, "package.json");
+    const fullPath = path.resolve(rootDir, packagePath, "package.json");
     try {
       const content = JSON.stringify(data, null, 2);
       await fs.writeFile(fullPath, content, "utf8");
@@ -374,14 +377,13 @@ export class WorkspaceService {
   }
 
   async getCurrentPackage(): Promise<PackageContext | null> {
-    const currentDir = process.cwd();
+    const currentDir = path.resolve(process.cwd());
     const packages = await this.getPackages();
 
     // Find package whose path matches the current directory
-    const currentPackage = packages.find((pkg) => {
-      const absolutePkgPath = path.resolve(this.rootDir || "", pkg.path);
-      return currentDir.startsWith(absolutePkgPath);
-    });
+    const currentPackage = packages.find((pkg) =>
+      currentDir.startsWith(pkg.path),
+    );
 
     return currentPackage || null;
   }

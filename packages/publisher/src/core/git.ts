@@ -181,8 +181,8 @@ export class GitService {
       throw new Error("Version is required to create a tag");
     }
 
-    const tagName = `${context.name}@${context.newVersion}`;
-    const tagMessage = `Release ${tagName}`;
+    const tagName = `${this.config.tagPrefix}${context.name}@${context.newVersion}`;
+    const tagMessage = this.config.tagMessage || `Release ${tagName}`;
 
     try {
       const tagExists = await this.checkTagExists(tagName);
@@ -219,9 +219,16 @@ export class GitService {
     context: PackageContext,
     changelogPath: string,
   ): Promise<void> {
+    if (!context.newVersion) {
+      throw new Error("New version is required to create a commit message");
+    }
+
+    const relativePackagePath = path.relative(this.rootDir, context.path);
+    const relativeChangelogPath = path.relative(this.rootDir, changelogPath);
+
     const filesToAdd = [
-      path.join(context.path, "package.json"),
-      changelogPath,
+      path.join(relativePackagePath, "package.json"),
+      relativeChangelogPath,
     ].filter(Boolean);
 
     try {
@@ -229,10 +236,9 @@ export class GitService {
       await this.git.add(filesToAdd);
 
       // Create commit with the configured message
-      const commitMessage = this.config.commitMessage.replace(
-        "${version}",
-        context.newVersion || "",
-      );
+      const commitMessage = this.config.commitMessage
+        .replace("${packageName}", context.name)
+        .replace("${version}", context.newVersion);
 
       await this.git.commit(commitMessage);
     } catch (error) {
