@@ -6,9 +6,6 @@ All notable changes to this project will be documented in this file.
 
 - feat: hopeless changelog
 
-## [0.4.1]
-
-- feat: changelog spacing without duplicates
 ## [0.4.1] - 2024-10-30
 
 - feat: changelog spacing without duplicates
@@ -17,8 +14,6 @@ All notable changes to this project will be documented in this file.
 
 - feat: generate dependency report
 - feat: opt-in dependency updates and strategy
-
-
 
 ## [0.3.9] - 2024-10-30
 
