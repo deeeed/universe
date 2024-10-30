@@ -302,10 +302,6 @@ export class ChangelogService {
       ].join("\n");
     }
 
-    // Split content at Unreleased section
-    const [preUnreleased, postUnreleased] =
-      currentContent.split(/## \[Unreleased\]\n/);
-
     // Extract version from new entry
     const versionMatch = newEntry.match(/^## \[([^\]]+)\]/);
     if (!versionMatch) {
@@ -313,14 +309,18 @@ export class ChangelogService {
     }
     const version = versionMatch[1];
 
+    // Split content into sections
+    const sections = currentContent.split(/(?=## \[)/);
+    const header = sections[0];
+    const rest = sections.slice(1);
+
     // Remove any existing entries for the same version
-    const cleanedPostContent = postUnreleased.replace(
-      new RegExp(`## \\[${version}\\][^]*?(?=## \\[|$)`, "gs"),
-      "",
+    const filteredRest = rest.filter(
+      (section) => !section.startsWith(`## [${version}]`),
     );
 
-    // Deduplicate the content lines
-    const [header, ...contentLines] = newEntry.split("\n");
+    // Process new entry content
+    const [entryHeader, ...contentLines] = newEntry.split("\n");
     const uniqueLines = Array.from(
       new Set(
         contentLines
@@ -329,18 +329,18 @@ export class ChangelogService {
       ),
     );
 
-    // Reconstruct the entry with unique content
-    const deduplicatedEntry = [header, "", ...uniqueLines].join("\n");
+    // Reconstruct the entry with proper spacing
+    const deduplicatedEntry = [
+      entryHeader,
+      ...uniqueLines.filter((line) => line.trim()),
+    ].join("\n");
 
-    // Combine all parts
-    return [
-      preUnreleased.trim(),
-      "## [Unreleased]",
-      "",
-      deduplicatedEntry,
-      "",
-      cleanedPostContent.trim(),
-    ].join("\n\n");
+    // Combine all parts with proper spacing
+    return (
+      [header.trim(), "## [Unreleased]", "", deduplicatedEntry, ...filteredRest]
+        .join("\n\n")
+        .trim() + "\n"
+    );
   }
 
   private extractUnreleasedSection(content: string): string {

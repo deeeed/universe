@@ -4,15 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-
+- another attempt at fixing changelog
 
 ## [0.3.5]
 
 - prevent malformed spacing in changelog
 
-
-
-- prevent malformed spacing in changelog
 ## [0.3.4] - 2024-10-30
 - feat: prevent duplicate changelog entries
 
