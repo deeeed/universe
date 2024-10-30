@@ -4,11 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.4.3]
+- feat: differentiate dated and non dated version header
 
 ## [0.4.3] - 2024-10-30
-
-- feat: track existing version in changelog
 
 - feat: track existing version in changelog
 

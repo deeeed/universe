@@ -260,12 +260,24 @@ export class ChangelogService {
     let isSkippingExistingVersion = false;
     let hasUnreleasedSection = false;
 
+    // Helper function to check if a line is a version header (with or without date)
+    const isVersionHeader = (line: string, targetVersion: string): boolean => {
+      const withDateMatch = line.match(format.versionHeaderPattern);
+      const withoutDateMatch = line.match(
+        /^##\s*\[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]$/,
+      );
+      return (
+        withDateMatch?.[1] === targetVersion ||
+        withoutDateMatch?.[1] === targetVersion
+      );
+    };
+
     for (let i = 0; i < lines.length; i++) {
       const line: string = lines[i];
       const trimmedLine = line.trim();
 
       // Always include header section
-      if (i === 0 || /^#\s+/i.test(trimmedLine)) {
+      if (i === 0 || /^#\s+Changelog/i.test(trimmedLine)) {
         newLines.push(line);
         continue;
       }
@@ -284,17 +296,19 @@ export class ChangelogService {
         continue;
       }
 
-      // Check for existing version entries
-      const versionMatch = trimmedLine.match(format.versionHeaderPattern);
-      if (versionMatch) {
-        const entryVersion = versionMatch[1];
-        if (entryVersion === version) {
-          // Skip this version and its content as we're adding it new
-          isSkippingExistingVersion = true;
-          continue;
-        } else {
-          isSkippingExistingVersion = false;
-        }
+      // Check for existing version entries (both with and without date)
+      if (isVersionHeader(trimmedLine, version)) {
+        // Skip this version and its content as we're adding it new
+        isSkippingExistingVersion = true;
+        continue;
+      }
+
+      // If we hit a different version header, stop skipping
+      if (
+        trimmedLine.startsWith("## [") &&
+        !isVersionHeader(trimmedLine, version)
+      ) {
+        isSkippingExistingVersion = false;
       }
 
       if (!isSkippingExistingVersion) {
@@ -302,7 +316,7 @@ export class ChangelogService {
       }
     }
 
-    // If no Unreleased section was found, add it with the new entry
+    // If no Unreleased section was found, create a new changelog
     if (!hasUnreleasedSection) {
       newLines.unshift("");
       newLines.unshift(newEntry.trim());
