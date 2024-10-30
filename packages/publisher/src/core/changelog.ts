@@ -217,14 +217,13 @@ export class ChangelogService {
       `${versionEntry}\n\n${newContent}`,
     );
 
-    const finalContent = this.updateComparisonLinks(
+    const finalContent = await this.updateComparisonLinks(
       updatedContent,
       context,
       config,
       format,
     );
 
-    this.logger.debug("Final changelog content:", finalContent);
     await fs.writeFile(changelogPath, finalContent);
   }
 
@@ -234,8 +233,14 @@ export class ChangelogService {
     if (unreleasedMatch) {
       // Split content at Unreleased section
       const parts = currentContent.split(/## \[Unreleased\]/);
+
+      // Remove any existing entries for the same version
+      const versionHeader = newEntry.split("\n")[0];
+      const versionRegex = new RegExp(`${versionHeader}[^]*?(?=## \\[|$)`, "g");
+      parts[1] = parts[1].replace(versionRegex, "");
+
       // Insert new entry after Unreleased section
-      return `${parts[0]}## [Unreleased]\n\n${newEntry}\n\n${parts[1]}`;
+      return `${parts[0]}## [Unreleased]\n\n${newEntry}\n\n${parts[1].trim()}`;
     }
 
     // No Unreleased section, insert at the top after the header
@@ -453,33 +458,76 @@ export class ChangelogService {
     return 0;
   }
 
-  private updateComparisonLinks(
+  private async updateComparisonLinks(
     content: string,
     context: PackageContext,
     config: ReleaseConfig,
-    format: ChangelogFormat,
-  ): string {
-    const repoUrl = "https://github.com/deeeed/universe";
-    const tagPrefix = config.git.tagPrefix || "v";
-
-    const links = format.formatLinks(
-      {
-        current: context.newVersion ?? "",
-        previous: context.currentVersion,
-      },
-      {
-        repoUrl,
-        tagPrefix,
-      },
-    );
-
-    // Replace or append links
-    const linksSection = content.match(/\[unreleased\]: .+$/m);
-    if (linksSection) {
-      return content.replace(/\[.+\]: .+$/gm, "") + "\n" + links.join("\n");
+    _format: ChangelogFormat,
+  ): Promise<string> {
+    if (!context.newVersion) {
+      throw new Error("New version is required to update changelog");
     }
 
-    return content + "\n\n" + links.join("\n");
+    // Get all version entries to build complete comparison links
+    const versionEntries =
+      content
+        .match(/## \[([^\]]+)\]/g)
+        ?.map((entry) => {
+          return entry.match(/\[(.*?)\]/)?.[1];
+        })
+        .filter((v): v is string => v !== undefined && v !== "Unreleased") ||
+      [];
+
+    // Try to get repository URL from different sources in order of preference:
+    // 1. Package's repository URL from package.json
+    // 2. Config's repository URL
+    // 3. Default fallback
+    let repoUrl: string;
+    try {
+      const pkgJson = await this.workspaceService.readPackageJson(context.path);
+      repoUrl =
+        (typeof pkgJson.repository === "string"
+          ? pkgJson.repository
+          : pkgJson.repository?.url) ??
+        config.repository?.url ??
+        "https://github.com/deeeed/universe";
+
+      // Clean up the URL if it's in git+https:// format
+      repoUrl = repoUrl.replace(/^git\+/, "").replace(/\.git$/, "");
+    } catch (error) {
+      this.logger.debug(
+        "Error reading package.json for repository URL:",
+        error,
+      );
+      repoUrl = "https://github.com/deeeed/universe";
+    }
+
+    const tagPrefix = config.git?.tagPrefix ?? "";
+    const packagePrefix = context.name ? `${context.name}@` : "";
+
+    // Build all comparison links
+    const links: string[] = [];
+
+    // Add unreleased comparison
+    links.push(
+      `[unreleased]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.newVersion}...HEAD`,
+    );
+
+    // Add version comparisons
+    for (let i = 0; i < versionEntries.length; i++) {
+      const currentVersion = versionEntries[i];
+      const previousVersion = versionEntries[i + 1] || context.currentVersion;
+
+      if (previousVersion) {
+        links.push(
+          `[${currentVersion}]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${previousVersion}...${tagPrefix}${packagePrefix}${currentVersion}`,
+        );
+      }
+    }
+
+    // Replace or append links section
+    const contentWithoutLinks = content.replace(/\[.+\]: .+$/gm, "").trim();
+    return `${contentWithoutLinks}\n\n${links.join("\n")}\n`;
   }
 
   async getUnreleasedChanges(

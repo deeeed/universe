@@ -77,6 +77,12 @@ export const PackageConfigSchema = z.object({
       validateFiles: true,
       validateBuildArtifacts: true,
     }),
+  repository: z
+    .object({
+      url: z.string().optional(),
+      directory: z.string().optional(),
+    })
+    .optional(),
 });
 
 // Release configuration schema (extends package config)
