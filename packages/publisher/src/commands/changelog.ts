@@ -382,13 +382,13 @@ changelogCommand
         );
         logger.info(chalk.gray("  ----------------------------------------"));
 
-        if (pkg.hasGitChanges) {
-          logger.info("\n  📝 Git Changes:");
-          const gitChanges = await releaseService.getGitChanges(pkg.name);
-          for (const commit of gitChanges) {
-            logger.info(`    - ${commit.message}`);
-          }
-        }
+        // if (pkg.hasGitChanges) {
+        //   logger.info("\n  📝 Git Changes:");
+        //   const gitChanges = await releaseService.getGitChanges(pkg.name);
+        //   for (const commit of gitChanges) {
+        //     logger.info(`    - ${commit.message}`);
+        //   }
+        // }
       }
     } catch (error) {
       logger.error(

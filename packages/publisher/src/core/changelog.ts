@@ -1,12 +1,12 @@
 import conventionalChangelog from "conventional-changelog";
+import { format as formatDate } from "date-fns";
 import { promises as fs } from "fs";
 import path from "path";
+import semver from "semver";
 import type { Transform } from "stream";
 import type { PackageContext, ReleaseConfig } from "../types/config";
 import { Logger } from "../utils/logger";
 import { WorkspaceService } from "./workspace";
-import semver from "semver";
-import { format as formatDate } from "date-fns";
 
 interface ChangelogFormat {
   name: string;
@@ -225,6 +225,7 @@ export class ChangelogService {
   ): Promise<void> {
     try {
       const changelogPath = path.join(
+        this.workspaceService.getRootDir(),
         context.path,
         config.changelogFile || "CHANGELOG.md",
       );
@@ -612,7 +613,7 @@ export class ChangelogService {
   ): Promise<string[]> {
     try {
       // Get root directory with proper type safety
-      const rootDir = await this.workspaceService.getRootDir();
+      const rootDir = this.workspaceService.getRootDir();
 
       const changelogPath = path.join(
         rootDir,
@@ -655,7 +656,11 @@ export class ChangelogService {
   }
 
   async getLatestVersion(context: PackageContext): Promise<string | null> {
-    const changelogPath = path.join(context.path, "CHANGELOG.md");
+    const changelogPath = path.join(
+      this.workspaceService.getRootDir(),
+      context.path,
+      "CHANGELOG.md",
+    );
     try {
       const content = await fs.readFile(changelogPath, "utf-8");
       const versionMatch = content.match(
@@ -800,7 +805,13 @@ export class ChangelogService {
     config: ReleaseConfig,
   ): Promise<string> {
     try {
-      const changelogPath = path.join(context.path, config.changelogFile);
+      // Get root directory and construct full path
+      const rootDir = this.workspaceService.getRootDir();
+      const changelogPath = path.join(
+        rootDir,
+        context.path,
+        config.changelogFile || "CHANGELOG.md",
+      );
       let content: string;
 
       try {
@@ -819,7 +830,7 @@ export class ChangelogService {
       }
 
       const unreleasedMatch = content.match(
-        /## \[Unreleased\]([\s\S]*?)(?=## \[|$)/i,
+        /## \[Unreleased\]\s*\n+([\s\S]*?)(?=\n+## \[|$)/i,
       );
       const unreleasedContent = unreleasedMatch
         ? unreleasedMatch[1].trim()
@@ -1059,13 +1070,17 @@ export class ChangelogService {
 
     try {
       const content = await fs.readFile(
-        path.join(context.path, config.changelogFile),
+        path.join(
+          this.workspaceService.getRootDir(),
+          context.path,
+          config.changelogFile,
+        ),
         "utf8",
       );
 
       // Extract unreleased content with improved regex
       const unreleasedMatch = content.match(
-        /## \[Unreleased\]\s*\n([\s\S]*?)(?=\n##\s*\[|$)/i,
+        /## \[Unreleased\]\s*\n+([\s\S]*?)(?=\n+##\s*\[|$)/i,
       );
 
       const unreleasedContent = unreleasedMatch

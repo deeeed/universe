@@ -11,6 +11,8 @@ import type {
   ReleaseConfig,
 } from "../types/config";
 import { Logger } from "../utils/logger";
+import { findMonorepoRootSync } from "../utils/find-monorepo-root";
+import globby from "globby";
 
 export class WorkspaceService {
   private packageCache: Map<string, PackageContext> = new Map();
@@ -24,36 +26,16 @@ export class WorkspaceService {
     this.configPromise = config ? Promise.resolve(config) : loadConfig();
   }
 
-  async getRootDir(): Promise<string> {
+  getRootDir(): string {
     if (!this.rootDir) {
-      this.rootDir = await this.findMonorepoRoot(process.cwd());
+      this.rootDir = findMonorepoRootSync(process.cwd());
       this.logger.debug("Monorepo root directory:", this.rootDir);
     }
     return this.rootDir;
   }
 
-  private async findMonorepoRoot(startDir: string): Promise<string> {
-    let currentDir = startDir;
-    while (currentDir !== path.parse(currentDir).root) {
-      const pkgJsonPath = path.join(currentDir, "package.json");
-      try {
-        await fs.access(pkgJsonPath);
-        const content = await fs.readFile(pkgJsonPath, "utf-8");
-        const pkgJson = JSON.parse(content) as PackageJson;
-        if (pkgJson.workspaces) {
-          return currentDir;
-        }
-      } catch (error) {
-        this.logger.debug(`Error accessing ${pkgJsonPath}:`, error);
-      }
-      currentDir = path.dirname(currentDir);
-    }
-    return startDir; // fallback to start directory if no root found
-  }
-
   async getPackages(packageNames?: string[]): Promise<PackageContext[]> {
-    const globby = (await import("globby")).default;
-    const rootDir = await this.getRootDir();
+    const rootDir = this.getRootDir();
     const workspaceGlobs = await this.getWorkspaceGlobs();
 
     this.logger.debug("Current directory:", process.cwd());
@@ -313,7 +295,7 @@ export class WorkspaceService {
   }
 
   public async readPackageJson(packagePath: string): Promise<PackageJson> {
-    const rootDir = await this.getRootDir();
+    const rootDir = this.getRootDir();
     const fullPath = path.join(rootDir, packagePath, "package.json");
     try {
       const content = await readFile(fullPath, "utf-8");
@@ -328,7 +310,7 @@ export class WorkspaceService {
 
   private async getWorkspaceGlobs(): Promise<string[]> {
     try {
-      const rootDir = await this.getRootDir();
+      const rootDir = this.getRootDir();
       const rootPkgJsonPath = path.join(rootDir, "package.json");
       const content = await readFile(rootPkgJsonPath, "utf-8");
       const rootPkgJson = JSON.parse(content) as PackageJson;
@@ -379,7 +361,7 @@ export class WorkspaceService {
     packagePath: string,
     data: PackageJson,
   ): Promise<void> {
-    const rootDir = await this.getRootDir();
+    const rootDir = this.getRootDir();
     const fullPath = path.join(rootDir, packagePath, "package.json");
     try {
       const content = JSON.stringify(data, null, 2);
