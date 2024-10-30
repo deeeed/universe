@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: generate dependency report
+- feat: opt-in dependency updates and strategy
+
 ## [0.3.9]
 
 - spacing and regex fixes for changelog
