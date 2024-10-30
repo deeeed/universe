@@ -212,17 +212,19 @@ export class ChangelogService {
     const unreleasedContent = this.extractUnreleasedSection(currentContent);
 
     const dateStr = new Date().toISOString().split("T")[0];
+    // Always create version entry with date
     const versionEntry = format.formatVersion(context.newVersion, dateStr);
 
     // Create new version entry with both unreleased and new content
     const combinedContent = [unreleasedContent, newContent]
       .filter((content) => content.trim())
+      .map((content) => content.trim())
       .join("\n");
 
     // Insert the new version with combined content
     const updatedContent = this.insertNewEntry(
       currentContent,
-      `${versionEntry}\n${combinedContent}`,
+      `${versionEntry}\n\n${combinedContent}`,
     );
 
     const finalContent = await this.updateVersionComparisonLinks(
@@ -303,29 +305,24 @@ export class ChangelogService {
     }
     const version = versionMatch[1];
 
-    // Remove any existing entries for the same version and unreleased section
+    // Remove any existing entries for the same version (with or without date)
     const filteredSections = contentSections.filter(
       (section) =>
-        !section.startsWith(`## [${version}]`) &&
-        !section.startsWith("## [Unreleased]"),
+        !section.match(
+          new RegExp(`## \\[${version}\\](?: - \\d{4}-\\d{2}-\\d{2})?`),
+        ) && !section.startsWith("## [Unreleased]"),
     );
 
     // Construct the new content
     const parts = [
       headerSection.trim(),
       "## [Unreleased]",
-      "",
       newEntry.trim(),
       ...filteredSections,
     ];
 
     // Join sections with proper spacing
-    return (
-      parts
-        .filter((part) => part.trim())
-        .join("\n\n")
-        .replace(/\n{3,}/g, "\n\n") + "\n"
-    );
+    return parts.filter((part) => part.trim()).join("\n\n") + "\n";
   }
 
   private extractUnreleasedSection(content: string): string {

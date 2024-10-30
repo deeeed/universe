@@ -4,8 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.3.8]
-- another attempt at fixing changelog
+- spacing and regex fixes for changelog
+
 ## [0.3.8] - 2024-10-30
 
 - another attempt at fixing changelog
