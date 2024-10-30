@@ -600,7 +600,7 @@ export class ChangelogService {
    * @returns 1 if a > b, -1 if a < b, 0 if equal.
    */
   private compareVersions(a: string, b: string): number {
-    return semver.compare(b, a);
+    return semver.compare(a, b);
   }
 
   async getUnreleasedChanges(
