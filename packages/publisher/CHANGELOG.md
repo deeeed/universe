@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.5]
+
+## [0.4.5] - 2024-10-30
+
+- feat: simplified regexp for version header
+
 - feat: simplified regexp for version header
 
 ## [0.4.4] - 2024-10-30
@@ -76,7 +82,8 @@ All notable changes to this project will be documented in this file.
 
 - Figuring out initial functionalities
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.4...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.5...HEAD
+[0.4.5]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.4...@siteed/publisher@@siteed/publisher@0.4.5
 [0.4.4]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.3...@siteed/publisher@@siteed/publisher@0.4.4
 [0.4.3]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.2...@siteed/publisher@@siteed/publisher@0.4.3
 [0.4.2]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.1...@siteed/publisher@@siteed/publisher@0.4.2
