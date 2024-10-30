@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.8]
+
+## [0.4.8] - 2024-10-30
+
+- last call before release
+
 - last call before release
 
 ## [0.4.7] - 2024-10-30
@@ -80,7 +86,8 @@ All notable changes to this project will be documented in this file.
 
 - Figuring out initial functionalities
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.7...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.8...HEAD
+[0.4.8]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.7...@siteed/publisher@@siteed/publisher@0.4.8
 [0.4.7]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.6...@siteed/publisher@@siteed/publisher@0.4.7
 [0.4.4]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.3...@siteed/publisher@@siteed/publisher@0.4.4
 [0.4.3]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.2...@siteed/publisher@@siteed/publisher@0.4.3
