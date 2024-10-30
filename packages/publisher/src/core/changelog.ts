@@ -287,38 +287,60 @@ export class ChangelogService {
   private insertNewEntry(currentContent: string, newEntry: string): string {
     // Find the Unreleased section
     const unreleasedMatch = currentContent.match(/## \[Unreleased\]/);
-    if (unreleasedMatch) {
-      // Split content at Unreleased section
-      const parts = currentContent.split(/## \[Unreleased\]/);
-
-      // Remove any existing entries for the same version
-      const versionHeader = newEntry.split("\n")[0];
-      const versionRegex = new RegExp(`${versionHeader}[^]*?(?=## \\[|$)`, "g");
-      parts[1] = parts[1].replace(versionRegex, "");
-
-      // Deduplicate the new entry content
-      const [header, ...contentLines] = newEntry.split("\n");
-      const uniqueLines = Array.from(
-        new Set(contentLines.filter((line) => line.trim())),
-      );
-      const deduplicatedEntry = [header, ...uniqueLines].join("\n");
-
-      // Insert new entry after Unreleased section
-      return `${parts[0]}## [Unreleased]\n\n${deduplicatedEntry}\n\n${parts[1].trim()}`;
+    if (!unreleasedMatch) {
+      // No Unreleased section, insert at the top after the header
+      const parts = currentContent.split("\n");
+      const headerEnd = parts.findIndex((line) => line.startsWith("# ")) + 1;
+      return [
+        ...parts.slice(0, headerEnd),
+        "",
+        "## [Unreleased]",
+        "",
+        newEntry,
+        "",
+        ...parts.slice(headerEnd),
+      ].join("\n");
     }
 
-    // No Unreleased section, insert at the top after the header
-    const parts = currentContent.split("\n");
-    const headerEnd = parts.findIndex((line) => line.startsWith("# ")) + 1;
-    return [
-      ...parts.slice(0, headerEnd),
+    // Split content at Unreleased section
+    const [preUnreleased, postUnreleased] =
+      currentContent.split(/## \[Unreleased\]\n/);
+
+    // Extract version from new entry
+    const versionMatch = newEntry.match(/^## \[([^\]]+)\]/);
+    if (!versionMatch) {
+      throw new Error("Invalid new entry format: missing version header");
+    }
+    const version = versionMatch[1];
+
+    // Remove any existing entries for the same version
+    const cleanedPostContent = postUnreleased.replace(
+      new RegExp(`## \\[${version}\\][^]*?(?=## \\[|$)`, "gs"),
       "",
+    );
+
+    // Deduplicate the content lines
+    const [header, ...contentLines] = newEntry.split("\n");
+    const uniqueLines = Array.from(
+      new Set(
+        contentLines
+          .filter((line) => line.trim())
+          .filter((line) => !line.startsWith("## [")),
+      ),
+    );
+
+    // Reconstruct the entry with unique content
+    const deduplicatedEntry = [header, "", ...uniqueLines].join("\n");
+
+    // Combine all parts
+    return [
+      preUnreleased.trim(),
       "## [Unreleased]",
       "",
-      newEntry,
+      deduplicatedEntry,
       "",
-      ...parts.slice(headerEnd),
-    ].join("\n");
+      cleanedPostContent.trim(),
+    ].join("\n\n");
   }
 
   private extractUnreleasedSection(content: string): string {
