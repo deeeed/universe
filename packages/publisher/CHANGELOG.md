@@ -3,9 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-- feat: changelog validation
-- feat: overall improvement in package validation
-- chore(release): release @siteed/publisher@0.4.8
+- feat: full process with helper scripts
 
 ## [0.4.8] - 2024-10-30
 
