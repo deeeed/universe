@@ -305,11 +305,14 @@ export class ChangelogService {
     }
     const version = versionMatch[1];
 
+    // Escape version string for use in regex
+    const escapedVersion = this.escapeRegExp(version);
+
     // Remove any existing entries for the same version (with or without date)
     const filteredSections = contentSections.filter(
       (section) =>
         !section.match(
-          new RegExp(`## \\[${version}\\](?: - \\d{4}-\\d{2}-\\d{2})?`),
+          new RegExp(`## \\[${escapedVersion}\\](?: - \\d{4}-\\d{2}-\\d{2})?`),
         ) && !section.startsWith("## [Unreleased]"),
     );
 
@@ -323,6 +326,10 @@ export class ChangelogService {
 
     // Join sections with proper spacing
     return parts.filter((part) => part.trim()).join("\n\n") + "\n";
+  }
+
+  private escapeRegExp(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   private extractUnreleasedSection(content: string): string {
