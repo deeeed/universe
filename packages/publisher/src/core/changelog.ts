@@ -255,13 +255,32 @@ export class ChangelogService {
     const format = this.getFormat(config);
     const lines = currentContent.split("\n");
     const newLines: string[] = [];
+    const linkLines: string[] = [];
 
     let hasUnreleasedSection = false;
     let currentSection: string | null = null;
+    let isInLinksSection = false;
 
     // Process line by line
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
+
+      // Detect version comparison links section
+      if (line.startsWith("[") && line.includes("]:")) {
+        isInLinksSection = true;
+        linkLines.push(line);
+        continue;
+      }
+
+      // Skip empty lines in links section
+      if (isInLinksSection && !line) {
+        continue;
+      }
+
+      // If we were in links section and found non-link content, exit links section
+      if (isInLinksSection && line && !line.startsWith("[")) {
+        isInLinksSection = false;
+      }
 
       // Keep changelog header
       if (line.startsWith("# Changelog")) {
@@ -296,27 +315,29 @@ export class ChangelogService {
       // Handle content based on current section
       if (currentSection === "skip") {
         continue; // Skip all content for the version we're adding
-      } else if (currentSection === "other" || !line.trim()) {
+      } else if (!isInLinksSection) {
         newLines.push(line);
       }
     }
 
-    // If no Unreleased section exists, create one using format template
+    // If no Unreleased section exists, create one
     if (!hasUnreleasedSection) {
-      const templateLines = format.template.split("\n");
       const hasHeader = newLines.find((line) => line.startsWith("# Changelog"));
-
       if (!hasHeader) {
-        // Add template content if no header exists
-        newLines.unshift(...templateLines);
-      } else {
-        // Only add unreleased section if header exists
-        newLines.unshift("## [Unreleased]", "", newEntry);
+        newLines.unshift("# Changelog", "");
       }
+      newLines.unshift("## [Unreleased]", "", newEntry);
     }
 
-    // Clean up the content
-    return this.cleanContent(newLines.join("\n"));
+    // Combine content with preserved links
+    const contentWithoutLinks = newLines
+      .filter((line) => !line.startsWith("["))
+      .join("\n")
+      .trim();
+    const linksSection =
+      linkLines.length > 0 ? "\n\n" + linkLines.join("\n") : "";
+
+    return contentWithoutLinks + linksSection + "\n";
   }
 
   private cleanContent(content: string): string {
