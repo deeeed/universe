@@ -6,23 +6,39 @@ All notable changes to this project will be documented in this file.
 
 - another attempt at fixing changelog
 
+## [0.3.7]
+
+## [0.3.7] - 2024-10-30
+
+- another attempt at fixing changelog
+
 ## [0.3.6]
 - another attempt at fixing changelog
+
+
 
 ## [0.3.5]
 
 - prevent malformed spacing in changelog
 
+
+
 ## [0.3.4] - 2024-10-30
 - feat: prevent duplicate changelog entries
+
+
 
 ## [0.3.3] - 2024-10-30
 
 - feat: only update current version in changelog
 
+
+
 ## [0.3.2] - 2024-10-30
 
 - feat: more changelog validation
+
+
 
 
 ## [0.3.1] - 2024-10-30
@@ -30,9 +46,13 @@ All notable changes to this project will be documented in this file.
 - feat: improved changelog validation
 
 
+
+
 ## [0.3.0] - 2024-10-30
 
 - still figuring out the release process
+
+
 
 
 ## [0.2.18] - 2024-10-29
@@ -41,11 +61,14 @@ All notable changes to this project will be documented in this file.
 - chore(release): release @siteed/publisher@0.2.17
 
 
+
+
 ## [0.2.17] - 2024-10-29
 
 - Figuring out initial functionalities
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.6...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.7...HEAD
+[0.3.7]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.6...@siteed/publisher@@siteed/publisher@0.3.7
 [0.3.6]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.5...@siteed/publisher@@siteed/publisher@0.3.6
 [0.3.5]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.4...@siteed/publisher@@siteed/publisher@0.3.5
 [0.3.4]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.3.3...@siteed/publisher@@siteed/publisher@0.3.4
