@@ -217,14 +217,71 @@ export class ChangelogService {
       `${versionEntry}\n\n${newContent}`,
     );
 
-    const finalContent = await this.updateComparisonLinks(
+    // Only update the comparison links for the new version
+    const finalContent = await this.updateVersionComparisonLinks(
       updatedContent,
       context,
       config,
-      format,
     );
 
     await fs.writeFile(changelogPath, finalContent);
+  }
+
+  // New method to only update links for the current version
+  private async updateVersionComparisonLinks(
+    content: string,
+    context: PackageContext,
+    config: ReleaseConfig,
+  ): Promise<string> {
+    if (!context.newVersion) {
+      throw new Error("New version is required to update changelog");
+    }
+
+    // Get repository URL (reusing existing logic)
+    let repoUrl: string;
+    try {
+      const pkgJson = await this.workspaceService.readPackageJson(context.path);
+      repoUrl =
+        (typeof pkgJson.repository === "string"
+          ? pkgJson.repository
+          : pkgJson.repository?.url) ??
+        config.repository?.url ??
+        "https://github.com/deeeed/universe";
+
+      repoUrl = repoUrl.replace(/^git\+/, "").replace(/\.git$/, "");
+    } catch (error) {
+      this.logger.debug(
+        "Error reading package.json for repository URL:",
+        error,
+      );
+      repoUrl = "https://github.com/deeeed/universe";
+    }
+
+    const tagPrefix = config.git?.tagPrefix ?? "";
+    const packagePrefix = context.name ? `${context.name}@` : "";
+
+    // Update only the unreleased and current version links
+    const currentVersionLinks = [
+      `[unreleased]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.newVersion}...HEAD`,
+      `[${context.newVersion}]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.currentVersion}...${tagPrefix}${packagePrefix}${context.newVersion}`,
+    ];
+
+    // Keep existing links except for unreleased and current version
+    const existingLinks =
+      content
+        .match(/\[.+\]: .+$/gm)
+        ?.filter(
+          (link) =>
+            !link.startsWith("[unreleased]:") &&
+            !link.startsWith(`[${context.newVersion}]:`),
+        ) || [];
+
+    // Combine new and existing links
+    const allLinks = [...currentVersionLinks, ...existingLinks];
+
+    // Replace or append links section
+    const contentWithoutLinks = content.replace(/\[.+\]: .+$/gm, "").trim();
+    return `${contentWithoutLinks}\n\n${allLinks.join("\n")}\n`;
   }
 
   private insertNewEntry(currentContent: string, newEntry: string): string {
@@ -424,6 +481,17 @@ export class ChangelogService {
       }
     }
 
+    // Add check for duplicate versions
+    const versionSet = new Set<string>();
+    for (const { version } of versions) {
+      if (versionSet.has(version)) {
+        throw new Error(
+          `Duplicate version entry found in ${packageName} for version ${version}`,
+        );
+      }
+      versionSet.add(version);
+    }
+
     // Check version order (newer versions should come first)
     for (let i = 1; i < versions.length; i++) {
       const current = versions[i].version;
@@ -456,78 +524,6 @@ export class ChangelogService {
     if (preA > preB) return 1;
 
     return 0;
-  }
-
-  private async updateComparisonLinks(
-    content: string,
-    context: PackageContext,
-    config: ReleaseConfig,
-    _format: ChangelogFormat,
-  ): Promise<string> {
-    if (!context.newVersion) {
-      throw new Error("New version is required to update changelog");
-    }
-
-    // Get all version entries to build complete comparison links
-    const versionEntries =
-      content
-        .match(/## \[([^\]]+)\]/g)
-        ?.map((entry) => {
-          return entry.match(/\[(.*?)\]/)?.[1];
-        })
-        .filter((v): v is string => v !== undefined && v !== "Unreleased") ||
-      [];
-
-    // Try to get repository URL from different sources in order of preference:
-    // 1. Package's repository URL from package.json
-    // 2. Config's repository URL
-    // 3. Default fallback
-    let repoUrl: string;
-    try {
-      const pkgJson = await this.workspaceService.readPackageJson(context.path);
-      repoUrl =
-        (typeof pkgJson.repository === "string"
-          ? pkgJson.repository
-          : pkgJson.repository?.url) ??
-        config.repository?.url ??
-        "https://github.com/deeeed/universe";
-
-      // Clean up the URL if it's in git+https:// format
-      repoUrl = repoUrl.replace(/^git\+/, "").replace(/\.git$/, "");
-    } catch (error) {
-      this.logger.debug(
-        "Error reading package.json for repository URL:",
-        error,
-      );
-      repoUrl = "https://github.com/deeeed/universe";
-    }
-
-    const tagPrefix = config.git?.tagPrefix ?? "";
-    const packagePrefix = context.name ? `${context.name}@` : "";
-
-    // Build all comparison links
-    const links: string[] = [];
-
-    // Add unreleased comparison
-    links.push(
-      `[unreleased]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.newVersion}...HEAD`,
-    );
-
-    // Add version comparisons
-    for (let i = 0; i < versionEntries.length; i++) {
-      const currentVersion = versionEntries[i];
-      const previousVersion = versionEntries[i + 1] || context.currentVersion;
-
-      if (previousVersion) {
-        links.push(
-          `[${currentVersion}]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${previousVersion}...${tagPrefix}${packagePrefix}${currentVersion}`,
-        );
-      }
-    }
-
-    // Replace or append links section
-    const contentWithoutLinks = content.replace(/\[.+\]: .+$/gm, "").trim();
-    return `${contentWithoutLinks}\n\n${links.join("\n")}\n`;
   }
 
   async getUnreleasedChanges(
