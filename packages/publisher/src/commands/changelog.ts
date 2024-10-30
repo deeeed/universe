@@ -211,11 +211,9 @@ changelogCommand
 
       logger.info("Validating changelogs...");
 
-      const monorepRoot = workspaceService.getRootDir();
-
       for (const pkg of packagesToValidate) {
         const packageConfig = await workspaceService.getPackageConfig(pkg.name);
-        await changelogService.validate(pkg, packageConfig, monorepRoot);
+        await changelogService.validate(pkg, packageConfig);
         logger.success(`✓ ${pkg.name}: Changelog is valid`);
       }
 

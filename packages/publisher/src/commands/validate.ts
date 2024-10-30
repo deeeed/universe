@@ -113,7 +113,6 @@ export class ValidateCommand {
     const packageConfig = await this.workspaceService.getPackageConfig(
       pkg.name,
     );
-    const rootDir = await this.workspaceService.getRootDir();
 
     // Initialize services
     const packageManagerService = PackageManagerFactory.create(
@@ -241,7 +240,7 @@ export class ValidateCommand {
     if (shouldValidate("changelog")) {
       validations.push(
         await runValidation("Changelog", () =>
-          this.validateChangelog(changelogService, pkg, packageConfig, rootDir),
+          this.validateChangelog(changelogService, pkg, packageConfig),
         ),
       );
     }
@@ -438,10 +437,9 @@ export class ValidateCommand {
     changelogService: ChangelogService,
     pkg: PackageContext,
     config: ReleaseConfig,
-    rootDir: string,
   ): Promise<void> {
     try {
-      await changelogService.validate(pkg, config, rootDir);
+      await changelogService.validate(pkg, config);
       this.logger.success("Changelog validation: OK");
     } catch (error) {
       this.logger.error(
@@ -575,7 +573,6 @@ Examples:
 export async function validateChangelogs(
   packages: PackageContext[],
   config: ReleaseConfig,
-  monorepoRoot: string,
 ): Promise<void> {
   const changelogService = new ChangelogService();
 
@@ -588,6 +585,6 @@ export async function validateChangelogs(
       throw new Error(`Invalid package path for ${pkg.name}`);
     }
 
-    await changelogService.validate(pkg, config, monorepoRoot);
+    await changelogService.validate(pkg, config);
   }
 }
