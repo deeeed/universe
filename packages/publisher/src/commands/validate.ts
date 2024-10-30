@@ -37,6 +37,20 @@ interface ValidateCommandOptions {
   skipUpstreamTracking?: boolean;
   skipPublishCheck?: boolean;
   skipDependencyCheck?: boolean;
+  validatePack?: boolean;
+}
+
+interface ValidationResult {
+  name: string;
+  success: boolean;
+  error?: string;
+  duration?: number;
+}
+
+interface PackageValidationReport {
+  packageName: string;
+  validations: ValidationResult[];
+  hasErrors: boolean;
 }
 
 export class ValidateCommand {
@@ -54,7 +68,6 @@ export class ValidateCommand {
     options: ValidateCommandOptions,
   ): Promise<void> {
     try {
-      // Get packages to validate
       const packagesToValidate = options.all
         ? await this.workspaceService.getPackages()
         : await this.workspaceService.getPackages(packages);
@@ -66,8 +79,18 @@ export class ValidateCommand {
 
       this.logger.info("Validating packages...");
 
+      const reports: PackageValidationReport[] = [];
       for (const pkg of packagesToValidate) {
-        await this.validatePackage(pkg, options);
+        const report = await this.validatePackage(pkg, options);
+        reports.push(report);
+      }
+
+      // Display comprehensive report
+      this.displayValidationReport(reports);
+
+      // Exit with error if any validation failed
+      if (reports.some((report) => report.hasErrors)) {
+        process.exit(1);
       }
 
       this.logger.success("\nAll validations passed successfully!");
@@ -82,8 +105,9 @@ export class ValidateCommand {
   private async validatePackage(
     pkg: PackageContext,
     options: ValidateCommandOptions,
-  ): Promise<void> {
+  ): Promise<PackageValidationReport> {
     this.logger.info(`\nValidating ${pkg.name}...`);
+    const validations: ValidationResult[] = [];
     const packageConfig = await this.workspaceService.getPackageConfig(
       pkg.name,
     );
@@ -154,32 +178,77 @@ export class ValidateCommand {
       }
     };
 
-    // Run validations based on options
+    // Helper function to run validation
+    const runValidation = async (
+      name: string,
+      validationFn: () => Promise<void> | void,
+    ): Promise<ValidationResult> => {
+      const startTime = performance.now();
+      try {
+        await validationFn();
+        const duration = performance.now() - startTime;
+        return { name, success: true, duration };
+      } catch (error) {
+        const duration = performance.now() - startTime;
+        return {
+          name,
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+          duration,
+        };
+      }
+    };
+
     if (shouldValidate("git")) {
-      await this.validateGitStatus(options);
+      validations.push(
+        await runValidation("Git Status", () =>
+          this.validateGitStatus(options),
+        ),
+      );
     }
+
     if (shouldValidate("auth") || shouldValidate("publish")) {
-      await this.validatePackageManager(
-        packageManagerService,
-        packageConfig,
-        pkg,
-        options,
+      validations.push(
+        await runValidation("Package Manager", () =>
+          this.validatePackageManager(
+            packageManagerService,
+            packageConfig,
+            pkg,
+            options,
+          ),
+        ),
       );
     }
+
     if (shouldValidate("deps")) {
-      await this.validateDependencies(integrityService, options);
-    }
-    if (shouldValidate("version")) {
-      this.validateVersioning(versionService, pkg);
-    }
-    if (shouldValidate("changelog")) {
-      await this.validateChangelog(
-        changelogService,
-        pkg,
-        packageConfig,
-        rootDir,
+      validations.push(
+        await runValidation("Dependencies", () =>
+          this.validateDependencies(integrityService, options),
+        ),
       );
     }
+
+    if (shouldValidate("version")) {
+      validations.push(
+        await runValidation("Version Format", () =>
+          this.validateVersioning(versionService, pkg),
+        ),
+      );
+    }
+
+    if (shouldValidate("changelog")) {
+      validations.push(
+        await runValidation("Changelog", () =>
+          this.validateChangelog(changelogService, pkg, packageConfig, rootDir),
+        ),
+      );
+    }
+
+    return {
+      packageName: pkg.name,
+      validations,
+      hasErrors: validations.some((v) => !v.success),
+    };
   }
 
   private async validateGitStatus(
@@ -245,15 +314,17 @@ export class ValidateCommand {
           );
         }
 
-        // Validate package can be packed
-        try {
-          await packageManager.pack(pkg);
-          this.logger.success("Package pack validation: OK");
-        } catch (error) {
-          throw new Error(
-            `Failed to pack package: ${error instanceof Error ? error.message : String(error)}\n` +
-              "Please ensure all required files are present and build artifacts are generated.",
-          );
+        // Only run pack validation if explicitly requested
+        if (options.validatePack) {
+          try {
+            await packageManager.pack(pkg);
+            this.logger.success("Package pack validation: OK");
+          } catch (error) {
+            throw new Error(
+              `Failed to pack package: ${error instanceof Error ? error.message : String(error)}\n` +
+                "Please ensure all required files are present and build artifacts are generated.",
+            );
+          }
         }
 
         this.logger.success("Package publish readiness: OK");
@@ -325,6 +396,34 @@ export class ValidateCommand {
       throw error;
     }
   }
+
+  private displayValidationReport(reports: PackageValidationReport[]): void {
+    this.logger.info("\n📋 Validation Report:");
+
+    for (const report of reports) {
+      this.logger.info(`\n📦 Package: ${report.packageName}`);
+
+      for (const validation of report.validations) {
+        const icon = validation.success ? "✅" : "❌";
+        const duration = validation.duration
+          ? ` (${(validation.duration / 1000).toFixed(2)}s)`
+          : "";
+        this.logger.info(`${icon} ${validation.name}${duration}`);
+
+        if (!validation.success && validation.error) {
+          this.logger.error(`   └─ ${validation.error}`);
+        }
+      }
+    }
+
+    const totalPackages = reports.length;
+    const failedPackages = reports.filter((r) => r.hasErrors).length;
+
+    this.logger.info(`\n📊 Summary:`);
+    this.logger.info(`   Packages: ${totalPackages}`);
+    this.logger.info(`   Failed: ${failedPackages}`);
+    this.logger.info(`   Succeeded: ${totalPackages - failedPackages}`);
+  }
 }
 
 export const validateCommand = new Command()
@@ -354,6 +453,10 @@ export const validateCommand = new Command()
   .option("--skip-version", "Skip version format validation")
   .option("--skip-changelog", "Skip changelog validation")
   .option("--skip-publish", "Skip publish readiness validation")
+  .option(
+    "--validate-pack",
+    "Include package pack validation (creates temporary .tgz file)",
+  )
   .addHelpText(
     "after",
     `

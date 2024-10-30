@@ -28,21 +28,25 @@ export class WorkspaceIntegrityService {
 
     try {
       if (verbose) {
-        this.logger.info("Running dependency checks...");
+        this.logger.info("Starting workspace dependency check...");
       }
 
+      const startTime = performance.now();
       const integrityCheck =
         await this.packageManager.checkWorkspaceIntegrity();
+      const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+
+      if (verbose) {
+        this.logger.info(`Dependency check completed in ${duration}s`);
+      }
 
       if (!integrityCheck) {
         issues.push({
           message: "Workspace dependencies are out of sync",
-          solution: "Run 'yarn install' to sync dependencies",
+          solution: "Run 'yarn install' or 'npm install' to sync dependencies",
           severity: "error",
         });
       }
-
-      // Additional checks can be added here
 
       return {
         isValid: issues.length === 0,

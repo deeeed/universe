@@ -3,6 +3,21 @@ import { NpmService } from "./npm";
 import { YarnService } from "./yarn";
 import { Logger } from "../utils/logger";
 
+export interface PackageArchiveInfo {
+  filename: string;
+  path: string;
+  size: {
+    compressed: number;
+    uncompressed: number;
+  };
+  files: Array<{
+    path: string;
+    size: number;
+  }>;
+  created: Date;
+  sha: string;
+}
+
 export interface PackageManagerService {
   validateAuth(config?: { npm: NpmConfig }): Promise<void>;
   publish(
@@ -18,7 +33,7 @@ export interface PackageManagerService {
     context: PackageContext,
     dependencies: string[],
   ): Promise<void>;
-  pack(context: PackageContext): Promise<string>;
+  pack(context: PackageContext): Promise<PackageArchiveInfo>;
   runScript(context: PackageContext, script: string): Promise<void>;
   install(): Promise<void>;
 }

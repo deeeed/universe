@@ -1,7 +1,7 @@
 import execa, { ExecaReturnValue } from "execa";
 import type { NpmConfig, PackageContext } from "../types/config";
-import { PackageManagerService } from "./package-manager";
 import { Logger } from "../utils/logger";
+import { PackageArchiveInfo, PackageManagerService } from "./package-manager";
 
 interface YarnInfoResponse {
   data?: string;
@@ -232,9 +232,20 @@ export class YarnService implements PackageManagerService {
 
   async checkWorkspaceIntegrity(): Promise<boolean> {
     try {
-      await execa("yarn", ["install", "--check-cache"]);
+      this.logger.debug("Checking Yarn workspace integrity...");
+      const startTime = performance.now();
+
+      // Use --frozen-lockfile for faster checks
+      await execa("yarn", ["install", "--frozen-lockfile", "--check-files"]);
+
+      const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+      this.logger.debug(`Yarn integrity check completed in ${duration}s`);
+
       return true;
-    } catch {
+    } catch (error) {
+      this.logger.debug("Yarn integrity check failed", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
       return false;
     }
   }
@@ -271,29 +282,102 @@ export class YarnService implements PackageManagerService {
     }
   }
 
-  async pack(context: PackageContext): Promise<string> {
+  async pack(context: PackageContext): Promise<PackageArchiveInfo> {
+    let packageFile = "";
     try {
-      this.logger.debug("Current working directory:", process.cwd());
-      this.logger.debug("Context path:", context.path);
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      const tar = await import("tar");
+      const crypto = await import("crypto");
 
-      const result: ExecaReturnValue<string> = await execa(
-        "yarn",
-        ["pack", "--json"],
-        {
-          cwd: context.path,
-        },
-      );
+      this.logger.debug("Starting package pack process", {
+        package: context.name,
+        path: context.path,
+      });
 
+      const result = await this.execYarnCommand(["pack", "--json"]);
       const parsed = this.parseJsonResponse<YarnInfoResponse>(result.stdout);
-      if (!parsed.filename) {
-        this.logger.debug("No package file was created during pack");
-        return "";
+      packageFile = parsed.filename || "";
+
+      if (!packageFile) {
+        throw new Error("No package file was created during pack");
       }
 
-      return parsed.filename;
+      const packagePath = path.join(context.path, packageFile);
+      this.logger.debug("Package created", {
+        filename: packageFile,
+        path: packagePath,
+      });
+
+      // Get compressed size
+      const stats = await fs.stat(packagePath);
+
+      // Calculate SHA hash
+      const fileBuffer = await fs.readFile(packagePath);
+      const hashSum = crypto.createHash("sha256");
+      hashSum.update(fileBuffer);
+      const sha = hashSum.digest("hex");
+
+      // Get uncompressed size and file list
+      const files: Array<{ path: string; size: number }> = [];
+      let uncompressedSize = 0;
+
+      await tar.list({
+        file: packagePath,
+        onentry: (entry) => {
+          if (entry.type === "File") {
+            files.push({
+              path: entry.path,
+              size: entry.size,
+            });
+            uncompressedSize += entry.size;
+          }
+        },
+      });
+
+      const archiveInfo: PackageArchiveInfo = {
+        filename: packageFile,
+        path: packagePath,
+        size: {
+          compressed: stats.size,
+          uncompressed: uncompressedSize,
+        },
+        files,
+        created: new Date(),
+        sha,
+      };
+
+      this.logger.debug("Package analysis complete", {
+        compressedSize: `${(stats.size / 1024).toFixed(2)}KB`,
+        uncompressedSize: `${(uncompressedSize / 1024).toFixed(2)}KB`,
+        fileCount: files.length,
+      });
+
+      return archiveInfo;
     } catch (error) {
-      this.logger.debug("Package pack failed:", error);
-      return ""; // Return empty string instead of throwing
+      this.logger.error("Package pack failed", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        package: context.name,
+      });
+      throw error;
+    } finally {
+      if (packageFile) {
+        try {
+          const fs = await import("fs/promises");
+          const path = await import("path");
+          const filePath = path.join(context.path, packageFile);
+          await fs.unlink(filePath);
+          this.logger.debug("Cleaned up package file", { path: filePath });
+        } catch (cleanupError) {
+          this.logger.warn("Failed to cleanup package file", {
+            error:
+              cleanupError instanceof Error
+                ? cleanupError.message
+                : "Unknown error",
+            path: packageFile,
+          });
+        }
+      }
     }
   }
 
