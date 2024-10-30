@@ -7,9 +7,6 @@ All notable changes to this project will be documented in this file.
 - feat: generate dependency report
 - feat: opt-in dependency updates and strategy
 
-## [0.3.9]
-
-- spacing and regex fixes for changelog
 ## [0.3.9] - 2024-10-30
 
 - spacing and regex fixes for changelog
