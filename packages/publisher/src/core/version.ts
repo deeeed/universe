@@ -143,4 +143,48 @@ export class VersionService {
       return "patch";
     }
   }
+
+  validateVersion(version: string): void {
+    // Basic semver validation
+    if (!semver.valid(version)) {
+      throw new Error(
+        `Invalid version format: ${version}\n` +
+          "Version must follow semver format (major.minor.patch[-prerelease][+build])",
+      );
+    }
+
+    // Additional validations
+    const parsed = semver.parse(version);
+    if (!parsed) {
+      throw new Error(`Failed to parse version: ${version}`);
+    }
+
+    // Validate version components
+    if (parsed.major < 0 || parsed.minor < 0 || parsed.patch < 0) {
+      throw new Error("Version components cannot be negative");
+    }
+
+    // Validate prerelease format if present
+    if (parsed.prerelease.length > 0) {
+      const prereleaseId = parsed.prerelease[0];
+      if (
+        typeof prereleaseId === "string" &&
+        !prereleaseId.match(/^[a-zA-Z][\w.-]*$/)
+      ) {
+        throw new Error(
+          "Invalid prerelease identifier format. Must start with a letter and contain only alphanumeric characters, dots, and hyphens.",
+        );
+      }
+    }
+
+    // Validate build metadata format if present
+    if (parsed.build.length > 0) {
+      const buildId = parsed.build[0];
+      if (!buildId.match(/^[\w.-]+$/)) {
+        throw new Error(
+          "Invalid build metadata format. Must contain only alphanumeric characters, dots, and hyphens.",
+        );
+      }
+    }
+  }
 }

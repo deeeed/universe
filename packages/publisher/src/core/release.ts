@@ -227,17 +227,15 @@ export class ReleaseService {
     skipGitCheck?: boolean;
     skipUpstreamTracking?: boolean;
   }): Promise<void> {
-    if (!options.skipGitCheck) {
-      this.logger.info("Validating git status...");
-      await this.git.validateStatus({
-        skipUpstreamTracking: options.skipUpstreamTracking,
-      });
+    const context = await this.workspace.getCurrentPackage();
+    if (!context) {
+      throw new Error("No package found in current directory");
     }
 
-    if (this.config.npm?.publish) {
-      this.logger.info("Validating npm authentication...");
-      await this.packageManager.validateAuth(this.config);
-    }
+    await this.validateWithProgress(context, {
+      skipGitCheck: options.skipGitCheck,
+      skipUpstreamTracking: options.skipUpstreamTracking,
+    });
   }
 
   private async determineVersion(
@@ -574,5 +572,127 @@ export class ReleaseService {
       }
     }
     return backups;
+  }
+
+  private async validateWithProgress(
+    context: PackageContext,
+    options: {
+      skipGitCheck?: boolean;
+      skipUpstreamTracking?: boolean;
+    },
+  ): Promise<void> {
+    const validations = [
+      {
+        name: "Git Status",
+        skip: options.skipGitCheck,
+        validate: async (): Promise<void> => {
+          this.logger.info("Validating git status...");
+          await this.git.validateStatus({
+            skipUpstreamTracking: options.skipUpstreamTracking,
+          });
+        },
+      },
+      {
+        name: "Package Manager",
+        skip: false,
+        validate: async (): Promise<void> => {
+          if (this.config.npm?.publish) {
+            this.logger.info("Validating npm authentication...");
+            await this.packageManager.validateAuth(this.config);
+          }
+        },
+      },
+      {
+        name: "Dependencies",
+        skip: false,
+        validate: async (): Promise<void> => {
+          this.logger.info("Validating workspace dependencies...");
+          const result = await this.integrityService.checkWithDetails(true);
+          if (!result.isValid) {
+            const messages = result.issues
+              .map(
+                (issue) => `${issue.severity.toUpperCase()}: ${issue.message}`,
+              )
+              .join("\n");
+            throw new Error(`Dependency validation failed:\n${messages}`);
+          }
+        },
+      },
+      {
+        name: "Version",
+        skip: false,
+        validate: (): Promise<void> => {
+          this.logger.info("Validating version format...");
+          this.version.validateVersion(context.currentVersion);
+          return Promise.resolve();
+        },
+      },
+      {
+        name: "Changelog",
+        skip: false,
+        validate: async (): Promise<void> => {
+          this.logger.info("Validating changelog format...");
+          await this.changelog.validate(
+            context,
+            await this.getEffectiveConfig(context.name),
+            this.rootDir,
+          );
+        },
+      },
+    ];
+
+    let completedSteps = 0;
+    const totalSteps = validations.filter((v) => !v.skip).length;
+
+    for (const validation of validations) {
+      if (validation.skip) continue;
+
+      try {
+        await this.withTimeout(
+          validation.validate(),
+          30000,
+          `${validation.name} validation`,
+        );
+        completedSteps++;
+        this.logger.success(
+          `✓ ${validation.name} (${completedSteps}/${totalSteps})`,
+        );
+      } catch (error: unknown) {
+        this.logger.error(`✗ ${validation.name} validation failed:`);
+        if (error instanceof Error) {
+          this.logger.error(error.message);
+        } else {
+          this.logger.error(String(error));
+        }
+        throw error;
+      }
+    }
+
+    this.logger.success("\nAll validations passed successfully!");
+  }
+
+  private async withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    operation: string,
+  ): Promise<T> {
+    let timeoutId: NodeJS.Timeout | undefined;
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(
+          new Error(`Operation "${operation}" timed out after ${timeoutMs}ms`),
+        );
+      }, timeoutMs);
+    });
+
+    try {
+      const result = await Promise.race([promise, timeoutPromise]);
+      if (timeoutId) clearTimeout(timeoutId);
+      return result;
+    } catch (error) {
+      if (timeoutId) clearTimeout(timeoutId);
+      throw error;
+    }
   }
 }

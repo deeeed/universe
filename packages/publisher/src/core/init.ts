@@ -13,7 +13,7 @@ import type {
   PackageManager,
 } from "../types/config";
 import { Logger } from "../utils/logger";
-import { PackageManagerDetector } from "../utils/packageManagerDetector";
+import { detectPackageManager } from "../utils/detect-package-manager";
 import { WorkspaceService } from "./workspace";
 
 interface InitOptions {
@@ -47,13 +47,13 @@ interface MonorepoInteractiveAnswers extends BaseInteractiveAnswers {
 }
 
 export class InitService {
-  private packageManagerDetector: PackageManagerDetector;
+  private packageManager: PackageManager;
 
   constructor(
     private logger: Logger,
     private workspaceService: WorkspaceService = new WorkspaceService(),
   ) {
-    this.packageManagerDetector = new PackageManagerDetector(process.cwd());
+    this.packageManager = detectPackageManager(process.cwd());
   }
 
   async initialize(
@@ -124,9 +124,6 @@ export class InitService {
   }
 
   private async promptForPackageOptions(): Promise<PackageInteractiveAnswers> {
-    const packageManager =
-      await this.packageManagerDetector.detectPackageManager();
-
     const answers = await inquirer.prompt<
       Omit<PackageInteractiveAnswers, "packageManager">
     >([
@@ -185,14 +182,11 @@ export class InitService {
 
     return {
       ...answers,
-      packageManager,
+      packageManager: this.packageManager,
     };
   }
 
   private async promptForMonorepoOptions(): Promise<MonorepoInteractiveAnswers> {
-    const packageManager =
-      await this.packageManagerDetector.detectPackageManager();
-
     const baseAnswers = await inquirer.prompt<
       Omit<BaseInteractiveAnswers, "packageManager">
     >([
@@ -270,7 +264,7 @@ export class InitService {
     return {
       ...baseAnswers,
       ...monorepoSpecific,
-      packageManager,
+      packageManager: this.packageManager,
     };
   }
 
@@ -286,10 +280,6 @@ export class InitService {
 
     // Ensure directory structure exists
     await this.createDirectoryStructure(absolutePackagePath);
-
-    const packageManager =
-      options?.packageManager ??
-      (await this.packageManagerDetector.detectPackageManager());
 
     const packageJsonPath = path.join(absolutePackagePath, "package.json");
     const packageJson = await fs
@@ -309,7 +299,7 @@ export class InitService {
         path: path.join(absolutePackagePath, "publisher.config.ts"),
         content: generatePackageConfig({
           packageJson,
-          packageManager,
+          packageManager: this.packageManager,
           conventionalCommits: options?.conventionalCommits,
           changelogFormat: options?.changelogFormat,
           versionStrategy: options?.versionStrategy,
@@ -391,9 +381,7 @@ export class InitService {
       // File doesn't exist, continue
     }
 
-    const packageManager =
-      options?.packageManager ??
-      (await this.packageManagerDetector.detectPackageManager());
+    const packageManager = options?.packageManager ?? this.packageManager;
 
     const packageJsonPath = path.join(rootDir, "package.json");
     const packageJson = await fs

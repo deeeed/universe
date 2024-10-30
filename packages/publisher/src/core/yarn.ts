@@ -80,10 +80,24 @@ export class YarnService implements PackageManagerService {
       const version = await this.getYarnVersion();
       this.logger.debug("Configuring auth command for Yarn version:", version);
 
+      // Check if authentication is configured in .yarnrc.yml for Yarn Berry
+      if (version.major === 2) {
+        try {
+          await this.execYarnCommand(["config", "get", "npmAuthToken"]);
+        } catch (error) {
+          throw new Error(
+            "No authentication configured for Yarn Berry. Please add npmAuthToken to your .yarnrc.yml file:\n" +
+              "npmAuthToken: ${NPM_AUTH_TOKEN}\n" +
+              "Or run: yarn config set npmAuthToken <your-token>",
+          );
+        }
+      }
+
+      // Try whoami command
       const args =
         version.major === 1
           ? ["whoami", "--registry", effectiveConfig.registry]
-          : ["npm", "whoami", "--publish"];
+          : ["npm", "whoami"];
 
       this.logger.debug("Executing auth validation command:", {
         command: `yarn ${args.join(" ")}`,
