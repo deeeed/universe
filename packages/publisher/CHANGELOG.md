@@ -4,11 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.4.7]
+- last call before release
 
 ## [0.4.7] - 2024-10-30
-
-- feat: simplified regexp for version header
 
 - feat: simplified regexp for version header
 

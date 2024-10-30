@@ -254,90 +254,93 @@ export class ChangelogService {
   ): string {
     const format = this.getFormat(config);
     const lines = currentContent.split("\n");
-    const newLines: string[] = [];
+    const result: string[] = [];
     const linkLines: string[] = [];
 
-    let hasUnreleasedSection = false;
-    let currentSection: string | null = null;
+    let skipContent = false;
     let isInLinksSection = false;
+    let hasUnreleased = false;
+    let addedNewEntry = false;
 
-    // Process line by line
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+    // First pass: collect links and clean content
+    for (const line of lines) {
+      const trimmedLine = line.trim();
 
-      // Detect version comparison links section
-      if (line.startsWith("[") && line.includes("]:")) {
+      // Handle links section
+      if (trimmedLine.startsWith("[") && trimmedLine.includes("]:")) {
         isInLinksSection = true;
-        linkLines.push(line);
+        linkLines.push(trimmedLine);
         continue;
       }
 
-      // Skip empty lines in links section
-      if (isInLinksSection && !line) {
+      if (isInLinksSection) {
+        continue; // Skip everything after first link until processing links
+      }
+
+      // Skip empty lines between duplicate entries
+      if (!trimmedLine) {
+        if (!skipContent) result.push(line);
         continue;
       }
 
-      // If we were in links section and found non-link content, exit links section
-      if (isInLinksSection && line && !line.startsWith("[")) {
-        isInLinksSection = false;
-      }
-
-      // Keep changelog header
-      if (line.startsWith("# Changelog")) {
-        newLines.push(line);
-        continue;
-      }
-
-      // Handle Unreleased section using format pattern
-      if (format.unreleasedHeaderPattern.test(line)) {
-        hasUnreleasedSection = true;
-        newLines.push(line);
-        newLines.push("");
-        newLines.push(newEntry);
-        currentSection = "unreleased";
-        continue;
-      }
-
-      // Check for version headers using format pattern
-      const versionMatch = line.match(format.versionHeaderPattern);
-      if (versionMatch) {
-        // If this is the version we're adding, skip it and its content
-        if (versionMatch[1] === version) {
-          currentSection = "skip";
+      // Handle version headers
+      if (trimmedLine.startsWith("## [")) {
+        // Check for Unreleased
+        if (format.unreleasedHeaderPattern.test(trimmedLine)) {
+          hasUnreleased = true;
+          skipContent = false;
+          result.push(line);
+          if (!addedNewEntry) {
+            result.push("");
+            result.push(newEntry);
+            addedNewEntry = true;
+          }
           continue;
         }
-        // Otherwise, include this version section
-        currentSection = "other";
-        newLines.push(line);
+
+        // Check for version match (both with and without date)
+        const versionMatch = trimmedLine.includes(version);
+        if (versionMatch) {
+          skipContent = true;
+          continue;
+        }
+
+        skipContent = false;
+        result.push(line);
         continue;
       }
 
-      // Handle content based on current section
-      if (currentSection === "skip") {
-        continue; // Skip all content for the version we're adding
-      } else if (!isInLinksSection) {
-        newLines.push(line);
+      // Add line if we're not skipping
+      if (!skipContent) {
+        result.push(line);
       }
     }
 
-    // If no Unreleased section exists, create one
-    if (!hasUnreleasedSection) {
-      const hasHeader = newLines.find((line) => line.startsWith("# Changelog"));
-      if (!hasHeader) {
-        newLines.unshift("# Changelog", "");
-      }
-      newLines.unshift("## [Unreleased]", "", newEntry);
+    // If no unreleased section, add it at the start
+    if (!hasUnreleased) {
+      const header = result.find((line) =>
+        line.trim().startsWith("# Changelog"),
+      )
+        ? []
+        : ["# Changelog", ""];
+
+      result.unshift(...header, "## [Unreleased]", "", newEntry);
     }
 
-    // Combine content with preserved links
-    const contentWithoutLinks = newLines
-      .filter((line) => !line.startsWith("["))
+    // Combine everything and clean up
+    const content = result
+      .filter((line, index, arr) => {
+        // Remove consecutive empty lines
+        if (!line.trim() && !arr[index - 1]?.trim()) return false;
+        return true;
+      })
       .join("\n")
       .trim();
-    const linksSection =
-      linkLines.length > 0 ? "\n\n" + linkLines.join("\n") : "";
 
-    return contentWithoutLinks + linksSection + "\n";
+    // Add links section if exists
+    const links = linkLines.length > 0 ? "\n\n" + linkLines.join("\n") : "";
+
+    return content + links + "\n";
   }
 
   private async getRepositoryUrl(
