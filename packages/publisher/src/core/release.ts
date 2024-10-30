@@ -20,6 +20,12 @@ import {
 import { VersionService } from "./version";
 import { WorkspaceService } from "./workspace";
 
+export interface DryRunOptions {
+  newVersion: string;
+  changelog?: string;
+  commitHash?: string;
+}
+
 export class ReleaseService {
   private git: GitService;
   private packageManager: PackageManagerService;
@@ -42,7 +48,7 @@ export class ReleaseService {
     this.rootDir = findMonorepoRootSync(process.cwd());
     this.git = new GitService(config.git, this.rootDir, this.logger);
     this.packageManager = PackageManagerFactory.create(
-      config.packageManager as "npm" | "yarn",
+      config.packageManager,
       config.npm,
     );
     this.version = new VersionService(config.git);
@@ -167,7 +173,15 @@ export class ReleaseService {
 
       if (options.dryRun) {
         this.logger.info("Dry run completed");
-        return this.createDryRunResult(context);
+        const dryRunOptions = {
+          newVersion:
+            context.newVersion ||
+            (await this.determineVersion(context, packageConfig)),
+          changelog: changelogEntry,
+          commitHash:
+            previousCommitHash || (await this.git.getCurrentCommitHash()),
+        };
+        return this.createDryRunResult(context, dryRunOptions);
       }
 
       tempFiles = await this.backupFiles(context, packageConfig);
@@ -364,12 +378,24 @@ export class ReleaseService {
     return new RegExp(`^${regexPattern}$`).test(packageName);
   }
 
-  private createDryRunResult(context: PackageContext): ReleaseResult {
+  private async createDryRunResult(
+    context: PackageContext,
+    options: DryRunOptions,
+  ): Promise<ReleaseResult> {
+    const tagName = this.git.getTagName(context.name, options.newVersion);
+
+    // Generate the changelog content that would be created
+    const changelogContent =
+      options.changelog || (await this.previewChangelog(context.name));
+
     return {
       packageName: context.name,
-      version: context.newVersion || "0.0.0",
-      changelog: "Dry run - no changes made",
-      git: { tag: "dry-run", commit: "dry-run" },
+      version: options.newVersion,
+      changelog: changelogContent,
+      git: {
+        tag: tagName,
+        commit: options.commitHash || (await this.git.getCurrentCommitHash()),
+      },
     };
   }
 

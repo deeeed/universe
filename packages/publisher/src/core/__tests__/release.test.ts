@@ -18,6 +18,11 @@ jest.mock("../git", () => ({
     push: jest.fn().mockResolvedValue(undefined),
     checkTagExists: jest.fn().mockResolvedValue(false),
     resetToCommit: jest.fn().mockResolvedValue(undefined),
+    getTagName: jest
+      .fn()
+      .mockImplementation(
+        (packageName, version) => `${packageName}@${version}`,
+      ),
   })),
 }));
 

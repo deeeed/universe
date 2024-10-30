@@ -176,12 +176,16 @@ export class GitService {
     );
   }
 
+  getTagName(packageName: string, version: string): string {
+    return `${this.config.tagPrefix}${packageName}@${version}`;
+  }
+
   async createTag(context: PackageContext, force?: boolean): Promise<string> {
     if (!context.newVersion) {
       throw new Error("Version is required to create a tag");
     }
 
-    const tagName = `${this.config.tagPrefix}${context.name}@${context.newVersion}`;
+    const tagName = this.getTagName(context.name, context.newVersion);
     const tagMessage = this.config.tagMessage || `Release ${tagName}`;
 
     try {
