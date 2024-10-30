@@ -4,11 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.3.3]
+- feat: prevent duplicate changelog entries
 
 ## [0.3.3] - 2024-10-30
-
-- feat: only update current version in changelog
 
 - feat: only update current version in changelog
 
