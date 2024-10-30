@@ -23,6 +23,7 @@ interface ChangelogFormat {
   unreleasedHeaderPattern: RegExp;
   includeEmptySections?: boolean;
   dateFormat: string; // e.g., 'yyyy-MM-dd'
+  noChangesMessage: string;
 }
 
 export interface PreviewChangelogOptions {
@@ -32,7 +33,7 @@ export interface PreviewChangelogOptions {
   format?: "conventional" | "keep-a-changelog";
 }
 
-const KEEP_A_CHANGELOG_FORMAT: ChangelogFormat = {
+export const KEEP_A_CHANGELOG_FORMAT: ChangelogFormat = {
   name: "keep-a-changelog",
   template: `# Changelog
 
@@ -61,9 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     /^##\s*\[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\](?:\s*-\s*\d{4}-\d{2}-\d{2})?$/i,
   unreleasedHeaderPattern: /^##\s*\[unreleased\]/i,
   dateFormat: "yyyy-MM-dd",
+  noChangesMessage: "No changes recorded",
+  includeEmptySections: true,
 };
 
-const CONVENTIONAL_CHANGELOG_FORMAT: ChangelogFormat = {
+export const CONVENTIONAL_CHANGELOG_FORMAT: ChangelogFormat = {
   name: "conventional",
   template: `# Changelog
 
@@ -144,6 +147,8 @@ All notable changes to this project will be documented in this file.
   versionHeaderPattern: /^##\s*\[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]$/i,
   unreleasedHeaderPattern: /^##\s*\[unreleased\]/i,
   dateFormat: "yyyy-MM-dd",
+  noChangesMessage: "No changes recorded",
+  includeEmptySections: false,
 };
 
 interface ChangelogConfig extends ReleaseConfig {
@@ -828,6 +833,7 @@ export class ChangelogService {
             return this.formatKeepAChangelogPreview(
               context.newVersion || "x.x.x",
               this.parseConventionalToKeepAChangelog(generated),
+              config,
             );
           }
           return this.formatVersionEntry(
@@ -842,6 +848,7 @@ export class ChangelogService {
         return this.formatKeepAChangelogPreview(
           context.newVersion || "x.x.x",
           unreleasedContent,
+          config,
         );
       }
 
@@ -859,52 +866,64 @@ export class ChangelogService {
     version: string,
     content: string,
     date?: string,
+    format?: ChangelogFormat,
   ): string {
     const dateStr = date || new Date().toISOString().split("T")[0];
-    // Add newline after date and ensure content is properly formatted
-    return content.trim()
-      ? `## [${version}] - ${dateStr}\n${content}\n`
-      : `## [${version}] - ${dateStr}\nNo changes recorded\n`;
+    const noChangesMessage = format?.noChangesMessage ?? "No changes recorded";
+    const body = content.trim()
+      ? `${content.trim()}\n`
+      : `${noChangesMessage}\n`;
+    return `## [${version}] - ${dateStr}\n${body}`;
   }
 
   private formatKeepAChangelogPreview(
     version: string,
     content: string,
+    config: ReleaseConfig,
   ): string {
-    const sections = [
-      "### Added",
-      "### Changed",
-      "### Deprecated",
-      "### Removed",
-      "### Fixed",
-      "### Security",
-    ];
+    const format = this.getFormat(config);
 
-    // Split content into sections
+    // Parse existing content into sections
     const sectionContent: Record<string, string[]> = {};
     let currentSection = "";
 
-    content.split("\n").forEach((line) => {
-      if (line.startsWith("###")) {
-        currentSection = line.trim();
-      } else if (currentSection && line.trim()) {
-        if (!sectionContent[currentSection]) {
-          sectionContent[currentSection] = [];
+    if (content.trim()) {
+      content.split("\n").forEach((line) => {
+        if (line.startsWith("###")) {
+          currentSection = line.trim();
+        } else if (currentSection && line.trim()) {
+          if (!sectionContent[currentSection]) {
+            sectionContent[currentSection] = [];
+          }
+          sectionContent[currentSection].push(line.trim());
         }
-        sectionContent[currentSection].push(line.trim());
-      }
-    });
+      });
+    }
 
     // Always include all sections for keep-a-changelog format
-    // This maintains consistency and makes it clear which types of changes are tracked
-    const formattedSections = sections
+    if (format.name === "keep-a-changelog") {
+      // Initialize all sections even if empty
+      format.sectionHeaders.forEach((section) => {
+        if (!sectionContent[section]) {
+          sectionContent[section] = [];
+        }
+      });
+    }
+
+    // Build sections
+    const formattedSections = format.sectionHeaders
       .map((section) => {
         const entries = sectionContent[section] || [];
-        return `${section}\n${entries.length ? entries.join("\n") : ""}`;
+        return `${section}${entries.length > 0 ? "\n" + entries.join("\n") : ""}`;
       })
       .join("\n\n");
 
-    return this.formatVersionEntry(version, "\n" + formattedSections);
+    return this.formatVersionEntry(
+      version,
+      formattedSections
+        ? "\n" + formattedSections + "\n"
+        : "\nNo changes recorded\n",
+    );
   }
 
   private formatConventionalPreview(version: string, content: string): string {
@@ -996,26 +1015,6 @@ export class ChangelogService {
           sections["### Fixed"].push(
             `- ${commit.replace(/^fix(\([^)]+\))?:/, "").trim()}`,
           );
-        } else if (
-          commit.startsWith("chore:") ||
-          commit.startsWith("refactor:") ||
-          commit.startsWith("docs:")
-        ) {
-          sections["### Changed"].push(
-            `- ${commit.replace(/^(chore|refactor|docs)(\([^)]+\))?:/, "").trim()}`,
-          );
-        } else if (commit.startsWith("deprecated:")) {
-          sections["### Deprecated"].push(
-            `- ${commit.replace(/^deprecated(\([^)]+\))?:/, "").trim()}`,
-          );
-        } else if (commit.startsWith("removed:")) {
-          sections["### Removed"].push(
-            `- ${commit.replace(/^removed(\([^)]+\))?:/, "").trim()}`,
-          );
-        } else if (commit.startsWith("security:")) {
-          sections["### Security"].push(
-            `- ${commit.replace(/^security(\([^)]+\))?:/, "").trim()}`,
-          );
         } else {
           // Default to Changed for unknown types
           sections["### Changed"].push(`- ${commit.trim()}`);
@@ -1023,8 +1022,12 @@ export class ChangelogService {
       }
     });
 
+    // Always include all sections for keep-a-changelog format
     return Object.entries(sections)
-      .map(([header, entries]) => `${header}\n${entries.join("\n")}`)
+      .map(
+        ([header, entries]) =>
+          `${header}${entries.length > 0 ? "\n" + entries.join("\n") : ""}`,
+      )
       .join("\n\n");
   }
 
@@ -1035,61 +1038,99 @@ export class ChangelogService {
   async previewNewVersion(
     context: PackageContext,
     config: ReleaseConfig,
-    options: PreviewChangelogOptions,
+    options: {
+      newVersion: string;
+      conventionalCommits: boolean;
+      format: "conventional" | "keep-a-changelog";
+      includeEmptySections?: boolean;
+      date?: Date | string;
+    },
   ): Promise<string> {
+    const formatType = options.format ?? config.changelogFormat;
+    const format = this.getFormat({
+      ...config,
+      changelogFormat: formatType,
+    });
+
+    const formattedDate = formatDate(
+      options.date ? new Date(options.date) : new Date(),
+      format.dateFormat,
+    );
+
     try {
-      const changelogPath = path.join(context.path, config.changelogFile);
-      let content: string;
-
-      try {
-        content = await fs.readFile(changelogPath, "utf-8");
-      } catch (error) {
-        return this.formatVersionEntry(options.newVersion, "");
-      }
-
-      // Handle empty or malformed content
-      if (
-        !content.trim() ||
-        (!content.includes("# Changelog") && !content.match(/##\s*\[/))
-      ) {
-        return this.formatVersionEntry(options.newVersion, "");
-      }
-
-      const unreleasedMatch = content.match(
-        /## \[Unreleased\]([\s\S]*?)(?=## \[|$)/i,
+      const content = await fs.readFile(
+        path.join(context.path, config.changelogFile),
+        "utf8",
       );
+
+      // Extract unreleased content with improved regex
+      const unreleasedMatch = content.match(
+        /## \[Unreleased\]\s*\n([\s\S]*?)(?=\n##\s*\[|$)/i,
+      );
+
       const unreleasedContent = unreleasedMatch
         ? unreleasedMatch[1].trim()
         : "";
 
       if (!unreleasedContent) {
-        if (options.conventionalCommits) {
-          const generated = await this.generate(context, config);
-          if (config.changelogFormat === "keep-a-changelog") {
-            return this.formatKeepAChangelogPreview(
-              options.newVersion,
-              this.parseConventionalToKeepAChangelog(generated),
-            );
-          }
-          return this.formatVersionEntry(options.newVersion, generated);
-        }
-        return this.formatVersionEntry(options.newVersion, "");
-      }
-
-      if (config.changelogFormat === "keep-a-changelog") {
-        return this.formatKeepAChangelogPreview(
+        return this.formatVersionEntry(
           options.newVersion,
-          unreleasedContent,
+          format.noChangesMessage,
+          formattedDate,
+          format,
         );
       }
 
-      return this.formatConventionalPreview(
+      let finalContent = "";
+
+      if (format.name === "conventional") {
+        // For conventional format, preserve the original content structure
+        finalContent = unreleasedContent;
+      } else if (format.name === "keep-a-changelog") {
+        // Parse and organize content into sections
+        const sections = new Map<string, string[]>();
+        let currentSection = "";
+
+        unreleasedContent.split(/\r?\n/).forEach((line) => {
+          const trimmedLine = line.trim();
+          if (trimmedLine.startsWith("###")) {
+            currentSection = trimmedLine;
+            if (!sections.has(currentSection)) {
+              sections.set(currentSection, []);
+            }
+          } else if (currentSection && trimmedLine) {
+            sections.get(currentSection)?.push(trimmedLine);
+          }
+        });
+
+        // Build the final content with proper section handling
+        const shouldIncludeEmptySections =
+          options.includeEmptySections ?? format.includeEmptySections;
+
+        format.sectionHeaders.forEach((section) => {
+          const sectionContent = sections.get(section) || [];
+          if (sectionContent.length > 0 || shouldIncludeEmptySections) {
+            finalContent += `${section}\n`;
+            if (sectionContent.length > 0) {
+              finalContent += `${sectionContent.join("\n")}\n`;
+            }
+          }
+        });
+      }
+
+      return this.formatVersionEntry(
         options.newVersion,
-        unreleasedContent,
+        finalContent.trim(),
+        formattedDate,
+        format,
       );
     } catch (error) {
-      this.logger.error("Failed to preview changelog:", error);
-      return this.formatVersionEntry(options.newVersion, "");
+      return this.formatVersionEntry(
+        options.newVersion,
+        format.noChangesMessage,
+        formattedDate,
+        format,
+      );
     }
   }
 }

@@ -375,18 +375,21 @@ All notable changes to this project will be documented in this file.
             mockConfig,
           );
 
-          expect(preview).toContain("## [1.1.0]");
-          if (format === "conventional") {
-            // Conventional format shows "No changes recorded" when empty
-            expect(preview).toContain("No changes recorded");
+          if (format === "keep-a-changelog") {
+            // Keep-a-changelog format should show all sections
+            const expectedSections = [
+              "### Added",
+              "### Changed",
+              "### Deprecated",
+              "### Removed",
+              "### Fixed",
+              "### Security",
+            ];
+            expectedSections.forEach((section) => {
+              expect(preview).toContain(section);
+            });
           } else {
-            // Keep-a-changelog format shows all sections even when empty
-            expect(preview).toContain("### Added");
-            expect(preview).toContain("### Changed");
-            expect(preview).toContain("### Deprecated");
-            expect(preview).toContain("### Removed");
-            expect(preview).toContain("### Fixed");
-            expect(preview).toContain("### Security");
+            expect(preview).toContain("No changes recorded");
           }
           expect(preview).toMatch(/\d{4}-\d{2}-\d{2}/);
         });
@@ -697,52 +700,33 @@ All notable changes to this project will be documented in this file.
   });
 
   describe("previewNewVersion", () => {
-    describe.each(changelogFormats)(
-      "$name format tests",
-      ({ format, sampleContent }) => {
-        beforeEach(() => {
-          mockConfig.changelogFormat = format;
-          // Mock date to be consistent
-          jest
-            .spyOn(global.Date, "now")
-            .mockImplementation(() => new Date("2024-01-01").valueOf());
-        });
+    describe.each(changelogFormats)("$name format tests", ({ format }) => {
+      beforeEach(() => {
+        mockConfig.changelogFormat = format;
+      });
 
-        it("should show complete preview with unreleased changes", async () => {
-          (fs.readFile as jest.Mock).mockResolvedValueOnce(sampleContent);
+      it.each([true, false])(
+        "should handle empty sections (%s)",
+        async (includeEmpty) => {
+          // Use appropriate content for the conventional format
+          const content =
+            format === "conventional"
+              ? `# Changelog
 
-          const preview = await service.previewNewVersion(
-            mockContext,
-            mockConfig,
-            {
-              newVersion: "1.1.0",
-              conventionalCommits: mockConfig.conventionalCommits,
-              format: format,
-            },
-          );
+## [Unreleased]
+* feat: New feature
+* fix: Security fix
+`
+              : `# Changelog
 
-          // Should only contain the new version entry
-          expect(preview).toContain("## [1.1.0]");
-          if (format === "conventional") {
-            expect(preview).toContain("### Added");
-            expect(preview).toContain("- New feature A");
-            expect(preview).toContain("### Fixed");
-            expect(preview).toContain("- Bug fix A");
-          } else {
-            expect(preview).toContain("### Added");
-            expect(preview).toContain("- New feature X");
-            expect(preview).toContain("- New feature Y");
-            expect(preview).toContain("### Security");
-            expect(preview).toContain("- Security fix A");
-          }
-          expect(preview).toMatch(/\d{4}-\d{2}-\d{2}/);
-        });
+## [Unreleased]
+### Added
+- New feature
+### Security
+- Security fix
+`;
 
-        it("should handle empty unreleased section", async () => {
-          const contentWithoutUnreleased = `# Changelog\n\n## [Unreleased]\n\n## [1.0.0]`;
-          (fs.readFile as jest.Mock).mockResolvedValueOnce(
-            contentWithoutUnreleased,
-          );
+          (fs.readFile as jest.Mock).mockResolvedValueOnce(content);
 
           const preview = await service.previewNewVersion(
             mockContext,
@@ -751,43 +735,82 @@ All notable changes to this project will be documented in this file.
               newVersion: "1.1.0",
               conventionalCommits: false,
               format: format,
+              includeEmptySections: includeEmpty,
+              date: "2024-10-30",
             },
           );
 
-          expect(preview).toContain("## [1.1.0]");
+          // For conventional format, we should directly include the unreleased content
           if (format === "conventional") {
-            expect(preview).toContain("No changes recorded");
+            expect(preview).toContain("* feat: New feature");
+            expect(preview).toContain("* fix: Security fix");
           } else {
-            // Keep-a-changelog format should show "No changes recorded" when empty
-            // This matches the behavior in the implementation
-            const expectedContent = `## [1.1.0] - ${formatDate(new Date(), "yyyy-MM-dd")}\nNo changes recorded\n`;
-            expect(preview).toBe(expectedContent);
+            // For keep-a-changelog format
+            expect(preview).toContain("### Added\n- New feature");
+            expect(preview).toContain("### Security\n- Security fix");
+
+            const optionalSections = [
+              "### Changed",
+              "### Deprecated",
+              "### Removed",
+              "### Fixed",
+            ];
+
+            if (includeEmpty) {
+              optionalSections.forEach((section) => {
+                expect(preview).toContain(section);
+              });
+            } else {
+              optionalSections.forEach((section) => {
+                expect(preview).not.toContain(section);
+              });
+            }
           }
-        });
+        },
+      );
 
-        it("should handle duplicate version entries", async () => {
-          const duplicateContent = `# Changelog\n\n## [Unreleased]\n### Added\n- New feature\n\n## [0.4.8]\n\n## [0.4.8] - 2024-10-30`;
-          (fs.readFile as jest.Mock).mockResolvedValueOnce(duplicateContent);
+      it("should handle duplicate version entries", async () => {
+        const content =
+          format === "conventional"
+            ? `# Changelog
 
-          const preview = await service.previewNewVersion(
-            mockContext,
-            mockConfig,
-            {
-              newVersion: "0.4.9",
-              conventionalCommits: false,
-              format: format,
-            },
-          );
+## [Unreleased]
+* feat: Feature A
 
-          expect(preview).toContain("## [0.4.9]");
-          if (format === "conventional") {
-            expect(preview).toContain("- New feature");
-          } else {
-            expect(preview).toContain("### Added");
-            expect(preview).toContain("- New feature");
-          }
-        });
-      },
-    );
+## [1.0.0]
+## [1.0.0] - 2024-10-29
+`
+            : `# Changelog
+
+## [Unreleased]
+### Added
+- Feature A
+
+## [1.0.0]
+## [1.0.0] - 2024-10-29
+`;
+
+        (fs.readFile as jest.Mock).mockResolvedValueOnce(content);
+
+        const preview = await service.previewNewVersion(
+          mockContext,
+          mockConfig,
+          {
+            newVersion: "1.1.0",
+            conventionalCommits: false,
+            format: format,
+            date: "2024-10-30",
+          },
+        );
+
+        expect(preview).toContain(`## [1.1.0] - 2024-10-30`);
+
+        if (format === "conventional") {
+          expect(preview).toContain("* feat: Feature A");
+        } else {
+          expect(preview).toContain("### Added\n- Feature A");
+        }
+      });
+    });
   });
 });

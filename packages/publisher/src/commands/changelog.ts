@@ -4,6 +4,7 @@ import { ChangelogService } from "../core/changelog";
 import { loadConfig } from "../core/config";
 import { GitService, type GitCommit } from "../core/git";
 import { PackageManagerFactory } from "../core/package-manager";
+import { ReleaseService } from "../core/release";
 import { WorkspaceService } from "../core/workspace";
 import { PackageContext } from "../types/config";
 import { Logger } from "../utils/logger";
@@ -145,16 +146,19 @@ changelogCommand
           const packageConfig = await workspaceService.getPackageConfig(
             pkg.name,
           );
-          const format = packageConfig.changelogFormat || "conventional";
-
-          // Format commits based on changelog type
-          const formattedChanges = formatCommitsForChangelog(
-            gitChanges,
-            format,
+          const preview = await changelogService.previewNewVersion(
+            pkg,
+            packageConfig,
+            {
+              newVersion: pkg.newVersion || "x.x.x",
+              conventionalCommits: packageConfig.conventionalCommits,
+              format: packageConfig.changelogFormat,
+              date: new Date().toISOString(),
+            },
           );
 
-          logger.info("\nSuggested entries for [Unreleased] section:");
-          logger.info(formattedChanges);
+          logger.info("\nSuggested changelog entry:");
+          logger.info(preview);
 
           logger.info("\nOriginal Git Commits:");
           for (const commit of gitChanges) {
@@ -301,78 +305,96 @@ changelogCommand
     }
   });
 
-interface FormattedChanges {
-  Added: string[];
-  Changed: string[];
-  Deprecated: string[];
-  Removed: string[];
-  Fixed: string[];
-  Security: string[];
+interface ReleasePreviewPackage {
+  name: string;
+  currentVersion: string;
+  suggestedVersion: string;
+  hasGitChanges: boolean;
+  dependencies: Array<{
+    name: string;
+    currentVersion: string;
+    newVersion: string;
+  }>;
 }
 
-type SectionKey = keyof FormattedChanges;
-type SectionEntry = [SectionKey, string[]];
+changelogCommand
+  .command("release-preview")
+  .description(
+    "Preview changelog updates in release format, including dependency updates and git changes",
+  )
+  .argument(
+    "[packages...]",
+    "Package names to preview changelog for (optional when in package directory)",
+  )
+  .option("-v, --version <version>", "Specify version explicitly")
+  .action(async (packages: string[]) => {
+    const logger = new Logger();
+    try {
+      const config = await loadConfig();
+      const releaseService = new ReleaseService(config, logger);
+      const workspaceService = new WorkspaceService(config, logger);
 
-function formatCommitsForChangelog(
-  commits: Array<{ message: string; files: string[] }>,
-  format: "conventional" | "keep-a-changelog",
-): string {
-  if (format === "keep-a-changelog") {
-    const sections: FormattedChanges = {
-      Added: [],
-      Changed: [],
-      Deprecated: [],
-      Removed: [],
-      Fixed: [],
-      Security: [],
-    };
-
-    for (const commit of commits) {
-      const message = commit.message.trim();
-      if (message.startsWith("feat")) {
-        sections.Added.push(message.replace(/^feat(\([^)]+\))?:/, "").trim());
-      } else if (message.startsWith("fix")) {
-        sections.Fixed.push(message.replace(/^fix(\([^)]+\))?:/, "").trim());
-      } else if (
-        message.startsWith("chore") ||
-        message.startsWith("refactor") ||
-        message.startsWith("docs")
-      ) {
-        sections.Changed.push(
-          message.replace(/^(chore|refactor|docs)(\([^)]+\))?:/, "").trim(),
-        );
-      } else if (message.startsWith("deprecated")) {
-        sections.Deprecated.push(
-          message.replace(/^deprecated(\([^)]+\))?:/, "").trim(),
-        );
-      } else if (message.startsWith("removed")) {
-        sections.Removed.push(
-          message.replace(/^removed(\([^)]+\))?:/, "").trim(),
-        );
-      } else if (message.startsWith("security")) {
-        sections.Security.push(
-          message.replace(/^security(\([^)]+\))?:/, "").trim(),
-        );
-      } else {
-        sections.Changed.push(message);
+      if (packages.length === 0) {
+        const currentPackage = await workspaceService.getCurrentPackage();
+        if (currentPackage) {
+          packages = [currentPackage.name];
+        }
       }
+
+      // Get packages to analyze
+      const packagesToAnalyze = await workspaceService.getPackages(packages);
+      const previewResults: ReleasePreviewPackage[] = [];
+
+      // Build preview data for each package
+      for (const pkg of packagesToAnalyze) {
+        const gitChanges = await releaseService.getGitChanges(pkg.name);
+        const packageJson = await workspaceService.readPackageJson(pkg.path);
+
+        // Ensure version is defined
+        const currentVersion = packageJson.version || "0.0.0";
+        const suggestedVersion = pkg.newVersion || currentVersion;
+
+        previewResults.push({
+          name: pkg.name,
+          currentVersion,
+          suggestedVersion,
+          hasGitChanges: gitChanges.length > 0,
+          dependencies: [], // We don't have access to dependency updates in the core service
+        });
+      }
+
+      // Display preview for each package
+      for (const pkg of previewResults) {
+        logger.info(`\n📦 ${pkg.name}`);
+        logger.info(`  Current version: ${pkg.currentVersion}`);
+        logger.info(`  Suggested version: ${pkg.suggestedVersion}`);
+
+        logger.info("\n  📝 Changelog Preview:");
+        logger.info(chalk.gray("  ----------------------------------------"));
+        const changelogContent = await releaseService.previewChangelog(
+          pkg.name,
+        );
+        logger.info(
+          changelogContent
+            .split("\n")
+            .map((line) => `  ${line}`)
+            .join("\n"),
+        );
+        logger.info(chalk.gray("  ----------------------------------------"));
+
+        if (pkg.hasGitChanges) {
+          logger.info("\n  📝 Git Changes:");
+          const gitChanges = await releaseService.getGitChanges(pkg.name);
+          for (const commit of gitChanges) {
+            logger.info(`    - ${commit.message}`);
+          }
+        }
+      }
+    } catch (error) {
+      logger.error(
+        "Preview failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(1);
     }
-
-    const formattedSections = (Object.entries(sections) as SectionEntry[])
-      .filter(([_, items]) => items.length > 0)
-      .map(([section, items]) => {
-        const formattedItems = items.map((item) => `- ${item}`);
-        return `### ${section}\n${formattedItems.join("\n")}`;
-      });
-
-    return formattedSections.join("\n\n");
-  } else {
-    // Conventional format
-    return commits
-      .map((commit) => {
-        const message = commit.message.trim();
-        return `- ${message}`;
-      })
-      .join("\n");
-  }
-}
+  });
