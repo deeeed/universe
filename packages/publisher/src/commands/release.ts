@@ -1,10 +1,10 @@
+import chalk from "chalk";
 import { Command } from "commander";
 import { loadConfig } from "../core/config";
 import { ReleaseService } from "../core/release";
+import { WorkspaceService } from "../core/workspace";
 import { Logger } from "../utils/logger";
 import { Prompts } from "../utils/prompt";
-import chalk from "chalk";
-import { WorkspaceService } from "../core/workspace";
 
 interface ReleaseCommandOptions {
   all?: boolean;
@@ -93,7 +93,7 @@ export const releaseCommand = new Command()
             logger.info("━".repeat(50));
             logger.info(`Package: ${dryRunReport.packageName}`);
             logger.info(
-              `Version: ${dryRunReport.version} → ${dryRunReport.newVersion}`,
+              `Version: ${dryRunReport.currentVersion} → ${dryRunReport.newVersion}`,
             );
             logger.info(`Git Tag: ${dryRunReport.git.tag}`);
             logger.info(
@@ -196,7 +196,15 @@ export const releaseCommand = new Command()
         );
         logger.info("Release results:");
         for (const result of results) {
-          logger.info(`  ${result.packageName}: ${result.version}`);
+          if ("newVersion" in result) {
+            // This is a DryRunReport
+            logger.info(
+              `  ${result.packageName}: ${result.newVersion} (dry run)`,
+            );
+          } else {
+            // This is a ReleaseResult
+            logger.info(`  ${result.packageName}: ${result.version}`);
+          }
         }
       }
     } catch (error) {

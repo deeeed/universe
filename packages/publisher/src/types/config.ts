@@ -236,7 +236,6 @@ export interface DryRunReport {
   packageName: string;
   currentVersion: string;
   newVersion: string;
-  version: string;
   changelog: string;
   git: {
     tag: string;

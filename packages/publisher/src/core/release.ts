@@ -391,44 +391,15 @@ export class ReleaseService {
       options.changelog || (await this.previewChangelog(context.name));
 
     // Get dependency updates
-    const dependencyUpdates: Array<{
-      name: string;
-      currentVersion: string;
-      newVersion: string;
-      type: "dependencies" | "devDependencies" | "peerDependencies";
-    }> = [];
-
-    // Process each dependency type
-    const dependencyTypes = {
-      dependencies: context.dependencies,
-      devDependencies: context.devDependencies,
-      peerDependencies: context.peerDependencies,
-    };
-
-    for (const [type, deps] of Object.entries(dependencyTypes)) {
-      if (deps) {
-        for (const [name, currentVersion] of Object.entries(deps)) {
-          const update = await this.packageManager.getLatestVersion(name);
-          if (update && update !== currentVersion) {
-            dependencyUpdates.push({
-              name,
-              currentVersion,
-              newVersion: update,
-              type: type as
-                | "dependencies"
-                | "devDependencies"
-                | "peerDependencies",
-            });
-          }
-        }
-      }
-    }
+    const dependencyUpdates = await this.analyzeDependencyUpdates(
+      context,
+      this.getWorkspaceDependencies(context),
+    );
 
     return {
       packageName: context.name,
       currentVersion: context.currentVersion,
       newVersion: options.newVersion,
-      version: context.currentVersion,
       changelog: changelogContent,
       git: {
         tag: tagName,

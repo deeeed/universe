@@ -326,7 +326,7 @@ describe("ReleaseService", () => {
       });
       expect(results[0]).toMatchObject({
         packageName: "test-package",
-        version: "1.1.0",
+        newVersion: "1.1.0",
       });
 
       const pushMethod = jest.spyOn(releaseService["git"], "push");
