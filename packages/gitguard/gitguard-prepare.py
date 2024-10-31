@@ -265,10 +265,11 @@ def get_ai_suggestion(prompt: str) -> Optional[List[Dict[str, str]]]:
         print(f"\n⚠️  AI suggestion failed: {e}")
         return None
 
+
 def display_suggestions(suggestions: List[Dict[str, str]]) -> Optional[str]:
-    """Display suggestions and get user choice."""
+    """Display suggestions and get user choice, defaults to the first suggestion on EOF."""
     print("\n✨ AI Suggestions:")
-    
+
     for i, suggestion in enumerate(suggestions, 1):
         print(f"\n{i}. {'=' * 48}")
         print(f"Message: {suggestion['message']}")
@@ -276,14 +277,18 @@ def display_suggestions(suggestions: List[Dict[str, str]]) -> Optional[str]:
         print(f"Scope: {suggestion['scope']}")
         print(f"Explanation: {suggestion['explanation']}")
         print('=' * 50)
-    
-    while True:
-        choice = input('\nChoose suggestion (1-3) or press Enter to skip: ').strip()
-        if not choice:
-            return None
-        if choice in ('1', '2', '3'):
-            return suggestions[int(choice) - 1]['message']
-        print("Please enter 1, 2, 3 or press Enter to skip")
+
+    try:
+        while True:
+            choice = input('\nChoose suggestion (1-3) or press Enter to skip: ').strip()
+            if not choice:
+                return None
+            if choice in ('1', '2', '3'):
+                return suggestions[int(choice) - 1]['message']
+            print("Please enter 1, 2, 3 or press Enter to skip")
+    except EOFError:
+        print("\n⚠️  Input not available. Defaulting to first suggestion.")
+        return suggestions[0]['message'] if suggestions else None
 
 def main():
     try:
