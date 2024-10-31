@@ -18,22 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - proper changelog generation
 - docs: cleanup changelog
 
-
 ## [0.4.12] - 2024-10-31
 - fix: invalid changelog format
-
-
 
 ## [0.4.11] - 2024-10-31
 - ⚠️ **WARNING: DEVELOPMENT IN PROGRESS** ⚠️
 
-
-
 ## [0.4.10] - 2024-10-30
 - dry run mode
 - feat: dry run mode
-
-
 
 ## [0.4.9] - 2024-10-30
 - full process with helper scripts
