@@ -6,25 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- feat: changelog update with commit links
+
+
+## [0.4.14] - 2024-10-31
+- changelog update with commit links
+- proper changelog generation
 - docs: cleanup changelog
-- feat: proper changelog generation
 
 ## [0.4.12] - 2024-10-31
 - fix: invalid changelog format
 
+
 ## [0.4.11] - 2024-10-31
 - ⚠️ **WARNING: DEVELOPMENT IN PROGRESS** ⚠️
+
 
 ## [0.4.10] - 2024-10-30
 - dry run mode
 - feat: dry run mode
 
+
 ## [0.4.9] - 2024-10-30
 - full process with helper scripts
 - feat: full process with helper scripts
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.13...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.14...HEAD
+[0.4.14]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.13...@siteed/publisher@0.4.14
 [0.4.13]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.12...@siteed/publisher@0.4.13
 [0.4.12]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.11...@siteed/publisher@0.4.12
 [0.4.11]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.10...@siteed/publisher@0.4.11
