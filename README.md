@@ -16,10 +16,10 @@ Welcome to `@siteed/universe`, a comprehensive monorepo containing a design syst
 ## Package Overview
 
 Here's a quick overview of the main packages in this monorepo:
-
 - [**@siteed/design-system**](./packages/design-system/README.md): Core design system components and utilities.
 - [**@siteed/react-native-logger**](./packages/react-native-logger/README.md): A flexible logging solution for React Native applications.
 - [**@siteed/publisher**](./packages/publisher/README.md): A monorepo release management tool.
+- [**@siteed/gitguard**](./packages/gitguard/README.md): Smart Git commit hook for maintaining consistent commit messages.
 
 For more detailed information about each package, please refer to their individual README files linked above.
 
