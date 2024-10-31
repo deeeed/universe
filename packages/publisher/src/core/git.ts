@@ -1,10 +1,5 @@
 import path from "path";
-import simpleGit, {
-  DefaultLogFields,
-  ListLogLine,
-  SimpleGit,
-  SimpleGitOptions,
-} from "simple-git";
+import simpleGit, { SimpleGit, SimpleGitOptions, DiffResult } from "simple-git";
 import type { GitConfig, PackageContext } from "../types/config";
 import { Logger } from "../utils/logger";
 import { formatGitTag } from "../utils/format-tag";
@@ -107,11 +102,11 @@ export class GitService {
     }
 
     const lastTag = await this.getLastTag(path.basename(packagePath));
-    const commits = await this.getCommitsSinceTag(lastTag);
+    const commits = await this.getCommitsSinceTag(lastTag, {
+      packagePath,
+    });
 
-    return commits.some((commit) =>
-      commit.files.some((file) => file.startsWith(relativePath)),
-    );
+    return commits.length > 0;
   }
 
   async getLastTag(packageName: string): Promise<string> {
@@ -141,38 +136,197 @@ export class GitService {
     return 0;
   }
 
+  private extractFilePaths(diff: DiffResult | undefined): string[] {
+    if (!diff?.files) return [];
+
+    return diff.files
+      .map((file) => {
+        if (typeof file === "string") return file;
+
+        // Type guard for objects with path or file property
+        if (typeof file === "object" && file !== null) {
+          if ("path" in file && typeof file.path === "string") {
+            return file.path;
+          }
+          if ("file" in file && typeof file.file === "string") {
+            return file.file;
+          }
+        }
+
+        // Fallback for unexpected formats
+        return "";
+      })
+      .filter(Boolean); // Remove empty strings
+  }
+
   async getCommitsSinceTag(
     tag: string,
     options?: GetCommitsOptions,
   ): Promise<GitCommit[]> {
     try {
-      let commits: GitCommit[];
+      // First verify we can get commits with a simple command
+      const verifyCommand = ["log", "-1", "--oneline"];
+      const verifyResult = await this.git.raw(verifyCommand);
+      this.logger.debug("Verify git command result:", {
+        command: verifyCommand.join(" "),
+        result: verifyResult,
+      });
 
-      if (!tag) {
-        const log = await this.git.log();
-        commits = await this.parseCommits([...log.all]);
-      } else {
-        const log = await this.git.log({ from: tag, to: "HEAD" });
-        commits = await this.parseCommits([...log.all]);
+      // Then try our actual command with modified format
+      const logOptions = [
+        "log",
+        `--format=COMMIT%n%H%n%aI%n%s%n%b%nFILES`, // Use COMMIT and FILES as markers
+        "--name-only",
+        tag ? `${tag}..HEAD` : "HEAD",
+      ];
+
+      this.logger.debug("Getting commits with command:", {
+        command: logOptions.join(" "),
+        tag,
+        options,
+      });
+
+      const result = await this.git.raw(logOptions);
+
+      this.logger.debug("Git log result:", {
+        resultLength: result?.length || 0,
+        firstLines: result?.split("\n").slice(0, 5),
+        isEmpty: !result,
+      });
+
+      if (!result) return [];
+
+      // Split by COMMIT marker first
+      const commits: GitCommit[] = [];
+      const commitChunks = result.split("\nCOMMIT\n").filter(Boolean);
+
+      for (const chunk of commitChunks) {
+        // Split each chunk into commit data and files
+        const [commitData, filesList] = chunk.split("\nFILES\n");
+        const lines = commitData.split("\n").filter(Boolean);
+
+        this.logger.debug("Processing chunk:", {
+          commitLines: lines,
+          files: filesList?.split("\n").filter(Boolean) || [],
+        });
+
+        // Skip the COMMIT marker if it's in the lines
+        const startIndex = lines[0] === "COMMIT" ? 1 : 0;
+        if (lines.length < startIndex + 3) continue;
+
+        const hash = lines[startIndex];
+        const date = lines[startIndex + 1];
+        const message = lines[startIndex + 2];
+        const bodyLines = lines.slice(startIndex + 3);
+        const files = filesList?.split("\n").filter(Boolean) || [];
+
+        const commit = {
+          hash,
+          date,
+          message,
+          body: bodyLines.length > 0 ? bodyLines.join("\n") : null,
+          files,
+        };
+
+        this.logger.debug("Parsed commit:", commit);
+        commits.push(commit);
       }
 
-      // Apply filters if options are provided
-      if (options) {
-        if (options.filterByPath && options.packagePath) {
-          const relativePath = path.relative(this.rootDir, options.packagePath);
-          commits = commits.filter((commit) =>
-            commit.files.some((file) => file.startsWith(relativePath)),
-          );
-        }
+      this.logger.debug("All parsed commits before filtering:", {
+        totalCommits: commits.length,
+        commits: commits.map((c) => ({
+          hash: c.hash.slice(0, 7),
+          message: c.message,
+          filesCount: c.files.length,
+        })),
+      });
 
-        if (options.packageName) {
-          commits = commits.filter((commit) => {
-            const packageName = options.packageName;
-            const messageIncludes = commit.message.includes(`(${packageName})`);
-            const bodyIncludes = commit.body?.includes(`(${packageName})`);
-            return messageIncludes || bodyIncludes;
+      // Apply filters with OR logic
+      if (options) {
+        let filteredCommits = commits;
+        const matchedByPath = new Set<string>();
+        const matchedByName = new Set<string>();
+
+        // Always check path if packagePath is provided
+        if (options.packagePath) {
+          const relativePath = path.relative(this.rootDir, options.packagePath);
+          this.logger.debug("Filtering by path:", {
+            relativePath,
+            originalCount: filteredCommits.length,
+          });
+
+          filteredCommits.forEach((commit) => {
+            const hasMatchingFiles = commit.files.some((file) =>
+              file.startsWith(relativePath),
+            );
+            this.logger.debug("Path filter check:", {
+              hash: commit.hash.slice(0, 7),
+              hasMatchingFiles,
+              matchingFiles: commit.files.filter((f) =>
+                f.startsWith(relativePath),
+              ),
+            });
+            if (hasMatchingFiles) {
+              matchedByPath.add(commit.hash);
+            }
           });
         }
+
+        // Check package name if provided
+        if (options.packageName) {
+          this.logger.debug("Filtering by package name:", {
+            packageName: options.packageName,
+            originalCount: filteredCommits.length,
+          });
+
+          filteredCommits.forEach((commit) => {
+            const messageIncludes = commit.message.includes(
+              `(${options.packageName})`,
+            );
+            const bodyIncludes = commit.body?.includes(
+              `(${options.packageName})`,
+            );
+            const matches = messageIncludes || bodyIncludes;
+
+            this.logger.debug("Package name filter check:", {
+              hash: commit.hash.slice(0, 7),
+              message: commit.message,
+              matches,
+              messageIncludes,
+              bodyIncludes,
+            });
+
+            if (matches) {
+              matchedByName.add(commit.hash);
+            }
+          });
+        }
+
+        // Filter commits that match either condition
+        filteredCommits = filteredCommits.filter(
+          (commit) =>
+            matchedByPath.has(commit.hash) || matchedByName.has(commit.hash),
+        );
+
+        this.logger.debug("Commits after filtering:", {
+          originalCount: commits.length,
+          filteredCount: filteredCommits.length,
+          matchedByPath: Array.from(matchedByPath).length,
+          matchedByName: Array.from(matchedByName).length,
+          commits: filteredCommits.map((c) => ({
+            hash: c.hash.slice(0, 7),
+            message: c.message,
+            filesCount: c.files.length,
+            matchedBy: [
+              matchedByPath.has(c.hash) ? "path" : null,
+              matchedByName.has(c.hash) ? "name" : null,
+            ]
+              .filter(Boolean)
+              .join(", "),
+          })),
+        });
+
+        return filteredCommits;
       }
 
       return commits;
@@ -180,33 +334,6 @@ export class GitService {
       this.logger.error(`Failed to get commits since tag ${tag}:`, error);
       return [];
     }
-  }
-
-  private async parseCommits(
-    commits: Array<DefaultLogFields & ListLogLine>,
-  ): Promise<GitCommit[]> {
-    return Promise.all(
-      commits.map(async (commit) => {
-        const show = await this.git.show([
-          commit.hash,
-          "--name-only",
-          "--format=%H%n%ai%n%B",
-        ]);
-        const [hash, date, ...rest] = show.split("\n");
-        const messageEnd = rest.findIndex((line) => line === "");
-        const message = rest.slice(0, messageEnd).join("\n");
-        const body = rest.slice(messageEnd + 1, -1).join("\n") || null;
-        const files = rest.slice(-1);
-
-        return {
-          hash,
-          date,
-          message,
-          body,
-          files,
-        };
-      }),
-    );
   }
 
   getTagName(packageName: string, version: string): string {
@@ -396,8 +523,25 @@ export class GitService {
 
   async getAllCommits(): Promise<GitCommit[]> {
     try {
-      const log = await this.git.log();
-      return this.parseCommits([...log.all]);
+      const logOptions = {
+        format: {
+          hash: "%H",
+          date: "%aI",
+          message: "%s",
+          body: "%b",
+        },
+        multiLine: true,
+        nameOnly: true,
+      };
+
+      const log = await this.git.log(logOptions);
+      return log.all.map((commit) => ({
+        hash: commit.hash,
+        date: commit.date,
+        message: commit.message,
+        body: commit.body || null,
+        files: this.extractFilePaths(commit.diff),
+      }));
     } catch (error) {
       this.logger.error("Failed to get all commits:", error);
       return [];
