@@ -277,6 +277,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       const versionMatches = updatedContent.match(/## \[0\.4\.12\]/g);
       expect(versionMatches?.length).toBe(1);
 
+      // Verify no duplicate changelog entries
+      const entryMatches = updatedContent.match(
+        /- fix: invalid changelog format/g,
+      );
+      expect(entryMatches?.length).toBe(1);
+
       // Verify the comparison links
       const expectedLinks = [
         "[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.12...HEAD",

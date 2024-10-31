@@ -259,10 +259,17 @@ export class ChangelogService {
       );
       let existingContent = "";
 
+      this.logger.debug("=== Starting changelog update ===");
+      this.logger.debug(`Changelog path: ${changelogPath}`);
+      this.logger.debug(`New version: ${context.newVersion}`);
+      this.logger.debug("New content to add:", newContent);
+
       try {
         existingContent = await fs.readFile(changelogPath, "utf-8");
+        this.logger.debug("Original changelog content:", existingContent);
       } catch (error) {
         // Create new changelog if it doesn't exist
+        this.logger.debug("No existing changelog found, creating new one");
         existingContent = "# Changelog\n";
       }
 
@@ -270,28 +277,49 @@ export class ChangelogService {
       const formattedDate = this.formatDate(new Date(), format);
       const versionHeader = `## [${context.newVersion}] - ${formattedDate}`;
 
-      // Add new version section
+      this.logger.debug(`Formatted version header: ${versionHeader}`);
+
+      // Step 1: Clear unreleased section content but keep the header
+      this.logger.debug("Clearing unreleased section...");
       let updatedContent = existingContent.replace(
+        /## \[Unreleased\][^]*?(?=\n+## \[|$)/,
+        "## [Unreleased]",
+      );
+      this.logger.debug(
+        "Content after clearing unreleased section:",
+        updatedContent,
+      );
+
+      // Step 2: Add new version section after unreleased
+      this.logger.debug("Adding new version section...");
+      updatedContent = updatedContent.replace(
         /## \[Unreleased\]/,
         `## [Unreleased]\n\n${versionHeader}`,
       );
+      this.logger.debug("Content after adding version header:", updatedContent);
 
-      // Add new content under the version
+      // Step 3: Add the new content under the version
+      this.logger.debug("Adding new content under version...");
       updatedContent = updatedContent.replace(
         versionHeader,
         `${versionHeader}\n\n${newContent}`,
       );
+      this.logger.debug("Content after adding new content:", updatedContent);
 
       // Deduplicate entries
+      this.logger.debug("Deduplicating version entries...");
       updatedContent = this.deduplicateVersionEntries(updatedContent);
+      this.logger.debug("Content after deduplication:", updatedContent);
 
       // Update comparison links
       try {
+        this.logger.debug("Updating version comparison links...");
         updatedContent = await this.updateVersionComparisonLinks(
           context,
           updatedContent,
           config,
         );
+        this.logger.debug("Content after updating links:", updatedContent);
       } catch (error: unknown) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
@@ -300,30 +328,42 @@ export class ChangelogService {
         );
       }
 
+      this.logger.debug("Writing final content to file...");
       await fs.writeFile(changelogPath, updatedContent, "utf-8");
+      this.logger.debug("=== Changelog update completed ===");
     } catch (error) {
-      // Error handling...
+      this.logger.error("Failed to update changelog:", error);
+      throw error;
     }
   }
 
   private deduplicateVersionEntries(content: string): string {
+    this.logger.debug("=== Starting deduplication process ===");
+
     // Extract header before splitting into sections
     const headerMatch = content.match(/^([\s\S]*?)(?=##\s+\[)/);
     const header = headerMatch ? headerMatch[1].trim() : "";
+    this.logger.debug("Extracted header:", header);
 
     const sections = content.split(/(?=##\s+\[)/).filter(Boolean);
+    this.logger.debug("Split sections:", sections);
+
     const processedSections = new Map<string, string>();
 
     // Process each section
-    sections.forEach((section) => {
+    sections.forEach((section, index) => {
+      this.logger.debug(`Processing section ${index + 1}:`, section);
+
       const versionMatch = section.match(
         /^##\s+\[([^\]]+)\](?:\s+-\s+([^)\n]+))?/,
       );
       if (versionMatch) {
         const [, version, date] = versionMatch;
+        this.logger.debug(`Found version: ${version}, date: ${date}`);
 
         // Skip unreleased section
         if (version.toLowerCase() === "unreleased") {
+          this.logger.debug("Found unreleased section, preserving as is");
           processedSections.set("unreleased", section);
           return;
         }
@@ -335,14 +375,18 @@ export class ChangelogService {
             const parsedDate = new Date(date);
             if (!isNaN(parsedDate.getTime())) {
               standardizedDate = formatDate(parsedDate, "yyyy-MM-dd");
+              this.logger.debug(`Standardized date to: ${standardizedDate}`);
             }
           } catch {
-            // Keep original date if parsing fails
+            this.logger.debug("Failed to parse date, keeping original");
           }
         }
 
         // If we've seen this version before
         if (processedSections.has(version)) {
+          this.logger.debug(
+            `Found duplicate version: ${version}, merging entries`,
+          );
           const existingSection = processedSections.get(version) || "";
           const mergedEntries = this.extractAndDeduplicateEntries(
             existingSection,
@@ -356,10 +400,9 @@ export class ChangelogService {
                 /^##\s+\[[^\]]+\](?:\s+-\s+\d{4}-\d{2}-\d{2})?/,
               )?.[0] || `## [${version}]`;
 
-          processedSections.set(
-            version,
-            `${header}\n${mergedEntries.join("\n")}\n`,
-          );
+          const mergedSection = `${header}\n${mergedEntries.join("\n")}\n`;
+          this.logger.debug(`Merged section for ${version}:`, mergedSection);
+          processedSections.set(version, mergedSection);
         } else {
           // Standardize date in the section header if present
           if (standardizedDate) {
@@ -367,18 +410,21 @@ export class ChangelogService {
               /^(##\s+\[[^\]]+\])(?:\s+-\s+[^)\n]+)?/,
               `$1 - ${standardizedDate}`,
             );
+            this.logger.debug(`Standardized section header:`, section);
           }
           processedSections.set(version, section);
         }
       }
     });
 
-    // Reconstruct the changelog with header
+    // Reconstruct the changelog
+    this.logger.debug("Reconstructing changelog...");
     let result = header ? `${header}\n\n` : "";
 
     // Add Unreleased section if it exists
     const unreleasedSection = processedSections.get("unreleased");
     if (unreleasedSection) {
+      this.logger.debug("Adding unreleased section");
       result += unreleasedSection + "\n";
       processedSections.delete("unreleased");
     }
@@ -387,15 +433,21 @@ export class ChangelogService {
     const versionSections = Array.from(processedSections.entries()).sort(
       ([a], [b]) => this.compareVersions(b, a),
     );
+    this.logger.debug(
+      "Ordered versions:",
+      versionSections.map(([v]) => v),
+    );
 
     result += versionSections.map(([_, section]) => section).join("\n");
 
     // Add comparison links if they exist (deduplicated)
     const links = new Set(content.match(/\[.*?\]:.*/g) || []);
     if (links.size > 0) {
+      this.logger.debug(`Adding ${links.size} comparison links`);
       result += "\n" + Array.from(links).join("\n") + "\n";
     }
 
+    this.logger.debug("=== Deduplication process completed ===");
     return result;
   }
 
