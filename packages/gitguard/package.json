@@ -1,0 +1,7 @@
+{
+  "name": "gitguard",
+  "packageManager": "yarn@4.5.0",
+  "devDependencies": {
+    "@siteed/publisher": "workspace:^"
+  }
+}

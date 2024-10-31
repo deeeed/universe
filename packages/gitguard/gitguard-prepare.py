@@ -6,8 +6,10 @@ import os
 from pathlib import Path
 from subprocess import check_output
 import json
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Any
 import requests
+from collections import defaultdict
+import re
 
 # Try to import optional dependencies
 try:
@@ -25,14 +27,12 @@ class Config:
         "auto_mode": False,
         "use_ai": True,
         "ai_provider": "azure",  # Can be 'azure' or 'ollama'
-        "azure_endpoint": "https://consensys-ai.openai.azure.com/",
-        "azure_deployment": "gpt-4o",
-        "azure_fallback_deployment": "gpt-35-turbo-16k",  # Fallback model
+        "azure_endpoint": "https://your-endpoint.openai.azure.com/",
+        "azure_deployment": "gpt-4",
         "azure_api_version": "2024-02-15-preview",
-        "azure_fallback_api_version": "2024-02-15-preview",  # Fallback API version
         "ollama_host": "http://localhost:11434",
         "ollama_model": "codellama",
-        "debug": True,
+        "debug": False,
     }
 
     def __init__(self):
@@ -92,7 +92,7 @@ class OllamaClient:
         self.model = model
 
     def generate(
-        self, system_prompt: str, user_prompt: str
+        self, prompt: str, original_message: str
     ) -> Optional[List[Dict[str, str]]]:
         """Generate commit message suggestions using Ollama."""
         try:
@@ -100,7 +100,7 @@ class OllamaClient:
                 f"{self.host}/api/generate",
                 json={
                     "model": self.model,
-                    "prompt": f"{system_prompt}\n\n{user_prompt}",
+                    "prompt": prompt,
                     "stream": False,
                 },
             )
@@ -136,74 +136,160 @@ class OllamaClient:
             return None
 
 
-def get_azure_suggestions(
-    client: AzureOpenAI,
-    config: Config,
-    system_prompt: str,
-    user_prompt: str,
-    deployment: str,
-    api_version: str
-) -> Optional[List[Dict[str, str]]]:
-    """Get suggestions from Azure OpenAI with specific deployment and API version."""
+def calculate_commit_complexity(packages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Calculate commit complexity metrics to determine if structured format is needed."""
+    complexity = {"score": 0, "reasons": [], "needs_structure": False}
+
+    # 1. Multiple packages changes (most significant factor)
+    if len(packages) > 1:
+        complexity["score"] += 3
+        complexity["reasons"].append("Changes span multiple packages")
+
+    # 2. Number of files changed
+    total_files = sum(len(pkg["files"]) for pkg in packages)
+    if total_files > 3:
+        complexity["score"] += min(total_files - 3, 5)  # Cap at 5 points
+        complexity["reasons"].append(f"Large number of files changed ({total_files})")
+
+    # 3. Mixed content types (e.g., code + tests + config)
+    content_types = set()
+    for pkg in packages:
+        for file in pkg["files"]:
+            if file.endswith((".test.ts", ".test.js", ".spec.ts", ".spec.js")):
+                content_types.add("test")
+            elif file.endswith((".json", ".yml", ".yaml", ".config.js")):
+                content_types.add("config")
+            elif file.endswith((".css", ".scss", ".less")):
+                content_types.add("styles")
+            elif file.endswith((".ts", ".js", ".tsx", ".jsx")):
+                content_types.add("code")
+
+    if len(content_types) > 2:
+        complexity["score"] += 2
+        complexity["reasons"].append("Multiple content types modified")
+
+    # Determine if structured commit is needed (threshold = 5)
+    complexity["needs_structure"] = complexity["score"] >= 5
+
+    return complexity
+
+
+def group_files_by_type(files: List[str]) -> Dict[str, List[str]]:
+    """Group files by their type for better readability."""
+    groups = {"Tests": [], "Config": [], "Styles": [], "Source": []}
+
+    for file in files:
+        if file.endswith((".test.ts", ".test.js", ".spec.ts", ".spec.js")):
+            groups["Tests"].append(file)
+        elif file.endswith((".json", ".yml", ".yaml", ".config.js")):
+            groups["Config"].append(file)
+        elif file.endswith((".css", ".scss", ".less")):
+            groups["Styles"].append(file)
+        else:
+            groups["Source"].append(file)
+
+    # Return only non-empty groups
+    return {k: v for k, v in groups.items() if v}
+
+
+def enhance_ai_prompt(packages: List[Dict], original_msg: str) -> str:
+    """Generate detailed AI prompt based on commit complexity analysis."""
+    complexity = calculate_commit_complexity(packages)
+
     try:
-        # Update client with specific API version
-        client.api_version = api_version
-        
-        response = client.chat.completions.create(
-            model=deployment,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.9,
-            max_tokens=1500,
-            n=3,
-            response_format={"type": "json_object"},
+        diff = check_output(["git", "diff", "--cached"]).decode("utf-8")
+    except:
+        diff = "Failed to get diff"
+
+    # Build comprehensive analysis for AI
+    analysis = {
+        "complexity_score": complexity["score"],
+        "complexity_reasons": complexity["reasons"],
+        "packages": [],
+    }
+
+    for pkg in packages:
+        files_by_type = group_files_by_type(pkg["files"])
+        analysis["packages"].append(
+            {"name": pkg["name"], "scope": pkg["scope"], "files_by_type": files_by_type}
         )
 
-        all_suggestions = []
-        for choice in response.choices:
-            result = json.loads(choice.message.content)
-            all_suggestions.extend(result.get("suggestions", []))
+    prompt = f"""Analyze the following git changes and suggest a commit message.
 
-        return all_suggestions[:3]
+Complexity Analysis:
+- Score: {complexity['score']} (threshold for structured format: 5)
+- Factors: {', '.join(complexity['reasons'])}
 
-    except Exception as e:
-        if config.get("debug"):
-            print(f"\n⚠️  Azure OpenAI error with {deployment} (API version {api_version}): {str(e)}")
-        raise  # Re-raise the exception to handle it in the calling function
+Changed Packages:"""
+
+    for pkg in analysis["packages"]:
+        prompt += f"\n\n📦 {pkg['name']} ({pkg['scope']})"
+        for file_type, files in pkg["files_by_type"].items():
+            prompt += f"\n{file_type}:"
+            for file in files:
+                prompt += f"\n  - {file}"
+
+    prompt += f"""
+
+Original message: "{original_msg}"
+
+Git diff:
+```diff
+{diff}
+```
+
+Please provide a commit message that:"""
+
+    if complexity["needs_structure"]:
+        prompt += """
+1. Follows the format: type(scope): description
+2. Includes a clear, detailed description paragraph
+3. Lists affected packages with key changes
+4. Groups related changes together
+5. Highlights significant changes first
+6. Keep it concise but informative"""
+    else:
+        prompt += """
+1. Follows the format: type(scope): description
+2. Is concise and focused
+3. Clearly conveys the main change"""
+
+    prompt += f"""
+
+Response Format:
+{{
+    "suggestions": [
+        {{
+            "message": "complete commit message with all sections",
+            "explanation": "why this format and focus was chosen",
+            "type": "commit type used",
+            "scope": "scope used",
+            "description": "title description"
+        }}
+    ]
+}}"""
+
+    return prompt
 
 
-def get_ai_suggestion(prompt: str, original_message: str) -> Optional[List[Dict[str, str]]]:
+def get_ai_suggestion(
+    prompt: str, original_message: str
+) -> Optional[List[Dict[str, str]]]:
     """Get structured commit message suggestions from configured AI provider."""
     config = Config()
-    
-    if config.get("debug"):
-        print("\n🔧 Active configuration:", json.dumps(config._config, indent=2))
 
-    system_prompt = """You are a helpful git commit message assistant. 
-    Provide exactly 3 different conventional commit message suggestions, each with a unique approach.
-    Return your response in the following JSON format:
-    {
-        "suggestions": [
-            {
-                "message": "type(scope): description",
-                "explanation": "Brief explanation of why this format was chosen",
-                "type": "commit type used",
-                "scope": "scope used",
-                "description": "main message"
-            }
-        ]
-    }
-    Ensure each suggestion has a different focus or perspective."""
+    if config.get("debug"):
+        print("\n🤖 Sending AI Prompt:")
+        print("-" * 40)
+        print(prompt)
+        print("-" * 40)
 
     # Try Ollama if configured
     if config.get("ai_provider") == "ollama":
         client = OllamaClient(
-            host=config.get("ollama_host"),
-            model=config.get("ollama_model")
+            host=config.get("ollama_host"), model=config.get("ollama_model")
         )
-        suggestions = client.generate(system_prompt, prompt)
+        suggestions = client.generate(prompt, original_message)
         if suggestions:
             return suggestions
 
@@ -214,89 +300,103 @@ def get_ai_suggestion(prompt: str, original_message: str) -> Optional[List[Dict[
             print("\n⚠️  No Azure OpenAI API key found in config or environment")
             return None
 
-        # Create new client for each attempt to ensure clean state
-        def create_client(api_version: str) -> AzureOpenAI:
-            return AzureOpenAI(
+        try:
+            client = AzureOpenAI(
                 api_key=api_key,
-                api_version=api_version,
+                api_version=config.get("azure_api_version"),
                 azure_endpoint=config.get("azure_endpoint"),
             )
 
-        # Try primary model
-        try:
-            if config.get("debug"):
-                print(f"\n🔧 Using primary model: {config.get('azure_deployment')}")
-                print(f"API Version: {config.get('azure_api_version')}")
-                print(f"Endpoint: {config.get('azure_endpoint')}")
-            
-            client = create_client(config.get("azure_api_version"))
-            suggestions = get_azure_suggestions(
-                client,
-                config,
-                system_prompt,
-                prompt,
-                config.get("azure_deployment"),
-                config.get("azure_api_version")
+            response = client.chat.completions.create(
+                model=config.get("azure_deployment"),
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful git commit message assistant.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.7,
+                max_tokens=1500,
+                n=3,
+                response_format={"type": "json_object"},
             )
-            if suggestions:
-                return suggestions
 
-        except Exception as primary_error:
-            # Try fallback model
-            if config.get("azure_fallback_deployment"):
+            for choice in response.choices:
                 try:
+                    result = json.loads(choice.message.content)
                     if config.get("debug"):
-                        print(f"\n🔄 Trying fallback model: {config.get('azure_fallback_deployment')}")
-                        print(f"Fallback API Version: {config.get('azure_fallback_api_version', config.get('azure_api_version'))}")
-                    
-                    fallback_api_version = config.get("azure_fallback_api_version", config.get("azure_api_version"))
-                    client = create_client(fallback_api_version)
-                    suggestions = get_azure_suggestions(
-                        client,
-                        config,
-                        system_prompt,
-                        prompt,
-                        config.get("azure_fallback_deployment"),
-                        fallback_api_version
-                    )
-                    if suggestions:
-                        return suggestions
-                    
-                except Exception as fallback_error:
-                    if config.get("debug"):
-                        print(f"\n⚠️  Fallback model failed: {str(fallback_error)}")
-            else:
-                if config.get("debug"):
-                    print("\n⚠️  No fallback model configured")
-    
+                        print("\n🤖 AI Response:")
+                        print(json.dumps(result, indent=2))
+                    return result.get("suggestions", [])[:3]
+                except json.JSONDecodeError:
+                    continue
+
+        except Exception as e:
+            if config.get("debug"):
+                print(f"\n⚠️  Azure OpenAI error: {str(e)}")
+
     return None
 
 
-def detect_change_types(files: List[str]) -> Set[str]:
-    """Detect change types based on files modified."""
-    types = set()
+def create_commit_message(commit_info: Dict, packages: List[Dict]) -> str:
+    """Create appropriate commit message based on complexity."""
+    # Calculate complexity
+    complexity = calculate_commit_complexity(packages)
 
-    for file in files:
-        file_lower = file.lower()
-        name = Path(file).name.lower()
+    if Config().get("debug"):
+        print("\n🔍 Commit Complexity Analysis:")
+        print(f"Score: {complexity['score']}")
+        print("Reasons:")
+        for reason in complexity["reasons"]:
+            print(f"- {reason}")
 
-        if any(pattern in file_lower for pattern in [".test.", ".spec.", "/tests/"]):
-            types.add("test")
-        elif any(pattern in file_lower for pattern in [".md", "readme", "docs/"]):
-            types.add("docs")
-        elif any(pattern in file_lower for pattern in [".css", ".scss", ".styled."]):
-            types.add("style")
-        elif any(
-            pattern in name for pattern in ["package.json", ".config.", "tsconfig"]
-        ):
-            types.add("chore")
-        elif any(word in file_lower for word in ["fix", "bug", "patch"]):
-            types.add("fix")
+    # For simple commits, just return the title
+    if not complexity["needs_structure"]:
+        return f"{commit_info['type']}({commit_info['scope']}): {commit_info['description']}"
 
-    if not types:
-        types.add("feat")
+    # For complex commits, use structured format
+    return create_structured_commit(commit_info, packages)
 
-    return types
+
+def create_structured_commit(
+    commit_info: Dict[str, Any], packages: List[Dict[str, Any]]
+) -> str:
+    """Create a structured commit message for complex changes."""
+    # Clean the description to remove any existing type prefix
+    description = commit_info["description"]
+    type_pattern = r"^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([^)]+\))?:\s*"
+    if re.match(type_pattern, description):
+        description = re.sub(type_pattern, "", description)
+
+    # Start with the commit title
+    message_parts = [f"{commit_info['type']}({commit_info['scope']}): {description}"]
+
+    # Add a blank line after title
+    message_parts.append("")
+
+    # Add detailed description if available
+    if description := commit_info.get("detailed_description"):
+        message_parts.append(description)
+        message_parts.append("")
+
+    # For multiple packages, add affected packages section
+    if len(packages) > 1:
+        message_parts.append("Affected packages:")
+        for pkg in packages:
+            message_parts.append(f"- {pkg['name']}")
+            # Add files changed under each package (grouped by type for readability)
+            files_by_type = group_files_by_type(pkg["files"])
+            for file_type, files in files_by_type.items():
+                if files:
+                    message_parts.append(f"  {file_type}:")
+                    for file in files[:3]:  # Limit to 3 files per type
+                        message_parts.append(f"    • {file}")
+                    if len(files) > 3:
+                        message_parts.append(f"    • ...and {len(files) - 3} more")
+        message_parts.append("")
+
+    return "\n".join(message_parts)
 
 
 def get_package_json_name(package_path: Path) -> Optional[str]:
@@ -308,6 +408,9 @@ def get_package_json_name(package_path: Path) -> Optional[str]:
     except:
         return None
     return None
+
+
+# ... [previous code remains the same until get_changed_packages]
 
 
 def get_changed_packages() -> List[Dict]:
@@ -349,72 +452,20 @@ def get_changed_packages() -> List[Dict]:
                 "name": name,
                 "scope": scope,
                 "files": files,
-                "types": detect_change_types(files),
             }
         )
 
     return results
 
 
-def format_commit_message(
-    original_msg: str, package: Dict, commit_type: Optional[str] = None
-) -> str:
-    """Format commit message for a single package."""
-    if ":" in original_msg:
-        type_part, msg = original_msg.split(":", 1)
-        msg = msg.strip()
-        if "(" in type_part and ")" in type_part:
-            commit_type = type_part.split("(")[0]
-        else:
-            commit_type = type_part
-    else:
-        msg = original_msg
-        if not commit_type:
-            commit_type = next(iter(package["types"]))
+def get_main_package(packages: List[Dict]) -> Optional[Dict]:
+    """Get the package with the most changes."""
+    if not packages:
+        return {"name": "default", "scope": "default", "files": []}
 
-    return f"{commit_type}({package['scope']}): {msg}"
-
-
-def generate_ai_prompt(packages: List[Dict], original_msg: str) -> str:
-    """Generate a detailed prompt for AI assistance."""
-    try:
-        diff = check_output(["git", "diff", "--cached"]).decode("utf-8")
-    except:
-        diff = "Failed to get diff"
-
-    prompt = f"""Please suggest a git commit message following conventional commits format.
-
-Original message: "{original_msg}"
-
-Changed packages:
-{'-' * 40}"""
-
-    for pkg in packages:
-        prompt += f"""
-
-📦 Package: {pkg['name']}
-Detected change types: {', '.join(pkg['types'])}
-Files changed:
-{chr(10).join(f'- {file}' for file in pkg['files'])}"""
-
-    prompt += f"""
-{'-' * 40}
-
-Git diff:
-```diff
-{diff}
-```
-
-Please provide a single commit message that:
-1. Follows the format: type(scope): description
-2. Uses the most significant package as scope
-3. Lists other affected packages if any
-4. Includes brief bullet points for significant changes
-
-Use one of: feat|fix|docs|style|refactor|perf|test|chore
-Keep the description clear and concise"""
-
-    return prompt
+    # Sort packages by number of files changed
+    sorted_packages = sorted(packages, key=lambda x: len(x["files"]), reverse=True)
+    return sorted_packages[0]
 
 
 def prompt_user(question: str) -> bool:
@@ -430,7 +481,7 @@ def prompt_user(question: str) -> bool:
 
 
 def display_suggestions(suggestions: List[Dict[str, str]]) -> Optional[str]:
-    """Display suggestions and get user choice, defaults to the first suggestion on EOF."""
+    """Display suggestions and get user choice."""
     print("\n✨ AI Suggestions:")
 
     for i, suggestion in enumerate(suggestions, 1):
@@ -460,14 +511,50 @@ def display_suggestions(suggestions: List[Dict[str, str]]) -> Optional[str]:
         return suggestions[0]["message"] if suggestions else None
 
 
-def get_main_package(packages: List[Dict]) -> Optional[Dict]:
-    """Get the package with the most changes."""
-    if not packages:
-        return {"name": "default", "scope": "default", "files": [], "types": {"feat"}}
+def write_commit_message(commit_file: str, message: str) -> None:
+    """Write the commit message to the specified file."""
+    with open(commit_file, 'w', encoding='utf-8') as f:
+        f.write(message)
 
-    # Sort packages by number of files changed
-    sorted_packages = sorted(packages, key=lambda x: len(x["files"]), reverse=True)
-    return sorted_packages[0]
+
+def is_conventional_commit(message: str) -> bool:
+    """Check if message follows conventional commit format."""
+    pattern = r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([^)]+\))?: .+'
+    return bool(re.match(pattern, message))
+
+
+def format_conventional_commit(message: str) -> str:
+    """Format message to follow conventional commit format."""
+    # Default to 'chore' if no type is detected
+    return f"chore: {message}" if not is_conventional_commit(message) else message
+
+
+def get_ai_suggestions(packages: List[Dict[str, Any]], original_message: str) -> Optional[List[Dict[str, str]]]:
+    """Get AI-powered commit message suggestions."""
+    prompt = enhance_ai_prompt(packages, original_message)
+    return get_ai_suggestion(prompt, original_message)
+
+
+def handle_commit_message(commit_file: str, original_message: str, config: Dict[str, Any]) -> None:
+    """Main function to handle commit message processing."""
+    packages = get_changed_packages()
+    
+    if config['use_ai']:
+        try:
+            suggestions = get_ai_suggestions(packages, original_message)
+            if suggestions and prompt_user("Use AI suggestion?"):
+                write_commit_message(commit_file, suggestions[0]['message'])
+                return
+        except Exception as e:
+            if config['debug']:
+                print(f"\n⚠️  AI error: {str(e)}")
+    
+    # Simple format checking without package listing
+    if not is_conventional_commit(original_message):
+        formatted_message = format_conventional_commit(original_message)
+        write_commit_message(commit_file, formatted_message)
+    else:
+        write_commit_message(commit_file, original_message)
 
 
 def main() -> None:
@@ -482,55 +569,7 @@ def main() -> None:
         if original_msg.startswith("Merge"):
             sys.exit(0)
 
-        packages = get_changed_packages()
-        if not packages:
-            sys.exit(0)
-
-        print("\n🔍 Analyzing changes...")
-        print("Original message:", original_msg)
-
-        # Handle multiple packages first
-        if len(packages) > 1:
-            print("\n📦 Changes in multiple packages:")
-            for pkg in packages:
-                print(f"• {pkg['name']} ({', '.join(pkg['types'])})")
-                for file in pkg["files"]:
-                    print(f"  - {file}")
-            print("\n⚠️  Consider splitting this commit for better readability!")
-
-        # AI suggestion flow - only if user wants it
-        if prompt_user("\nWould you like AI suggestions?"):
-            print("\n🤖 Getting AI suggestions...")
-            prompt = generate_ai_prompt(packages, original_msg)
-            suggestions = get_ai_suggestion(prompt, original_msg)
-
-            if suggestions:
-                chosen_message = display_suggestions(suggestions)
-                if chosen_message:
-                    with open(commit_msg_file, "w", encoding="utf-8") as f:
-                        f.write(chosen_message)
-                    print("✅ Commit message updated!\n")
-                    return
-
-        # Fallback to automatic formatting
-        if len(packages) > 1:
-            main_pkg = get_main_package(packages)  # Use the package with most changes
-            main_type = next(iter(main_pkg["types"]))
-            new_msg = format_commit_message(original_msg, main_pkg, main_type)
-            new_msg += "\n\nAffected packages:\n" + "\n".join(
-                f"- {p['name']}" for p in packages
-            )
-        else:
-            pkg = packages[0]
-            main_type = next(iter(pkg["types"]))
-            new_msg = format_commit_message(original_msg, pkg, main_type)
-
-        print(f"\n✨ Suggested message: {new_msg}")
-
-        if prompt_user("\nUse suggested message?"):
-            with open(commit_msg_file, "w", encoding="utf-8") as f:
-                f.write(new_msg)
-            print("✅ Commit message updated!\n")
+        handle_commit_message(commit_msg_file, original_msg, config._config)
 
     except Exception as e:
         print(f"❌ Error: {str(e)}")
