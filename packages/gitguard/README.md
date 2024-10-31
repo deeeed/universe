@@ -5,7 +5,9 @@ A smart Git commit hook that helps maintain high-quality, consistent commit mess
 ## Features
 
 - 🎯 **Automatic Scope Detection**: Automatically detects the package scope based on changed files
-- 🤖 **AI-Powered Suggestions**: Offers intelligent commit message suggestions using Azure OpenAI
+- 🤖 **Multi-Provider AI Suggestions**: Offers intelligent commit message suggestions using:
+  - Azure OpenAI (with fallback model support)
+  - Local Ollama models
 - 📦 **Monorepo Awareness**: Detects changes across multiple packages and suggests appropriate formatting
 - ✨ **Conventional Commits**: Enforces conventional commit format (`type(scope): description`)
 - 🔍 **Change Analysis**: Analyzes file changes to suggest appropriate commit types
@@ -66,9 +68,18 @@ GitGuard can be configured using:
 {
   "auto_mode": false,        // Skip prompts and use automatic formatting
   "use_ai": false,          // Enable/disable AI suggestions by default
+  "ai_provider": "azure",   // AI provider to use ("azure" or "ollama")
+  
+  // Azure OpenAI Configuration
   "azure_endpoint": "",     // Azure OpenAI endpoint
-  "azure_deployment": "",   // Azure OpenAI deployment name
+  "azure_deployment": "",   // Primary Azure OpenAI deployment name
+  "azure_fallback_deployment": "", // Fallback model if primary fails
   "azure_api_version": "",  // Azure OpenAI API version
+  
+  // Ollama Configuration
+  "ollama_host": "http://localhost:11434", // Ollama API host
+  "ollama_model": "codellama", // Ollama model to use
+  
   "debug": false           // Enable debug logging
 }
 ```
@@ -77,8 +88,33 @@ GitGuard can be configured using:
 
 - `GITGUARD_AUTO`: Enable automatic mode (1/true/yes)
 - `GITGUARD_USE_AI`: Enable AI suggestions (1/true/yes)
+- `GITGUARD_AI_PROVIDER`: AI provider to use ("azure" or "ollama")
+
+Azure OpenAI Variables:
 - `AZURE_OPENAI_ENDPOINT`: Azure OpenAI endpoint
 - `AZURE_OPENAI_API_KEY`: Azure OpenAI API key
 - `AZURE_OPENAI_DEPLOYMENT`: Azure OpenAI deployment name
 - `AZURE_OPENAI_API_VERSION`: Azure OpenAI API version
+
+Ollama Variables:
+- `OLLAMA_HOST`: Ollama API host
+- `OLLAMA_MODEL`: Ollama model to use
+
+Debug Variables:
 - `GITGUARD_DEBUG`: Enable debug logging (1/true/yes)
+
+### AI Provider Configuration
+
+#### Azure OpenAI
+GitGuard supports Azure OpenAI with fallback model capability. If the primary model fails (e.g., rate limits), it will automatically try the fallback model.
+
+```json
+{
+  "ai_provider": "azure",
+  "azure_deployment": "gpt-4",
+  "azure_fallback_deployment": "gpt-35-turbo"
+}
+```
+
+#### Ollama
+For local AI processing, GitGuard supports Ollama. Make sure Ollama is running.
