@@ -7,6 +7,7 @@ import simpleGit, {
 } from "simple-git";
 import type { GitConfig, PackageContext } from "../types/config";
 import { Logger } from "../utils/logger";
+import { formatGitTag } from "../utils/format-tag";
 
 export interface GitCommit {
   hash: string;
@@ -177,7 +178,11 @@ export class GitService {
   }
 
   getTagName(packageName: string, version: string): string {
-    return `${this.config.tagPrefix}${packageName}@${version}`;
+    return formatGitTag({
+      packageName,
+      version,
+      tagPrefix: this.config.tagPrefix,
+    });
   }
 
   async createTag(context: PackageContext, force?: boolean): Promise<string> {

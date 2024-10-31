@@ -7,6 +7,7 @@ import type { Transform } from "stream";
 import type { PackageContext, ReleaseConfig } from "../types/config";
 import { Logger } from "../utils/logger";
 import { WorkspaceService } from "./workspace";
+import { formatGitTag } from "../utils/format-tag";
 
 interface ChangelogFormat {
   name: string;
@@ -15,7 +16,7 @@ interface ChangelogFormat {
   versionRegex: RegExp;
   formatVersion: (version: string, date: string) => string;
   formatLinks: (
-    versions: { current: string; previous: string },
+    versions: { current: string; previous: string; packageName: string },
     config: { repoUrl: string; tagPrefix: string },
   ) => string[];
   parseConventionalContent?: (content: string) => string;
@@ -54,10 +55,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ],
   versionRegex: /^\[([\d.]+(?:-[a-zA-Z0-9.]+)?)\] - (\d{4}-\d{2}-\d{2})$/,
   formatVersion: (version: string, date: string) => `## [${version}] - ${date}`,
-  formatLinks: (versions, config) => [
-    `[unreleased]: ${config.repoUrl}/compare/${config.tagPrefix}${versions.current}...HEAD`,
-    `[${versions.current}]: ${config.repoUrl}/compare/${config.tagPrefix}${versions.previous}...${config.tagPrefix}${versions.current}`,
-  ],
+  formatLinks: (versions, config) => {
+    return [
+      `[unreleased]: ${config.repoUrl}/compare/${formatGitTag({
+        packageName: versions.packageName,
+        version: versions.current,
+        tagPrefix: config.tagPrefix,
+      })}...HEAD`,
+      `[${versions.current}]: ${config.repoUrl}/compare/${formatGitTag({
+        packageName: versions.packageName,
+        version: versions.previous,
+        tagPrefix: config.tagPrefix,
+      })}...${formatGitTag({
+        packageName: versions.packageName,
+        version: versions.current,
+        tagPrefix: config.tagPrefix,
+      })}`,
+    ];
+  },
   versionHeaderPattern:
     /^##\s*\[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\](?:\s*-\s*\d{4}-\d{2}-\d{2})?$/i,
   unreleasedHeaderPattern: /^##\s*\[unreleased\]/i,
@@ -77,10 +92,24 @@ All notable changes to this project will be documented in this file.
   sectionHeaders: [],
   versionRegex: /^\[([\d.]+(?:-[a-zA-Z0-9.]+)?)\]$/,
   formatVersion: (version: string, _date: string) => `## [${version}]`,
-  formatLinks: (versions, config) => [
-    `[unreleased]: ${config.repoUrl}/compare/${config.tagPrefix}${versions.current}...HEAD`,
-    `[${versions.current}]: ${config.repoUrl}/compare/${config.tagPrefix}${versions.previous}...${config.tagPrefix}${versions.current}`,
-  ],
+  formatLinks: (versions, config) => {
+    return [
+      `[unreleased]: ${config.repoUrl}/compare/${formatGitTag({
+        packageName: versions.packageName,
+        version: versions.current,
+        tagPrefix: config.tagPrefix,
+      })}...HEAD`,
+      `[${versions.current}]: ${config.repoUrl}/compare/${formatGitTag({
+        packageName: versions.packageName,
+        version: versions.previous,
+        tagPrefix: config.tagPrefix,
+      })}...${formatGitTag({
+        packageName: versions.packageName,
+        version: versions.current,
+        tagPrefix: config.tagPrefix,
+      })}`,
+    ];
+  },
   parseConventionalContent: (content: string): string => {
     // Convert conventional-changelog format to keep-a-changelog sections
     const sections: Record<string, string[]> = {
@@ -278,6 +307,10 @@ export class ChangelogService {
   }
 
   private deduplicateVersionEntries(content: string): string {
+    // Extract header before splitting into sections
+    const headerMatch = content.match(/^([\s\S]*?)(?=##\s+\[)/);
+    const header = headerMatch ? headerMatch[1].trim() : "";
+
     const sections = content.split(/(?=##\s+\[)/).filter(Boolean);
     const processedSections = new Map<string, string>();
 
@@ -340,8 +373,8 @@ export class ChangelogService {
       }
     });
 
-    // Reconstruct the changelog
-    let result = "";
+    // Reconstruct the changelog with header
+    let result = header ? `${header}\n\n` : "";
 
     // Add Unreleased section if it exists
     const unreleasedSection = processedSections.get("unreleased");
@@ -357,10 +390,10 @@ export class ChangelogService {
 
     result += versionSections.map(([_, section]) => section).join("\n");
 
-    // Add comparison links if they exist
-    const links = content.match(/\[.*?\]:.*/g);
-    if (links) {
-      result += "\n" + links.join("\n") + "\n";
+    // Add comparison links if they exist (deduplicated)
+    const links = new Set(content.match(/\[.*?\]:.*/g) || []);
+    if (links.size > 0) {
+      result += "\n" + Array.from(links).join("\n") + "\n";
     }
 
     return result;

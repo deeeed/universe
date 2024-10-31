@@ -17,7 +17,3 @@
 [0.4.11]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.10...@siteed/publisher@0.4.11
 [0.4.10]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.9...@siteed/publisher@0.4.10
 [0.4.9]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.8...@siteed/publisher@@siteed/publisher@0.4.9
-[0.4.9]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.8...@siteed/publisher@@siteed/publisher@0.4.9
-[0.4.10]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.9...@siteed/publisher@0.4.10
-[0.4.9]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.8...@siteed/publisher@@siteed/publisher@0.4.9
-[0.4.9]: https://github.com/deeeed/universe/compare/@siteed/publisher@@siteed/publisher@0.4.8...@siteed/publisher@@siteed/publisher@0.4.9
