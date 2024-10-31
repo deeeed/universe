@@ -1,3 +1,8 @@
+> ⚠️ **WARNING: DEVELOPMENT IN PROGRESS** ⚠️
+> 
+> This package is currently under active development and is **NOT** ready for production use.
+> The API is unstable and subject to breaking changes. Please check back later for the stable release.
+
 # @siteed/publisher
 
 A flexible and powerful release management tool designed for JavaScript/TypeScript monorepos. Automates version management, changelog generation, and package publishing with support for various package managers and CI/CD workflows.
