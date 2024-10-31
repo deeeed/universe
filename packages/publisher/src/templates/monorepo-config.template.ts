@@ -35,7 +35,7 @@ export function generateMonorepoConfig(
       validateBuildArtifacts: true,
     },
     git: {
-      tagPrefix: `${options.packageJson.name}@`,
+      tagPrefix: ``,
       requireCleanWorkingDirectory: true,
       requireUpToDate: true,
       commit: true,
