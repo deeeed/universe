@@ -300,15 +300,10 @@ export class WorkspaceService {
   public async readPackageJson(packagePath: string): Promise<PackageJson> {
     const rootDir = this.getRootDir();
     const fullPath = path.resolve(rootDir, packagePath, "package.json");
-    try {
-      const content = await readFile(fullPath, "utf-8");
-      const parsed = JSON.parse(content) as PackageJson;
-      this.logger.debug(`Successfully read package.json at: ${fullPath}`);
-      return parsed;
-    } catch (error) {
-      this.logger.error(`Failed to read package.json at: ${fullPath}`, error);
-      throw error;
-    }
+    const content = await readFile(fullPath, "utf-8");
+    const parsed = JSON.parse(content) as PackageJson;
+    this.logger.debug(`Successfully read package.json at: ${fullPath}`);
+    return parsed;
   }
 
   private async getWorkspaceGlobs(): Promise<string[]> {

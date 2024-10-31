@@ -527,7 +527,11 @@ export class ReleaseService {
     }
 
     const lastTag = await this.git.getLastTag(packageName);
-    return this.git.getCommitsSinceTag(lastTag);
+    return this.git.getCommitsSinceTag(lastTag, {
+      packageName: pkg.name,
+      packagePath: pkg.path,
+      filterByPath: true,
+    });
   }
 
   async previewChangelog(packageName: string): Promise<string> {

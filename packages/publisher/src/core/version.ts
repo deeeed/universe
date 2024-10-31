@@ -125,7 +125,11 @@ export class VersionService {
   async analyzeCommits(context: PackageContext): Promise<BumpType> {
     try {
       const lastTag = await this.git.getLastTag(context.name);
-      const commits = await this.git.getCommitsSinceTag(lastTag);
+      const commits = await this.git.getCommitsSinceTag(lastTag, {
+        packageName: context.name,
+        packagePath: context.path,
+        filterByPath: true,
+      });
 
       if (
         commits.some((commit) => commit.message.includes("BREAKING CHANGE"))

@@ -95,16 +95,13 @@ changelogCommand
         logger.debug(`Using last tag: ${lastTag}`);
 
         // Get commits since last tag with proper typing
-        let gitChanges: GitCommit[] = lastTag
-          ? await git.getCommitsSinceTag(lastTag)
+        const gitChanges: GitCommit[] = lastTag
+          ? await git.getCommitsSinceTag(lastTag, {
+              packageName: pkg.name,
+              packagePath: pkg.path,
+              filterByPath: options.filterByPackage,
+            })
           : await git.getAllCommits();
-
-        // Filter commits by package if requested
-        if (options.filterByPackage) {
-          gitChanges = gitChanges.filter((commit) =>
-            commit.files.some((file) => file.startsWith(pkg.path)),
-          );
-        }
 
         // Preview the changes
         logger.info(`\n📦 ${chalk.bold(pkg.name)}`);
@@ -433,7 +430,11 @@ changelogCommand
 
         const packageConfig = await workspaceService.getPackageConfig(pkg.name);
         const lastTag = await git.getLastTag(pkg.name);
-        const commits = await git.getCommitsSinceTag(lastTag);
+        const commits = await git.getCommitsSinceTag(lastTag, {
+          packageName: pkg.name,
+          packagePath: pkg.path,
+          filterByPath: true,
+        });
 
         if (commits.length === 0) {
           logger.info("No new commits to add to changelog");

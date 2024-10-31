@@ -17,6 +17,12 @@ export interface GitCommit {
   files: string[];
 }
 
+export interface GetCommitsOptions {
+  packageName?: string;
+  packagePath?: string;
+  filterByPath?: boolean;
+}
+
 export class GitService {
   private git: SimpleGit;
   private rootDir: string;
@@ -135,15 +141,41 @@ export class GitService {
     return 0;
   }
 
-  async getCommitsSinceTag(tag: string): Promise<GitCommit[]> {
+  async getCommitsSinceTag(
+    tag: string,
+    options?: GetCommitsOptions,
+  ): Promise<GitCommit[]> {
     try {
+      let commits: GitCommit[];
+
       if (!tag) {
         const log = await this.git.log();
-        return this.parseCommits([...log.all]);
+        commits = await this.parseCommits([...log.all]);
+      } else {
+        const log = await this.git.log({ from: tag, to: "HEAD" });
+        commits = await this.parseCommits([...log.all]);
       }
 
-      const log = await this.git.log({ from: tag, to: "HEAD" });
-      return this.parseCommits([...log.all]);
+      // Apply filters if options are provided
+      if (options) {
+        if (options.filterByPath && options.packagePath) {
+          const relativePath = path.relative(this.rootDir, options.packagePath);
+          commits = commits.filter((commit) =>
+            commit.files.some((file) => file.startsWith(relativePath)),
+          );
+        }
+
+        if (options.packageName) {
+          commits = commits.filter((commit) => {
+            const packageName = options.packageName;
+            const messageIncludes = commit.message.includes(`(${packageName})`);
+            const bodyIncludes = commit.body?.includes(`(${packageName})`);
+            return messageIncludes || bodyIncludes;
+          });
+        }
+      }
+
+      return commits;
     } catch (error) {
       this.logger.error(`Failed to get commits since tag ${tag}:`, error);
       return [];

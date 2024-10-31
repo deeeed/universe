@@ -188,6 +188,99 @@ describe("GitService", () => {
       const commits = await gitService.getCommitsSinceTag("");
       expect(commits).toHaveLength(1);
     });
+
+    it("should filter commits by package path", async () => {
+      mockGit.log.mockResolvedValue({
+        all: [{ hash: "abc123" }, { hash: "def456" }, { hash: "ghi789" }],
+      });
+
+      mockGit.show
+        .mockResolvedValueOnce(
+          "abc123\n2024-01-01\nfeat: first commit\n\npackages/pkg-a/file1.ts",
+        )
+        .mockResolvedValueOnce(
+          "def456\n2024-01-02\nfix: second commit\n\npackages/pkg-b/file2.ts",
+        )
+        .mockResolvedValueOnce(
+          "ghi789\n2024-01-03\nchore: third commit\n\npackages/pkg-a/file3.ts",
+        );
+
+      const commits = await gitService.getCommitsSinceTag("v1.0.0", {
+        packagePath: "/mock/project/root/packages/pkg-a",
+        filterByPath: true,
+      });
+
+      expect(commits).toHaveLength(2);
+      expect(commits[0].files).toContain("packages/pkg-a/file1.ts");
+      expect(commits[1].files).toContain("packages/pkg-a/file3.ts");
+    });
+
+    it("should filter commits by package name", async () => {
+      mockGit.log.mockResolvedValue({
+        all: [{ hash: "abc123" }, { hash: "def456" }],
+      });
+
+      mockGit.show
+        .mockResolvedValueOnce(
+          "abc123\n2024-01-01\nfeat(pkg-a): first feature\n\nfile1.ts",
+        )
+        .mockResolvedValueOnce(
+          "def456\n2024-01-02\nfix: general fix\n\nfile2.ts",
+        );
+
+      const commits = await gitService.getCommitsSinceTag("v1.0.0", {
+        packageName: "pkg-a",
+        filterByPath: false,
+      });
+
+      expect(commits).toHaveLength(1);
+      expect(commits[0].message).toBe("feat(pkg-a): first feature");
+    });
+
+    it("should apply both path and name filters when specified", async () => {
+      mockGit.log.mockResolvedValue({
+        all: [{ hash: "abc123" }, { hash: "def456" }, { hash: "ghi789" }],
+      });
+
+      mockGit.show
+        .mockResolvedValueOnce(
+          "abc123\n2024-01-01\nfeat(pkg-a): first feature\n\npackages/pkg-a/file1.ts",
+        )
+        .mockResolvedValueOnce(
+          "def456\n2024-01-02\nfeat(pkg-a): second feature\n\npackages/pkg-b/file2.ts",
+        )
+        .mockResolvedValueOnce(
+          "ghi789\n2024-01-03\nfix: third fix\n\npackages/pkg-a/file3.ts",
+        );
+
+      const commits = await gitService.getCommitsSinceTag("v1.0.0", {
+        packageName: "pkg-a",
+        packagePath: "/mock/project/root/packages/pkg-a",
+        filterByPath: true,
+      });
+
+      expect(commits).toHaveLength(1);
+      expect(commits[0].message).toBe("feat(pkg-a): first feature");
+      expect(commits[0].files).toContain("packages/pkg-a/file1.ts");
+    });
+
+    it("should not filter commits when no options provided", async () => {
+      mockGit.log.mockResolvedValue({
+        all: [{ hash: "abc123" }, { hash: "def456" }],
+      });
+
+      mockGit.show
+        .mockResolvedValueOnce(
+          "abc123\n2024-01-01\nfeat: first commit\n\nfile1.ts",
+        )
+        .mockResolvedValueOnce(
+          "def456\n2024-01-02\nfix: second commit\n\nfile2.ts",
+        );
+
+      const commits = await gitService.getCommitsSinceTag("v1.0.0");
+
+      expect(commits).toHaveLength(2);
+    });
   });
 
   describe("createTag", () => {
