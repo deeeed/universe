@@ -475,39 +475,56 @@ export class ChangelogService {
 
       const repoUrl = await this.getRepositoryUrl(context, config);
       const tagPrefix = config.git?.tagPrefix ?? "";
-      const packagePrefix = context.name ? `${context.name}@` : "";
 
-      // Update only the unreleased and current version links
-      const currentVersionLinks: string[] = [
-        `[unreleased]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.newVersion}...HEAD`,
-      ];
+      // Create a Set to store unique links
+      const uniqueLinks = new Set<string>();
+
+      // Add unreleased and new version links
+      uniqueLinks.add(
+        `[unreleased]: ${repoUrl}/compare/${formatGitTag({
+          packageName: context.name,
+          version: context.newVersion,
+          tagPrefix,
+        })}...HEAD`,
+      );
 
       if (context.currentVersion) {
-        // When there is a previous version, create a compare link
-        currentVersionLinks.push(
-          `[${context.newVersion}]: ${repoUrl}/compare/${tagPrefix}${packagePrefix}${context.currentVersion}...${tagPrefix}${packagePrefix}${context.newVersion}`,
+        uniqueLinks.add(
+          `[${context.newVersion}]: ${repoUrl}/compare/${formatGitTag({
+            packageName: context.name,
+            version: context.currentVersion,
+            tagPrefix,
+          })}...${formatGitTag({
+            packageName: context.name,
+            version: context.newVersion,
+            tagPrefix,
+          })}`,
         );
       } else {
-        // If no previous version, link directly to the new version tag
-        currentVersionLinks.push(
-          `[${context.newVersion}]: ${repoUrl}/releases/tag/${tagPrefix}${packagePrefix}${context.newVersion}`,
+        uniqueLinks.add(
+          `[${context.newVersion}]: ${repoUrl}/releases/tag/${formatGitTag({
+            packageName: context.name,
+            version: context.newVersion,
+            tagPrefix,
+          })}`,
         );
       }
 
-      // Keep existing links except for unreleased and current version
-      const existingLinks: string[] = this.extractExistingLinks(
-        content,
-        context,
+      // Add existing links, excluding any that would be duplicates
+      const existingLinks = this.extractExistingLinks(content, context).filter(
+        (link) => {
+          // Exclude links that we've already added or that reference the same versions
+          const isUnreleasedLink = link.startsWith("[unreleased]:");
+          const isNewVersionLink = link.includes(`[${context.newVersion}]:`);
+          return !isUnreleasedLink && !isNewVersionLink;
+        },
       );
 
-      // Combine new and existing links
-      const allLinks: string[] = [...currentVersionLinks, ...existingLinks];
+      existingLinks.forEach((link) => uniqueLinks.add(link));
 
       // Replace or append links section
-      const contentWithoutLinks: string = content
-        .replace(/\[.+\]: .+$/gm, "")
-        .trim();
-      return `${contentWithoutLinks}\n\n${allLinks.join("\n")}\n`;
+      const contentWithoutLinks = content.replace(/\[.+\]: .+$/gm, "").trim();
+      return `${contentWithoutLinks}\n\n${Array.from(uniqueLinks).join("\n")}\n`;
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);

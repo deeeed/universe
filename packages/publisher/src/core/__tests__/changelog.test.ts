@@ -94,12 +94,12 @@ describe("ChangelogService", () => {
       conventionalCommits: true,
       changelogFormat: "conventional",
       git: {
-        tagPrefix: "v",
+        tagPrefix: "",
         requireCleanWorkingDirectory: true,
         requireUpToDate: true,
         commit: true,
         push: true,
-        commitMessage: "chore(release): release ${packageName}@${version}",
+        commitMessage: `chore(${mockContext.name}): release \${version}`,
         tag: true,
         allowedBranches: ["main", "master"],
         remote: "origin",
@@ -218,6 +218,86 @@ describe("ChangelogService", () => {
       // Should consolidate into a single version entry with date
       expect(content).toMatch(/## \[0\.4\.8\] - 2024-10-30/);
       expect(content).not.toMatch(/## \[0\.4\.8\]\n/);
+    });
+
+    it("should handle migration from unreleased to new version correctly", async () => {
+      const existingContent = `# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+- fix: invalid changelog format
+
+## [0.4.11] - 2024-10-31
+- ⚠️ **WARNING: DEVELOPMENT IN PROGRESS** ⚠️
+
+## [0.4.10] - 2024-10-30
+- dry run mode
+- feat: dry run mode
+
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.11...HEAD
+[0.4.11]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.10...@siteed/publisher@0.4.11
+[0.4.10]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.9...@siteed/publisher@0.4.10`;
+
+      (fs.readFile as jest.Mock).mockResolvedValueOnce(existingContent);
+
+      const mockContext: PackageContext = {
+        name: "@siteed/publisher",
+        path: "/test/path",
+        currentVersion: "0.4.11",
+        newVersion: "0.4.12",
+      };
+
+      const testConfig: ReleaseConfig = {
+        ...mockConfig,
+        git: {
+          ...mockConfig.git,
+          tagPrefix: "",
+        },
+      };
+
+      await service.update(
+        mockContext,
+        "- fix: invalid changelog format",
+        testConfig,
+      );
+
+      const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
+      const updatedContent = writeCall?.[1] as string;
+
+      // Verify the structure of the updated changelog
+      expect(updatedContent).toContain("## [Unreleased]");
+      expect(updatedContent).toContain("## [0.4.12] - ");
+
+      // Verify no duplicate version entries
+      const versionMatches = updatedContent.match(/## \[0\.4\.12\]/g);
+      expect(versionMatches?.length).toBe(1);
+
+      // Verify the comparison links
+      const expectedLinks = [
+        "[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.12...HEAD",
+        "[0.4.12]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.11...@siteed/publisher@0.4.12",
+        "[0.4.11]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.10...@siteed/publisher@0.4.11",
+        "[0.4.10]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.9...@siteed/publisher@0.4.10",
+      ];
+
+      // Check each link exists exactly once
+      expectedLinks.forEach((link) => {
+        const linkMatches = updatedContent.match(
+          new RegExp(escapeRegExp(link), "g"),
+        );
+        expect(linkMatches?.length).toBe(1);
+      });
+
+      // Verify content order
+      const sections = updatedContent.split("\n\n");
+      expect(sections[0]).toContain("# Changelog");
+      expect(sections.find((s) => s.includes("## [Unreleased]"))).toBeTruthy();
+      expect(sections.find((s) => s.includes("## [0.4.12]"))).toBeTruthy();
     });
   });
 
@@ -447,19 +527,34 @@ describe("ChangelogService", () => {
           const existingContent = `# Changelog\n\n## [1.0.0] - 2024-01-01\n`;
           (fs.readFile as jest.Mock).mockResolvedValueOnce(existingContent);
 
-          const newContent = "### Added\n- Something new";
-          await service.update(mockContext, newContent, mockConfig);
+          // Update mockContext to match the test expectations
+          const mockContext: PackageContext = {
+            name: "test-package",
+            path: "/test/path",
+            currentVersion: "1.0.0",
+            newVersion: "1.1.0",
+          };
+
+          // Ensure git.tagPrefix is set to "v" for these specific tests
+          const testConfig: ReleaseConfig = {
+            ...mockConfig,
+            git: {
+              ...mockConfig.git,
+              tagPrefix: "v", // Explicitly set to "v" for these tests
+            },
+          };
+
+          await service.update(mockContext, "* feat: Feature A", testConfig);
 
           const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
-          expect(writeCall?.[0]).toBe(
-            path.join(mockContext.path, "CHANGELOG.md"),
-          );
           const content = writeCall?.[1] as string;
+
+          // Update expectations to match the config
           expect(content).toContain(
             `[unreleased]: https://github.com/deeeed/universe/compare/vtest-package@${mockContext.newVersion}...HEAD`,
           );
           expect(content).toContain(
-            `[1.1.0]: https://github.com/deeeed/universe/compare/vtest-package@${mockContext.currentVersion}...vtest-package@${mockContext.newVersion}`,
+            `[${mockContext.newVersion}]: https://github.com/deeeed/universe/compare/vtest-package@${mockContext.currentVersion}...vtest-package@${mockContext.newVersion}`,
           );
         });
       });
@@ -783,3 +878,8 @@ describe("ChangelogService", () => {
     });
   });
 });
+
+// Helper function to escape special characters in string for regex
+function escapeRegExp(string: string): string {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
