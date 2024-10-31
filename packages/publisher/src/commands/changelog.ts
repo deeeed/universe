@@ -228,7 +228,7 @@ changelogCommand
 
 changelogCommand
   .command("check")
-  .description("Check for unreleased changes and git commits discrepancies")
+  .description("Check changelog status for packages")
   .argument("[packages...]", "Package names to check")
   .option("-a, --all", "Check all packages")
   .action(async (packages: string[], options: ChangelogCommandOptions) => {
@@ -391,6 +391,74 @@ changelogCommand
     } catch (error) {
       logger.error(
         "Preview failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(1);
+    }
+  });
+
+changelogCommand
+  .command("update")
+  .description("Update changelog with recent commits in the unreleased section")
+  .argument(
+    "[packages...]",
+    "Package names to update changelog for (optional when in package directory)",
+  )
+  .action(async (packages: string[]) => {
+    const logger = new Logger();
+    try {
+      const config = await loadConfig();
+      const workspaceService = new WorkspaceService(config, logger);
+      const git = new GitService(config.git, process.cwd(), logger);
+      const changelogService = new ChangelogService(logger);
+
+      // Get packages to update
+      let packagesToUpdate: PackageContext[] = [];
+      if (packages.length === 0) {
+        const currentPackage = await workspaceService.getCurrentPackage();
+        if (currentPackage) {
+          packagesToUpdate = [currentPackage];
+        }
+      } else {
+        packagesToUpdate = await workspaceService.getPackages(packages);
+      }
+
+      if (packagesToUpdate.length === 0) {
+        logger.error("No packages found to update");
+        process.exit(1);
+      }
+
+      for (const pkg of packagesToUpdate) {
+        logger.info(`\n📦 Updating changelog for ${chalk.bold(pkg.name)}...`);
+
+        const packageConfig = await workspaceService.getPackageConfig(pkg.name);
+        const lastTag = await git.getLastTag(pkg.name);
+        const commits = await git.getCommitsSinceTag(lastTag);
+
+        if (commits.length === 0) {
+          logger.info("No new commits to add to changelog");
+          continue;
+        }
+
+        // Get repository URL for commit links
+        const repoUrl = await changelogService.getRepositoryUrl(
+          pkg,
+          packageConfig,
+        );
+
+        // Format commits with URLs
+        const formattedCommits = commits.map((commit) => {
+          const commitUrl = `${repoUrl}/commit/${commit.hash}`;
+          return `- ${commit.message} ([${commit.hash.substring(0, 7)}](${commitUrl}))`;
+        });
+
+        // Update the changelog
+        await changelogService.addToUnreleased(pkg, formattedCommits);
+        logger.success(`Updated changelog with ${commits.length} new commits`);
+      }
+    } catch (error) {
+      logger.error(
+        "Update failed:",
         error instanceof Error ? error.message : String(error),
       );
       process.exit(1);

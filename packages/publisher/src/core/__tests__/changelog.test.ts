@@ -883,6 +883,109 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       });
     });
   });
+
+  describe("addToUnreleased", () => {
+    it("should maintain proper spacing around unreleased entries", async () => {
+      const initialContent = `# Changelog
+
+## [Unreleased]
+
+## [1.0.0] - 2024-01-01
+- Initial release
+`;
+
+      (fs.readFile as jest.Mock).mockResolvedValueOnce(initialContent);
+
+      const changes = [
+        "- feat: New feature ([abc123])",
+        "- fix: Bug fix ([def456])",
+      ];
+
+      await service.addToUnreleased(mockContext, changes);
+
+      const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
+      const updatedContent = writeCall?.[1] as string;
+
+      // Verify formatting
+      expect(updatedContent).toBe(`# Changelog
+
+## [Unreleased]
+- feat: New feature ([abc123])
+- fix: Bug fix ([def456])
+
+## [1.0.0] - 2024-01-01
+- Initial release
+`);
+    });
+
+    it("should prevent duplicate entries when adding changes", async () => {
+      const initialContent = `# Changelog
+
+## [Unreleased]
+- feat: Existing feature ([abc123])
+- fix: Existing fix ([def456])
+
+## [1.0.0] - 2024-01-01
+- Initial release
+`;
+
+      (fs.readFile as jest.Mock).mockResolvedValueOnce(initialContent);
+
+      const changes = [
+        "- feat: Existing feature ([xyz789])", // Same feature, different commit
+        "- fix: New fix ([ghi789])",
+      ];
+
+      await service.addToUnreleased(mockContext, changes);
+
+      const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
+      const updatedContent = writeCall?.[1] as string;
+
+      expect(updatedContent).toBe(`# Changelog
+
+## [Unreleased]
+- fix: New fix ([ghi789])
+- feat: Existing feature ([abc123])
+- fix: Existing fix ([def456])
+
+## [1.0.0] - 2024-01-01
+- Initial release
+`);
+    });
+
+    it("should handle case-insensitive duplicate detection", async () => {
+      const initialContent = `# Changelog
+
+## [Unreleased]
+- feat: EXISTING FEATURE ([abc123])
+
+## [1.0.0] - 2024-01-01
+- Initial release
+`;
+
+      (fs.readFile as jest.Mock).mockResolvedValueOnce(initialContent);
+
+      const changes = [
+        "- feat: existing feature ([xyz789])", // Same feature, different case
+        "- fix: New fix ([def456])",
+      ];
+
+      await service.addToUnreleased(mockContext, changes);
+
+      const writeCall = (fs.writeFile as jest.Mock).mock.calls[0];
+      const updatedContent = writeCall?.[1] as string;
+
+      expect(updatedContent).toBe(`# Changelog
+
+## [Unreleased]
+- fix: New fix ([def456])
+- feat: EXISTING FEATURE ([abc123])
+
+## [1.0.0] - 2024-01-01
+- Initial release
+`);
+    });
+  });
 });
 
 // Helper function to escape special characters in string for regex

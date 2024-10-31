@@ -483,7 +483,7 @@ export class ChangelogService {
     );
   }
 
-  private async getRepositoryUrl(
+  async getRepositoryUrl(
     context: PackageContext,
     config: ChangelogConfig,
   ): Promise<string> {
@@ -1228,6 +1228,74 @@ export class ChangelogService {
         format.noChangesMessage,
         formattedDate,
         format,
+      );
+    }
+  }
+
+  /**
+   * Adds new changes to the Unreleased section of the changelog
+   */
+  public async addToUnreleased(
+    context: PackageContext,
+    changes: string[],
+  ): Promise<void> {
+    try {
+      const changelogPath = path.join(context.path, "CHANGELOG.md");
+      const content = await fs.readFile(changelogPath, "utf8");
+
+      // Split into sections
+      const [header, ...sections] = content.split(/\n## \[/);
+
+      // Get unreleased section
+      const unreleasedSection = sections.find((s) =>
+        s.startsWith("Unreleased]"),
+      );
+      if (!unreleasedSection) {
+        throw new Error("No [Unreleased] section found in changelog");
+      }
+
+      // Get existing entries
+      const existingEntries = unreleasedSection
+        .split("\n")
+        .filter((line) => line.trim().startsWith("-"))
+        .map((line) => line.trim());
+
+      // Filter out duplicates by comparing the message part only
+      const newChanges = changes.filter((change) => {
+        const newMessage = change.split(/[[(]/)[0].trim(); // Get text before any commit hash
+        return !existingEntries.some((existing) => {
+          const existingMessage = existing.split(/[[(]/)[0].trim();
+          return existingMessage.toLowerCase() === newMessage.toLowerCase();
+        });
+      });
+
+      // Build new unreleased section
+      const newUnreleased = [
+        "Unreleased]",
+        newChanges.join("\n"),
+        existingEntries.join("\n"),
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      // Rebuild content
+      const newContent = [
+        header.trim(),
+        "",
+        `## [${newUnreleased}`,
+        "",
+        ...sections
+          .filter((s) => !s.startsWith("Unreleased]"))
+          .map((s) => `## [${s}`),
+      ].join("\n");
+
+      await fs.writeFile(changelogPath, newContent, "utf8");
+    } catch (error) {
+      this.logger.error("Failed to update changelog:", error);
+      throw new Error(
+        `Failed to update changelog: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
     }
   }
