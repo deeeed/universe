@@ -11,7 +11,7 @@ import requests
 from collections import defaultdict
 import re
 
-# Try to import optional dependencies
+# Try to import optional dependencies / check
 try:
     from openai import AzureOpenAI
     HAS_OPENAI = True
