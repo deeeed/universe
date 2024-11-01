@@ -206,7 +206,7 @@ handle_remote_install() {
     echo -e "${BLUE}Downloading GitGuard...${NC}"
     
     # Download the necessary files
-    curl -s -o "$temp_dir/gitguard-prepare.py" "https://raw.githubusercontent.com/yourusername/gitguard/main/gitguard-prepare.py"
+    curl -s -o "$temp_dir/gitguard-prepare.py" "https://raw.githubusercontent.com/deeeed/universe/main/packages/gitguard/gitguard-prepare.py"
     
     if [ ! -f "$temp_dir/gitguard-prepare.py" ]; then
         echo -e "${RED}❌ Failed to download GitGuard files${NC}"
