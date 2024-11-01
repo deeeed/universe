@@ -124,6 +124,18 @@ class OllamaClient:
             print(f"\n⚠️  Ollama API error: {str(e)}")
             return None
 
+def debug_log(message: str, title: str = "Debug", separator: bool = True) -> None:
+    """Print debug messages in a clearly visible format."""
+    if not Config().get("debug"):
+        return
+        
+    print("\n" + "═" * 80)
+    print(f"🔍 {title.upper()}")
+    print("═" * 80)
+    print(message)
+    if separator:
+        print("═" * 80)
+
 def calculate_commit_complexity(packages: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Calculate commit complexity metrics to determine if structured format is needed."""
     complexity = {
@@ -162,6 +174,13 @@ def calculate_commit_complexity(packages: List[Dict[str, Any]]) -> Dict[str, Any
     
     # Determine if structured commit is needed (threshold = 5)
     complexity["needs_structure"] = complexity["score"] >= 5
+    
+    if Config().get("debug"):
+        debug_log(
+            f"Score: {complexity['score']}\nReasons:\n" + 
+            "\n".join(f"- {reason}" for reason in complexity["reasons"]),
+            "Complexity Analysis 📊"
+        )
     
     return complexity
 
@@ -239,7 +258,7 @@ Please provide a commit message that:"""
 
     if complexity["needs_structure"]:
         prompt += """
-1. Follows the format: type(scope): description
+1. Follows the conventional commit format: type(scope): description
 2. Includes a clear, detailed description paragraph
 3. Lists affected packages with key changes
 4. Groups related changes together
@@ -247,7 +266,7 @@ Please provide a commit message that:"""
 6. Keep it concise but informative"""
     else:
         prompt += """
-1. Follows the format: type(scope): description
+1. Follows the conventional commit format: type(scope): description
 2. Is concise and focused
 3. Clearly conveys the main change"""
 
@@ -268,31 +287,31 @@ Response Format:
 
     return prompt
 
+def count_tokens(text: str) -> int:
+    """Estimate token count using a simple approximation."""
+    # GPT models typically use ~4 chars per token on average
+    return len(text) // 4
+
 def get_ai_suggestion(prompt: str, original_message: str) -> Optional[List[Dict[str, str]]]:
     """Get structured commit message suggestions from configured AI provider."""
     config = Config()
     
-    if config.get("debug"):
-        print("\n🤖 Sending AI Prompt:")
-        print("-" * 40)
-        print(prompt)
-        print("-" * 40)
+    # Calculate and log token usage estimation
+    token_count = count_tokens(prompt)
+    debug_log(
+        f"Estimated tokens: {token_count}\n"
+        f"Estimated cost: ${(token_count / 1000 * 0.03):.4f} (GPT-4 rate)",
+        "Token Usage 💰"
+    )
 
-    # Try Ollama if configured
-    if config.get("ai_provider") == "ollama":
-        client = OllamaClient(
-            host=config.get("ollama_host"),
-            model=config.get("ollama_model")
-        )
-        suggestions = client.generate(prompt, original_message)
-        if suggestions:
-            return suggestions
+    if config.get("debug"):
+        debug_log(prompt, "AI Prompt")
 
     # Try Azure OpenAI if available
-    if HAS_OPENAI:
+    if HAS_OPENAI and config.get("ai_provider") == "azure":
         api_key = config.get("azure_api_key") or os.getenv("AZURE_OPENAI_API_KEY")
         if not api_key:
-            print("\n⚠️  No Azure OpenAI API key found in config or environment")
+            debug_log("No Azure OpenAI API key found in config or environment", "Warning ⚠️")
             return None
 
         try:
@@ -302,31 +321,91 @@ def get_ai_suggestion(prompt: str, original_message: str) -> Optional[List[Dict[
                 azure_endpoint=config.get("azure_endpoint"),
             )
             
-            response = client.chat.completions.create(
-                model=config.get("azure_deployment"),
-                messages=[
-                    {"role": "system", "content": "You are a helpful git commit message assistant."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,
-                max_tokens=1500,
-                n=3,
-                response_format={"type": "json_object"},
-            )
+            # Default suggestions template
+            default_suggestions = [
+                {
+                    "message": original_message,
+                    "explanation": "Original message preserved due to API error",
+                    "type": "feat",
+                    "scope": "default",
+                    "description": original_message
+                }
+            ]
+            
+            # Try primary deployment (GPT-4) first
+            try:
+                debug_log(f"Attempting GPT-4 request to {config.get('azure_deployment')}", "Azure OpenAI 🤖")
+                
+                response = client.chat.completions.create(
+                    model=config.get("azure_deployment"),
+                    messages=[
+                        {"role": "system", "content": "You are a helpful git commit message assistant. Always provide 3 distinct suggestions."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=1500,
+                    n=1,  # We'll get 3 suggestions in the JSON response
+                    response_format={"type": "json_object"},
+                )
 
-            for choice in response.choices:
-                try:
-                    result = json.loads(choice.message.content)
-                    if config.get("debug"):
-                        print("\n🤖 AI Response:")
-                        print(json.dumps(result, indent=2))
-                    return result.get("suggestions", [])[:3]
-                except json.JSONDecodeError:
-                    continue
+                result = json.loads(response.choices[0].message.content)
+                suggestions = result.get("suggestions", [])
+                
+                if suggestions:
+                    debug_log(
+                        f"Received {len(suggestions)} suggestions\n" + 
+                        json.dumps(suggestions, indent=2),
+                        "GPT-4 Response ✨"
+                    )
+                    return suggestions[:3]  # Ensure we return up to 3 suggestions
+                return default_suggestions
+
+            except Exception as e:
+                debug_log(f"Primary model error: {str(e)}", "Error ❌")
+                
+                # Try fallback deployment (GPT-3.5) with simplified response
+                fallback_deployment = config.get("azure_fallback_deployment")
+                if fallback_deployment:
+                    try:
+                        debug_log(f"Attempting fallback to {fallback_deployment}", "Fallback Model 🔄")
+                        
+                        response = client.chat.completions.create(
+                            model=fallback_deployment,
+                            messages=[
+                                {"role": "system", "content": "You are a helpful git commit message assistant."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            temperature=0.7,
+                            max_tokens=500,
+                            n=1,
+                        )
+                        
+                        message = response.choices[0].message.content.strip()
+                        debug_log(message, "Fallback Response 📝")
+                        
+                        return [{
+                            "message": message,
+                            "explanation": "Generated using fallback model",
+                            "type": "feat",
+                            "scope": "default",
+                            "description": message
+                        }]
+                    except Exception as fallback_error:
+                        debug_log(f"Fallback model error: {str(fallback_error)}", "Error ❌")
+                        return default_suggestions
 
         except Exception as e:
-            if config.get("debug"):
-                print(f"\n⚠️  Azure OpenAI error: {str(e)}")
+            debug_log(f"Azure OpenAI error: {str(e)}", "Error ❌")
+            return default_suggestions
+
+    # Fallback to Ollama if configured
+    if config.get("ai_provider") == "ollama":
+        debug_log("Attempting Ollama request", "Ollama 🤖")
+        client = OllamaClient(
+            host=config.get("ollama_host"),
+            model=config.get("ollama_model")
+        )
+        return client.generate(prompt, original_message)
 
     return None
 
@@ -517,6 +596,15 @@ def main() -> None:
         if config.get("use_ai", True) and prompt_user("\nWould you like AI suggestions?"):
             print("\n🤖 Getting AI suggestions...")
             prompt = enhance_ai_prompt(packages, original_msg)
+            
+            # Calculate and log token usage estimation before making the API call
+            token_count = count_tokens(prompt)
+            debug_log(
+                f"Estimated tokens: {token_count}\n"
+                f"Estimated cost: ${(token_count / 1000 * 0.03):.4f} (GPT-4 rate)",
+                "Token Usage 💰"
+            )
+            
             suggestions = get_ai_suggestion(prompt, original_msg)
 
             if suggestions:
