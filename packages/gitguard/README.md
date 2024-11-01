@@ -12,7 +12,7 @@ A smart Git commit hook that helps maintain high-quality, consistent commit mess
 
 ### Quick Install (Recommended)
 ```bash
-curl -sSL https://raw.githubusercontent.com/deeeed/universe/main/packages/gitguard/install.sh | bash -s -- --remote
+curl -sSL https://raw.githubusercontent.com/deeeed/universe/main/packages/gitguard/install.sh | bash -c "CURL_INSTALL=1 bash"
 ```
 
 ### Troubleshooting Installation

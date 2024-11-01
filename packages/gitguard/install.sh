@@ -77,7 +77,7 @@ handle_installation() {
     
     if [ "$existing_hook" = "other" ]; then
         echo -e "${RED}⚠️  Another prepare-commit-msg hook exists at: $hook_path${NC}"
-        read -p "Do you want to overwrite it? (y/N) " -n 1 -r
+        read -p "Do you want to overwrite it? (y/N) " -n 1 -r < /dev/tty
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             echo -e "${YELLOW}Skipping $install_type installation${NC}"
@@ -156,7 +156,7 @@ main() {
         echo -e "1) Project only ${GREEN}[default]${NC}"
         echo -e "2) Global only"
         echo -e "3) Both project and global"
-        read -p "Select an option (1-3, press Enter for default): " -r
+        read -p "Select an option (1-3, press Enter for default): " -r < /dev/tty
         echo
         
         # Default to option 1 if Enter is pressed
@@ -180,7 +180,7 @@ main() {
             echo -e "\n${YELLOW}GitGuard is already installed. What would you like to do?${NC}"
             echo -e "1) Reinstall existing hooks ${GREEN}[default]${NC}"
             echo -e "2) Cancel"
-            read -p "Select an option (1-2, press Enter to reinstall): " -r
+            read -p "Select an option (1-2, press Enter to reinstall): " -r < /dev/tty
             echo
             
             # Default to option 1 (reinstall) if Enter is pressed
