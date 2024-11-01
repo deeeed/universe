@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
       "target": "ES2022",
-      "module": "CommonJS",
-      "moduleResolution": "Node",
+      "module": "ESNext",
+      "moduleResolution": "node",
       "lib": ["ES2022"],
       "outDir": "dist",
       "rootDir": ".",
@@ -22,13 +22,16 @@
       "esModuleInterop": true,
       "allowSyntheticDefaultImports": true,
       "forceConsistentCasingInFileNames": true,
+      "emitDeclarationOnly": true,
       "isolatedModules": true,
       "declaration": true,
       "sourceMap": true,
       "baseUrl": ".",
       "paths": {
         "@siteed/gitguard": ["./src/index.ts"]
-      }
+      },
+      "allowImportingTsExtensions": true,
+      "resolveJsonModule": true
   },
   "include": [
   "src/**/*",

@@ -1,29 +1,15 @@
 /* eslint-disable no-console */
 import chalk from "chalk";
+import { Logger, LogLevel, LoggerOptions } from "../types/logger.types";
 
-export enum LogLevel {
-  ERROR = 0,
-  WARN = 1,
-  INFO = 2,
-  DEBUG = 3,
-}
-
-export interface LoggerOptions {
-  level?: LogLevel;
-  silent?: boolean;
-  debug?: boolean;
-}
-
-export class Logger {
+export class LoggerService implements Logger {
   private level: LogLevel;
   private silent: boolean;
 
   constructor(options: LoggerOptions = {}) {
-    // Constructor options take precedence over environment variables
     this.silent = options.silent ?? this.getSilentFromEnv() ?? false;
     this.level = options.level ?? this.getLogLevelFromEnv() ?? LogLevel.INFO;
 
-    // Special case for debug flag - can be enabled via options or env
     if (options.debug || process.env.DEBUG) {
       this.level = LogLevel.DEBUG;
     }
@@ -49,53 +35,55 @@ export class Logger {
     return !this.silent && level <= this.level;
   }
 
-  info(message: string, ...args: unknown[]): void {
+  public info(message: string, ...args: unknown[]): void {
     if (this.shouldLog(LogLevel.INFO)) {
       console.log(chalk.blue("ℹ"), message, ...args);
     }
   }
 
-  success(message: string, ...args: unknown[]): void {
+  public success(message: string, ...args: unknown[]): void {
     if (this.shouldLog(LogLevel.INFO)) {
       console.log(chalk.green("✔"), message, ...args);
     }
   }
 
-  warning(message: string, ...args: unknown[]): void {
+  public warning(message: string, ...args: unknown[]): void {
     if (this.shouldLog(LogLevel.WARN)) {
       console.log(chalk.yellow("⚠"), message, ...args);
     }
   }
 
-  error(message: string, ...args: unknown[]): void {
+  public error(message: string, ...args: unknown[]): void {
     if (this.shouldLog(LogLevel.ERROR)) {
       console.error(chalk.red("✖"), message, ...args);
     }
   }
 
-  debug(message: string, ...args: unknown[]): void {
+  public debug(message: string, ...args: unknown[]): void {
     if (this.shouldLog(LogLevel.DEBUG)) {
       console.log(chalk.gray("🐛"), message, ...args);
     }
   }
 
-  raw(message: string, ...args: unknown[]): void {
+  public raw(message: string, ...args: unknown[]): void {
     if (!this.silent) {
       console.log(message, ...args);
     }
   }
 
-  newLine(): void {
-    console.log();
+  public newLine(): void {
+    if (!this.silent) {
+      console.log();
+    }
   }
 
-  table(data: Record<string, unknown>[]): void {
+  public table(data: Record<string, unknown>[]): void {
     if (!this.silent) {
       console.table(data);
     }
   }
 
-  warn(message: string, ...args: unknown[]): void {
+  public warn(message: string, ...args: unknown[]): void {
     if (this.shouldLog(LogLevel.WARN)) {
       console.warn(chalk.yellow("⚠"), message, ...args);
     }

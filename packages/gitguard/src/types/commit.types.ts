@@ -1,5 +1,15 @@
-export type CommitType = 'feat' | 'fix' | 'docs' | 'style' | 'refactor' | 
-                        'test' | 'chore' | 'build' | 'ci' | 'perf' | 'revert';
+export type CommitType =
+  | "feat"
+  | "fix"
+  | "docs"
+  | "style"
+  | "refactor"
+  | "test"
+  | "chore"
+  | "build"
+  | "ci"
+  | "perf"
+  | "revert";
 
 export interface ParsedCommit {
   type: CommitType;

@@ -4,10 +4,37 @@ A smart Git commit hook that helps maintain high-quality, consistent commit mess
 
 ## Installation
 
+### Prerequisites
+- Python 3.7 or higher (`python3 --version` to check)
+- git
+- curl
+- pip3
+
 ### Quick Install (Recommended)
 ```bash
-curl -sSL https://raw.githubusercontent.com/deeeed/universe/main/packages/gitguard/install.sh | CURL_INSTALL=1 bash
+curl -sSL https://raw.githubusercontent.com/deeeed/universe/main/packages/gitguard/install.sh | bash -s -- --remote
 ```
+
+### Troubleshooting Installation
+If the installation fails, the script will provide specific instructions. Common issues:
+
+1. **Missing Dependencies**
+   - Ubuntu/Debian: `sudo apt update && sudo apt install python3 python3-pip git curl`
+   - MacOS: `brew install python3 git curl`
+   - Windows: `choco install python3 git curl`
+
+2. **Not in a Git Repository**
+   - Ensure you run the install command from your git project root
+   - Or initialize a new repo: `git init`
+
+3. **Permission Issues**
+   - Check write permissions to `.git/hooks` directory
+   - Verify pip installation permissions
+
+4. **Testing Installation**
+   ```bash
+   git commit -m "test" --allow-empty
+   ```
 
 ### Development Install
 If you're working on GitGuard itself:
