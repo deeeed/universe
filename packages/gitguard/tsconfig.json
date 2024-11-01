@@ -1,0 +1,42 @@
+{
+    "compilerOptions": {
+      "target": "ES2022",
+      "module": "CommonJS",
+      "moduleResolution": "Node",
+      "lib": ["ES2022"],
+      "outDir": "dist",
+      "rootDir": ".",
+      "strict": true,
+      "noImplicitAny": true,
+      "strictNullChecks": true,
+      "strictFunctionTypes": true,
+      "strictBindCallApply": true,
+      "strictPropertyInitialization": true,
+      "noImplicitThis": true,
+      "alwaysStrict": true,
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+      "noImplicitReturns": true,
+      "noFallthroughCasesInSwitch": true,
+      "skipLibCheck": true,
+      "esModuleInterop": true,
+      "allowSyntheticDefaultImports": true,
+      "forceConsistentCasingInFileNames": true,
+      "isolatedModules": true,
+      "declaration": true,
+      "sourceMap": true,
+      "baseUrl": ".",
+      "paths": {
+        "@siteed/gitguard": ["./src/index.ts"]
+      }
+  },
+  "include": [
+  "src/**/*",
+  "publisher.config.ts",
+  ".publisher/**/*",
+  "package.json",
+  "jest.config.ts",
+  "jest.setup.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,14 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+      "types": ["node", "jest"],
+      "esModuleInterop": true
+    },
+    "include": [
+      "src/**/*",
+      "**/*.test.ts",
+      "jest.setup.ts",
+      "jest.config.ts"
+    ],
+    "exclude": ["node_modules", "dist"]
+  }

@@ -15521,6 +15521,14 @@ __metadata:
   languageName: node
   linkType: hard
 
+"gitguard@workspace:packages/gitguard":
+  version: 0.0.0-use.local
+  resolution: "gitguard@workspace:packages/gitguard"
+  dependencies:
+    "@siteed/publisher": "workspace:^"
+  languageName: unknown
+  linkType: soft
+
 "github-slugger@npm:^2.0.0":
   version: 2.0.0
   resolution: "github-slugger@npm:2.0.0"

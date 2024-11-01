@@ -1,0 +1,47 @@
+{
+  "name": "@siteed/gitguard",
+  "packageManager": "yarn@4.5.0",
+  "version": "0.1.0",
+  "description": "GitGuard is a tool that helps you enforce best practices in your Git commit messages.",
+  "author": "Arthur Breton <abreton@siteed.net> (https://github.com/deeeed)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deeeed/universe",
+    "directory": "packages/gitguard"
+  },
+  "main": "dist/src/index.js",
+  "module": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "build": "yarn build:tsc",
+    "build:clean": "yarn clean && yarn build",
+    "build:tsc": "tsc --project tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.json --noEmit",
+    "test": "jest"
+  },
+  "dependencies": {
+    "commander": "^11.1.0"
+  },
+  "devDependencies": {
+    "@siteed/publisher": "workspace:^",
+    "@typescript-eslint/eslint-plugin": "^6.7.3",
+    "@typescript-eslint/parser": "^6.7.3",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.8.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "ts-jest": "^29.1.1",
+    "rimraf": "^5.0.5",
+    "ts-node": "^10.9.2",
+    "@jest/types": "^29.6.3",
+    "typescript": "^5.2.2"
+  }
+}
