@@ -146,7 +146,7 @@ main() {
     # Show current status
     echo -e "\n${BLUE}Current Installation Status:${NC}"
     if git rev-parse --git-dir > /dev/null 2>&1; then
-        echo -e "��� Project ($(git rev-parse --show-toplevel)): ${project_status:-none}"
+        echo -e " Project ($(git rev-parse --show-toplevel)): ${project_status:-none}"
     fi
     echo -e "🌍 Global: ${global_status:-none}"
     
@@ -221,7 +221,11 @@ handle_remote_install() {
 }
 
 # Check how the script was invoked
-if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then
+if [ -n "$BASH_SOURCE" ] && [ "${BASH_SOURCE[0]}" != "$0" ]; then
+    # Script is being sourced
+    export CURL_INSTALL=1
+else
+    # Script is being executed directly
     if [ -n "$CURL_INSTALL" ] || [ "$1" = "--remote" ]; then
         handle_remote_install
     else
