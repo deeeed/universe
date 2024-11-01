@@ -19,6 +19,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "types": ["node","jest"],
+    "sourcemap": true,
     "composite": true,
     "paths": {
       "@siteed/publisher": ["./src/index.ts"]
