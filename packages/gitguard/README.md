@@ -48,20 +48,26 @@ cd packages/gitguard
 
 ## Features
 
-- 🎯 **Automatic Scope Detection**: Automatically detects the package scope based on changed files
+- 🎯 **Smart Repository Detection**: 
+  - Automatically detects monorepo vs standard repository structure
+  - Adapts commit message format accordingly
 - 🤖 **Multi-Provider AI Suggestions**: Offers intelligent commit message suggestions using:
   - Azure OpenAI (with fallback model support)
   - Local Ollama models
-- 📦 **Monorepo Awareness**: Detects changes across multiple packages and suggests appropriate formatting
-- ✨ **Conventional Commits**: Enforces conventional commit format (`type(scope): description`)
-- 🔍 **Change Analysis**: Analyzes file changes to suggest appropriate commit types
-- 🚨 **Multi-Package Warning**: Alerts when changes span multiple packages, encouraging atomic commits
-- 🔒 **Security Checks**:
-  - Detects accidentally committed secrets and sensitive data
-  - Identifies problematic files (env files, keys, logs, etc.)
-  - Only warns about newly added problematic files
-  - Provides specific remediation steps
-  - Blocks commits containing secrets
+- 📦 **Repository-Aware Formatting**:
+  - Monorepo: Enforces package scopes and detects cross-package changes
+  - Standard Repos: Uses conventional commits without forcing scopes
+- ✨ **Conventional Commits**: 
+  - Enforces conventional commit format
+  - Monorepo: `type(scope): description`
+  - Standard: `type: description` (scope optional)
+- 🔍 **Smart Change Analysis**: 
+  - Analyzes file changes to suggest appropriate commit types
+  - Groups changes by directory type in standard repos
+  - Groups by package in monorepos
+- 🚨 **Change Cohesion Checks**:
+  - Monorepo: Alerts when changes span multiple packages
+  - Standard: Warns about changes across unrelated components
 
 ## Security Features
 
@@ -87,33 +93,34 @@ Warns about newly added sensitive files:
 ## How It Works
 
 1. When you create a commit, GitGuard:
+   - Detects repository type (monorepo vs standard)
    - Analyzes your staged changes
    - Performs security checks for secrets and sensitive files
-   - Warns about multi-package changes
+   - Suggests appropriate commit structure based on repository type
    - Offers AI suggestions for commit messages
-2. Security checks:
-   - Blocks commits containing detected secrets
-   - Warns about newly added sensitive files
-   - Provides specific remediation steps
-3. For multi-package changes:
-   - Warns about atomic commit violations
-   - Suggests splitting the commit
-   - Adds "Affected packages" section
+
+2. Repository-specific behavior:
+   - Monorepo:
+     - Enforces package scopes
+     - Warns about cross-package changes
+     - Adds "Affected packages" section for multi-package commits
+   - Standard Repository:
+     - Makes scopes optional
+     - Groups changes by directory type (src, test, docs, etc.)
+     - Focuses on change type and description clarity
 
 ## Example Usage
 
 ```bash
-# Regular commit
+# Monorepo commit
 git commit -m "update login form"
 # GitGuard will transform to: feat(auth): update login form
 
-# Commit with security issues
-git commit -m "add config"
-# GitGuard will detect secrets or sensitive files and:
-# - Block the commit if secrets are found
-# - Warn about sensitive files and suggest .gitignore
+# Standard repo commit
+git commit -m "update login form"
+# GitGuard will transform to: feat: update login form
 
-# Multi-package changes
+# Monorepo multi-package changes
 git commit -m "update theme colors"
 # GitGuard will warn about multiple packages and suggest:
 # style(design-system): update theme colors
@@ -121,6 +128,18 @@ git commit -m "update theme colors"
 # Affected packages:
 # - @siteed/design-system
 # - @siteed/mobile-components
+
+# Standard repo complex changes
+git commit -m "update authentication"
+# GitGuard will suggest:
+# feat: update authentication
+#
+# Changes:
+# Source:
+#   • src/auth/login.ts
+#   • src/auth/session.ts
+# Tests:
+#   • tests/auth/login.test.ts
 ```
 
 ## Testing Security Features

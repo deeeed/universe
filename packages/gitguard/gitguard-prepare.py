@@ -217,6 +217,7 @@ def group_files_by_type(files: List[str]) -> Dict[str, List[str]]:
 def enhance_ai_prompt(packages: List[Dict], original_msg: str) -> str:
     """Generate detailed AI prompt based on commit complexity analysis."""
     complexity = calculate_commit_complexity(packages)
+    is_mono = is_monorepo()
     
     try:
         diff = check_output(["git", "diff", "--cached"]).decode("utf-8")
@@ -227,6 +228,7 @@ def enhance_ai_prompt(packages: List[Dict], original_msg: str) -> str:
     analysis = {
         "complexity_score": complexity["score"],
         "complexity_reasons": complexity["reasons"],
+        "repository_type": "monorepo" if is_mono else "standard",
         "packages": []
     }
     
@@ -240,14 +242,19 @@ def enhance_ai_prompt(packages: List[Dict], original_msg: str) -> str:
 
     prompt = f"""Analyze the following git changes and suggest a commit message.
 
+Repository Type: {analysis['repository_type']}
 Complexity Analysis:
 - Score: {complexity['score']} (threshold for structured format: 5)
 - Factors: {', '.join(complexity['reasons'])}
 
-Changed Packages:"""
+Changed Files:"""
 
     for pkg in analysis["packages"]:
-        prompt += f"\n\n📦 {pkg['name']} ({pkg['scope']})"
+        if is_mono:
+            prompt += f"\n\n📦 {pkg['name']}" + (f" ({pkg['scope']})" if pkg['scope'] else "")
+        else:
+            prompt += f"\n\nDirectory: {pkg['name']}"
+            
         for file_type, files in pkg["files_by_type"].items():
             prompt += f"\n{file_type}:"
             for file in files:
@@ -269,11 +276,14 @@ Please provide 3 conventional commit suggestions in this JSON format:
             "message": "complete commit message",
             "explanation": "reasoning",
             "type": "commit type",
-            "scope": "scope",
+            "scope": "{'scope (required for monorepo)' if is_mono else 'scope (optional)'}",
             "description": "title description"
         }}
     ]
-}}"""
+}}
+
+{'Note: This is a monorepo, so package scope is required.' if is_mono else 'Note: This is a standard repository, so scope is optional.'}
+"""
 
     return prompt
 
@@ -439,14 +449,12 @@ def get_ai_suggestion(prompt: str, original_message: str) -> Optional[List[Dict[
 
 def create_commit_message(commit_info: Dict[str, Any], packages: List[Dict[str, Any]]) -> str:
     """Create appropriate commit message based on complexity."""
-    # Clean the description to remove any existing type prefix
     description = commit_info['description']
     type_pattern = r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([^)]+\))?:\s*'
     if re.match(type_pattern, description):
         description = re.sub(type_pattern, '', description)
         commit_info['description'] = description.strip()
 
-    # Calculate complexity
     complexity = calculate_commit_complexity(packages)
     
     if Config().get("debug"):
@@ -456,25 +464,28 @@ def create_commit_message(commit_info: Dict[str, Any], packages: List[Dict[str, 
         for reason in complexity["reasons"]:
             print(f"- {reason}")
     
-    # For simple commits, just return the title
+    # For simple commits
     if not complexity["needs_structure"]:
-        return f"{commit_info['type']}({commit_info['scope']}): {commit_info['description']}"
+        # Only include scope if it exists (for monorepo) or is explicitly set
+        if commit_info.get('scope'):
+            return f"{commit_info['type']}({commit_info['scope']}): {commit_info['description']}"
+        return f"{commit_info['type']}: {commit_info['description']}"
     
-    # For complex commits, use structured format
+    # For complex commits
     return create_structured_commit(commit_info, packages)
 
 def create_structured_commit(commit_info: Dict[str, Any], packages: List[Dict[str, Any]]) -> str:
     """Create a structured commit message for complex changes."""
-    # Clean the description to remove any existing type prefix
     description = commit_info['description']
     type_pattern = r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([^)]+\))?:\s*'
     if re.match(type_pattern, description):
         description = re.sub(type_pattern, '', description)
 
     # Start with the commit title
-    message_parts = [
-        f"{commit_info['type']}({commit_info['scope']}): {description}"
-    ]
+    if commit_info.get('scope'):
+        message_parts = [f"{commit_info['type']}({commit_info['scope']}): {description}"]
+    else:
+        message_parts = [f"{commit_info['type']}: {description}"]
     
     # Add a blank line after title
     message_parts.append("")
@@ -512,16 +523,43 @@ def get_package_json_name(package_path: Path) -> Optional[str]:
         return None
     return None
 
-# ... [previous code remains the same until get_changed_packages]
+def is_monorepo() -> bool:
+    """Detect if the current repository is a monorepo."""
+    try:
+        git_root = Path(check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
+        
+        # Common monorepo indicators
+        monorepo_indicators = [
+            git_root / "packages",
+            git_root / "apps",
+            git_root / "libs",
+            git_root / "services"
+        ]
+        
+        # Check for package.json with workspaces
+        package_json = git_root / "package.json"
+        if package_json.exists():
+            try:
+                data = json.loads(package_json.read_text())
+                if "workspaces" in data:
+                    return True
+            except json.JSONDecodeError:
+                pass
+        
+        # Check for common monorepo directories
+        return any(indicator.is_dir() for indicator in monorepo_indicators)
+        
+    except Exception as e:
+        if Config().get("debug"):
+            print(f"Error detecting repository type: {e}")
+        return False
 
 def get_changed_packages() -> List[Dict]:
     """Get all packages with changes in the current commit."""
     try:
-        # Get git root directory
         git_root = Path(check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
         current_dir = Path.cwd()
         
-        # Get relative path from current directory to git root
         try:
             rel_path = current_dir.relative_to(git_root)
         except ValueError:
@@ -542,12 +580,14 @@ def get_changed_packages() -> List[Dict]:
             print(f"Error getting changed files: {e}")
         return []
 
+    is_mono = is_monorepo()
     packages = {}
+    
     for file in changed_files:
         if not file:
             continue
 
-        if file.startswith("packages/"):
+        if is_mono and file.startswith("packages/"):
             parts = file.split("/")
             if len(parts) > 1:
                 pkg_path = f"packages/{parts[1]}"
@@ -555,21 +595,37 @@ def get_changed_packages() -> List[Dict]:
                     packages[pkg_path] = []
                 packages[pkg_path].append(file)
         else:
-            if "root" not in packages:
-                packages["root"] = []
-            packages["root"].append(file)
+            # For standard repos, group by directory type
+            path_parts = Path(file).parts
+            if not path_parts:
+                continue
+                
+            # Determine appropriate grouping based on file type/location
+            if path_parts[0] in {"src", "test", "docs", "scripts"}:
+                group = path_parts[0]
+            else:
+                group = "root"
+                
+            if group not in packages:
+                packages[group] = []
+            packages[group].append(file)
 
     results = []
     for pkg_path, files in packages.items():
-        if pkg_path == "root":
-            scope = name = "root"
-        else:
-            pkg_name = get_package_json_name(Path(pkg_path))
-            if pkg_name:
-                name = pkg_name
-                scope = pkg_name.split("/")[-1]
+        if is_mono:
+            if pkg_path == "root":
+                scope = name = "root"
             else:
-                name = scope = pkg_path.split("/")[-1]
+                pkg_name = get_package_json_name(Path(pkg_path))
+                if pkg_name:
+                    name = pkg_name
+                    scope = pkg_name.split("/")[-1]
+                else:
+                    name = scope = pkg_path.split("/")[-1]
+        else:
+            # For standard repos, scope is optional
+            name = pkg_path
+            scope = None if pkg_path == "root" else pkg_path
 
         results.append({
             "name": name,

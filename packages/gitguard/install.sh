@@ -40,29 +40,37 @@ check_installation_status() {
         status+=("project:none")
     fi
 
-    # Check global installation
-    GLOBAL_GIT_DIR="$(git config --global core.hooksPath)"
+    # Initialize GLOBAL_GIT_DIR
+    GLOBAL_GIT_DIR="$(git config --global core.hooksPath || echo "")"
     if [ -z "$GLOBAL_GIT_DIR" ]; then
-        GLOBAL_GIT_DIR="$HOME/.git/hooks"
+        GLOBAL_GIT_DIR="$HOME/.config/git/hooks"
     fi
+    
     global_hook=$(check_existing_hook "$GLOBAL_GIT_DIR/prepare-commit-msg")
     status+=("global:$global_hook")
 
     printf "%s " "${status[@]}"
 }
 
-install_hook() {
-    local target_dir="$1"
-    local hook_path="$target_dir/hooks/prepare-commit-msg"
-    mkdir -p "$target_dir/hooks"
-    cp "$SCRIPT_DIR/gitguard-prepare.py" "$hook_path"
-    chmod +x "$hook_path"
-}
-
 handle_installation() {
     local target_dir="$1"
     local install_type="$2"
-    local hook_path="$target_dir/hooks/prepare-commit-msg"
+    
+    echo -e "${BLUE}Starting $install_type installation...${NC}"
+    echo -e "Target directory: $target_dir"
+    
+    # For global installation, use GLOBAL_GIT_DIR directly
+    if [ "$install_type" = "global" ]; then
+        if [ -z "$GLOBAL_GIT_DIR" ]; then
+            echo -e "${RED}Error: Global git hooks directory is not set${NC}"
+            echo -e "Attempting to create default directory at: $HOME/.config/git/hooks"
+            GLOBAL_GIT_DIR="$HOME/.config/git/hooks"
+        fi
+        target_dir="$GLOBAL_GIT_DIR"
+    fi
+    
+    local hook_path="$target_dir/prepare-commit-msg"
+    echo -e "Installing hook to: $hook_path"
     
     # Check existing hook
     local existing_hook=$(check_existing_hook "$hook_path")
@@ -77,9 +85,50 @@ handle_installation() {
         fi
     fi
 
-    # Install the hook without asking for confirmation if it's a reinstall
-    install_hook "$target_dir"
-    echo -e "${GREEN}✅ GitGuard installed successfully for $install_type use!${NC}"
+    # Create directory with verbose output
+    echo -e "Creating directory: $(dirname "$hook_path")"
+    if ! mkdir -p "$(dirname "$hook_path")" 2>/dev/null; then
+        echo -e "${RED}Failed to create directory: $(dirname "$hook_path")${NC}"
+        echo -e "Attempting with sudo..."
+        sudo mkdir -p "$(dirname "$hook_path")"
+    fi
+
+    # Copy hook file with verbose output
+    echo -e "Copying hook from: $SCRIPT_DIR/gitguard-prepare.py"
+    if ! cp "$SCRIPT_DIR/gitguard-prepare.py" "$hook_path" 2>/dev/null; then
+        echo -e "${RED}Failed to copy hook file${NC}"
+        echo -e "Attempting with sudo..."
+        sudo cp "$SCRIPT_DIR/gitguard-prepare.py" "$hook_path"
+    fi
+
+    # Set permissions with verbose output
+    echo -e "Setting execute permissions"
+    if ! chmod +x "$hook_path" 2>/dev/null; then
+        echo -e "${RED}Failed to set permissions${NC}"
+        echo -e "Attempting with sudo..."
+        sudo chmod +x "$hook_path"
+    fi
+    
+    # If this is a global installation, set the global hooks path
+    if [ "$install_type" = "global" ]; then
+        echo -e "Configuring global git hooks path"
+        if ! git config --global core.hooksPath "$GLOBAL_GIT_DIR" 2>/dev/null; then
+            echo -e "${RED}Failed to set global git hooks path${NC}"
+            echo -e "Attempting with sudo..."
+            sudo git config --global core.hooksPath "$GLOBAL_GIT_DIR"
+        fi
+    fi
+    
+    # Verify installation
+    if [ -x "$hook_path" ]; then
+        echo -e "${GREEN}✅ GitGuard installed successfully for $install_type use!${NC}"
+        echo -e "Hook location: $hook_path"
+    else
+        echo -e "${RED}❌ Installation failed. Please check permissions and try again.${NC}"
+        echo -e "You may need to run the script with sudo or manually create the directory:"
+        echo -e "mkdir -p \"$(dirname "$hook_path")\""
+        exit 1
+    fi
 }
 
 main() {
@@ -114,15 +163,15 @@ main() {
         REPLY=${REPLY:-1}
         
         case $REPLY in
-            1) handle_installation "$(git rev-parse --git-dir)" "project" ;;
+            1) handle_installation "$(git rev-parse --git-dir)/hooks" "project" ;;
             2) handle_installation "$GLOBAL_GIT_DIR" "global" ;;
             3)
-                handle_installation "$(git rev-parse --git-dir)" "project"
+                handle_installation "$(git rev-parse --git-dir)/hooks" "project"
                 handle_installation "$GLOBAL_GIT_DIR" "global"
                 ;;
             *) 
                 echo -e "${YELLOW}Invalid option. Using default: Project only${NC}"
-                handle_installation "$(git rev-parse --git-dir)" "project"
+                handle_installation "$(git rev-parse --git-dir)/hooks" "project"
                 ;;
         esac
     else
@@ -141,7 +190,7 @@ main() {
                 2) echo -e "${YELLOW}Installation cancelled.${NC}" ;;
                 *) 
                     # Directly reinstall without additional confirmation
-                    [ "$project_status" = "gitguard" ] && handle_installation "$(git rev-parse --git-dir)" "project"
+                    [ "$project_status" = "gitguard" ] && handle_installation "$(git rev-parse --git-dir)/hooks" "project"
                     [ "$global_status" = "gitguard" ] && handle_installation "$GLOBAL_GIT_DIR" "global"
                     ;;
             esac
