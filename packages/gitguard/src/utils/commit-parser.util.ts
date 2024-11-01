@@ -1,24 +1,24 @@
-import { CommitInfo, ParsedCommit, FileChange } from '../types/commit.types';
+import { CommitInfo, ParsedCommit, FileChange } from "../types/commit.types";
 
 export class CommitParser {
-  parseCommitLog(params: { log: string }): Omit<CommitInfo, 'files'>[] {
+  parseCommitLog(_params: { log: string }): Omit<CommitInfo, "files">[] {
     // Implementation
     return [];
   }
 
-  parseFileChanges(params: { numstat: string }): FileChange[] {
+  parseFileChanges(_params: { numstat: string }): FileChange[] {
     // Implementation
     return [];
   }
 
-  private parseCommitMessage(params: { message: string }): ParsedCommit {
+  private parseCommitMessage(_params: { message: string }): ParsedCommit {
     // Implementation
     return {
-      type: 'feat',
+      type: "feat",
       scope: null,
-      description: '',
+      description: "",
       body: null,
-      breaking: false
+      breaking: false,
     };
   }
 }
