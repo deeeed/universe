@@ -18,6 +18,12 @@ try:
 except ImportError:
     HAS_OPENAI = False
 
+try:
+    import tiktoken
+    HAS_TIKTOKEN = True
+except ImportError:
+    HAS_TIKTOKEN = False
+
 class Config:
     """Configuration handler with global and local settings."""
     DEFAULT_CONFIG = {
@@ -288,9 +294,44 @@ Response Format:
     return prompt
 
 def count_tokens(text: str) -> int:
-    """Estimate token count using a simple approximation."""
-    # GPT models typically use ~4 chars per token on average
-    return len(text) // 4
+    """Count tokens using tiktoken if available, otherwise estimate."""
+    if HAS_TIKTOKEN:
+        try:
+            # Use the appropriate model encoding
+            encoding = tiktoken.encoding_for_model("gpt-4")
+            token_count = len(encoding.encode(text))
+            return token_count
+        except Exception as e:
+            debug_log(f"Tiktoken error: {str(e)}, falling back to estimation", "Warning ⚠️")
+            return len(text) // 4
+    else:
+        debug_log(
+            "Tiktoken not installed. For accurate token counting, install with:\n" +
+            "pip install tiktoken",
+            "Token Count Info ℹ️"
+        )
+        return len(text) // 4
+
+def get_token_cost(token_count: int) -> str:
+    """Calculate cost based on current GPT-4 pricing."""
+    # Current GPT-4 Turbo pricing (as of 2024)
+    COST_PER_1K_INPUT = 0.01
+    COST_PER_1K_OUTPUT = 0.03
+    
+    # Estimate output tokens as ~25% of input
+    estimated_output_tokens = token_count * 0.25
+    
+    input_cost = (token_count / 1000) * COST_PER_1K_INPUT
+    output_cost = (estimated_output_tokens / 1000) * COST_PER_1K_OUTPUT
+    total_cost = input_cost + output_cost
+    
+    return (
+        f"Input tokens: {token_count:,}\n"
+        f"Estimated output tokens: {int(estimated_output_tokens):,}\n"
+        f"Estimated total cost: ${total_cost:.4f}\n"
+        f"  - Input cost: ${input_cost:.4f}\n"
+        f"  - Output cost: ${output_cost:.4f}"
+    )
 
 def get_ai_suggestion(prompt: str, original_message: str) -> Optional[List[Dict[str, str]]]:
     """Get structured commit message suggestions from configured AI provider."""
@@ -592,28 +633,28 @@ def main() -> None:
 
         print("\n🔍 Analyzing changes...")
         
-        # Get complexity-aware AI suggestions
-        if config.get("use_ai", True) and prompt_user("\nWould you like AI suggestions?"):
-            print("\n🤖 Getting AI suggestions...")
+        # Check if AI is enabled in config
+        if config.get("use_ai", True):
+            # Generate prompt and calculate cost before asking user
             prompt = enhance_ai_prompt(packages, original_msg)
-            
-            # Calculate and log token usage estimation before making the API call
             token_count = count_tokens(prompt)
             debug_log(
-                f"Estimated tokens: {token_count}\n"
-                f"Estimated cost: ${(token_count / 1000 * 0.03):.4f} (GPT-4 rate)",
+                get_token_cost(token_count),
                 "Token Usage 💰"
             )
             
-            suggestions = get_ai_suggestion(prompt, original_msg)
+            # Now ask user if they want to proceed with AI suggestions
+            if prompt_user("\nWould you like AI suggestions?"):
+                print("\n🤖 Getting AI suggestions...")
+                suggestions = get_ai_suggestion(prompt, original_msg)
 
-            if suggestions:
-                chosen_message = display_suggestions(suggestions)
-                if chosen_message:
-                    with open(commit_msg_file, "w", encoding="utf-8") as f:
-                        f.write(chosen_message)
-                    print("✅ Commit message updated!\n")
-                    return
+                if suggestions:
+                    chosen_message = display_suggestions(suggestions)
+                    if chosen_message:
+                        with open(commit_msg_file, "w", encoding="utf-8") as f:
+                            f.write(chosen_message)
+                        print("✅ Commit message updated!\n")
+                        return
 
         # Fallback to automatic formatting
         print("\n⚙️ Using automatic formatting...")
