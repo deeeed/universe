@@ -3,13 +3,14 @@
 
 import sys
 import os
+import requests
+import re
+import json
 from pathlib import Path
 from subprocess import check_output
-import json
 from typing import Dict, List, Optional, Set, Any
-import requests
 from collections import defaultdict
-import re
+
 
 # Try to import optional dependencies / check
 try:

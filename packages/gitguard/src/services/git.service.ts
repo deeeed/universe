@@ -3,11 +3,18 @@ import { CommitInfo, FileChange } from '../types/commit.types';
 import { CommitParser } from '../utils/commit-parser.util';
 
 export class GitService {
-  private parser: CommitParser;
-
-  constructor(private params: { config: GitConfig }) {
-    this.parser = new CommitParser();
-  }
+    private parser: CommitParser;
+    private readonly gitConfig: GitConfig;
+  
+    constructor(params: { config: GitConfig }) {
+      this.gitConfig = params.config;
+      this.parser = new CommitParser();
+    }
+  
+    // Add getter for config
+    public get config(): GitConfig {
+      return this.gitConfig;
+    }
 
   async getCurrentBranch(): Promise<string> {
     const result = await this.execGit({ 

@@ -10,9 +10,50 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Store the script's directory
+# Function to handle direct curl installation
+handle_remote_install() {
+    echo -e "${BLUE}Installing GitGuard from @siteed/universe...${NC}"
+    
+    # Create temporary directory
+    TMP_DIR=$(mktemp -d)
+    cleanup() {
+        rm -rf "$TMP_DIR"
+    }
+    trap cleanup EXIT
+
+    # Download the script
+    echo -e "${YELLOW}Downloading GitGuard...${NC}"
+    curl -sSL https://raw.githubusercontent.com/deeeed/universe/main/packages/gitguard/gitguard-prepare.py -o "$TMP_DIR/gitguard-prepare.py"
+    chmod +x "$TMP_DIR/gitguard-prepare.py"
+
+    # Install dependencies
+    echo -e "${YELLOW}Installing dependencies...${NC}"
+    python3 -m pip install --user requests openai tiktoken
+
+    # Install the hook
+    if [ ! -d ".git" ]; then
+        echo -e "${RED}Error: Not a git repository. Please run this script from your git project root.${NC}"
+        exit 1
+    fi
+
+    HOOK_PATH=".git/hooks/prepare-commit-msg"
+    mkdir -p .git/hooks
+    cp "$TMP_DIR/gitguard-prepare.py" "$HOOK_PATH"
+    
+    echo -e "${GREEN}✅ GitGuard installed successfully!${NC}"
+    echo -e "\n${BLUE}Next Steps:${NC}"
+    echo -e "1. Create a configuration file (optional):"
+    echo -e "   • Global: ~/.gitguard/config.json"
+    echo -e "   • Project: .gitguard/config.json"
+    echo -e "\n2. Set up environment variables (optional):"
+    echo -e "   • AZURE_OPENAI_API_KEY - for Azure OpenAI integration"
+    echo -e "   • GITGUARD_USE_AI=1 - to enable AI suggestions"
+}
+
+# Store the script's directory for development installation
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Your existing installation functions remain the same
 check_existing_hook() {
     local hook_path="$1"
     if [ -f "$hook_path" ]; then
@@ -29,115 +70,84 @@ check_existing_hook() {
 install_hook() {
     local target_dir="$1"
     local hook_path="$target_dir/hooks/prepare-commit-msg"
-    
-    # Create hooks directory if it doesn't exist
     mkdir -p "$target_dir/hooks"
-    
-    # Copy the hook
     cp "$SCRIPT_DIR/gitguard-prepare.py" "$hook_path"
     chmod +x "$hook_path"
 }
 
-# Check if script exists
-if [ ! -f "$SCRIPT_DIR/gitguard-prepare.py" ]; then
-    echo -e "${RED}❌ Error: Could not find gitguard-prepare.py in $SCRIPT_DIR${NC}"
-    exit 1
-fi
-
-# Function to handle installation choice
 handle_installation() {
-    local git_dir="$1"
-    local location="$2"
-    local hook_path="$git_dir/hooks/prepare-commit-msg"
+    local target_dir="$1"
+    local install_type="$2"
+    local hook_path="$target_dir/hooks/prepare-commit-msg"
     
-    local existing=$(check_existing_hook "$hook_path")
+    # Check existing hook
+    local existing_hook=$(check_existing_hook "$hook_path")
     
-    case $existing in
-        "gitguard")
-            echo -e "${YELLOW}⚠️  GitGuard is already installed in $location location${NC}"
-            read -p "Do you want to overwrite it? (Y/n) " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-                install_hook "$git_dir"
-                echo -e "${GREEN}✅ GitGuard hook updated in $location location${NC}"
-            fi
-            ;;
-        "other")
-            echo -e "${YELLOW}⚠️  Another prepare-commit-msg hook exists in $location location${NC}"
-            read -p "Do you want to overwrite it? (Y/n) " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-                install_hook "$git_dir"
-                echo -e "${GREEN}✅ GitGuard hook installed in $location location${NC}"
-            fi
-            ;;
-        "none")
-            install_hook "$git_dir"
-            echo -e "${GREEN}✅ GitGuard hook installed in $location location${NC}"
-            ;;
-    esac
+    if [ "$existing_hook" = "gitguard" ]; then
+        echo -e "${YELLOW}⚠️  GitGuard is already installed for this $install_type installation${NC}"
+        read -p "Do you want to reinstall? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            return
+        fi
+    elif [ "$existing_hook" = "other" ]; then
+        echo -e "${RED}⚠️  Another prepare-commit-msg hook exists at: $hook_path${NC}"
+        read -p "Do you want to overwrite it? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo -e "${YELLOW}Skipping $install_type installation${NC}"
+            return
+        fi
+    fi
+
+    # Install the hook
+    install_hook "$target_dir"
+    echo -e "${GREEN}✅ GitGuard installed successfully for $install_type use!${NC}"
 }
 
-# Welcome message
-echo -e "${BLUE}Welcome to GitGuard Installation!${NC}"
-echo -e "This script can install GitGuard globally or for the current project.\n"
-
-# Check if we're in a git repository
-if git rev-parse --git-dir > /dev/null 2>&1; then
-    GIT_PROJECT_DIR="$(git rev-parse --git-dir)"
-    echo -e "📁 Current project: $(git rev-parse --show-toplevel)"
+# Main installation logic
+main() {
+    # Development installation flow
+    echo -e "${BLUE}Welcome to GitGuard Development Installation!${NC}"
     
-    read -p "Do you want to install GitGuard for this project? (Y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-        PROJECT_INSTALL=true
+    # Check if script exists
+    if [ ! -f "$SCRIPT_DIR/gitguard-prepare.py" ]; then
+        echo -e "${RED}❌ Error: Could not find gitguard-prepare.py in $SCRIPT_DIR${NC}"
+        exit 1
+    fi
+
+    # Rest of your existing installation logic...
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+        GIT_PROJECT_DIR="$(git rev-parse --git-dir)"
+        echo -e "📁 Current project: $(git rev-parse --show-toplevel)"
+        
+        read -p "Do you want to install GitGuard for this project? (Y/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            handle_installation "$GIT_PROJECT_DIR" "project"
+        fi
     else
-        PROJECT_INSTALL=false
+        echo -e "${YELLOW}⚠️  Not in a git repository - skipping project installation${NC}"
     fi
-else
-    echo -e "${YELLOW}⚠️  Not in a git repository - skipping project installation${NC}"
-    PROJECT_INSTALL=false
-fi
 
-# Ask about global installation
-read -p "Do you want to install GitGuard globally for all future git projects? (y/N) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    GLOBAL_INSTALL=true
-else
-    GLOBAL_INSTALL=false
-fi
-
-# Perform installations based on user choices
-if [ "$GLOBAL_INSTALL" = true ]; then
-    GLOBAL_GIT_DIR="$(git config --global core.hooksPath)"
-    if [ -z "$GLOBAL_GIT_DIR" ]; then
-        GLOBAL_GIT_DIR="$HOME/.git/hooks"
-        # Set global hooks path
-        git config --global core.hooksPath "$GLOBAL_GIT_DIR"
+    # Ask about global installation
+    read -p "Do you want to install GitGuard globally? (y/N) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        GLOBAL_GIT_DIR="$(git config --global core.hooksPath)"
+        if [ -z "$GLOBAL_GIT_DIR" ]; then
+            GLOBAL_GIT_DIR="$HOME/.git/hooks"
+            git config --global core.hooksPath "$GLOBAL_GIT_DIR"
+        fi
+        handle_installation "$GLOBAL_GIT_DIR" "global"
     fi
-    handle_installation "$GLOBAL_GIT_DIR" "global"
-fi
+}
 
-if [ "$PROJECT_INSTALL" = true ]; then
-    handle_installation "$GIT_PROJECT_DIR" "project"
+# Check how the script was invoked
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then
+    if [ -n "$CURL_INSTALL" ] || [ "$1" = "--remote" ]; then
+        handle_remote_install
+    else
+        main
+    fi
 fi
-
-# Final instructions
-echo -e "\n${BLUE}Installation Complete!${NC}"
-if [ "$GLOBAL_INSTALL" = true ]; then
-    echo -e "🌍 Global installation: Hooks will be applied to all new git projects"
-fi
-if [ "$PROJECT_INSTALL" = true ]; then
-    echo -e "📂 Project installation: Hook installed for current project"
-fi
-
-# Configuration instructions
-echo -e "\n${BLUE}Next Steps:${NC}"
-echo -e "1. Create a configuration file (optional):"
-echo -e "   • Global: ~/.gitguard/config.json"
-echo -e "   • Project: .gitguard/config.json"
-echo -e "\n2. Set up environment variables (optional):"
-echo -e "   • AZURE_OPENAI_API_KEY - for Azure OpenAI integration"
-echo -e "   • GITGUARD_USE_AI=1 - to enable AI suggestions"
-echo -e "\nFor more information, visit: https://github.com/yourusername/gitguard#readme"

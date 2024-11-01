@@ -1,6 +1,36 @@
-# GitGuard Commit Hook
+# GitGuard
 
-A smart Git commit hook that helps maintain high-quality, consistent commit messages across your monorepo.
+A smart Git commit hook that helps maintain high-quality, consistent commit messages using AI.
+
+## Installation
+
+### Quick Install (Recommended)
+```bash
+curl -sSL https://raw.githubusercontent.com/deeeed/universe/main/packages/gitguard/install.sh | CURL_INSTALL=1 bash
+```
+
+### Development Install
+If you're working on GitGuard itself:
+```bash
+git clone https://github.com/deeeed/universe.git
+cd universe
+yarn install
+cd packages/gitguard
+./install.sh
+```
+
+## Configuration
+
+1. Create a configuration file (optional):
+   - Global: `~/.gitguard/config.json`
+   - Project: `.gitguard/config.json`
+
+2. Set up environment variables (optional):
+   - `AZURE_OPENAI_API_KEY` - for Azure OpenAI integration
+   - `GITGUARD_USE_AI=1` - to enable AI suggestions
+   - `GITGUARD_DEBUG=1` - to enable debug logging
+
+For more information, visit the [GitGuard documentation](https://deeeed.github.io/universe/packages/gitguard).
 
 ## Features
 
@@ -36,23 +66,6 @@ git commit -m "update theme colors"
 # Affected packages:
 # - @siteed/design-system
 # - @siteed/mobile-components
-```
-
-## Installation
-
-1. Install the package in your monorepo:
-```bash
-yarn add -D @siteed/gitguard
-```
-
-2. Add to your git hooks (using husky or direct installation):
-```bash
-# Using husky
-yarn husky add .husky/prepare-commit-msg 'yarn gitguard $1'
-
-# Direct installation
-cp node_modules/@siteed/gitguard/gitguard-prepare.py .git/hooks/prepare-commit-msg
-chmod +x .git/hooks/prepare-commit-msg
 ```
 
 ## Configuration

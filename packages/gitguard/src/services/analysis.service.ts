@@ -40,12 +40,24 @@ import {
     private calculateStats(params: { 
       commits: CommitInfo[] 
     }): AnalysisStats {
-      // Implementation
+      const { commits } = params;
+      const filesChanged = new Set<string>();
+      let additions = 0;
+      let deletions = 0;
+  
+      commits.forEach(commit => {
+        commit.files.forEach(file => {
+          filesChanged.add(file.path);
+          additions += file.additions;
+          deletions += file.deletions;
+        });
+      });
+  
       return {
-        totalCommits: 0,
-        filesChanged: 0,
-        additions: 0,
-        deletions: 0
+        totalCommits: commits.length,
+        filesChanged: filesChanged.size,
+        additions,
+        deletions
       };
     }
   
@@ -53,7 +65,51 @@ import {
       commits: CommitInfo[];
       stats: AnalysisStats;
     }): AnalysisWarning[] {
-      // Implementation
-      return [];
+      const { commits, stats } = params;
+      const warnings: AnalysisWarning[] = [];
+  
+      // Check for large PR
+      if (stats.filesChanged > 10) {
+        warnings.push({
+          type: 'general',
+          severity: 'warning',
+          message: `Large PR detected: ${stats.filesChanged} files changed`
+        });
+      }
+  
+      // Check for large commits
+      commits.forEach(commit => {
+        const totalChanges = commit.files.reduce(
+          (sum, file) => sum + file.additions + file.deletions, 
+          0
+        );
+  
+        if (totalChanges > 300) {
+          warnings.push({
+            type: 'commit',
+            severity: 'warning',
+            message: `Large commit detected: ${commit.hash.slice(0, 7)} with ${totalChanges} changes`
+          });
+        }
+  
+        // Check conventional commit format
+        if (!this.isValidConventionalCommit(commit)) {
+          warnings.push({
+            type: 'commit',
+            severity: 'error',
+            message: `Invalid conventional commit format: ${commit.hash.slice(0, 7)}`
+          });
+        }
+      });
+  
+      return warnings;
+    }
+  
+    private isValidConventionalCommit(commit: CommitInfo): boolean {
+      return Boolean(
+        commit.parsed.type && 
+        commit.parsed.description &&
+        commit.message.match(/^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([^)]+\))?: .+/)
+      );
     }
   }
