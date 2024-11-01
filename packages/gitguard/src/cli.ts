@@ -1,14 +1,19 @@
+#!/usr/bin/env node
+
 // cli.ts
 import { program } from "commander";
 import { loadConfig } from "./config";
 import { AnalysisService } from "./services/analysis.service";
 import { LoggerService } from "./services/logger.service";
+import { ReporterService } from "./services/reporter.service";
 import { LogLevel } from "./types/logger.types";
 
 interface CommandOptions {
-  verbose?: boolean;
-  silent?: boolean;
-  format?: "console" | "json" | "markdown";
+  verbose: boolean;
+  silent: boolean;
+  format: "console" | "json" | "markdown";
+  color: boolean;
+  detailed: boolean;
 }
 
 async function analyze(
@@ -24,10 +29,14 @@ async function analyze(
     logger.debug("Loading configuration...");
     const config = await loadConfig();
 
-    logger.debug("Initializing analysis service...");
+    logger.debug("Initializing services...");
     const analysisService = new AnalysisService({
       logger,
       config,
+    });
+
+    const reporterService = new ReporterService({
+      logger,
     });
 
     logger.info("Starting analysis...");
@@ -35,38 +44,17 @@ async function analyze(
       branch,
     });
 
-    // Output results based on format
-    switch (options.format) {
-      case "json":
-        logger.raw(JSON.stringify(result, null, 2));
-        break;
-      case "markdown":
-        // TODO: Implement markdown formatting
-        logger.error("Markdown format not yet implemented");
-        break;
-      default:
-        logger.newLine();
-        logger.info(`Analysis Results for ${result.branch}`);
-        logger.info(`Base branch: ${result.baseBranch}`);
-        logger.newLine();
+    const report = await reporterService.generateReport({
+      result,
+      options: {
+        format: options.format,
+        color: options.color,
+        detailed: options.detailed,
+      },
+    });
 
-        logger.info("Statistics:");
-        logger.table([
-          {
-            "Total Commits": result.stats.totalCommits,
-            "Files Changed": result.stats.filesChanged,
-            Additions: result.stats.additions,
-            Deletions: result.stats.deletions,
-          },
-        ]);
-
-        if (result.warnings.length > 0) {
-          logger.newLine();
-          logger.warning(`Found ${result.warnings.length} warnings:`);
-          result.warnings.forEach((warning) => {
-            logger.warning(`[${warning.type}] ${warning.message}`);
-          });
-        }
+    if (options.format === "json" || options.format === "markdown") {
+      logger.raw(report);
     }
 
     if (result.warnings.length > 0) {
@@ -93,6 +81,8 @@ async function main(): Promise<void> {
         "output format (console, json, markdown)",
         "console",
       )
+      .option("--no-color", "disable colored output")
+      .option("-d, --detailed", "include detailed commit information")
       .action(analyze);
 
     await program.parseAsync();

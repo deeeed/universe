@@ -18,6 +18,8 @@
     "package.json",
     "README.md"
   ],
+  "bin": "./dist/src/cli.js",
+  "type": "module",
   "scripts": {
     "clean": "rimraf ./dist",
     "build": "yarn build:tsc",
@@ -27,7 +29,15 @@
     "test": "jest",
     "lint": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",
-    "format": "prettier --write \"src/**/*.ts\" \"bin/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\" \"bin/**/*.ts\"",
+    "start": "ts-node src/cli.ts",
+    "dev": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node' ts-node --esm src/cli.ts",
+    "link": "yarn link",
+    "test:cli": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node' ts-node --esm src/test-cli.ts",
+    "postbuild": "chmod +x ./dist/src/cli.js",
+    "link-cli": "yarn link && yarn run postbuild",
+    "setup": "./setup-cli.sh",
+    "unsetup": "yarn global unlink"
   },
   "dependencies": {
     "chalk": "^5.3.0",
