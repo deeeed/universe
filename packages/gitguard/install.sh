@@ -152,6 +152,7 @@ main() {
     
     # Determine installation options
     if [ "$project_status" = "none" ] && [ "$global_status" = "none" ]; then
+        # Both are not installed - ask where to install
         echo -e "\nWhere would you like to install GitGuard?"
         echo -e "1) Project only ${GREEN}[default]${NC}"
         echo -e "2) Global only"
@@ -175,26 +176,37 @@ main() {
                 ;;
         esac
     else
-        # Handle existing installations
-        if [ "$project_status" = "gitguard" ] || [ "$global_status" = "gitguard" ]; then
-            echo -e "\n${YELLOW}GitGuard is already installed. What would you like to do?${NC}"
-            echo -e "1) Reinstall existing hooks ${GREEN}[default]${NC}"
-            echo -e "2) Cancel"
-            read -p "Select an option (1-2, press Enter to reinstall): " -r < /dev/tty
-            echo
-            
-            # Default to option 1 (reinstall) if Enter is pressed
-            REPLY=${REPLY:-1}
-            
-            case $REPLY in
-                2) echo -e "${YELLOW}Installation cancelled.${NC}" ;;
-                *) 
-                    # Directly reinstall without additional confirmation
-                    [ "$project_status" = "gitguard" ] && handle_installation "$(git rev-parse --git-dir)/hooks" "project"
-                    [ "$global_status" = "gitguard" ] && handle_installation "$GLOBAL_GIT_DIR" "global"
-                    ;;
-            esac
+        # At least one is installed - show reinstall/install options
+        echo -e "\n${YELLOW}Installation options:${NC}"
+        if [ "$project_status" = "none" ]; then
+            echo -e "1) Install project hooks"
+        else
+            echo -e "1) Reinstall project hooks"
         fi
+        if [ "$global_status" = "none" ]; then
+            echo -e "2) Install global hooks"
+        else
+            echo -e "2) Reinstall global hooks"
+        fi
+        echo -e "3) Cancel ${GREEN}[default]${NC}"
+        
+        read -p "Select an option (1-3, press Enter to cancel): " -r < /dev/tty
+        echo
+        
+        case $REPLY in
+            1) 
+                if [ -n "$(git rev-parse --git-dir 2>/dev/null)" ]; then
+                    handle_installation "$(git rev-parse --git-dir)/hooks" "project"
+                else
+                    echo -e "${RED}Not in a git repository${NC}"
+                fi
+                ;;
+            2) handle_installation "$GLOBAL_GIT_DIR" "global" ;;
+            *) 
+                echo -e "${YELLOW}Installation cancelled.${NC}"
+                exit 0
+                ;;
+        esac
     fi
 }
 
@@ -215,6 +227,9 @@ handle_remote_install() {
 
     # Set script directory to temp directory for installation
     SCRIPT_DIR="$temp_dir"
+    
+    # Force interactive mode
+    export INTERACTIVE=1
     
     # Run the main installation
     main
