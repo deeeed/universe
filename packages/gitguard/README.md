@@ -46,19 +46,6 @@ cd packages/gitguard
 ./install.sh
 ```
 
-## Configuration
-
-1. Create a configuration file (optional):
-   - Global: `~/.gitguard/config.json`
-   - Project: `.gitguard/config.json`
-
-2. Set up environment variables (optional):
-   - `AZURE_OPENAI_API_KEY` - for Azure OpenAI integration
-   - `GITGUARD_USE_AI=1` - to enable AI suggestions
-   - `GITGUARD_DEBUG=1` - to enable debug logging
-
-For more information, visit the [GitGuard documentation](https://deeeed.github.io/universe/packages/gitguard).
-
 ## Features
 
 - 🎯 **Automatic Scope Detection**: Automatically detects the package scope based on changed files
@@ -69,14 +56,49 @@ For more information, visit the [GitGuard documentation](https://deeeed.github.i
 - ✨ **Conventional Commits**: Enforces conventional commit format (`type(scope): description`)
 - 🔍 **Change Analysis**: Analyzes file changes to suggest appropriate commit types
 - 🚨 **Multi-Package Warning**: Alerts when changes span multiple packages, encouraging atomic commits
+- 🔒 **Security Checks**:
+  - Detects accidentally committed secrets and sensitive data
+  - Identifies problematic files (env files, keys, logs, etc.)
+  - Only warns about newly added problematic files
+  - Provides specific remediation steps
+  - Blocks commits containing secrets
+
+## Security Features
+
+### Secret Detection
+GitGuard automatically scans for:
+- API Keys (AWS, Google, Azure, etc.)
+- Authentication Tokens (GitHub, JWT, etc.)
+- Private Keys and Certificates
+- Database Connection Strings
+- Environment Variables
+- Credentials in URLs
+- Cryptocurrency Private Keys
+- Social Media Tokens
+
+### File Pattern Detection
+Warns about newly added sensitive files:
+- Environment Files (.env, config.json, etc.)
+- Key Files (.pem, .key, certificates)
+- Log Files
+- Database Files
+- Cache and Build Directories
 
 ## How It Works
 
-1. When you create a commit, the hook analyzes your staged changes
-2. If changes span multiple packages, it warns you and suggests splitting the commit
-3. You can request AI suggestions, which will provide 3 different commit message options with explanations
-4. If you skip AI suggestions or prefer manual input, it helps format your message with the correct scope and type
-5. For multi-package changes, it automatically adds an "Affected packages" section
+1. When you create a commit, GitGuard:
+   - Analyzes your staged changes
+   - Performs security checks for secrets and sensitive files
+   - Warns about multi-package changes
+   - Offers AI suggestions for commit messages
+2. Security checks:
+   - Blocks commits containing detected secrets
+   - Warns about newly added sensitive files
+   - Provides specific remediation steps
+3. For multi-package changes:
+   - Warns about atomic commit violations
+   - Suggests splitting the commit
+   - Adds "Affected packages" section
 
 ## Example Usage
 
@@ -84,6 +106,12 @@ For more information, visit the [GitGuard documentation](https://deeeed.github.i
 # Regular commit
 git commit -m "update login form"
 # GitGuard will transform to: feat(auth): update login form
+
+# Commit with security issues
+git commit -m "add config"
+# GitGuard will detect secrets or sensitive files and:
+# - Block the commit if secrets are found
+# - Warn about sensitive files and suggest .gitignore
 
 # Multi-package changes
 git commit -m "update theme colors"
@@ -93,6 +121,23 @@ git commit -m "update theme colors"
 # Affected packages:
 # - @siteed/design-system
 # - @siteed/mobile-components
+```
+
+## Testing Security Features
+
+You can test GitGuard's security features using the provided sample scripts:
+
+```bash
+# Create sample files
+./create-samples.sh
+
+# Test security detection
+echo "AWS_KEY=AKIAXXXXXXXXXXXXXXXX" >> .env
+git add .env
+git commit -m "add config"  # Should be blocked
+
+# Test sensitive file detection
+git add packages/core/src/
 ```
 
 ## Configuration

@@ -9,10 +9,20 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Get script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # Find git root directory
 GIT_ROOT=$(git rev-parse --show-toplevel)
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Error: Not in a git repository${NC}"
+    exit 1
+fi
+
+# Ensure we're in the gitguard directory
+if [[ ! "$SCRIPT_DIR" =~ .*/packages/gitguard$ ]]; then
+    echo -e "${RED}❌ Error: Script must be run from packages/gitguard directory${NC}"
+    echo "Current directory: $SCRIPT_DIR"
     exit 1
 fi
 
@@ -28,7 +38,7 @@ SAMPLE_PATHS=(
 
 # Remove sample files
 for path in "${SAMPLE_PATHS[@]}"; do
-    full_path="$GIT_ROOT/$path"
+    full_path="$SCRIPT_DIR/$path"
     if [ -f "$full_path" ]; then
         rm "$full_path"
         echo "Removed: $path"
@@ -46,11 +56,11 @@ SAMPLE_DIRS=(
 )
 
 for dir in "${SAMPLE_DIRS[@]}"; do
-    full_dir="$GIT_ROOT/$dir"
+    full_dir="$SCRIPT_DIR/$dir"
     if [ -d "$full_dir" ] && [ -z "$(ls -A $full_dir)" ]; then
         rmdir "$full_dir"
         echo "Removed empty directory: $dir"
     fi
 done
 
-echo -e "${GREEN}✅ Sample files cleaned up successfully!${NC}" 
+echo -e "${GREEN}✅ Sample files cleaned up successfully from: ${SCRIPT_DIR}${NC}"

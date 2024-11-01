@@ -9,6 +9,9 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Get script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # Find git root directory
 GIT_ROOT=$(git rev-parse --show-toplevel)
 if [ $? -ne 0 ]; then
@@ -16,22 +19,28 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Create sample directories
-mkdir -p "$GIT_ROOT/packages/ui/src"
-mkdir -p "$GIT_ROOT/packages/ui/tests"
-mkdir -p "$GIT_ROOT/packages/core/src"
-mkdir -p "$GIT_ROOT/docs"
+# Ensure we're in the gitguard directory
+if [[ ! "$SCRIPT_DIR" =~ .*/packages/gitguard$ ]]; then
+    echo -e "${RED}❌ Error: Script must be run from packages/gitguard directory${NC}"
+    echo "Current directory: $SCRIPT_DIR"
+    exit 1
+fi
+
+# Create sample directories relative to script location
+mkdir -p "$SCRIPT_DIR/packages/ui/src"
+mkdir -p "$SCRIPT_DIR/packages/ui/tests"
+mkdir -p "$SCRIPT_DIR/packages/core/src"
+mkdir -p "$SCRIPT_DIR/docs"
 
 # Create sample files
-cat > "$GIT_ROOT/packages/ui/package.json" << 'EOF'
+cat > "$SCRIPT_DIR/packages/ui/package.json" << 'EOF'
 {
     "name": "@project/ui",
     "version": "1.0.0"
 }
 EOF
 
-# Note the use of 'EOFBUTTON' to avoid confusion with backticks
-cat > "$GIT_ROOT/packages/ui/src/Button.tsx" << 'EOFBUTTON'
+cat > "$SCRIPT_DIR/packages/ui/src/Button.tsx" << 'EOFBUTTON'
 import styled from 'styled-components';
 
 export const Button = styled.button`
@@ -40,7 +49,7 @@ export const Button = styled.button`
 `;
 EOFBUTTON
 
-cat > "$GIT_ROOT/packages/ui/tests/Button.test.tsx" << 'EOF'
+cat > "$SCRIPT_DIR/packages/ui/tests/Button.test.tsx" << 'EOF'
 import { render } from '@testing-library/react';
 import { Button } from '../src/Button';
 
@@ -52,25 +61,25 @@ describe('Button', () => {
 });
 EOF
 
-cat > "$GIT_ROOT/packages/core/package.json" << 'EOF'
+cat > "$SCRIPT_DIR/packages/core/package.json" << 'EOF'
 {
     "name": "@project/core",
     "version": "1.0.0"
 }
 EOF
 
-cat > "$GIT_ROOT/packages/core/src/utils.ts" << 'EOF'
+cat > "$SCRIPT_DIR/packages/core/src/utils.ts" << 'EOF'
 export function formatDate(date: Date): string {
     return date.toISOString();
 }
 EOF
 
-cat > "$GIT_ROOT/docs/README.md" << 'EOF'
+cat > "$SCRIPT_DIR/docs/README.md" << 'EOF'
 # Project Documentation
 This is a sample documentation file.
 EOF
 
-echo -e "${GREEN}✅ Sample files created successfully!${NC}"
+echo -e "${GREEN}✅ Sample files created successfully in: ${SCRIPT_DIR}${NC}"
 echo -e "${YELLOW}Try creating commits with changes in different files to test GitGuard:${NC}"
 echo "- UI component changes (packages/ui/src/Button.tsx)"
 echo "- Test file changes (packages/ui/tests/Button.test.tsx)"

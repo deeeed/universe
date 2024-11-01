@@ -10,150 +10,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-check_dependencies() {
-    local missing_deps=()
-    
-    # Check Python version (needs 3.7+)
-    if ! command -v python3 &> /dev/null; then
-        missing_deps+=("python3")
-    else
-        local python_version=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
-        if [ "$(printf '%s\n' "3.7" "$python_version" | sort -V | head -n1)" != "3.7" ]; then
-            echo -e "${RED}Error: Python 3.7 or higher is required (found $python_version)${NC}"
-            echo -e "${YELLOW}Please upgrade Python using your package manager:${NC}"
-            echo -e "• Ubuntu/Debian: sudo apt update && sudo apt install python3"
-            echo -e "• MacOS: brew install python3"
-            exit 1
-        fi
-    fi
-    
-    # Check pip
-    if ! command -v pip3 &> /dev/null && ! python3 -m pip --version &> /dev/null; then
-        missing_deps+=("pip3")
-    fi
-    
-    # Check curl
-    if ! command -v curl &> /dev/null; then
-        missing_deps+=("curl")
-    fi
-    
-    # Check git
-    if ! command -v git &> /dev/null; then
-        missing_deps+=("git")
-    fi
-    
-    # If any dependencies are missing, provide installation instructions
-    if [ ${#missing_deps[@]} -ne 0 ]; then
-        echo -e "${RED}Error: Missing required dependencies: ${missing_deps[*]}${NC}"
-        echo -e "\n${YELLOW}Please install the missing dependencies:${NC}"
-        echo -e "Ubuntu/Debian:"
-        echo -e "  sudo apt update && sudo apt install ${missing_deps[*]}"
-        echo -e "\nMacOS:"
-        echo -e "  brew install ${missing_deps[*]}"
-        echo -e "\nWindows (using Chocolatey):"
-        echo -e "  choco install ${missing_deps[*]}"
-        exit 1
-    fi
-}
-
-handle_remote_install() {
-    echo -e "${BLUE}Installing GitGuard from @siteed/universe...${NC}"
-    
-    # Check dependencies first
-    check_dependencies
-    
-    # Verify we're in a git repository
-    if ! git rev-parse --git-dir > /dev/null 2>&1; then
-        echo -e "${RED}Error: Not in a git repository${NC}"
-        echo -e "${YELLOW}Please run this command from your git project root:${NC}"
-        echo -e "  cd /path/to/your/git/project"
-        echo -e "  curl -sSL https://raw.githubusercontent.com/deeeed/universe/main/packages/gitguard/install.sh | bash -s -- --remote"
-        exit 1
-    fi
-    
-    # Create temporary directory with error handling
-    TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t 'gitguard')
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Error: Failed to create temporary directory${NC}"
-        echo -e "${YELLOW}Please ensure you have write permissions to /tmp or TMP directory${NC}"
-        exit 1
-    fi
-    
-    cleanup() {
-        rm -rf "$TMP_DIR"
-    }
-    trap cleanup EXIT
-    
-    # Download the script with error handling and retry
-    echo -e "${YELLOW}Downloading GitGuard...${NC}"
-    MAX_RETRIES=3
-    for i in $(seq 1 $MAX_RETRIES); do
-        if curl -sSL --retry 3 https://raw.githubusercontent.com/deeeed/universe/main/packages/gitguard/gitguard-prepare.py -o "$TMP_DIR/gitguard-prepare.py"; then
-            break
-        fi
-        if [ $i -eq $MAX_RETRIES ]; then
-            echo -e "${RED}Error: Failed to download GitGuard after $MAX_RETRIES attempts${NC}"
-            echo -e "${YELLOW}Please check:${NC}"
-            echo -e "1. Your internet connection"
-            echo -e "2. Access to githubusercontent.com"
-            echo -e "3. Try again in a few minutes"
-            exit 1
-        fi
-        echo -e "${YELLOW}Retry $i/$MAX_RETRIES...${NC}"
-        sleep 2
-    done
-    
-    chmod +x "$TMP_DIR/gitguard-prepare.py"
-    
-    # Install Python dependencies with error handling
-    echo -e "${YELLOW}Installing Python dependencies...${NC}"
-    if ! python3 -m pip install --user --quiet requests openai tiktoken; then
-        echo -e "${RED}Error: Failed to install Python dependencies${NC}"
-        echo -e "${YELLOW}Please try:${NC}"
-        echo -e "1. Running manually: python3 -m pip install --user requests openai tiktoken"
-        echo -e "2. Check your Python environment: python3 -m pip --version"
-        echo -e "3. Ensure you have write permissions to your user's pip directory"
-        exit 1
-    fi
-    
-    # Install the hook
-    HOOK_PATH=".git/hooks/prepare-commit-msg"
-    if ! mkdir -p .git/hooks 2>/dev/null; then
-        echo -e "${RED}Error: Failed to create hooks directory${NC}"
-        echo -e "${YELLOW}Please check permissions on .git/hooks directory${NC}"
-        exit 1
-    fi
-    
-    if ! cp "$TMP_DIR/gitguard-prepare.py" "$HOOK_PATH" 2>/dev/null; then
-        echo -e "${RED}Error: Failed to install hook${NC}"
-        echo -e "${YELLOW}Please check:${NC}"
-        echo -e "1. Permissions on .git/hooks directory"
-        echo -e "2. Available disk space"
-        echo -e "3. Existing hook file permissions"
-        exit 1
-    fi
-    
-    chmod +x "$HOOK_PATH" 2>/dev/null || {
-        echo -e "${RED}Warning: Failed to make hook executable${NC}"
-        echo -e "${YELLOW}Please run: chmod +x $HOOK_PATH${NC}"
-    }
-    
-    echo -e "${GREEN}✅ GitGuard installed successfully!${NC}"
-    echo -e "\n${BLUE}Next Steps:${NC}"
-    echo -e "1. Create a configuration file (optional):"
-    echo -e "   • Global: ~/.gitguard/config.json"
-    echo -e "   • Project: .gitguard/config.json"
-    echo -e "\n2. Set up environment variables (required for AI features):"
-    echo -e "   • AZURE_OPENAI_API_KEY - for Azure OpenAI integration"
-    echo -e "   • GITGUARD_USE_AI=1 - to enable AI suggestions"
-    echo -e "\n3. Test the installation:"
-    echo -e "   git commit -m \"test\" --allow-empty"
-}
-
 # Store the script's directory for development installation
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Your existing installation functions remain the same
 check_existing_hook() {
     local hook_path="$1"
     if [ -f "$hook_path" ]; then
@@ -165,6 +24,31 @@ check_existing_hook() {
     else
         echo "none"
     fi
+}
+
+check_installation_status() {
+    local project_hook=""
+    local global_hook=""
+    local status=()
+
+    # Check project installation
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+        local project_dir="$(git rev-parse --git-dir)"
+        project_hook=$(check_existing_hook "$project_dir/hooks/prepare-commit-msg")
+        status+=("project:$project_hook")
+    else
+        status+=("project:none")
+    fi
+
+    # Check global installation
+    GLOBAL_GIT_DIR="$(git config --global core.hooksPath)"
+    if [ -z "$GLOBAL_GIT_DIR" ]; then
+        GLOBAL_GIT_DIR="$HOME/.git/hooks"
+    fi
+    global_hook=$(check_existing_hook "$GLOBAL_GIT_DIR/prepare-commit-msg")
+    status+=("global:$global_hook")
+
+    printf "%s " "${status[@]}"
 }
 
 install_hook() {
@@ -183,14 +67,7 @@ handle_installation() {
     # Check existing hook
     local existing_hook=$(check_existing_hook "$hook_path")
     
-    if [ "$existing_hook" = "gitguard" ]; then
-        echo -e "${YELLOW}⚠️  GitGuard is already installed for this $install_type installation${NC}"
-        read -p "Do you want to reinstall? (y/N) " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            return
-        fi
-    elif [ "$existing_hook" = "other" ]; then
+    if [ "$existing_hook" = "other" ]; then
         echo -e "${RED}⚠️  Another prepare-commit-msg hook exists at: $hook_path${NC}"
         read -p "Do you want to overwrite it? (y/N) " -n 1 -r
         echo
@@ -200,47 +77,98 @@ handle_installation() {
         fi
     fi
 
-    # Install the hook
+    # Install the hook without asking for confirmation if it's a reinstall
     install_hook "$target_dir"
     echo -e "${GREEN}✅ GitGuard installed successfully for $install_type use!${NC}"
 }
 
-# Main installation logic
 main() {
-    # Development installation flow
-    echo -e "${BLUE}Welcome to GitGuard Development Installation!${NC}"
+    echo -e "${BLUE}Welcome to GitGuard Installation!${NC}"
     
-    # Check if script exists
     if [ ! -f "$SCRIPT_DIR/gitguard-prepare.py" ]; then
         echo -e "${RED}❌ Error: Could not find gitguard-prepare.py in $SCRIPT_DIR${NC}"
         exit 1
     fi
 
-    # Rest of your existing installation logic...
+    local status=($(check_installation_status))
+    local project_status=$(echo "${status[0]}" | cut -d':' -f2)
+    local global_status=$(echo "${status[1]}" | cut -d':' -f2)
+    
+    # Show current status
+    echo -e "\n${BLUE}Current Installation Status:${NC}"
     if git rev-parse --git-dir > /dev/null 2>&1; then
-        GIT_PROJECT_DIR="$(git rev-parse --git-dir)"
-        echo -e "📁 Current project: $(git rev-parse --show-toplevel)"
-        
-        read -p "Do you want to install GitGuard for this project? (Y/n) " -n 1 -r
+        echo -e "📁 Project ($(git rev-parse --show-toplevel)): ${project_status:-none}"
+    fi
+    echo -e "🌍 Global: ${global_status:-none}"
+    
+    # Determine installation options
+    if [ "$project_status" = "none" ] && [ "$global_status" = "none" ]; then
+        echo -e "\nWhere would you like to install GitGuard?"
+        echo -e "1) Project only ${GREEN}[default]${NC}"
+        echo -e "2) Global only"
+        echo -e "3) Both project and global"
+        read -p "Select an option (1-3, press Enter for default): " -r
         echo
-        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-            handle_installation "$GIT_PROJECT_DIR" "project"
-        fi
+        
+        # Default to option 1 if Enter is pressed
+        REPLY=${REPLY:-1}
+        
+        case $REPLY in
+            1) handle_installation "$(git rev-parse --git-dir)" "project" ;;
+            2) handle_installation "$GLOBAL_GIT_DIR" "global" ;;
+            3)
+                handle_installation "$(git rev-parse --git-dir)" "project"
+                handle_installation "$GLOBAL_GIT_DIR" "global"
+                ;;
+            *) 
+                echo -e "${YELLOW}Invalid option. Using default: Project only${NC}"
+                handle_installation "$(git rev-parse --git-dir)" "project"
+                ;;
+        esac
     else
-        echo -e "${YELLOW}⚠️  Not in a git repository - skipping project installation${NC}"
+        # Handle existing installations
+        if [ "$project_status" = "gitguard" ] || [ "$global_status" = "gitguard" ]; then
+            echo -e "\n${YELLOW}GitGuard is already installed. What would you like to do?${NC}"
+            echo -e "1) Reinstall existing hooks ${GREEN}[default]${NC}"
+            echo -e "2) Cancel"
+            read -p "Select an option (1-2, press Enter to reinstall): " -r
+            echo
+            
+            # Default to option 1 (reinstall) if Enter is pressed
+            REPLY=${REPLY:-1}
+            
+            case $REPLY in
+                2) echo -e "${YELLOW}Installation cancelled.${NC}" ;;
+                *) 
+                    # Directly reinstall without additional confirmation
+                    [ "$project_status" = "gitguard" ] && handle_installation "$(git rev-parse --git-dir)" "project"
+                    [ "$global_status" = "gitguard" ] && handle_installation "$GLOBAL_GIT_DIR" "global"
+                    ;;
+            esac
+        fi
+    fi
+}
+
+handle_remote_install() {
+    # Create temporary directory
+    local temp_dir=$(mktemp -d)
+    trap 'rm -rf "$temp_dir"' EXIT
+
+    echo -e "${BLUE}Downloading GitGuard...${NC}"
+    
+    # Download the necessary files
+    curl -s -o "$temp_dir/gitguard-prepare.py" "https://raw.githubusercontent.com/yourusername/gitguard/main/gitguard-prepare.py"
+    
+    if [ ! -f "$temp_dir/gitguard-prepare.py" ]; then
+        echo -e "${RED}❌ Failed to download GitGuard files${NC}"
+        exit 1
     fi
 
-    # Ask about global installation
-    read -p "Do you want to install GitGuard globally? (y/N) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        GLOBAL_GIT_DIR="$(git config --global core.hooksPath)"
-        if [ -z "$GLOBAL_GIT_DIR" ]; then
-            GLOBAL_GIT_DIR="$HOME/.git/hooks"
-            git config --global core.hooksPath "$GLOBAL_GIT_DIR"
-        fi
-        handle_installation "$GLOBAL_GIT_DIR" "global"
-    fi
+    # Set script directory to temp directory for installation
+    SCRIPT_DIR="$temp_dir"
+    
+    # Run the main installation
+    main
 }
 
 # Check how the script was invoked

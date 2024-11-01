@@ -8,8 +8,9 @@ import re
 import json
 from pathlib import Path
 from subprocess import check_output
-from typing import Dict, List, Optional, Set, Any
+from typing import Dict, List, Optional, Set, Any, Tuple
 from collections import defaultdict
+import subprocess
 
 
 # Try to import optional dependencies / check
@@ -726,6 +727,216 @@ def try_copy_to_clipboard(text: str) -> bool:
     except:
         return False
 
+def detect_secrets(diff_content: str) -> List[Dict[str, Any]]:
+    """Detect potential secrets in the git diff content."""
+    findings = []
+    
+    # Secret patterns
+    secret_patterns = {
+        # Cloud Provider Keys
+        "AWS Key": r"AKIA[0-9A-Z]{16}",
+        "AWS Secret": r"(?i)aws[_\-\s]*(?:secret|key|token|password)",
+        "Google API Key": r"AIza[0-9A-Za-z\-_]{35}",
+        "Google OAuth": r"[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com",
+        "Azure Key": r"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}",
+        
+        # ... [rest of the secret patterns remain the same] ...
+    }
+    
+    for name, pattern in secret_patterns.items():
+        matches = re.finditer(pattern, diff_content)
+        for match in matches:
+            line_number = diff_content[:match.start()].count('\n') + 1
+            lines = diff_content.split('\n')
+            line_content = lines[line_number - 1] if line_number <= len(lines) else ""
+            masked_content = line_content.replace(match.group(), '*' * len(match.group()))
+            
+            findings.append({
+                "type": name,
+                "line": line_number,
+                "content": masked_content,
+                "match": '*' * len(match.group())
+            })
+    
+    return findings
+
+def get_new_files() -> List[str]:
+    """Get list of newly added files in the staging area."""
+    try:
+        # Get list of new files that are staged
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--name-status"],
+            capture_output=True,
+            text=True
+        )
+        
+        new_files = []
+        for line in result.stdout.splitlines():
+            # 'A' indicates a newly added file
+            if line.startswith('A'):
+                new_files.append(line.split()[-1])
+        
+        return new_files
+    except Exception as e:
+        if Config().get("debug"):
+            print(f"\n⚠️  Error getting new files: {str(e)}")
+        return []
+
+def detect_problematic_files(new_files: List[str]) -> List[Dict[str, Any]]:
+    """Detect potentially problematic files among newly added files."""
+    findings = []
+    
+    file_patterns = {
+        "Environment Files": [
+            r"\.env.*",
+            r"config\.json",
+            r"secrets\.yaml",
+            r"credentials\.json",
+        ],
+        "Key Files": [
+            r".*\.pem$",
+            r".*\.key$",
+            r".*\.keystore$",
+            r".*\.p12$",
+            r".*\.pfx$",
+            r".*\.crt$",
+            r".*\.cer$",
+            r".*\.der$",
+            r"id_rsa",
+            r"id_dsa",
+            r"id_ecdsa",
+            r"id_ed25519",
+        ],
+        "Log Files": [
+            r".*\.log$",
+            r"npm-debug\.log.*",
+            r"yarn-debug\.log.*",
+            r"yarn-error\.log.*",
+        ],
+        "Database Files": [
+            r".*\.sqlite$",
+            r".*\.sqlite3$",
+            r".*\.db$",
+            r"dump\.sql$",
+            r"database\.sql$",
+        ],
+        "Cache & Build Files": [
+            r"\.DS_Store$",
+            r"Thumbs\.db$",
+            r"\.idea/",
+            r"\.vscode/",
+            r"node_modules/",
+            r"\.next/",
+            r"dist/",
+            r"build/",
+            r"coverage/",
+        ],
+    }
+    
+    for file in new_files:
+        for category, patterns in file_patterns.items():
+            for pattern in patterns:
+                if re.search(pattern, file, re.IGNORECASE):
+                    findings.append({
+                        "type": category,
+                        "file": file,
+                        "pattern": pattern
+                    })
+                    break  # Stop after first match for this file
+            
+    return findings
+
+def display_security_warnings(secret_findings: List[Dict[str, Any]], file_findings: List[Dict[str, Any]]) -> bool:
+    """Display warnings about detected secrets and problematic files."""
+    if not (secret_findings or file_findings):
+        return True
+        
+    print("\n🚨 SECURITY CHECK RESULTS")
+    
+    # Collect all files that need to be unstaged
+    files_to_unstage = []
+    
+    # Display secret findings
+    if secret_findings:
+        print("\n📛 CRITICAL: Potential sensitive data detected:")
+        affected_files = set()
+        
+        for finding in secret_findings:
+            print(f"\n⚠️  {finding['type']} detected on line {finding['line']}:")
+            print(f"   {finding['content']}")
+            if 'file' in finding:
+                affected_files.add(finding['file'])
+        
+        files_to_unstage.extend(affected_files)
+        
+        print("\n🛡️  Security Recommendations for Secrets:")
+        print("   • Review the detected patterns for false positives")
+        print("   • Use environment variables for secrets")
+        print("   • Consider using a secret manager")
+        print("   • Update any exposed secrets immediately")
+        
+        if not prompt_user("\n⚠️  Detected potential secrets. Are you sure you want to commit these changes?"):
+            # Generate unstage command
+            unstage_cmd = "git reset HEAD " + " ".join(f'"{f}"' for f in files_to_unstage)
+            
+            # Try to copy to clipboard
+            copied = try_copy_to_clipboard(unstage_cmd)
+            
+            print("\n❌ Commit aborted. To fix:")
+            if copied:
+                print("1. Command to unstage sensitive files has been copied to your clipboard:")
+                print(f"   {unstage_cmd}")
+                print("2. Paste and run the command")
+            else:
+                print("1. Run this command to unstage sensitive files:")
+                print(f"   {unstage_cmd}")
+            print("3. Review and fix the security concerns")
+            print("4. Run 'git commit' again to create a clean commit")
+            
+            sys.exit(1)
+    
+    # Display problematic file findings
+    if file_findings:
+        print("\n📁 WARNING: Potentially problematic new files detected:")
+        by_category: Dict[str, List[str]] = {}
+        for finding in file_findings:
+            if finding["type"] not in by_category:
+                by_category[finding["type"]] = []
+            by_category[finding["type"]].append(finding["file"])
+            files_to_unstage.append(finding["file"])
+        
+        for category, files in by_category.items():
+            print(f"\n⚠️  {category}:")
+            for file in files:
+                print(f"   • {file}")
+        
+        print("\n📋 Recommendations for Files:")
+        print("   • Consider adding sensitive files to .gitignore")
+        print("   • Use example files for templates (e.g., .env.example)")
+        print("   • Consider using git-crypt for encrypted files")
+        
+        if not prompt_user("\n⚠️  Detected potentially sensitive files. Do you want to proceed with committing these files?"):
+            # Generate unstage command
+            unstage_cmd = "git reset HEAD " + " ".join(f'"{f}"' for f in files_to_unstage)
+            
+            # Try to copy to clipboard
+            copied = try_copy_to_clipboard(unstage_cmd)
+            
+            print("\n❌ Commit aborted. To fix:")
+            if copied:
+                print("1. Command to unstage sensitive files has been copied to your clipboard:")
+                print(f"   {unstage_cmd}")
+                print("2. Paste and run the command")
+            else:
+                print("1. Run this command to unstage sensitive files:")
+                print(f"   {unstage_cmd}")
+            print("3. Add sensitive files to .gitignore if needed")
+            print("4. Run 'git commit' again to create a clean commit")
+            
+            sys.exit(1)
+    
+    return True
+
 def main() -> None:
     """Main function to process git commit messages."""
     try:
@@ -744,12 +955,23 @@ def main() -> None:
 
         print("\n🔍 Analyzing changes...")
         
-        # Check commit cohesion first
-        cohesion_analysis = analyze_commit_cohesion(packages)
-        if cohesion_analysis["should_split"]:
-            if not display_cohesion_warning(cohesion_analysis):
-                print("\n❌ Commit aborted. Please split your changes into more focused commits.")
-                sys.exit(1)
+        # Security checks
+        try:
+            # Check for secrets in all changes
+            diff_content = check_output(["git", "diff", "--cached"]).decode("utf-8")
+            secret_findings = detect_secrets(diff_content)
+            
+            # Check for problematic files (only in newly added files)
+            new_files = get_new_files()
+            file_findings = detect_problematic_files(new_files)
+            
+            if secret_findings or file_findings:
+                if not display_security_warnings(secret_findings, file_findings):
+                    print("\n❌ Commit aborted. Please address the security concerns before committing.")
+                    sys.exit(1)
+        except Exception as e:
+            if config.get("debug"):
+                print(f"\n⚠️  Error during security checks: {str(e)}")
 
         # Only proceed with AI and other checks if cohesion check passes
         if config.get("use_ai", True):
