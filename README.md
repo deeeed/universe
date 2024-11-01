@@ -2,6 +2,14 @@
 
 Welcome to `@siteed/universe`, a comprehensive monorepo containing a design system and various packages for mobile and web development. This project aims to provide reusable components and utilities to streamline the development process for mobile and web applications.
 
+## Why This Exists
+1. **Accountability**: Public development forces better documentation and structure
+2. **Knowledge Sharing**: Help others learn from real-world implementations
+3. **Community**: Build a community of developers who share similar development philosophies
+4. **Experimentation**: A platform to try new ideas and get feedback
+
+[Read more about the philosophy behind this project](./PHILOSOPHY.md)
+
 ## Features
 
 - **[Design System](./packages/design-system/README.md):** A cohesive set of design elements and components to ensure a consistent look and feel across your applications.
