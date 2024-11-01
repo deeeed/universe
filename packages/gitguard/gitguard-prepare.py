@@ -993,9 +993,58 @@ def display_security_warnings(secret_findings: List[Dict[str, Any]], file_findin
     
     return True
 
+def is_temporary_commit() -> bool:
+    """Detect if this is a temporary/automated commit."""
+    try:
+        # Get the commit message
+        commit_msg_file = sys.argv[1]
+        with open(commit_msg_file, "r", encoding="utf-8") as f:
+            msg = f.read().strip()
+
+        # Common patterns for temporary/automated commits
+        temp_patterns = [
+            r'^\s*lint-staged\s+pre-commit\s+[a-f0-9]+',  # lint-staged temp commits
+            r'^\s*pre-commit\s+[a-f0-9]+',                # husky/pre-commit temp commits
+            r'^\s*\[automated\]',                         # generic automated commits
+            r'^\s*WIP\s+on\s+',                          # git stash temp commits
+            r'^\s*index\s+on\s+',                        # git stash temp commits
+        ]
+        
+        # Check message against patterns
+        if any(re.match(pattern, msg, re.IGNORECASE) for pattern in temp_patterns):
+            debug_log(f"Detected temporary commit: {msg}", "Skip Check")
+            return True
+
+        # Check for common environment indicators
+        env_indicators = [
+            'HUSKY_GIT_PARAMS',
+            'LINT_STAGED_COMMIT',
+            'PRE_COMMIT_HOOK',
+            'AUTOMATED_COMMIT'
+        ]
+        if any(os.environ.get(env) for env in env_indicators):
+            debug_log("Detected automated commit environment", "Skip Check")
+            return True
+
+        # Check git environment
+        git_env = check_output(['git', 'var', '-l'], text=True).lower()
+        if 'gc.auto' in git_env or 'rebase.interactive' in git_env:
+            debug_log("Detected git automated operation", "Skip Check")
+            return True
+
+        return False
+    except Exception as e:
+        if Config().get("debug"):
+            print(f"\n⚠️  Error checking temporary commit: {str(e)}")
+        return False
+
 def main() -> None:
     """Main function to process git commit messages."""
     try:
+        # Skip for temporary/automated commits
+        if is_temporary_commit():
+            sys.exit(0)
+
         config = Config()
         
         commit_msg_file = sys.argv[1]

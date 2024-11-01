@@ -222,3 +222,113 @@ GitGuard supports Azure OpenAI with fallback model capability. If the primary mo
 
 #### Ollama
 For local AI processing, GitGuard supports Ollama. Make sure Ollama is running.
+
+## Troubleshooting
+
+### Husky Integration
+
+If you're using Husky and it's not picking up GitGuard, you'll need to manually call the hooks. Here's how:
+
+#### Option 1: Call Global Hooks
+Add this to your Husky hooks to call global GitGuard:
+
+```shell:.husky/prepare-commit-msg
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Call global GitGuard hook if it exists
+if [ -x "$HOME/.config/git/hooks/prepare-commit-msg" ]; then
+  "$HOME/.config/git/hooks/prepare-commit-msg" "$@"
+fi
+```
+
+#### Option 2: Call Project-Specific Hooks
+If you have GitGuard installed in your project's .git/hooks:
+
+```shell:.husky/prepare-commit-msg
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Call project's GitGuard hook if it exists
+if [ -x "$(git rev-parse --git-dir)/hooks/prepare-commit-msg" ]; then
+  "$(git rev-parse --git-dir)/hooks/prepare-commit-msg" "$@"
+fi
+```
+
+#### Option 3: Call Both Global and Project Hooks
+To ensure both global and project-specific hooks run:
+
+```shell:.husky/prepare-commit-msg
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Call global hook if it exists
+if [ -x "$HOME/.config/git/hooks/prepare-commit-msg" ]; then
+  "$HOME/.config/git/hooks/prepare-commit-msg" "$@"
+fi
+
+# Call project hook if it exists
+if [ -x "$(git rev-parse --git-dir)/hooks/prepare-commit-msg" ]; then
+  "$(git rev-parse --git-dir)/hooks/prepare-commit-msg" "$@"
+fi
+```
+
+### Common Issues
+
+1. **Hook Not Running**
+   - Check if Husky is managing your git hooks: `git config core.hooksPath`
+   - If it shows `.husky`, you'll need to add the above code to your Husky hooks
+
+2. **Multiple Hooks Conflict**
+   - GitGuard is designed to work alongside other hooks
+   - Ensure hooks are called in the correct order (usually lint-staged → GitGuard)
+   - Use the environment detection to skip temporary commits
+
+3. **Custom Git Hooks Path**
+   If your project uses a custom git hooks path:
+   ```bash
+   # Check current hooks path
+   git config core.hooksPath
+   
+   # Add GitGuard to your custom hooks directory
+   GITGUARD_HOOKS_PATH="/path/to/hooks" ./install.sh
+   ```
+
+4. **Debug Mode**
+   Enable debug mode to see what's happening:
+   ```bash
+   GITGUARD_DEBUG=1 git commit -m "test"
+   ```
+
+### Manual Installation with Husky
+
+If the automatic installation doesn't work with your Husky setup:
+
+1. Install GitGuard globally:
+   ```bash
+   curl -sSL https://raw.githubusercontent.com/deeeed/universe/main/packages/gitguard/install.sh | bash -c "CURL_INSTALL=1 bash"
+   ```
+
+2. Add the hook call to your Husky configuration:
+   ```bash
+   cd .husky
+   echo '[ -x "$HOME/.config/git/hooks/prepare-commit-msg" ] && "$HOME/.config/git/hooks/prepare-commit-msg" "$@"' >> prepare-commit-msg
+   chmod +x prepare-commit-msg
+   ```
+
+### Testing Your Setup
+
+Test if the hooks are properly configured:
+```bash
+# Create a test commit
+echo "test" > test.txt
+git add test.txt
+git commit -m "test"
+
+# You should see GitGuard's output
+```
+
+If you need further assistance, please:
+1. Enable debug mode: `GITGUARD_DEBUG=1`
+2. Check your git hooks configuration: `git config --list | grep hook`
+3. Verify hook permissions: `ls -la .husky/ && ls -la "$(git rev-parse --git-dir)/hooks/"`
