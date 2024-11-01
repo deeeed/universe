@@ -260,32 +260,14 @@ Git diff:
 {diff}
 ```
 
-Please provide a commit message that:"""
-
-    if complexity["needs_structure"]:
-        prompt += """
-1. Follows the conventional commit format: type(scope): description
-2. Includes a clear, detailed description paragraph
-3. Lists affected packages with key changes
-4. Groups related changes together
-5. Highlights significant changes first
-6. Keep it concise but informative"""
-    else:
-        prompt += """
-1. Follows the conventional commit format: type(scope): description
-2. Is concise and focused
-3. Clearly conveys the main change"""
-
-    prompt += f"""
-
-Response Format:
+Please provide 3 conventional commit suggestions in this JSON format:
 {{
     "suggestions": [
         {{
-            "message": "complete commit message with all sections",
-            "explanation": "why this format and focus was chosen",
-            "type": "commit type used",
-            "scope": "scope used",
+            "message": "complete commit message",
+            "explanation": "reasoning",
+            "type": "commit type",
+            "scope": "scope",
             "description": "title description"
         }}
     ]
@@ -380,12 +362,15 @@ def get_ai_suggestion(prompt: str, original_message: str) -> Optional[List[Dict[
                 response = client.chat.completions.create(
                     model=config.get("azure_deployment"),
                     messages=[
-                        {"role": "system", "content": "You are a helpful git commit message assistant. Always provide 3 distinct suggestions."},
+                        {
+                            "role": "system", 
+                            "content": "You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format."
+                        },
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0.7,
                     max_tokens=1500,
-                    n=1,  # We'll get 3 suggestions in the JSON response
+                    n=1,
                     response_format={"type": "json_object"},
                 )
 
