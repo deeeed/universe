@@ -26,7 +26,7 @@ class Config:
         "ai_provider": "azure",  # Can be 'azure' or 'ollama'
         "azure_endpoint": "https://your-endpoint.openai.azure.com/",
         "azure_deployment": "gpt-4",
-        "azure_api_version": "2024-02-15-preview",
+        "azure_api_version": "2024-05-13",
         "ollama_host": "http://localhost:11434",
         "ollama_model": "codellama",
         "debug": False,
