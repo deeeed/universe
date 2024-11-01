@@ -146,7 +146,7 @@ main() {
     # Show current status
     echo -e "\n${BLUE}Current Installation Status:${NC}"
     if git rev-parse --git-dir > /dev/null 2>&1; then
-        echo -e "📁 Project ($(git rev-parse --show-toplevel)): ${project_status:-none}"
+        echo -e "��� Project ($(git rev-parse --show-toplevel)): ${project_status:-none}"
     fi
     echo -e "🌍 Global: ${global_status:-none}"
     
