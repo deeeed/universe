@@ -514,8 +514,31 @@ def get_package_json_name(package_path: Path) -> Optional[str]:
 
 def get_changed_packages() -> List[Dict]:
     """Get all packages with changes in the current commit."""
-    changed_files = check_output(["git", "diff", "--cached", "--name-only"])
-    changed_files = changed_files.decode("utf-8").strip().split("\n")
+    try:
+        # Get git root directory
+        git_root = Path(check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
+        current_dir = Path.cwd()
+        
+        # Get relative path from current directory to git root
+        try:
+            rel_path = current_dir.relative_to(git_root)
+        except ValueError:
+            rel_path = Path("")
+        
+        changed_files = check_output(["git", "diff", "--cached", "--name-only"], text=True)
+        changed_files = [f for f in changed_files.strip().split("\n") if f]
+        
+        if Config().get("debug"):
+            print("\n📦 Git root:", git_root)
+            print("📦 Current dir:", current_dir)
+            print("📦 Relative path:", rel_path)
+            print("\n📦 Staged files detected:")
+            for f in changed_files:
+                print(f"  - {f}")
+    except Exception as e:
+        if Config().get("debug"):
+            print(f"Error getting changed files: {e}")
+        return []
 
     packages = {}
     for file in changed_files:
@@ -600,6 +623,108 @@ def display_suggestions(suggestions: List[Dict[str, str]]) -> Optional[str]:
         print("\n⚠️  Input not available. Defaulting to first suggestion.")
         return suggestions[0]["message"] if suggestions else None
 
+def analyze_commit_cohesion(packages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Analyze if files in the commit are cohesive or should be split."""
+    analysis = {
+        "should_split": False,
+        "reasons": [],
+        "primary_scope": None,
+        "files_to_unstage": []
+    }
+    
+    if len(packages) <= 1:
+        return analysis
+        
+    # Find the primary package (one with most changes)
+    primary_package = max(packages, key=lambda x: len(x["files"]))
+    analysis["primary_scope"] = primary_package["scope"]
+    
+    # Check for files in different scopes
+    for pkg in packages:
+        if pkg["scope"] != primary_package["scope"]:
+            analysis["should_split"] = True
+            analysis["files_to_unstage"].extend(pkg["files"])
+            analysis["reasons"].append(
+                f"Found {len(pkg['files'])} files in '{pkg['scope']}' scope while primary scope is '{primary_package['scope']}'"
+            )
+    
+    return analysis
+
+def display_cohesion_warning(analysis: Dict[str, Any]) -> bool:
+    """Display warning about commit cohesion and get user decision."""
+    try:
+        # Get git root to convert to absolute paths
+        git_root = Path(check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
+        
+        # Convert to absolute paths
+        files_to_unstage = [
+            str(git_root / file)
+            for file in analysis.get("files_to_unstage", [])
+        ]
+    except Exception as e:
+        if Config().get("debug"):
+            print(f"Error converting to absolute paths: {e}")
+        files_to_unstage = analysis.get("files_to_unstage", [])
+
+    print("\n⚠️  Potential non-cohesive commit detected!")
+    print(f"\nPrimary scope: {analysis['primary_scope']}")
+    print("\nReasons:")
+    for reason in analysis["reasons"]:
+        print(f"- {reason}")
+        
+    print("\nFiles that should be in separate commits:")
+    # Show relative paths in the display for readability
+    for file in analysis.get("files_to_unstage", []):
+        print(f"  - {file}")
+            
+    if not prompt_user("\nWould you like to clean up this commit?"):
+        return True
+
+    # Generate unstage command with absolute paths
+    unstage_cmd = "git reset HEAD " + " ".join(f'"{f}"' for f in files_to_unstage)
+    
+    # Try to copy to clipboard
+    copied = try_copy_to_clipboard(unstage_cmd)
+    
+    print("\n❌ Commit aborted. To fix:")
+    if copied:
+        print("1. Command to unstage unrelated files has been copied to your clipboard:")
+        print(f"   {unstage_cmd}")
+        print("2. Paste and run the command")
+    else:
+        print("1. Run this command to unstage unrelated files:")
+        print(f"   {unstage_cmd}")
+    print("3. Run 'git commit' again to create a clean commit")
+    
+    return False
+
+def try_copy_to_clipboard(text: str) -> bool:
+    """Try to copy text to clipboard using various methods."""
+    try:
+        # Try pyperclip first if available
+        try:
+            import pyperclip
+            pyperclip.copy(text)
+            return True
+        except ImportError:
+            pass
+
+        # Try pbcopy on macOS
+        if sys.platform == "darwin":
+            process = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
+            process.communicate(text.encode('utf-8'))
+            return True
+            
+        # Try xclip on Linux
+        elif sys.platform.startswith('linux'):
+            process = subprocess.Popen(['xclip', '-selection', 'clipboard'], stdin=subprocess.PIPE)
+            process.communicate(text.encode('utf-8'))
+            return True
+            
+        return False
+    except:
+        return False
+
 def main() -> None:
     """Main function to process git commit messages."""
     try:
@@ -618,9 +743,15 @@ def main() -> None:
 
         print("\n🔍 Analyzing changes...")
         
-        # Check if AI is enabled in config
+        # Check commit cohesion first
+        cohesion_analysis = analyze_commit_cohesion(packages)
+        if cohesion_analysis["should_split"]:
+            if not display_cohesion_warning(cohesion_analysis):
+                print("\n❌ Commit aborted. Please split your changes into more focused commits.")
+                sys.exit(1)
+
+        # Only proceed with AI and other checks if cohesion check passes
         if config.get("use_ai", True):
-            # Generate prompt and calculate cost before asking user
             prompt = enhance_ai_prompt(packages, original_msg)
             token_count = count_tokens(prompt)
             debug_log(
@@ -628,11 +759,9 @@ def main() -> None:
                 "Token Usage 💰"
             )
             
-            # Now ask user if they want to proceed with AI suggestions
             if prompt_user("\nWould you like AI suggestions?"):
                 print("\n🤖 Getting AI suggestions...")
                 suggestions = get_ai_suggestion(prompt, original_msg)
-
                 if suggestions:
                     chosen_message = display_suggestions(suggestions)
                     if chosen_message:
