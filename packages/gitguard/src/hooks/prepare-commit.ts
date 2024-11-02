@@ -1,6 +1,7 @@
 import execa from "execa";
-import { promises as fs } from "fs";
+import fs from "fs";
 import readline from "readline";
+import { ReadStream, WriteStream } from "tty";
 import { loadConfig } from "../config.js";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
@@ -10,11 +11,13 @@ import { PromptService } from "../services/prompt.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
+import { writeFile } from "fs/promises";
 
 // Add missing interfaces
 interface CommitHookOptions {
   messageFile: string;
   config?: Config;
+  forceTTY?: boolean;
 }
 
 interface HandleSecurityFindingsParams {
@@ -142,17 +145,24 @@ async function handleSecurityFindings(
 // Update promptUser to handle different types of prompts
 async function promptUser(options: PromptOptions): Promise<string | boolean> {
   return new Promise((resolve) => {
-    // Ensure we're using raw mode for TTY
+    let input: NodeJS.ReadStream = process.stdin;
+    let output: NodeJS.WriteStream = process.stdout;
+
+    try {
+      if (!process.stdin.isTTY) {
+        const ttyFd = fs.openSync("/dev/tty", "r+");
+        input = new ReadStream(ttyFd);
+        output = new WriteStream(ttyFd);
+      }
+    } catch (error) {
+      console.warn("Failed to open TTY:", error);
+    }
+
     const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
+      input,
+      output,
       terminal: true,
     });
-
-    // Force TTY mode
-    if (!process.stdin.isTTY) {
-      process.stdin.isTTY = true;
-    }
 
     const suffix =
       options.type === "yesno"
@@ -164,7 +174,7 @@ async function promptUser(options: PromptOptions): Promise<string | boolean> {
     const prompt = `${options.message} ${suffix}`;
 
     // Write prompt directly to ensure it's displayed
-    process.stdout.write(prompt);
+    output.write(prompt);
 
     rl.on("line", (answer) => {
       rl.close();
@@ -273,16 +283,15 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
   const logger = new LoggerService({ debug: true });
   logger.debug("🎣 Starting prepareCommit hook with options:", options);
 
-  // Check if we're in an interactive session
-  const isInteractive = process.stdin.isTTY;
-
   try {
     // Load configuration, but prefer passed config if available
     logger.debug("Loading configuration...");
     const config = options.config || (await loadConfig());
     logger.debug("Configuration loaded:", config);
 
-    // If not interactive, skip prompts
+    // Check if we're in an interactive session or if TTY is forced
+    const isInteractive = process.stdin.isTTY || options.forceTTY;
+
     if (!isInteractive) {
       logger.info("Non-interactive mode detected, skipping prompts");
       return;
@@ -356,7 +365,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       });
 
       if (chosenMessage) {
-        await fs.writeFile(options.messageFile, chosenMessage);
+        await writeFile(options.messageFile, chosenMessage);
         logger.success("✅ Commit message updated!\n");
         return;
       }
@@ -373,7 +382,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     });
 
     if (useFormatted) {
-      await fs.writeFile(options.messageFile, analysis.formattedMessage);
+      await writeFile(options.messageFile, analysis.formattedMessage);
       logger.success("✅ Commit message updated!\n");
     }
   } catch (error) {

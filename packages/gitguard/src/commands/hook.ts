@@ -39,6 +39,8 @@ function getLocalHooksPath(): string {
 function getHookScript(packagePath: string): string {
   return `#!/usr/bin/env node
 const DEBUG = process.env.GITGUARD_DEBUG === 'true';
+const path = require('path');
+const { spawn } = require('child_process');
 
 function debug(...args) {
   if (DEBUG) console.log(...args);
@@ -47,9 +49,22 @@ function debug(...args) {
 debug('Hook script starting...');
 debug('Package path:', '${packagePath}');
 
+// Force TTY allocation
+const tty = require('tty');
+if (!process.stdin.isTTY) {
+  // Create a new TTY and connect it to the process
+  const fd = require('fs').openSync('/dev/tty', 'r+');
+  process.stdin = new tty.ReadStream(fd);
+  process.stdout = new tty.WriteStream(fd);
+  process.stderr = new tty.WriteStream(fd);
+}
+
 try {
   // Use direct path to the prepare-commit.cjs file
-  const { prepareCommit } = require('${packagePath}/dist/cjs/hooks/prepare-commit.cjs');
+  const prepareCommitPath = path.resolve('${packagePath}', 'dist/cjs/hooks/prepare-commit.cjs');
+  debug('Loading module from:', prepareCommitPath);
+  
+  const { prepareCommit } = require(prepareCommitPath);
   debug('Successfully loaded prepareCommit');
 
   // Get the commit message file from git
@@ -62,7 +77,10 @@ try {
   debug('Message file:', messageFile);
 
   // Run the hook
-  prepareCommit({ messageFile })
+  prepareCommit({ 
+    messageFile,
+    forceTTY: true // Add this flag to indicate we want to force TTY mode
+  })
     .catch((error) => {
       console.error('Hook failed:', error);
       process.exit(1);
@@ -70,7 +88,8 @@ try {
 } catch (error) {
   console.error('Failed to load or run hook:', error);
   console.error('Error details:', error.message);
-  console.error('Module path attempted:', '${packagePath}/dist/cjs/hooks/prepare-commit.cjs');
+  console.error('Current directory:', process.cwd());
+  console.error('Module path attempted:', path.resolve('${packagePath}', 'dist/cjs/hooks/prepare-commit.cjs'));
   process.exit(1);
 }
 `;
