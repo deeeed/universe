@@ -3,6 +3,26 @@
   "configurations": [
     {
       "type": "node",
+      "request": "launch",
+      "name": "Debug GitGuard Tests",
+      "cwd": "${workspaceFolder}/packages/gitguard",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/packages/gitguard/scripts/test-commit-hooks.ts",
+      "runtimeArgs": [
+        "--loader",
+        "ts-node/esm",
+        "--experimental-specifier-resolution=node"
+      ],
+      "outFiles": ["${workspaceFolder}/packages/gitguard/dist/**/*.js"],
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development",
+        "TS_NODE_PROJECT": "${workspaceFolder}/packages/gitguard/tsconfig.json"
+      }
+    },
+    {
+      "type": "node",
       "request": "attach",
       "name": "Attach to Publisher",
       "skipFiles": ["<node_internals>/**"],

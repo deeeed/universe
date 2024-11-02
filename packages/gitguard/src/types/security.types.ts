@@ -38,13 +38,8 @@ export interface SecurityCheckResult {
 // Mapping your Python patterns to TypeScript
 export const SECRET_PATTERNS: SecurityPattern[] = [
   {
-    name: "AWS Key",
+    name: "AWS Access Key",
     pattern: /AKIA[0-9A-Z]{16}/,
-    severity: "high",
-  },
-  {
-    name: "AWS Secret",
-    pattern: /aws[_\-\s]*(?:secret|key|token|password)/i,
     severity: "high",
   },
   {

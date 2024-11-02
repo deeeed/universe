@@ -6046,6 +6046,7 @@ __metadata:
     jest: "npm:^29.7.0"
     lefthook: "npm:^1.7.2"
     prettier: "npm:^3.2.5"
+    ts-node: "npm:^10.9.2"
     typescript: "npm:^5.4.3"
   languageName: unknown
   linkType: soft

@@ -65,10 +65,8 @@ I need help with:
 2. Migrating the Python functionality (from gitguard-prepare.py)
 3. Setting up the services and their interactions
 
-Here's my Python hook for reference:
-[Paste your Python script here]
+Here's my Python hook for reference `gitguard-prepare.py`
 
-Note: The commit-parser.util.ts is already implemented and working. I also have the logger service ready.
 
 Could you help me:
 1. Review and validate the current structure

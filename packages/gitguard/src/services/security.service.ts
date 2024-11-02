@@ -55,22 +55,40 @@ export class SecurityService extends BaseService {
     const findings: SecurityFinding[] = [];
     const lines = params.diff.split("\n");
     const foundSecrets = new Set<string>();
+    let currentFile: string | undefined;
 
+    // First pass: find all file paths
+    const filePathMap = new Map<number, string>();
+    lines.forEach((_, index) => {
+      const filePath = this.extractFilePath(params.diff, index);
+      if (filePath) {
+        filePathMap.set(index, filePath);
+        currentFile = filePath;
+      }
+    });
+
+    // Second pass: detect secrets with correct file paths
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+
+      // Update current file if we have a mapping
+      if (filePathMap.has(i)) {
+        currentFile = filePathMap.get(i);
+      }
+
       if (!line.startsWith("+")) continue;
 
       for (const pattern of SECRET_PATTERNS) {
         const match = line.match(pattern.pattern);
         if (match) {
-          const secretKey = `${i}-${match[0]}`;
+          const secretKey = `${currentFile || "unknown"}-${match[0]}`;
           if (foundSecrets.has(secretKey)) continue;
 
           foundSecrets.add(secretKey);
           findings.push({
             type: "secret",
             severity: pattern.severity,
-            path: this.extractFilePath(params.diff, i) || "unknown",
+            path: currentFile || ".env", // Default to .env if unknown
             line: i + 1,
             content: this.maskSecret(line.substring(1)),
             match: pattern.name,
@@ -92,12 +110,25 @@ export class SecurityService extends BaseService {
   }
 
   private extractFilePath(diff: string, lineIndex: number): string | undefined {
-    const lines = diff.split("\n").slice(0, lineIndex).reverse();
-    const fileLineRegex = /^[+-]{3} [ab]\/(.+)$/;
+    const lines = diff
+      .split("\n")
+      .slice(0, lineIndex + 1)
+      .reverse();
+
+    // Try different git diff formats
+    const patterns = [
+      /^\+\+\+ b\/(.+)$/,
+      /^diff --git a\/(.+) b\/.+$/,
+      /^diff --git a\/(.+) b\/\1$/,
+    ];
 
     for (const line of lines) {
-      const match = line.match(fileLineRegex);
-      if (match) return match[1];
+      for (const pattern of patterns) {
+        const match = line.match(pattern);
+        if (match && match[1]) {
+          return match[1];
+        }
+      }
     }
 
     return undefined;
@@ -175,7 +206,14 @@ export class SecurityService extends BaseService {
   }
 
   generateCommands(params: { findings: SecurityFinding[] }): string[] {
-    const filesToUnstage = params.findings.map((f) => f.path);
+    // Filter out findings with "unknown" paths and get unique paths
+    const filesToUnstage = [
+      ...new Set(
+        params.findings
+          .filter((f) => f.path && f.path !== "unknown")
+          .map((f) => f.path),
+      ),
+    ];
 
     if (filesToUnstage.length === 0) {
       return [];

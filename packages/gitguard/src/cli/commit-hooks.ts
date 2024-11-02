@@ -254,7 +254,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     const git = new GitService({
       config: {
         ...config.git,
-        cwd: options.config?.git.cwd || process.cwd(), // Use the provided cwd or fallback
+        cwd: options.config?.git.cwd || process.cwd(),
       },
       logger,
     });
@@ -264,21 +264,11 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       ? AIFactory.create({ config, logger })
       : undefined;
 
-    // Initialize CommitService
-    const commitService = new CommitService({
-      config,
-      git,
-      security,
-      prompt,
-      ai,
-      logger,
-    });
-
     // Get staged changes and diff first
     const files = await git.getStagedChanges();
     const diff = await git.getStagedDiff();
 
-    // Run security checks before commit analysis
+    // Run security checks ONLY ONCE
     const securityResult = security.analyzeSecurity({ files, diff });
 
     if (
@@ -293,11 +283,22 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       });
     }
 
-    // Run the commit analysis
+    // Initialize CommitService with the security result
+    const commitService = new CommitService({
+      config,
+      git,
+      security,
+      prompt,
+      ai,
+      logger,
+    });
+
+    // Run the commit analysis without re-running security checks
     const analysis = await commitService.analyze({
       messageFile: options.messageFile,
       enableAI: Boolean(config.ai?.enabled),
       enablePrompts: true,
+      securityResult, // Pass the existing security result
     });
 
     // If we have AI suggestions and user wants them

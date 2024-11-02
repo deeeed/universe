@@ -34,6 +34,7 @@
     "dev": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node' ts-node --esm src/cli.ts",
     "link": "yarn link",
     "test:e2e": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node' ts-node --esm ./scripts/test-commit-hooks.ts",
+    "test:e2e:debug": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node --inspect-brk' ts-node --esm ./scripts/test-commit-hooks.ts",
     "postbuild": "chmod +x ./dist/src/cli.js",
     "link-cli": "yarn link && yarn run postbuild",
     "setup": "./setup-cli.sh",

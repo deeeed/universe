@@ -42,6 +42,7 @@ export class CommitService extends BaseService {
     messageFile: string;
     enableAI?: boolean;
     enablePrompts?: boolean;
+    securityResult?: SecurityCheckResult;
   }): Promise<CommitAnalysisResult> {
     try {
       const branch = await this.git.getCurrentBranch();
@@ -61,10 +62,12 @@ export class CommitService extends BaseService {
         return this.createEmptyResult({ branch, baseBranch });
       }
 
-      const securityResult = this.security.analyzeSecurity({
-        files,
-        diff,
-      });
+      const securityResult =
+        params.securityResult ||
+        this.security.analyzeSecurity({
+          files,
+          diff,
+        });
 
       const warnings = this.getWarnings({ securityResult, files });
       const formattedMessage = this.formatCommitMessage({
