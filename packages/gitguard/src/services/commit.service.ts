@@ -115,8 +115,9 @@ export class CommitService extends BaseService {
     files: FileChange[];
   }): AnalysisWarning[] {
     const warnings: AnalysisWarning[] = [];
+    const scopes = this.detectScopes(params.files);
 
-    // Only add size warnings, security warnings are handled separately
+    // Add size warnings
     if (params.files.length > 10) {
       warnings.push({
         type: "general",
@@ -126,7 +127,32 @@ export class CommitService extends BaseService {
       });
     }
 
+    // Add multi-scope warning
+    if (scopes.length > 1) {
+      warnings.push({
+        type: "general",
+        message:
+          "Changes span multiple packages. Consider splitting the commit by package.",
+        severity: "warning",
+      });
+    }
+
     return warnings;
+  }
+
+  private detectScopes(files: FileChange[]): string[] {
+    const scopes = new Set<string>();
+
+    for (const file of files) {
+      if (file.path.startsWith("packages/")) {
+        const parts = file.path.split("/");
+        if (parts.length >= 2) {
+          scopes.add(parts[1]);
+        }
+      }
+    }
+
+    return Array.from(scopes);
   }
 
   private async getSuggestions(params: {
@@ -150,24 +176,54 @@ export class CommitService extends BaseService {
     });
   }
 
-  private async getSplitSuggestion(params: {
+  private getSplitSuggestion(params: {
     files: FileChange[];
     message: string;
-  }): Promise<CommitSplitSuggestion | undefined> {
-    if (!this.ai) return undefined;
+  }): CommitSplitSuggestion | undefined {
+    const scopes = this.detectScopes(params.files);
 
-    const prompt = this.prompt.generateSplitSuggestionPrompt({
-      files: params.files,
-      message: params.message,
-    });
+    // Only suggest split if multiple scopes detected
+    if (scopes.length <= 1) return undefined;
 
-    return this.ai.generateCompletion<CommitSplitSuggestion>({
-      prompt,
-      options: {
-        requireJson: true,
-        temperature: 0.3,
+    // Group files by scope
+    const filesByScope = params.files.reduce(
+      (acc, file) => {
+        const scope = file.path.startsWith("packages/")
+          ? file.path.split("/")[1]
+          : "root";
+
+        if (!acc[scope]) acc[scope] = [];
+        acc[scope].push(file.path);
+        return acc;
       },
-    });
+      {} as Record<string, string[]>,
+    );
+
+    // Create split suggestion
+    const suggestions = Object.entries(filesByScope).map(
+      ([scope, files], index) => ({
+        message: `${this.detectCommitType(files.map((path) => ({ path }) as FileChange))}(${scope}): ${params.message}`,
+        files,
+        order: index + 1,
+        type: this.detectCommitType(
+          files.map((path) => ({ path }) as FileChange),
+        ),
+        scope,
+      }),
+    );
+
+    // Generate git commands for splitting
+    const commands = suggestions.map(
+      (suggestion) =>
+        `git reset HEAD ${suggestion.files.map((f) => `"${f}"`).join(" ")}`,
+    );
+
+    return {
+      reason:
+        "Changes span multiple packages and should be split into separate commits",
+      suggestions,
+      commands,
+    };
   }
 
   private createEmptyResult(params: {
