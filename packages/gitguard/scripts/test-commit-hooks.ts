@@ -4,7 +4,7 @@ import { parseArgs } from "node:util";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 import readline from "readline";
-import { LoggerService } from "../src/services/logger.service";
+import { LoggerService } from "../src/services/logger.service.js";
 import { prepareCommit } from "../src/hooks/prepare-commit.js";
 
 interface TestScenario {

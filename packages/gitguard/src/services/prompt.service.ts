@@ -1,7 +1,7 @@
-import { PRStats } from "../types/analysis.types";
-import { CommitInfo, FileChange } from "../types/git.types";
-import { ServiceOptions } from "../types/service.types";
-import { BaseService } from "./base.service";
+import { PRStats } from "../types/analysis.types.js";
+import { CommitInfo, FileChange } from "../types/git.types.js";
+import { ServiceOptions } from "../types/service.types.js";
+import { BaseService } from "./base.service.js";
 
 interface PRPromptParams {
   commits: CommitInfo[];

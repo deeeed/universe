@@ -1,7 +1,7 @@
-import { OpenAIService } from "../openai.service";
-import { Config } from "../../types/config.types";
-import { AIProvider } from "../../types/ai.types";
-import { Logger } from "../../types/logger.types";
+import { OpenAIService } from "../openai.service.js";
+import { Config } from "../../types/config.types.js";
+import { AIProvider } from "../../types/ai.types.js";
+import { Logger } from "../../types/logger.types.js";
 
 interface AIFactoryOptions {
   config: Config;

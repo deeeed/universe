@@ -1,16 +1,16 @@
-import { loadConfig } from "../config";
-import { CommitService } from "../services/commit.service";
-import { AIFactory } from "../services/factories/ai.factory";
-import { GitService } from "../services/git.service";
-import { LoggerService } from "../services/logger.service";
-import { PRService } from "../services/pr.service";
-import { PromptService } from "../services/prompt.service";
-import { SecurityService } from "../services/security.service";
+import { loadConfig } from "../config.js";
+import { CommitService } from "../services/commit.service.js";
+import { AIFactory } from "../services/factories/ai.factory.js";
+import { GitService } from "../services/git.service.js";
+import { LoggerService } from "../services/logger.service.js";
+import { PRService } from "../services/pr.service.js";
+import { PromptService } from "../services/prompt.service.js";
+import { SecurityService } from "../services/security.service.js";
 import {
   AnalysisWarning,
   CommitAnalysisResult,
   PRAnalysisResult,
-} from "../types/analysis.types";
+} from "../types/analysis.types.js";
 
 interface AnalyzeOptions {
   pr?: string;

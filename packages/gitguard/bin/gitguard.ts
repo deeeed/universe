@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { version } from "../package.json";
-import { analyze } from "../src/commands/analyze";
-import { hook } from "../src/commands/hook";
+import { analyze } from "../src/commands/analyze.js";
+import { hook } from "../src/commands/hook.js";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { readFile } from "fs/promises";
 
 interface GlobalOptions {
   debug?: boolean;
@@ -18,12 +20,22 @@ interface AnalyzeOptions {
   branch?: string;
 }
 
+interface PackageJson {
+  version: string;
+}
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(
+  await readFile(join(__dirname, "../package.json"), "utf8"),
+) as PackageJson;
+
 const program = new Command();
 
 program
   .name("gitguard")
   .description("A smart Git commit message and PR analysis tool")
-  .version(version)
+  .version(packageJson.version)
   .option("-d, --debug", "Enable debug mode")
   .option("-c, --config <path>", "Path to config file");
 

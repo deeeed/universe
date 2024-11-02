@@ -1,8 +1,8 @@
 import { promises as fs } from "fs";
 import { join } from "path";
-import { loadConfig } from "../config";
-import { GitService } from "../services/git.service";
-import { LoggerService } from "../services/logger.service";
+import { loadConfig } from "../config.js";
+import { GitService } from "../services/git.service.js";
+import { LoggerService } from "../services/logger.service.js";
 
 interface HookCommandOptions {
   action: "install" | "uninstall";
@@ -10,7 +10,7 @@ interface HookCommandOptions {
   debug?: boolean;
 }
 
-const HOOK_SCRIPT = `#!/usr/bin/env nodeI
+const HOOK_SCRIPT = `#!/usr/bin/env node
 const { prepareCommit } = require('gitguard/hooks');
 
 // Get the commit message file from git

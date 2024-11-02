@@ -1,9 +1,9 @@
-export * from "./services/commit.service";
-export * from "./services/pr.service";
-export * from "./services/security.service";
-export * from "./services/prompt.service";
-export * from "./services/git.service";
+export * from "./services/commit.service.js";
+export * from "./services/pr.service.js";
+export * from "./services/security.service.js";
+export * from "./services/prompt.service.js";
+export * from "./services/git.service.js";
 
-export * from "./types/analysis.types";
-export * from "./types/security.types";
-export * from "./types/ai.types";
+export * from "./types/analysis.types.js";
+export * from "./types/security.types.js";
+export * from "./types/ai.types.js";

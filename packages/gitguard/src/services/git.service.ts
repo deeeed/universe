@@ -1,10 +1,10 @@
 // packages/gitguard/src/services/git.service.ts
 import execa from "execa";
-import { CommitInfo, FileChange, GitConfig } from "../types/git.types";
-import { ServiceOptions } from "../types/service.types";
-import { CommitParser } from "../utils/commit-parser.util";
-import { FileUtil } from "../utils/file.util";
-import { BaseService } from "./base.service";
+import { CommitInfo, FileChange, GitConfig } from "../types/git.types.js";
+import { ServiceOptions } from "../types/service.types.js";
+import { CommitParser } from "../utils/commit-parser.util.js";
+import { FileUtil } from "../utils/file.util.js";
+import { BaseService } from "./base.service.js";
 import { promises as fs } from "fs";
 
 interface GetDiffParams {

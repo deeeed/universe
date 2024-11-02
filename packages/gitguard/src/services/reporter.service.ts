@@ -3,10 +3,10 @@ import {
   AnalysisWarning,
   CommitAnalysisResult,
   PRAnalysisResult,
-} from "../types/analysis.types";
-import { CommitInfo, FileChange } from "../types/git.types";
-import { ServiceOptions } from "../types/service.types";
-import { BaseService } from "./base.service";
+} from "../types/analysis.types.js";
+import { CommitInfo, FileChange } from "../types/git.types.js";
+import { ServiceOptions } from "../types/service.types.js";
+import { BaseService } from "./base.service.js";
 
 export interface ReportOptions {
   format: "console" | "json" | "markdown";

@@ -1,5 +1,5 @@
 // types/config.types.ts
-import { GitConfig } from "./git.types";
+import { GitConfig } from "./git.types.js";
 
 export interface PRTemplateConfig {
   path?: string;

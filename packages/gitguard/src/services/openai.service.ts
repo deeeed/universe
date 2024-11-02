@@ -1,9 +1,9 @@
 // packages/gitguard/src/services/openai.service.ts
 import { AzureOpenAI, OpenAI } from "openai";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { AIProvider, TokenUsage } from "../types/ai.types";
-import { ServiceOptions } from "../types/service.types";
-import { BaseService } from "./base.service";
+import { AIProvider, TokenUsage } from "../types/ai.types.js";
+import { ServiceOptions } from "../types/service.types.js";
+import { BaseService } from "./base.service.js";
 
 export interface OpenAIConfig {
   type: "azure" | "openai";

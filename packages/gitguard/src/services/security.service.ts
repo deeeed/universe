@@ -1,6 +1,6 @@
-import { Config } from "../types/config.types";
-import { FileChange } from "../types/git.types";
-import { Logger } from "../types/logger.types";
+import { Config } from "../types/config.types.js";
+import { FileChange } from "../types/git.types.js";
+import { Logger } from "../types/logger.types.js";
 import {
   PROBLEMATIC_FILE_PATTERNS,
   ProblematicFilePattern,
@@ -8,8 +8,8 @@ import {
   SecurityCheckResult,
   SecurityFinding,
   SecurityPattern,
-} from "../types/security.types";
-import { BaseService } from "./base.service";
+} from "../types/security.types.js";
+import { BaseService } from "./base.service.js";
 
 export class SecurityService extends BaseService {
   constructor(params: { logger: Logger; config: Config }) {

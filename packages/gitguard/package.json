@@ -10,9 +10,10 @@
     "url": "https://github.com/deeeed/universe",
     "directory": "packages/gitguard"
   },
-  "main": "dist/src/index.js",
-  "module": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "type": "module",
   "bin": "./dist/src/cli/gitguard.js",
   "files": [
     "dist",
@@ -22,7 +23,7 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist",
-    "build": "yarn build:tsc",
+    "build": "rollup -c",
     "build:clean": "yarn clean && yarn build",
     "build:tsc": "tsc --project tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.json --noEmit",
@@ -34,18 +35,22 @@
     "test:e2e": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node' ts-node --esm ./scripts/test-commit-hooks.ts",
     "postbuild": "chmod +x ./dist/src/cli/gitguard.js",
     "link-cli": "yarn link && yarn run postbuild",
-    "gitguard": "ts-node ./bin/gitguard.ts",
+    "gitguard": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./bin/gitguard.ts",
     "setup": "./setup-cli.sh",
     "unsetup": "yarn global unlink"
   },
   "dependencies": {
-    "chalk": "4.1.2",
+    "chalk": "^5.3.0",
     "commander": "^11.1.0",
-    "inquirer": "^8.2.6",
+    "inquirer": "^9.2.15",
     "openai": "^4.70.2"
   },
   "devDependencies": {
     "@jest/types": "^29.6.3",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.6",
     "@siteed/publisher": "workspace:^",
     "@types/jest": "^29.5.14",
     "@types/node": "^20.8.0",
@@ -55,6 +60,7 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.1",
     "rimraf": "^5.0.5",
+    "rollup": "^4.12.0",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.2.2"

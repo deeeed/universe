@@ -1,6 +1,6 @@
-import { BaseAIOptions } from "./ai.types";
-import { CommitInfo, CommitType, FileChange } from "./git.types";
-import { SecurityCheckResult } from "./security.types";
+import { BaseAIOptions } from "./ai.types.js";
+import { CommitInfo, CommitType, FileChange } from "./git.types.js";
+import { SecurityCheckResult } from "./security.types.js";
 
 export interface CommitAnalysisResult {
   branch: string;

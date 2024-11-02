@@ -1,15 +1,15 @@
 import execa from "execa";
 import { promises as fs } from "fs";
 import readline from "readline";
-import { loadConfig } from "../config";
-import { CommitService } from "../services/commit.service";
-import { AIFactory } from "../services/factories/ai.factory";
-import { GitService } from "../services/git.service";
-import { LoggerService } from "../services/logger.service";
-import { PromptService } from "../services/prompt.service";
-import { SecurityService } from "../services/security.service";
-import { Config } from "../types/config.types";
-import { SecurityFinding } from "../types/security.types";
+import { loadConfig } from "../config.js";
+import { CommitService } from "../services/commit.service.js";
+import { AIFactory } from "../services/factories/ai.factory.js";
+import { GitService } from "../services/git.service.js";
+import { LoggerService } from "../services/logger.service.js";
+import { PromptService } from "../services/prompt.service.js";
+import { SecurityService } from "../services/security.service.js";
+import { Config } from "../types/config.types.js";
+import { SecurityFinding } from "../types/security.types.js";
 
 // Add missing interfaces
 interface CommitHookOptions {

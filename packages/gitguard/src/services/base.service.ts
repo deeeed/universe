@@ -1,5 +1,5 @@
-import { Logger } from "../types/logger.types";
-import { ServiceOptions } from "../types/service.types";
+import { Logger } from "../types/logger.types.js";
+import { ServiceOptions } from "../types/service.types.js";
 
 export abstract class BaseService {
   protected readonly logger: Logger;

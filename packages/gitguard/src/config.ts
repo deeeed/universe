@@ -2,7 +2,7 @@ import execa from "execa";
 import { readFile } from "fs/promises";
 import { homedir } from "os";
 import { join } from "path";
-import { Config } from "./types/config.types";
+import { Config } from "./types/config.types.js";
 
 const defaultConfig: Config = {
   git: {

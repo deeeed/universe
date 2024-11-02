@@ -3,7 +3,7 @@ import {
   CommitType,
   FileChange,
   ParsedCommit,
-} from "../types/git.types";
+} from "../types/git.types.js";
 
 export class CommitParser {
   parseCommitLog(params: { log: string }): Omit<CommitInfo, "files">[] {

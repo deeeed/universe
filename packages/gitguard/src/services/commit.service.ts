@@ -1,21 +1,21 @@
 // services/commit.service.ts
 import { promises as fs } from "fs";
-import { AIProvider } from "../types/ai.types";
+import { AIProvider } from "../types/ai.types.js";
 import {
   AnalysisWarning,
   CommitAnalysisResult,
   CommitSplitSuggestion,
   CommitStats,
   CommitSuggestion,
-} from "../types/analysis.types";
-import { Config } from "../types/config.types";
-import { FileChange } from "../types/git.types";
-import { Logger } from "../types/logger.types";
-import { SecurityCheckResult } from "../types/security.types";
-import { BaseService } from "./base.service";
-import { GitService } from "./git.service";
-import { PromptService } from "./prompt.service";
-import { SecurityService } from "./security.service";
+} from "../types/analysis.types.js";
+import { Config } from "../types/config.types.js";
+import { FileChange } from "../types/git.types.js";
+import { Logger } from "../types/logger.types.js";
+import { SecurityCheckResult } from "../types/security.types.js";
+import { BaseService } from "./base.service.js";
+import { GitService } from "./git.service.js";
+import { PromptService } from "./prompt.service.js";
+import { SecurityService } from "./security.service.js";
 
 export class CommitService extends BaseService {
   private readonly git: GitService;

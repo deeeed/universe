@@ -1,6 +1,6 @@
 // services/pr.service.ts
 import * as fs from "fs/promises";
-import { AIProvider } from "../types/ai.types";
+import { AIProvider } from "../types/ai.types.js";
 import {
   AnalysisWarning,
   PRAnalysisOptions,
@@ -8,15 +8,15 @@ import {
   PRDescription,
   PRSplitSuggestion,
   PRStats,
-} from "../types/analysis.types";
-import { Config } from "../types/config.types";
-import { CommitInfo, FileChange } from "../types/git.types";
-import { SecurityFinding } from "../types/security.types";
-import { ServiceOptions } from "../types/service.types";
-import { BaseService } from "./base.service";
-import { GitService } from "./git.service";
-import { PromptService } from "./prompt.service";
-import { SecurityService } from "./security.service";
+} from "../types/analysis.types.js";
+import { Config } from "../types/config.types.js";
+import { CommitInfo, FileChange } from "../types/git.types.js";
+import { SecurityFinding } from "../types/security.types.js";
+import { ServiceOptions } from "../types/service.types.js";
+import { BaseService } from "./base.service.js";
+import { GitService } from "./git.service.js";
+import { PromptService } from "./prompt.service.js";
+import { SecurityService } from "./security.service.js";
 
 export class PRService extends BaseService {
   private readonly git: GitService;

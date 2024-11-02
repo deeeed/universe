@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import chalk from "chalk";
-import { Logger, LogLevel, LoggerOptions } from "../types/logger.types";
+import { Logger, LogLevel, LoggerOptions } from "../types/logger.types.js";
 
 export class LoggerService implements Logger {
   private level: LogLevel;
