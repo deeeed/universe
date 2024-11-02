@@ -1,5 +1,6 @@
 // services/commit.service.ts
 import { promises as fs } from "fs";
+import readline from "readline";
 import { AIProvider } from "../types/ai.types";
 import {
   AnalysisWarning,
@@ -22,6 +23,7 @@ export class CommitService extends BaseService {
   private readonly security: SecurityService;
   private readonly ai?: AIProvider;
   private readonly prompt: PromptService;
+  private readonly rl: readline.Interface;
 
   constructor(params: {
     config: Config;
@@ -36,6 +38,18 @@ export class CommitService extends BaseService {
     this.security = params.security;
     this.prompt = params.prompt;
     this.ai = params.ai;
+    this.rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+  }
+
+  private async promptUser(question: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.rl.question(`${question} (y/N): `, (answer) => {
+        resolve(answer.toLowerCase() === "y");
+      });
+    });
   }
 
   async analyze(params: {
@@ -65,10 +79,30 @@ export class CommitService extends BaseService {
       });
       const warnings = this.getWarnings({ securityResult, files });
 
+      // Format the commit message
+      const formattedMessage = this.formatCommitMessage({
+        message: originalMessage.trim(),
+        files,
+      });
+
+      this.logger.info("\n⚙️ Using automatic formatting...");
+      this.logger.info(`\n✨ Suggested message:\n${formattedMessage}`);
+
+      // Always write the formatted message in test mode (when enablePrompts is false)
+      // In interactive mode, ask for confirmation
+      if (
+        !params.enablePrompts ||
+        (await this.promptUser("\nUse suggested message?"))
+      ) {
+        await fs.writeFile(params.messageFile, formattedMessage);
+        this.logger.info("✅ Commit message updated!\n");
+      }
+
       return {
         branch,
         baseBranch,
         originalMessage: originalMessage.trim(),
+        formattedMessage,
         stats: this.calculateStats(files),
         warnings,
         suggestions: params.enableAI
@@ -77,10 +111,13 @@ export class CommitService extends BaseService {
         splitSuggestion: params.enableAI
           ? await this.getSplitSuggestion({ files, message: originalMessage })
           : undefined,
+        shouldPromptUser: params.enablePrompts,
       };
     } catch (error) {
       this.logger.error("Failed to analyze commit", error);
       throw error;
+    } finally {
+      this.rl.close();
     }
   }
 
@@ -177,6 +214,7 @@ export class CommitService extends BaseService {
       branch: params.branch,
       baseBranch: params.baseBranch,
       originalMessage: "",
+      formattedMessage: "",
       stats: {
         filesChanged: 0,
         additions: 0,
@@ -184,5 +222,78 @@ export class CommitService extends BaseService {
       },
       warnings: [],
     };
+  }
+
+  private formatCommitMessage(params: {
+    message: string;
+    files: FileChange[];
+  }): string {
+    const { message, files } = params;
+
+    if (this.isConventionalCommit(message)) {
+      return message;
+    }
+
+    const type = this.detectCommitType(files);
+    const scope = this.detectScope(files);
+    const description = message.trim();
+
+    return scope
+      ? `${type}(${scope}): ${description}`
+      : `${type}: ${description}`;
+  }
+
+  private isConventionalCommit(message: string): boolean {
+    const conventionalPattern =
+      /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?: .+/;
+    return conventionalPattern.test(message);
+  }
+
+  private detectCommitType(files: FileChange[]): string {
+    const hasFeature = files.some(
+      (f) =>
+        f.path.includes("/src/") ||
+        f.path.includes("/components/") ||
+        f.path.includes("/features/"),
+    );
+    const hasTests = files.some(
+      (f) => f.path.includes("/test/") || f.path.includes(".test."),
+    );
+    const hasDocs = files.some(
+      (f) => f.path.includes("/docs/") || f.path.endsWith(".md"),
+    );
+    const hasConfig = files.some(
+      (f) =>
+        f.path.includes(".config.") ||
+        f.path.includes(".gitignore") ||
+        f.path.includes(".env"),
+    );
+
+    if (hasFeature) return "feat";
+    if (hasTests) return "test";
+    if (hasDocs) return "docs";
+    if (hasConfig) return "chore";
+    return "feat"; // Default to feat
+  }
+
+  private detectScope(files: FileChange[]): string | undefined {
+    const isMonorepo = files.some((f) => f.path.startsWith("packages/"));
+
+    if (!isMonorepo) {
+      return undefined;
+    }
+
+    const packages = new Set<string>();
+    for (const file of files) {
+      if (file.path.startsWith("packages/")) {
+        const parts = file.path.split("/");
+        if (parts.length >= 2) {
+          packages.add(parts[1]);
+        }
+      }
+    }
+
+    const packageNames = Array.from(packages);
+    return packageNames.length === 1 ? packageNames[0] : packageNames.join(",");
   }
 }

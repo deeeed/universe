@@ -5,10 +5,12 @@ export interface CommitAnalysisResult {
   branch: string;
   baseBranch: string;
   originalMessage: string;
+  formattedMessage: string;
   stats: CommitStats;
   warnings: AnalysisWarning[];
   suggestions?: CommitSuggestion[];
   splitSuggestion?: CommitSplitSuggestion;
+  shouldPromptUser?: boolean;
 }
 
 export interface CommitStats {
@@ -21,9 +23,9 @@ export interface CommitSplitSuggestion {
   reason: string;
   suggestions: Array<{
     message: string;
-    files: FileChange[];
+    files: string[];
     order: number;
-    type: CommitType;
+    type: string;
     scope?: string;
   }>;
   commands: string[];
@@ -62,8 +64,8 @@ export interface PRStats {
 export interface CommitSuggestion {
   message: string;
   explanation: string;
-  type: CommitType;
-  scope: string | null;
+  type: string;
+  scope?: string;
   description: string;
 }
 
@@ -109,21 +111,7 @@ export interface PRAnalysisOptions {
 
 // Shared only where absolutely necessary
 export interface AnalysisWarning {
-  type: "commit" | "file" | "general";
+  type: "file" | "general";
   message: string;
-  severity: "info" | "warning" | "error";
-}
-
-// Move these to ai.types.ts since they're AI-specific
-export interface CommitSuggestion {
-  message: string;
-  explanation: string;
-  type: CommitType;
-  scope: string | null;
-  description: string;
-}
-
-export interface PRDescription {
-  title: string;
-  description: string;
+  severity: "error" | "warning";
 }
