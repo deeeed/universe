@@ -1,11 +1,11 @@
-import { FileChange } from "../types/commit.types";
 import { Config } from "../types/config.types";
+import { FileChange } from "../types/git.types";
 import { Logger } from "../types/logger.types";
 import {
   PROBLEMATIC_FILE_PATTERNS,
   ProblematicFilePattern,
   SECRET_PATTERNS,
-  SecurityAnalysis,
+  SecurityCheckResult,
   SecurityFinding,
   SecurityPattern,
 } from "../types/security.types";
@@ -19,42 +19,32 @@ export class SecurityService extends BaseService {
   analyzeSecurity(params: {
     files: FileChange[];
     diff?: string;
-  }): SecurityAnalysis {
-    const findings = this.detectAll({
-      files: params.files,
-      diff: params.diff,
-    });
-
-    const commands = this.generateCommands({
-      findings,
-    });
-
-    return {
-      findings,
-      commands,
-      shouldBlock: findings.some((f) => f.severity === "high"),
-    };
-  }
-
-  private detectAll(params: {
-    files: FileChange[];
-    diff?: string;
-  }): SecurityFinding[] {
-    const findings: SecurityFinding[] = [];
-
-    if (params.diff) {
-      const secretFindings = this.detectSecrets({
-        diff: params.diff,
-      });
-      findings.push(...secretFindings);
-    }
+  }): SecurityCheckResult {
+    const secretFindings = params.diff
+      ? this.detectSecrets({ diff: params.diff })
+      : [];
 
     const fileFindings = this.detectProblematicFiles({
       files: params.files,
     });
-    findings.push(...fileFindings);
 
-    return findings;
+    const filesToUnstage = [...secretFindings, ...fileFindings].map(
+      (f) => f.path,
+    );
+
+    const commands = this.generateCommands({
+      findings: [...secretFindings, ...fileFindings],
+    });
+
+    return {
+      secretFindings,
+      fileFindings,
+      filesToUnstage,
+      commands,
+      shouldBlock: [...secretFindings, ...fileFindings].some(
+        (f) => f.severity === "high",
+      ),
+    };
   }
 
   private detectSecrets(params: {

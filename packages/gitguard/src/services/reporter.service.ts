@@ -1,12 +1,12 @@
 // packages/gitguard/src/services/reporter.service.ts
-import { BaseService } from "./base.service";
-import { ServiceOptions } from "../types/service.types";
 import {
+  AnalysisWarning,
   CommitAnalysisResult,
   PRAnalysisResult,
-  AnalysisWarning,
 } from "../types/analysis.types";
-import { CommitInfo, FileChange } from "../types/commit.types";
+import { CommitInfo, FileChange } from "../types/git.types";
+import { ServiceOptions } from "../types/service.types";
+import { BaseService } from "./base.service";
 
 export interface ReportOptions {
   format: "console" | "json" | "markdown";

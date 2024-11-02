@@ -1,19 +1,27 @@
 // packages/gitguard/src/services/git.service.ts
-import { BaseService } from "./base.service";
-import { GitConfig, GitCommandParams } from "../types/git.types";
-import { CommitInfo, FileChange } from "../types/commit.types";
-import { CommitParser } from "../utils/commit-parser.util";
+import execa from "execa";
+import {
+  CommitInfo,
+  FileChange,
+  GitCommandParams,
+  GitConfig,
+} from "../types/git.types";
 import { ServiceOptions } from "../types/service.types";
+import { CommitParser } from "../utils/commit-parser.util";
+import { BaseService } from "./base.service";
 
 export class GitService extends BaseService {
   private parser: CommitParser;
   private readonly gitConfig: GitConfig;
+  private readonly cwd: string;
 
   constructor(params: ServiceOptions & { config: GitConfig }) {
     super(params);
     this.gitConfig = params.config;
     this.parser = new CommitParser();
+    this.cwd = this.gitConfig.cwd || process.cwd();
     this.logger.debug("GitService initialized with config:", this.gitConfig);
+    this.logger.debug("Working directory:", this.cwd);
   }
 
   public get config(): GitConfig {
@@ -62,16 +70,44 @@ export class GitService extends BaseService {
   async getStagedChanges(): Promise<FileChange[]> {
     try {
       this.logger.debug("Getting staged changes");
-      const output = await this.execGit({
-        command: "diff",
-        args: ["--cached", "--numstat"],
+      const { stdout } = await execa("git", ["diff", "--cached", "--numstat"], {
+        cwd: this.cwd,
       });
 
-      return this.parser.parseFileChanges({ numstat: output });
+      if (!stdout.trim()) {
+        this.logger.debug("No staged changes found");
+        return [];
+      }
+
+      const files = stdout
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => {
+          const [additions = "0", deletions = "0", path = ""] =
+            line.split(/\s+/);
+          return {
+            path,
+            additions: parseInt(additions, 10) || 0,
+            deletions: parseInt(deletions, 10) || 0,
+            isTest: this.isTestFile(path),
+            isConfig: this.isConfigFile(path),
+          };
+        });
+
+      this.logger.debug("Staged files:", files);
+      return files;
     } catch (error) {
       this.logger.error("Failed to get staged changes:", error);
-      throw error;
+      return [];
     }
+  }
+
+  private isTestFile(path: string): boolean {
+    return /\.(test|spec)\.(ts|tsx|js|jsx)$/.test(path);
+  }
+
+  private isConfigFile(path: string): boolean {
+    return /\.(json|ya?ml|env|config)\.(ts|js)?$/.test(path);
   }
 
   async getStagedDiff(): Promise<string> {
@@ -169,10 +205,18 @@ export class GitService extends BaseService {
         args: ["--numstat", params.from, params.to],
       });
 
-      const changes = this.parser.parseFileChanges({ numstat: output });
+      const changes: FileChange[] = this.parser.parseFileChanges({
+        numstat: output,
+      });
       return {
-        additions: changes.reduce((sum, file) => sum + file.additions, 0),
-        deletions: changes.reduce((sum, file) => sum + file.deletions, 0),
+        additions: changes.reduce(
+          (sum: number, file: FileChange) => sum + file.additions,
+          0,
+        ),
+        deletions: changes.reduce(
+          (sum: number, file: FileChange) => sum + file.deletions,
+          0,
+        ),
         files: changes.length,
       };
     } catch (error) {
@@ -201,12 +245,13 @@ export class GitService extends BaseService {
       this.logger.debug(
         `Attaching file changes for ${params.commits.length} commits`,
       );
-      return Promise.all(
-        params.commits.map(async (commit) => ({
+      const commitsWithFiles: Promise<CommitInfo>[] = params.commits.map(
+        async (commit) => ({
           ...commit,
           files: await this.getFileChanges({ commit: commit.hash }),
-        })),
+        }),
       );
+      return Promise.all(commitsWithFiles);
     } catch (error) {
       this.logger.error("Failed to attach file changes:", error);
       throw error;
@@ -222,7 +267,10 @@ export class GitService extends BaseService {
         args: ["--numstat", "--format=", params.commit],
       });
 
-      return this.parser.parseFileChanges({ numstat: output });
+      const changes: FileChange[] = this.parser.parseFileChanges({
+        numstat: output,
+      });
+      return changes;
     } catch (error) {
       this.logger.error(
         `Failed to get file changes for commit ${params.commit}:`,
@@ -233,15 +281,15 @@ export class GitService extends BaseService {
   }
 
   private async execGit(params: GitCommandParams): Promise<string> {
-    const command = `git ${params.command} ${params.args.join(" ")}`;
-    this.logger.debug(`Executing git command: ${command}`);
+    const { command, args } = params;
+    this.logger.debug(
+      `Executing git command: git ${command} ${args.join(" ")} in ${this.cwd}`,
+    );
 
     try {
-      const { exec } = await import("child_process");
-      const { promisify } = await import("util");
-      const execAsync = promisify(exec);
-
-      const { stdout, stderr } = await execAsync(command);
+      const { stdout, stderr } = await execa("git", [command, ...args], {
+        cwd: this.cwd,
+      });
 
       if (stderr) {
         this.logger.warning("Git command produced stderr:", stderr);
@@ -249,7 +297,10 @@ export class GitService extends BaseService {
 
       return stdout;
     } catch (error) {
-      this.logger.error(`Git command failed: ${command}`, error);
+      this.logger.error(
+        `Git command failed: git ${command} ${args.join(" ")}`,
+        error,
+      );
       throw error;
     }
   }

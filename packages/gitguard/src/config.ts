@@ -1,7 +1,7 @@
+import execa from "execa";
 import { readFile } from "fs/promises";
 import { homedir } from "os";
 import { join } from "path";
-import execa from "execa";
 import { Config } from "./types/config.types";
 
 const defaultConfig: Config = {
@@ -14,6 +14,7 @@ const defaultConfig: Config = {
     maxFileSize: 800,
     checkConventionalCommits: true,
   },
+  debug: false,
   ai: {
     enabled: true,
     provider: "azure",

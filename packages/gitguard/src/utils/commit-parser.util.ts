@@ -1,9 +1,9 @@
 import {
   CommitInfo,
-  ParsedCommit,
-  FileChange,
   CommitType,
-} from "../types/commit.types";
+  FileChange,
+  ParsedCommit,
+} from "../types/git.types";
 
 export class CommitParser {
   parseCommitLog(params: { log: string }): Omit<CommitInfo, "files">[] {

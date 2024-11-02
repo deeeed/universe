@@ -1,7 +1,6 @@
-// types/analysis.types.ts
-import { CommitInfo, CommitType, FileChange } from "./commit.types";
+import { BaseAIOptions } from "./ai.types";
+import { CommitInfo, CommitType, FileChange } from "./git.types";
 
-// Commit Analysis Types
 export interface CommitAnalysisResult {
   branch: string;
   baseBranch: string;
@@ -59,6 +58,34 @@ export interface PRStats {
     lastCommit: Date;
   };
 }
+
+export interface CommitSuggestion {
+  message: string;
+  explanation: string;
+  type: CommitType;
+  scope: string | null;
+  description: string;
+}
+
+export interface CommitSuggestionOptions extends BaseAIOptions {
+  numSuggestions?: number;
+  requireExplanation?: boolean;
+  conventionalCommits?: boolean;
+  preferredTypes?: CommitType[];
+}
+
+export interface SplitAnalysisOptions extends BaseAIOptions {
+  strategy?: "module" | "feature" | "auto";
+  maxSuggestions?: number;
+}
+
+// PR Description
+export interface PRDescription {
+  title: string;
+  description: string;
+}
+
+export interface PRDescriptionOptions extends BaseAIOptions {}
 
 export interface PRSplitSuggestion {
   reason: string;

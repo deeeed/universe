@@ -1,19 +1,19 @@
 // services/pr.service.ts
 import { AIProvider } from "../types/ai.types";
-import { CommitInfo, FileChange } from "../types/commit.types";
-import { Config } from "../types/config.types";
-import { ServiceOptions } from "../types/service.types";
 import {
-  PRAnalysisResult,
-  PRAnalysisOptions,
-  PRStats,
   AnalysisWarning,
+  PRAnalysisOptions,
+  PRAnalysisResult,
   PRSplitSuggestion,
+  PRStats,
 } from "../types/analysis.types";
+import { Config } from "../types/config.types";
+import { CommitInfo } from "../types/git.types";
+import { SecurityFinding } from "../types/security.types";
+import { ServiceOptions } from "../types/service.types";
 import { BaseService } from "./base.service";
 import { GitService } from "./git.service";
 import { SecurityService } from "./security.service";
-import { SecurityFinding } from "../types/security.types";
 
 export class PRService extends BaseService {
   private readonly git: GitService;
@@ -174,8 +174,10 @@ export class PRService extends BaseService {
         diff,
       });
 
-      if (securityAnalysis.findings.length > 0) {
-        warnings.push(...this.mapSecurityToWarnings(securityAnalysis.findings));
+      if (securityAnalysis.secretFindings.length > 0) {
+        warnings.push(
+          ...this.mapSecurityToWarnings(securityAnalysis.secretFindings),
+        );
       }
 
       // Generate description and split suggestion if needed
@@ -184,57 +186,7 @@ export class PRService extends BaseService {
 
       const shouldSplit = this.shouldSplitPR({ stats, warnings });
 
-      if (shouldSplit && this.ai?.analyzePRChanges) {
-        try {
-          const analysis = await this.ai.analyzePRChanges({
-            files: commits.flatMap((c) => c.files),
-            commits: commits.map((c) => c.message),
-            options: {
-              strategy: params.splitStrategy,
-            },
-          });
-
-          if (analysis.suggestedSplits) {
-            // Convert string paths to FileChange objects by looking up in the original files
-            const allFiles = commits.flatMap((c) => c.files);
-
-            splitSuggestion = {
-              reason:
-                analysis.reason || "PR is too large and spans multiple areas",
-              suggestedPRs: analysis.suggestedSplits.map((split, index) => ({
-                title: `[${split.scope || "misc"}] ${split.reasoning}`,
-                description: split.reasoning,
-                files: split.files
-                  .map((path) => allFiles.find((f) => f.path === path))
-                  .filter((f): f is FileChange => f !== undefined),
-                order: index + 1,
-                baseBranch,
-                dependencies: [],
-              })),
-              commands: this.generateSplitCommands({
-                dirs: analysis.suggestedSplits.map((s) => s.scope || "misc"),
-                baseBranch,
-              }),
-            };
-          }
-        } catch (error) {
-          this.logger.warning("Failed to generate PR split suggestion:", error);
-          splitSuggestion = this.createBasicSplitSuggestion({
-            commits,
-            baseBranch,
-          });
-        }
-      } else if (this.ai && !shouldSplit) {
-        try {
-          description = await this.ai.generatePRDescription({
-            files: commits.flatMap((c) => c.files),
-            commits: commits.map((c) => c.message),
-            template: params.template,
-          });
-        } catch (error) {
-          this.logger.warning("Failed to generate PR description:", error);
-        }
-      }
+      this.logger.info(`Should split: ${shouldSplit}`);
 
       return {
         branch,

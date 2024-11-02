@@ -8,6 +8,7 @@ export interface Config {
     maxFileSize: number;
     checkConventionalCommits: boolean;
   };
+  debug?: boolean;
   ai?: {
     enabled?: boolean;
     provider?: "azure" | "openai" | "ollama";

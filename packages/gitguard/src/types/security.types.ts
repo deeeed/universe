@@ -27,6 +27,14 @@ export interface ProblematicFilePattern {
   severity: "high" | "medium" | "low";
 }
 
+export interface SecurityCheckResult {
+  secretFindings: SecurityFinding[];
+  fileFindings: SecurityFinding[];
+  filesToUnstage: string[];
+  shouldBlock: boolean;
+  commands: string[];
+}
+
 // Mapping your Python patterns to TypeScript
 export const SECRET_PATTERNS: SecurityPattern[] = [
   {
