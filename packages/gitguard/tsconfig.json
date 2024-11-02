@@ -37,7 +37,7 @@
     "bin/**/*",
     ".publisher/**/*",
     "package.json",
-    "rollup.config.ts",
+    "rollup.config.mjs",
     "jest.config.ts",
     "jest.setup.ts"
   ],

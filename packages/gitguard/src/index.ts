@@ -4,6 +4,8 @@ export * from "./services/security.service.js";
 export * from "./services/prompt.service.js";
 export * from "./services/git.service.js";
 
+export * from "./hooks/prepare-commit.js";
+
 export * from "./types/analysis.types.js";
 export * from "./types/security.types.js";
 export * from "./types/ai.types.js";

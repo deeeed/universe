@@ -11,7 +11,7 @@ interface HookCommandOptions {
 }
 
 const HOOK_SCRIPT = `#!/usr/bin/env node
-const { prepareCommit } = require('gitguard/hooks');
+import { prepareCommit } from '@siteed/gitguard/hooks';
 
 // Get the commit message file from git
 const messageFile = process.argv[2];
