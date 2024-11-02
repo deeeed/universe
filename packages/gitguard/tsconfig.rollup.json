@@ -1,14 +1,15 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "types": [
       "node"
     ],
     "declaration": false,
     "composite": false,
-    "rootDir": "."
+    "rootDir": ".",
+    "outDir": "dist/esm"
   },
   "include": [
     "src/**/*",

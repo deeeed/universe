@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import { nodeResolve } from "@rollup/plugin-node-resolve";
@@ -38,7 +39,7 @@ const external = [
 const config = {
   input: {
     index: "src/index.ts",
-    gitguard: "bin/gitguard.ts",
+    gitguard: "src/cli/gitguard.ts",
   },
   output: {
     dir: "dist/esm",
@@ -46,12 +47,16 @@ const config = {
     sourcemap: true,
     preserveModules: true,
     entryFileNames: ({ facadeModuleId }) => {
+      /* eslint-disable @typescript-eslint/explicit-function-return-type */
+      /* eslint-disable @typescript-eslint/no-unsafe-return */
+      /* eslint-disable @typescript-eslint/no-unsafe-call */
+      /* eslint-disable @typescript-eslint/no-unsafe-member-access */
       if (!facadeModuleId) return "[name].js";
-      // Remove src/ or bin/ from the path
-      return facadeModuleId
-        .replace(/^.*?\/src\//, "")
-        .replace(/^.*?\/bin\//, "")
-        .replace(/\.ts$/, ".js");
+      return facadeModuleId.replace(/^.*?\/src\//, "").replace(/\.ts$/, ".js");
+      /* eslint-enable @typescript-eslint/explicit-function-return-type */
+      /* eslint-enable @typescript-eslint/no-unsafe-return */
+      /* eslint-enable @typescript-eslint/no-unsafe-call */
+      /* eslint-enable @typescript-eslint/no-unsafe-member-access */
     },
   },
   external,
@@ -62,9 +67,6 @@ const config = {
     typescript({
       tsconfig: "./tsconfig.rollup.json",
       sourceMap: true,
-      module: "ESNext",
-      outDir: "dist/esm",
-      declaration: false,
     }),
     commonjs(),
     json(),

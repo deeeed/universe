@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { analyze } from "../src/commands/analyze.js";
-import { hook } from "../src/commands/hook.js";
+import { analyze } from "../commands/analyze.js";
+import { hook } from "../commands/hook.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { readFile } from "fs/promises";

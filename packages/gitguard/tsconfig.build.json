@@ -1,8 +1,8 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "types": [
       "node"
     ],
@@ -10,14 +10,16 @@
     "declarationDir": "./dist/types",
     "emitDeclarationOnly": true,
     "composite": false,
-    "rootDir": ".",
+    "rootDir": "src",
     "paths": {
-      "@siteed/gitguard": ["./src"]
-    }
+      "@siteed/gitguard": [
+        "./src"
+      ]
+    },
+    "stripInternal": true
   },
   "include": [
-    "src/**/*",
-    "bin/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

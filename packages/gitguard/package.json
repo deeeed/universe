@@ -15,7 +15,7 @@
   "types": "./dist/types/index.d.ts",
   "type": "module",
   "bin": {
-    "gitguard": "./dist/esm/gitguard.js"
+    "gitguard": "./dist/esm/cli/gitguard.js"
   },
   "files": [
     "dist",
@@ -37,9 +37,9 @@
     "format": "prettier --write \"src/**/*.ts\" \"bin/**/*.ts\"",
     "link": "yarn link",
     "test:e2e": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node' ts-node --esm ./scripts/test-commit-hooks.ts",
-    "postbuild": "chmod +x ./dist/esm/gitguard.js",
+    "postbuild": "chmod +x ./dist/esm/cli/gitguard.js",
     "link-cli": "yarn link && yarn run postbuild",
-    "gitguard": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./bin/gitguard.ts",
+    "gitguard": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./src/cli/gitguard.ts",
     "setup": "./setup-cli.sh",
     "unsetup": "yarn global unlink"
   },
@@ -75,8 +75,8 @@
       "import": "./dist/esm/index.js"
     },
     "./cli": {
-      "types": "./dist/types/gitguard.d.ts",
-      "import": "./dist/esm/gitguard.js"
+      "types": "./dist/types/cli/gitguard.d.ts",
+      "import": "./dist/esm/cli/gitguard.js"
     }
   }
 }
