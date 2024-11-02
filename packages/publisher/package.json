@@ -16,6 +16,7 @@
   "files": [
     "dist",
     "templates",
+    "CHANGELOG.md",
     "package.json",
     "README.md"
   ],

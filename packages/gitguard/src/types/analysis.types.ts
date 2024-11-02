@@ -1,5 +1,6 @@
 import { BaseAIOptions } from "./ai.types";
 import { CommitInfo, CommitType, FileChange } from "./git.types";
+import { SecurityCheckResult } from "./security.types";
 
 export interface CommitAnalysisResult {
   branch: string;
@@ -46,6 +47,7 @@ export interface PRAnalysisResult {
   warnings: AnalysisWarning[];
   description?: PRDescription;
   splitSuggestion?: PRSplitSuggestion;
+  filesByDirectory: Record<string, string[]>;
 }
 
 export interface PRStats {
@@ -104,14 +106,14 @@ export interface PRSplitSuggestion {
 
 export interface PRAnalysisOptions {
   branch?: string;
-  includeDrafts?: boolean;
-  template?: string;
-  splitStrategy?: "module" | "feature" | "auto";
+  securityResult?: SecurityCheckResult;
+  enableAI?: boolean;
+  enablePrompts?: boolean;
 }
 
 // Shared only where absolutely necessary
 export interface AnalysisWarning {
-  type: "file" | "general";
-  message: string;
+  type: "size" | "security" | "structure" | "file";
   severity: "error" | "warning";
+  message: string;
 }

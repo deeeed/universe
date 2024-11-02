@@ -5,6 +5,7 @@ import { ServiceOptions } from "../types/service.types";
 import { CommitParser } from "../utils/commit-parser.util";
 import { FileUtil } from "../utils/file.util";
 import { BaseService } from "./base.service";
+import { promises as fs } from "fs";
 
 interface GetDiffParams {
   type: "staged" | "range";
@@ -316,6 +317,34 @@ export class GitService extends BaseService {
       return stdout;
     } catch (error) {
       this.logger.error(`Git command failed: ${params.command}`, error);
+      throw error;
+    }
+  }
+
+  async updateCommitMessage(params: {
+    file: string;
+    message: string;
+  }): Promise<void> {
+    try {
+      this.logger.debug(`Updating commit message in ${params.file}`);
+      await fs.writeFile(params.file, params.message, "utf-8");
+      this.logger.debug("Commit message updated successfully");
+    } catch (error) {
+      this.logger.error("Failed to update commit message:", error);
+      throw error;
+    }
+  }
+
+  async getHooksPath(): Promise<string> {
+    try {
+      this.logger.debug("Getting git hooks path");
+      const result = await this.execGit({
+        command: "rev-parse",
+        args: ["--git-path", "hooks"],
+      });
+      return result.trim();
+    } catch (error) {
+      this.logger.error("Failed to get hooks path:", error);
       throw error;
     }
   }

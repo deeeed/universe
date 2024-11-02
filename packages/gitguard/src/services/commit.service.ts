@@ -120,7 +120,7 @@ export class CommitService extends BaseService {
     // Add size warnings
     if (params.files.length > 10) {
       warnings.push({
-        type: "general",
+        type: "file",
         message:
           "Large number of files changed. Consider splitting the commit.",
         severity: "warning",
@@ -130,7 +130,7 @@ export class CommitService extends BaseService {
     // Add multi-scope warning
     if (scopes.length > 1) {
       warnings.push({
-        type: "general",
+        type: "file",
         message:
           "Changes span multiple packages. Consider splitting the commit by package.",
         severity: "warning",

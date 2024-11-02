@@ -5,6 +5,7 @@ import { tmpdir } from "os";
 import { dirname, join } from "path";
 import readline from "readline";
 import { LoggerService } from "../src/services/logger.service";
+import { prepareCommit } from "../src/hooks/prepare-commit.js";
 
 interface TestScenario {
   name: string;
@@ -271,9 +272,8 @@ async function runScenario(scenario: TestScenario): Promise<TestResult> {
     await writeFile(messageFile, scenario.input.message);
     logger.debug(`Created commit message file: ${messageFile}`);
 
-    // Run commit-hooks
+    // Run commit-hooks with proper typing
     logger.debug("Running commit hooks...");
-    const { prepareCommit } = await import("../src/cli/commit-hooks.js");
     await prepareCommit({
       messageFile,
       config: {

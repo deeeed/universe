@@ -1,6 +1,17 @@
 // types/config.types.ts
 import { GitConfig } from "./git.types";
 
+export interface PRTemplateConfig {
+  path?: string;
+  required?: boolean;
+  sections?: {
+    description: boolean;
+    breaking: boolean;
+    testing: boolean;
+    checklist: boolean;
+  };
+}
+
 export interface Config {
   git: GitConfig;
   analysis: {
@@ -29,7 +40,8 @@ export interface Config {
     };
   };
   pr?: {
-    template?: string;
-    templatePath?: string;
+    template?: PRTemplateConfig;
+    maxSize?: number;
+    requireApprovals?: number;
   };
 }

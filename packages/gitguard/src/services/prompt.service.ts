@@ -1,6 +1,15 @@
-import { FileChange } from "../types/git.types";
+import { PRStats } from "../types/analysis.types";
+import { CommitInfo, FileChange } from "../types/git.types";
 import { ServiceOptions } from "../types/service.types";
 import { BaseService } from "./base.service";
+
+interface PRPromptParams {
+  commits: CommitInfo[];
+  stats: PRStats;
+  files: FileChange[];
+  template?: string;
+  baseBranch: string;
+}
 
 export class PromptService extends BaseService {
   constructor(params: ServiceOptions) {
@@ -135,5 +144,89 @@ Guidelines:
 3. Order commits logically
 4. Follow conventional commits format
 5. Include clear git commands`;
+  }
+
+  generatePRDescriptionPrompt(params: PRPromptParams): string {
+    const commitMessages = params.commits
+      .map((c) => `- ${c.hash.slice(0, 7)}: ${c.message}`)
+      .join("\n");
+
+    const fileChanges = params.files
+      .map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`)
+      .join("\n");
+
+    let templateInstructions = "";
+    if (params.template) {
+      templateInstructions = `
+Follow this PR template structure:
+${params.template}`;
+    }
+
+    return `Generate a Pull Request title and description based on these changes:
+
+Base Branch: ${params.baseBranch}
+
+Commits:
+${commitMessages}
+
+Files Changed:
+${fileChanges}
+
+Stats:
+- Total Commits: ${params.stats.totalCommits}
+- Files Changed: ${params.stats.filesChanged}
+- Additions: ${params.stats.additions}
+- Deletions: ${params.stats.deletions}
+- Authors: ${params.stats.authors.join(", ")}
+${templateInstructions}
+
+Please provide a PR title and description in this JSON format:
+{
+  "title": "concise and descriptive PR title",
+  "description": "detailed PR description following template if provided",
+  "breaking": boolean,
+  "testing": "testing instructions if applicable",
+  "checklist": ["list", "of", "checkboxes"]
+}
+
+Guidelines:
+1. Title should be clear and follow conventional commit format
+2. Description should be comprehensive but well-structured
+3. Include relevant technical details
+4. Highlight significant changes
+5. Note any breaking changes
+6. Follow template structure if provided`;
+  }
+
+  generatePRSplitPrompt(params: {
+    commits: CommitInfo[];
+    files: FileChange[];
+    baseBranch: string;
+  }): string {
+    return `Analyze these changes and suggest how to split them into multiple PRs:
+
+Base Branch: ${params.baseBranch}
+
+Commits:
+${params.commits.map((c) => `- ${c.hash.slice(0, 7)}: ${c.message}`).join("\n")}
+
+Files:
+${params.files.map((f) => `- ${f.path}`).join("\n")}
+
+Please suggest a split in this JSON format:
+{
+  "reason": "explanation why the changes should be split",
+  "suggestedPRs": [
+    {
+      "title": "PR title",
+      "description": "PR description",
+      "files": ["list of files"],
+      "order": number,
+      "baseBranch": "branch name",
+      "dependencies": ["list of dependent PR titles"]
+    }
+  ],
+  "commands": ["git commands to execute"]
+}`;
   }
 }

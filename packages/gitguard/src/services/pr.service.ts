@@ -1,24 +1,28 @@
 // services/pr.service.ts
+import * as fs from "fs/promises";
 import { AIProvider } from "../types/ai.types";
 import {
   AnalysisWarning,
   PRAnalysisOptions,
   PRAnalysisResult,
+  PRDescription,
   PRSplitSuggestion,
   PRStats,
 } from "../types/analysis.types";
 import { Config } from "../types/config.types";
-import { CommitInfo } from "../types/git.types";
+import { CommitInfo, FileChange } from "../types/git.types";
 import { SecurityFinding } from "../types/security.types";
 import { ServiceOptions } from "../types/service.types";
 import { BaseService } from "./base.service";
 import { GitService } from "./git.service";
+import { PromptService } from "./prompt.service";
 import { SecurityService } from "./security.service";
 
 export class PRService extends BaseService {
   private readonly git: GitService;
   private readonly security: SecurityService;
   private readonly ai?: AIProvider;
+  private readonly prompt: PromptService;
   private readonly config: Config;
 
   constructor(
@@ -26,6 +30,7 @@ export class PRService extends BaseService {
       config: Config;
       git: GitService;
       security: SecurityService;
+      prompt: PromptService;
       ai?: AIProvider;
     },
   ) {
@@ -33,6 +38,7 @@ export class PRService extends BaseService {
     this.git = params.git;
     this.security = params.security;
     this.ai = params.ai;
+    this.prompt = params.prompt;
     this.config = params.config;
   }
 
@@ -56,6 +62,7 @@ export class PRService extends BaseService {
         },
       },
       warnings: [],
+      filesByDirectory: {},
     };
   }
 
@@ -69,7 +76,7 @@ export class PRService extends BaseService {
     }));
   }
 
-  private groupByDirectory(commits: CommitInfo[]): Record<string, string[]> {
+  public groupByDirectory(commits: CommitInfo[]): Record<string, string[]> {
     const filesByDir: Record<string, Set<string>> = {};
 
     commits.forEach((commit) => {
@@ -91,44 +98,203 @@ export class PRService extends BaseService {
   }
 
   private generateSplitCommands(params: {
-    dirs: string[];
+    suggestedPRs: PRSplitSuggestion["suggestedPRs"];
     baseBranch: string;
   }): string[] {
-    return [
-      `git checkout -b feature/${params.dirs[0]} ${params.baseBranch}`,
-      ...params.dirs
-        .slice(1)
-        .map((dir) => `git checkout -b feature/${dir} ${params.baseBranch}`),
-    ];
+    const commands: string[] = [`# Stash current changes`, `git stash push -u`];
+
+    params.suggestedPRs.forEach((pr, index) => {
+      const branchName = `split/${index + 1}/${pr.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+      commands.push(
+        ``,
+        `# Create and switch to new branch for ${pr.title}`,
+        `git checkout -b ${branchName} ${params.baseBranch}`,
+        `# Cherry-pick relevant commits`,
+        ...pr.files.map((f) => `git checkout HEAD ${f.path}`),
+        `git add .`,
+        `git commit -m "${pr.title}"`,
+      );
+    });
+
+    commands.push(
+      ``,
+      `# Return to original branch`,
+      `git checkout -`,
+      `git stash pop`,
+    );
+
+    return commands;
   }
 
-  private createBasicSplitSuggestion(params: {
-    commits: CommitInfo[];
-    baseBranch: string;
-  }): PRSplitSuggestion {
-    const filesByDir = this.groupByDirectory(params.commits);
+  private generatePRTitle(commits: CommitInfo[], files: FileChange[]): string {
+    // If single commit, use its message
+    if (commits.length === 1) {
+      return commits[0].message;
+    }
 
-    return {
-      reason: "PR is too large and spans multiple areas",
-      suggestedPRs: Object.entries(filesByDir).map(([dir, files], index) => ({
-        title: `[${dir}] Split PR changes`,
-        description: `Changes related to ${dir} directory`,
-        files: files.map((path) => ({
-          path,
-          additions: 0,
-          deletions: 0,
-          isTest: path.includes("test") || path.includes("spec"),
-          isConfig: path.includes("config") || path.endsWith(".json"),
-        })),
-        order: index + 1,
-        baseBranch: params.baseBranch,
-        dependencies: [],
-      })),
-      commands: this.generateSplitCommands({
-        dirs: Object.keys(filesByDir),
-        baseBranch: params.baseBranch,
-      }),
-    };
+    // Otherwise, detect type based on files
+    const type = this.detectPRType(files);
+    return `${type}: Combined changes for ${commits.length} commits`;
+  }
+
+  private detectPRType(files: FileChange[]): string {
+    const hasFeature = files.some(
+      (f) =>
+        f.path.includes("/src/") ||
+        f.path.includes("/components/") ||
+        f.path.includes("/features/"),
+    );
+    const hasTests = files.some(
+      (f) => f.path.includes("/test/") || f.path.includes(".test."),
+    );
+    const hasDocs = files.some(
+      (f) => f.path.includes("/docs/") || f.path.endsWith(".md"),
+    );
+    const hasConfig = files.some(
+      (f) =>
+        f.path.includes(".config.") ||
+        f.path.includes(".gitignore") ||
+        f.path.includes(".env"),
+    );
+
+    if (hasFeature) return "feat";
+    if (hasTests) return "test";
+    if (hasDocs) return "docs";
+    if (hasConfig) return "chore";
+    return "feat"; // Default to feat
+  }
+
+  private shouldSplitPR(params: {
+    stats: PRStats;
+    warnings: AnalysisWarning[];
+  }): boolean {
+    // Split if:
+    // 1. Too many files changed
+    if (params.stats.filesChanged > this.config.analysis.maxFileSize)
+      return true;
+
+    // 2. Changes span multiple packages
+    const hasMultiPackageWarning = params.warnings.some((w) =>
+      w.message.includes("multiple packages"),
+    );
+    if (hasMultiPackageWarning) return true;
+
+    // 3. Too many commits
+    if (params.stats.totalCommits > 10) return true;
+
+    // 4. Changes span a long time period
+    const timeSpanDays =
+      (params.stats.timeSpan.lastCommit.getTime() -
+        params.stats.timeSpan.firstCommit.getTime()) /
+      (1000 * 60 * 60 * 24);
+    if (timeSpanDays > 7) return true;
+
+    return false;
+  }
+
+  private async loadPRTemplate(): Promise<string | undefined> {
+    const templatePath =
+      this.config.pr?.template?.path || ".github/pull_request_template.md";
+    try {
+      return await fs.readFile(templatePath, "utf-8");
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async generateAIDescription(params: {
+    commits: CommitInfo[];
+    stats: PRStats;
+    files: FileChange[];
+    baseBranch: string;
+  }): Promise<PRDescription | undefined> {
+    if (!this.ai) return undefined;
+
+    const template = await this.loadPRTemplate();
+
+    const prompt = this.prompt.generatePRDescriptionPrompt({
+      commits: params.commits,
+      stats: params.stats,
+      files: params.files,
+      template,
+      baseBranch: params.baseBranch,
+    });
+
+    try {
+      return await this.ai.generateCompletion<PRDescription>({
+        prompt,
+        options: {
+          requireJson: true,
+          temperature: 0.7,
+          systemPrompt:
+            "You are an expert code reviewer helping to write clear PR descriptions.",
+        },
+      });
+    } catch (error) {
+      this.logger.error("Failed to generate PR description:", error);
+      return undefined;
+    }
+  }
+
+  private async generateSplitSuggestion(params: {
+    commits: CommitInfo[];
+    files: FileChange[];
+    baseBranch: string;
+  }): Promise<PRSplitSuggestion | undefined> {
+    if (!this.ai) return undefined;
+
+    const prompt = this.prompt.generatePRSplitPrompt({
+      commits: params.commits,
+      files: params.files,
+      baseBranch: params.baseBranch,
+    });
+
+    try {
+      return await this.ai.generateCompletion<PRSplitSuggestion>({
+        prompt,
+        options: {
+          requireJson: true,
+          temperature: 0.7,
+        },
+      });
+    } catch (error) {
+      this.logger.error("Failed to generate split suggestion:", error);
+      return undefined;
+    }
+  }
+
+  public checkSize(params: { stats: PRStats }): AnalysisWarning[] {
+    const warnings: AnalysisWarning[] = [];
+
+    // Check total files changed
+    if (params.stats.filesChanged > this.config.analysis.maxFileSize) {
+      warnings.push({
+        type: "size",
+        severity: "warning",
+        message: `PR changes too many files (${params.stats.filesChanged} > ${this.config.analysis.maxFileSize})`,
+      });
+    }
+
+    // Check total changes (additions + deletions)
+    const totalChanges = params.stats.additions + params.stats.deletions;
+    if (totalChanges > this.config.analysis.maxFileSize * 100) {
+      warnings.push({
+        type: "size",
+        severity: "warning",
+        message: `PR has too many changes (${totalChanges} lines)`,
+      });
+    }
+
+    // Check number of commits
+    if (params.stats.totalCommits > 10) {
+      warnings.push({
+        type: "size",
+        severity: "warning",
+        message: `PR has too many commits (${params.stats.totalCommits} > 10)`,
+      });
+    }
+
+    return warnings;
   }
 
   async analyze(params: PRAnalysisOptions): Promise<PRAnalysisResult> {
@@ -153,26 +319,34 @@ export class PRService extends BaseService {
       // Collect warnings
       const warnings: AnalysisWarning[] = [];
 
-      // Size checks
-      const sizeWarnings = this.checkSize({ stats });
-      warnings.push(...sizeWarnings);
+      // Add size warnings using the dedicated method
+      warnings.push(...this.checkSize({ stats }));
 
-      // Check commit messages
-      if (this.config.analysis.checkConventionalCommits) {
-        const conventionalWarnings = this.checkCommitMessages({ commits });
-        warnings.push(...conventionalWarnings);
+      // Group files by directory for better analysis
+      const filesByDirectory = this.groupByDirectory(commits);
+
+      // Add directory-based warnings
+      if (Object.keys(filesByDirectory).length > 3) {
+        warnings.push({
+          type: "structure",
+          severity: "warning",
+          message: `PR spans too many directories (${Object.keys(filesByDirectory).length} > 3)`,
+        });
       }
 
       // Security checks
       const diff = await this.git.getDiff({
         from: baseBranch,
         to: branch,
+        type: "range",
       });
 
-      const securityAnalysis = this.security.analyzeSecurity({
-        files: commits.flatMap((c) => c.files),
-        diff,
-      });
+      const securityAnalysis =
+        params.securityResult ??
+        this.security.analyzeSecurity({
+          files: commits.flatMap((c) => c.files),
+          diff,
+        });
 
       if (securityAnalysis.secretFindings.length > 0) {
         warnings.push(
@@ -180,13 +354,36 @@ export class PRService extends BaseService {
         );
       }
 
-      // Generate description and split suggestion if needed
-      let description;
-      let splitSuggestion;
+      let description: PRDescription | undefined;
+      let splitSuggestion: PRSplitSuggestion | undefined;
 
+      // Always check if PR should be split
       const shouldSplit = this.shouldSplitPR({ stats, warnings });
 
-      this.logger.info(`Should split: ${shouldSplit}`);
+      // Generate AI-powered content if enabled
+      if (params.enableAI && this.ai) {
+        description = await this.generateAIDescription({
+          commits,
+          stats,
+          files: commits.flatMap((c) => c.files),
+          baseBranch,
+        });
+      }
+
+      // Always provide split suggestion if needed
+      if (shouldSplit) {
+        splitSuggestion =
+          params.enableAI && this.ai
+            ? await this.generateSplitSuggestion({
+                commits,
+                files: commits.flatMap((c) => c.files),
+                baseBranch,
+              })
+            : this.createBasicSplitSuggestion({
+                commits,
+                baseBranch,
+              });
+      }
 
       return {
         branch,
@@ -196,9 +393,10 @@ export class PRService extends BaseService {
         warnings,
         description,
         splitSuggestion,
+        filesByDirectory,
       };
     } catch (error) {
-      this.logger.error("PR analysis failed:", error);
+      this.logger.error("PR validation failed:", error);
       throw error;
     }
   }
@@ -240,48 +438,61 @@ export class PRService extends BaseService {
     };
   }
 
-  private checkSize(params: { stats: PRStats }): AnalysisWarning[] {
-    const warnings: AnalysisWarning[] = [];
-
-    if (params.stats.totalCommits > 10) {
-      warnings.push({
-        type: "general",
-        severity: "warning",
-        message: `PR contains too many commits (${params.stats.totalCommits} > 10)`,
-      });
-    }
-
-    if (params.stats.filesChanged > this.config.analysis.maxFileSize * 2) {
-      warnings.push({
-        type: "file",
-        severity: "warning",
-        message: `PR changes too many files (${params.stats.filesChanged} > ${this.config.analysis.maxFileSize * 2})`,
-      });
-    }
-
-    return warnings;
-  }
-
-  private checkCommitMessages(params: {
+  private createBasicSplitSuggestion(params: {
     commits: CommitInfo[];
-  }): AnalysisWarning[] {
-    return params.commits
-      .filter((commit) => !commit.parsed.type || !commit.parsed.description)
-      .map((commit) => ({
-        type: "commit" as const,
-        severity: "warning" as const,
-        message: `Invalid conventional commit format: ${commit.hash.slice(0, 7)}`,
-      }));
-  }
+    baseBranch: string;
+  }): PRSplitSuggestion {
+    const files = params.commits.flatMap((c) => c.files);
 
-  private shouldSplitPR(params: {
-    stats: PRStats;
-    warnings: AnalysisWarning[];
-  }): boolean {
-    return (
-      params.warnings.some((w) => w.severity === "error") ||
-      params.stats.totalCommits > 10 ||
-      params.stats.filesChanged > this.config.analysis.maxFileSize * 2
+    // Group files by scope
+    const filesByScope = files.reduce(
+      (acc, file) => {
+        const scope = file.path.startsWith("packages/")
+          ? file.path.split("/")[1]
+          : "root";
+
+        if (!acc[scope]) {
+          acc[scope] = {
+            files: [],
+            commits: new Set<string>(),
+          };
+        }
+        acc[scope].files.push(file);
+        // Track which commits modified this scope
+        params.commits
+          .filter((c) => c.files.some((f) => f.path === file.path))
+          .forEach((c) => acc[scope].commits.add(c.hash));
+        return acc;
+      },
+      {} as Record<string, { files: FileChange[]; commits: Set<string> }>,
     );
+
+    // Create split suggestions
+    const suggestedPRs = Object.entries(filesByScope).map(
+      ([scope, data], index) => ({
+        title: `${scope}: ${this.generatePRTitle(
+          params.commits.filter((c) => data.commits.has(c.hash)),
+          data.files,
+        )}`,
+        description: `Changes related to ${scope} package`,
+        files: data.files,
+        order: index + 1,
+        baseBranch: params.baseBranch,
+        dependencies: [], // Will be filled based on commit history
+      }),
+    );
+
+    // Generate git commands for splitting
+    const commands = this.generateSplitCommands({
+      suggestedPRs,
+      baseBranch: params.baseBranch,
+    });
+
+    return {
+      reason:
+        "Changes span multiple packages and should be split into separate PRs",
+      suggestedPRs,
+      commands,
+    };
   }
 }

@@ -13,13 +13,13 @@
   "main": "dist/src/index.js",
   "module": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
+  "bin": "./dist/src/cli/gitguard.js",
   "files": [
     "dist",
     "package.json",
+    "CHANGELOG.md",
     "README.md"
   ],
-  "bin": "./dist/src/cli.js",
-  "type": "module",
   "scripts": {
     "clean": "rimraf ./dist",
     "build": "yarn build:tsc",
@@ -30,20 +30,18 @@
     "lint": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\" \"bin/**/*.ts\"",
-    "start": "ts-node src/cli.ts",
-    "dev": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node' ts-node --esm src/cli.ts",
     "link": "yarn link",
     "test:e2e": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node' ts-node --esm ./scripts/test-commit-hooks.ts",
-    "test:e2e:debug": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node --inspect-brk' ts-node --esm ./scripts/test-commit-hooks.ts",
-    "postbuild": "chmod +x ./dist/src/cli.js",
+    "postbuild": "chmod +x ./dist/src/cli/gitguard.js",
     "link-cli": "yarn link && yarn run postbuild",
+    "gitguard": "ts-node ./bin/gitguard.ts",
     "setup": "./setup-cli.sh",
     "unsetup": "yarn global unlink"
   },
   "dependencies": {
-    "chalk": "^5.3.0",
+    "chalk": "4.1.2",
     "commander": "^11.1.0",
-    "inquirer": "^12.0.1",
+    "inquirer": "^8.2.6",
     "openai": "^4.70.2"
   },
   "devDependencies": {
