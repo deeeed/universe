@@ -1,76 +1,87 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-import commonjs from "@rollup/plugin-commonjs";
-import json from "@rollup/plugin-json";
-import { nodeResolve } from "@rollup/plugin-node-resolve";
+import { defineConfig } from "rollup";
 import typescript from "@rollup/plugin-typescript";
+import commonjs from "@rollup/plugin-commonjs";
+import { nodeResolve } from "@rollup/plugin-node-resolve";
+import json from "@rollup/plugin-json";
 
 const external = [
-  // Node.js built-ins
-  "buffer",
-  "crypto",
-  "fs",
-  "path",
-  "os",
-  "util",
-  "stream",
-  "events",
-  "child_process",
-  "url",
-  "fs/promises",
-
-  // Direct dependencies
-  "chalk",
   "commander",
+  "fs/promises",
+  "url",
+  "path",
+  "fs",
+  "chalk",
   "inquirer",
   "openai",
-  "simple-git",
-  "zod",
-  "execa",
-  "fs-extra",
-  "glob",
-  "dotenv",
-
-  // Regex for sub-dependencies
-  /^node:/,
-  /^@siteed\/.*/,
-  /^lodash.*/,
 ];
 
-const config = {
-  input: {
-    index: "src/index.ts",
-    gitguard: "src/cli/gitguard.ts",
-  },
-  output: {
-    dir: "dist/esm",
-    format: "esm",
-    sourcemap: true,
-    preserveModules: true,
-    entryFileNames: ({ facadeModuleId }) => {
-      /* eslint-disable @typescript-eslint/explicit-function-return-type */
-      /* eslint-disable @typescript-eslint/no-unsafe-return */
-      /* eslint-disable @typescript-eslint/no-unsafe-call */
-      /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-      if (!facadeModuleId) return "[name].js";
-      return facadeModuleId.replace(/^.*?\/src\//, "").replace(/\.ts$/, ".js");
-      /* eslint-enable @typescript-eslint/explicit-function-return-type */
-      /* eslint-enable @typescript-eslint/no-unsafe-return */
-      /* eslint-enable @typescript-eslint/no-unsafe-call */
-      /* eslint-enable @typescript-eslint/no-unsafe-member-access */
-    },
-  },
-  external,
-  plugins: [
-    nodeResolve({
-      preferBuiltins: true,
-    }),
-    typescript({
-      tsconfig: "./tsconfig.rollup.json",
-      sourceMap: true,
-    }),
-    commonjs(),
-    json(),
-  ],
-};
+const sharedPlugins = [
+  nodeResolve({
+    preferBuiltins: true,
+  }),
+  commonjs({
+    transformMixedEsModules: true,
+  }),
+  json(),
+];
 
-export default config;
+export default defineConfig([
+  // CJS build for CLI
+  {
+    input: "src/cli/gitguard.ts",
+    output: {
+      file: "dist/cjs/cli/gitguard.cjs",
+      format: "cjs",
+      sourcemap: true,
+      exports: "named",
+      banner: "#!/usr/bin/env node",
+    },
+    external,
+    plugins: [
+      ...sharedPlugins,
+      typescript({
+        tsconfig: "./tsconfig.build.json",
+        outDir: "./dist/cjs",
+      }),
+    ],
+  },
+  // CJS build for library
+  {
+    input: "src/index.ts",
+    output: {
+      dir: "dist/cjs",
+      format: "cjs",
+      sourcemap: true,
+      preserveModules: true,
+      entryFileNames: "[name].cjs",
+      exports: "named",
+    },
+    external,
+    plugins: [
+      ...sharedPlugins,
+      typescript({
+        tsconfig: "./tsconfig.build.json",
+        outDir: "./dist/cjs",
+      }),
+    ],
+  },
+  // ESM build
+  {
+    input: "src/index.ts",
+    output: {
+      dir: "dist/esm",
+      format: "esm",
+      sourcemap: true,
+      preserveModules: true,
+    },
+    external,
+    plugins: [
+      ...sharedPlugins,
+      typescript({
+        tsconfig: "./tsconfig.build.json",
+        outDir: "./dist/esm",
+      }),
+    ],
+  },
+]);

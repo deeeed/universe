@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { promises as fs } from "fs";
 import { join } from "path";
 import { loadConfig } from "../config.js";
@@ -11,7 +12,7 @@ interface HookCommandOptions {
 }
 
 const HOOK_SCRIPT = `#!/usr/bin/env node
-import { prepareCommit } from '@siteed/gitguard/hooks';
+const { prepareCommit } = require('@siteed/gitguard/hooks');
 
 // Get the commit message file from git
 const messageFile = process.argv[2];
@@ -29,26 +30,64 @@ prepareCommit({ messageFile })
 `;
 
 export async function hook(options: HookCommandOptions): Promise<void> {
-  const logger = new LoggerService({ debug: options.debug });
+  console.log("Hook function called with options:", options);
+  const logger = new LoggerService({ debug: true });
 
   try {
+    console.log("Loading config...");
     const config = await loadConfig();
+    console.log("Config loaded:", config);
+
+    console.log("Initializing GitService...");
     const git = new GitService({ config: config.git, logger });
 
     if (options.action === "install") {
+      console.log("Installing hook...");
       const hooksPath = await git.getHooksPath();
+      console.log(`Hooks path: ${hooksPath}`);
+
       const hookPath = join(hooksPath, "prepare-commit-msg");
+      console.log(`Hook path: ${hookPath}`);
+
+      // Check if hooks directory exists
+      const hooksExists = await fs
+        .access(hooksPath)
+        .then(() => true)
+        .catch(() => false);
+      console.log(`Hooks directory exists: ${hooksExists}`);
+
+      if (!hooksExists) {
+        console.log(`Creating hooks directory: ${hooksPath}`);
+        await fs.mkdir(hooksPath, { recursive: true });
+      }
+
+      // Write the hook file
+      console.log("Writing hook file...");
       await fs.writeFile(hookPath, HOOK_SCRIPT, { mode: 0o755 });
-      logger.success(`✅ Git hook installed at ${hookPath}`);
+
+      // Verify the file was created
+      const exists = await fs
+        .access(hookPath)
+        .then(() => true)
+        .catch(() => false);
+      console.log(`Hook file exists: ${exists}`);
+
+      if (exists) {
+        logger.success(`✅ Git hook installed at ${hookPath}`);
+      } else {
+        throw new Error("Hook file was not created successfully");
+      }
     } else {
-      // Handle uninstall
+      console.log("Uninstalling hook...");
       const hooksPath = await git.getHooksPath();
       const hookPath = join(hooksPath, "prepare-commit-msg");
-      await fs.unlink(hookPath).catch(() => {});
+      await fs.unlink(hookPath).catch((err) => {
+        console.log(`Error removing hook:`, err);
+      });
       logger.success("✅ Git hook uninstalled");
     }
   } catch (error) {
-    logger.error("Hook command failed:", error);
+    console.error("Hook command failed with error:", error);
     throw error;
   }
 }

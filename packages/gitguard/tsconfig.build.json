@@ -6,17 +6,15 @@
     "types": [
       "node"
     ],
-    "declaration": true,
-    "declarationDir": "./dist/types",
-    "emitDeclarationOnly": true,
-    "composite": false,
+    "declaration": false,
     "rootDir": "src",
+    "composite": false,
+    "outDir": "./dist/cjs",
     "paths": {
       "@siteed/gitguard": [
         "./src"
       ]
-    },
-    "stripInternal": true
+    }
   },
   "include": [
     "src/**/*"

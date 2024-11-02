@@ -10,12 +10,12 @@
     "url": "https://github.com/deeeed/universe",
     "directory": "packages/gitguard"
   },
-  "main": "./dist/esm/index.js",
+  "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
   "type": "module",
   "bin": {
-    "gitguard": "./dist/esm/cli/gitguard.js"
+    "gitguard": "./dist/cjs/cli/gitguard.cjs"
   },
   "files": [
     "dist",
@@ -25,9 +25,8 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist",
-    "build:types": "tsc -p tsconfig.build.json",
     "build:bundle": "rollup -c rollup.config.mjs",
-    "build": "yarn clean && yarn build:types && yarn build:bundle && yarn postbuild",
+    "build": "yarn clean && yarn build:bundle && yarn postbuild",
     "build:clean": "yarn clean && yarn build",
     "build:tsc": "tsc --project tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.json --noEmit",
@@ -35,16 +34,12 @@
     "lint": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\" \"bin/**/*.ts\"",
-    "link": "yarn link",
-    "test:e2e": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node' ts-node --esm ./scripts/test-commit-hooks.ts",
-    "postbuild": "chmod +x ./dist/esm/cli/gitguard.js",
-    "link-cli": "yarn link && yarn run postbuild",
-    "gitguard": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./src/cli/gitguard.ts",
+    "postbuild": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./scripts/post-build.ts",
     "setup": "./setup-cli.sh",
-    "unsetup": "yarn global unlink"
+    "unsetup": "./uninstall-cli.sh"
   },
   "dependencies": {
-    "chalk": "^5.3.0",
+    "chalk": "^4.1.2",
     "commander": "^11.1.0",
     "inquirer": "^9.2.15",
     "openai": "^4.70.2"
@@ -72,11 +67,19 @@
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/esm/index.js"
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs"
+    },
+    "./hooks": {
+      "types": "./dist/types/hooks/prepare-commit.d.ts",
+      "import": "./dist/esm/hooks/prepare-commit.js",
+      "require": "./dist/cjs/hooks/prepare-commit.cjs"
     },
     "./cli": {
       "types": "./dist/types/cli/gitguard.d.ts",
-      "import": "./dist/esm/cli/gitguard.js"
+      "import": "./dist/esm/cli/gitguard.js",
+      "require": "./dist/cjs/cli/gitguard.cjs"
     }
-  }
+  },
+  "preferUnplugged": true
 }

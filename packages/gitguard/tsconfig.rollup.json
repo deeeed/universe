@@ -8,12 +8,14 @@
     ],
     "declaration": false,
     "composite": false,
-    "rootDir": ".",
-    "outDir": "dist/esm"
+    "rootDir": "src",
+    "outDir": "dist",
+    "paths": {
+      "@siteed/gitguard": ["./src"]
+    }
   },
   "include": [
-    "src/**/*",
-    "bin/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

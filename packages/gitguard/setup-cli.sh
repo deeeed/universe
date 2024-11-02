@@ -9,43 +9,47 @@ NC='\033[0m'
 
 echo -e "${YELLOW}Setting up GitGuard CLI...${NC}"
 
-# Check if yarn is available
-if ! command -v yarn &> /dev/null; then
-    echo -e "${RED}❌ Error: yarn is not installed${NC}"
-    exit 1
-fi
-
 # Clean and build the package
 echo -e "${YELLOW}Building package...${NC}"
 yarn build:clean
 
+CLI_PATH="./dist/cjs/cli/gitguard.cjs"
+
 # Verify the build output exists
-if [ ! -f "./dist/src/cli.js" ]; then
-    echo -e "${RED}❌ Build failed - cli.js not found${NC}"
+if [ ! -f "$CLI_PATH" ]; then
+    echo -e "${RED}❌ Build failed - gitguard.cjs not found${NC}"
     exit 1
 fi
 
-if [ ! -f "./dist/src/config.js" ]; then
-    echo -e "${RED}❌ Build failed - config.js not found${NC}"
+# Verify the file content
+if ! head -n 1 "$CLI_PATH" | grep -q "#!/usr/bin/env node"; then
+    echo -e "${RED}❌ Invalid CLI file - missing shebang${NC}"
     exit 1
 fi
 
 # Ensure CLI has execute permissions
-chmod +x ./dist/src/cli.js
+chmod +x "$CLI_PATH"
 
-# Create a temporary package directory
-TEMP_DIR="$(mktemp -d)"
-    
-# Pack the package with verbose output
-echo -e "${YELLOW}Packing package...${NC}"
-yarn pack -v -o "$TEMP_DIR/package.tgz"
-    
-# Install globally using npm with verbose output
-echo -e "${YELLOW}Installing package globally...${NC}"
-npm install -g "$TEMP_DIR/package.tgz" --verbose
-    
-# Cleanup
-rm -rf "$TEMP_DIR"
+# Create local bin directory if it doesn't exist
+mkdir -p "$HOME/.local/bin"
+
+# Create symlink to the CLI
+ln -sf "$(pwd)/$CLI_PATH" "$HOME/.local/bin/gitguard"
+
+# Verify the symlink
+if [ ! -L "$HOME/.local/bin/gitguard" ]; then
+    echo -e "${RED}❌ Failed to create symlink${NC}"
+    exit 1
+fi
+
+# Add ~/.local/bin to PATH if not already present
+if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+    echo -e "${YELLOW}Adding ~/.local/bin to PATH...${NC}"
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+    export PATH="$HOME/.local/bin:$PATH"
+fi
 
 echo -e "${GREEN}✅ GitGuard CLI installed successfully!${NC}"
-echo -e "Try running: gitguard analyze -v"
+echo -e "Try running: gitguard --help"
+echo -e "${YELLOW}Note: You may need to restart your terminal or run 'source ~/.zshrc' (or ~/.bashrc) to use the command${NC}"

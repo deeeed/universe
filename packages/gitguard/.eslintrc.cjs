@@ -25,7 +25,7 @@ module.exports = {
     "no-console": ["error", { allow: ["warn", "error"] }],
     "prettier/prettier": "error",
   },
-  ignorePatterns: ["dist/", "node_modules/", "*.js"],
+  ignorePatterns: ["dist/", "node_modules/", "rollup.config.mjs"],
   overrides: [
     {
       files: ["**/*.test.ts", "jest.setup.ts", "jest.config.ts"],

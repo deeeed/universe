@@ -34,10 +34,10 @@
     "publisher.config.ts",
     ".eslintrc.cjs",
     "scripts/**/*",
+    "rollup.config.mjs",
     "bin/**/*",
     ".publisher/**/*",
     "package.json",
-    "rollup.config.mjs",
     "jest.config.ts",
     "jest.setup.ts"
   ],
