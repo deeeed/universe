@@ -1,3 +1,4 @@
+// types/config.types.ts
 import { GitConfig } from "./git.types";
 
 export interface Config {
@@ -6,5 +7,28 @@ export interface Config {
     maxCommitSize: number;
     maxFileSize: number;
     checkConventionalCommits: boolean;
+  };
+  ai?: {
+    enabled?: boolean;
+    provider?: "azure" | "openai" | "ollama";
+    azure?: {
+      endpoint: string;
+      deployment: string;
+      apiVersion: string;
+      apiKey?: string;
+    };
+    openai?: {
+      model: string;
+      apiKey?: string;
+      organization?: string;
+    };
+    ollama?: {
+      host: string;
+      model: string;
+    };
+  };
+  pr?: {
+    template?: string;
+    templatePath?: string;
   };
 }

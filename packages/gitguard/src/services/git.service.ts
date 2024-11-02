@@ -1,3 +1,4 @@
+// packages/gitguard/src/services/git.service.ts
 import { BaseService } from "./base.service";
 import { GitConfig, GitCommandParams } from "../types/git.types";
 import { CommitInfo, FileChange } from "../types/commit.types";
@@ -54,6 +55,141 @@ export class GitService extends BaseService {
       return this.attachFileChanges({ commits });
     } catch (error) {
       this.logger.error("Failed to get commits:", error);
+      throw error;
+    }
+  }
+
+  async getStagedChanges(): Promise<FileChange[]> {
+    try {
+      this.logger.debug("Getting staged changes");
+      const output = await this.execGit({
+        command: "diff",
+        args: ["--cached", "--numstat"],
+      });
+
+      return this.parser.parseFileChanges({ numstat: output });
+    } catch (error) {
+      this.logger.error("Failed to get staged changes:", error);
+      throw error;
+    }
+  }
+
+  async getStagedDiff(): Promise<string> {
+    try {
+      this.logger.debug("Getting staged diff");
+      return await this.execGit({
+        command: "diff",
+        args: ["--cached"],
+      });
+    } catch (error) {
+      this.logger.error("Failed to get staged diff:", error);
+      throw error;
+    }
+  }
+
+  async getRepositoryRoot(): Promise<string> {
+    try {
+      this.logger.debug("Getting repository root");
+      const result = await this.execGit({
+        command: "rev-parse",
+        args: ["--show-toplevel"],
+      });
+      return result.trim();
+    } catch (error) {
+      this.logger.error("Failed to get repository root:", error);
+      throw error;
+    }
+  }
+
+  async isMonorepo(): Promise<boolean> {
+    try {
+      const root = await this.getRepositoryRoot();
+      const result = await this.execGit({
+        command: "ls-files",
+        args: [`${root}/packages`],
+      });
+      return result.trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  async getPRTemplate(): Promise<string | null> {
+    try {
+      const templatePaths = [
+        ".github/pull_request_template.md",
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        "docs/pull_request_template.md",
+        "PULL_REQUEST_TEMPLATE.md",
+      ];
+
+      for (const path of templatePaths) {
+        try {
+          const content = await this.execGit({
+            command: "show",
+            args: [`HEAD:${path}`],
+          });
+          if (content) {
+            return content;
+          }
+        } catch {
+          continue;
+        }
+      }
+      return null;
+    } catch (error) {
+      this.logger.debug("Failed to get PR template:", error);
+      return null;
+    }
+  }
+
+  async unstageFiles(params: { files: string[] }): Promise<void> {
+    try {
+      if (!params.files.length) return;
+
+      this.logger.debug(`Unstaging files: ${params.files.join(", ")}`);
+      await this.execGit({
+        command: "reset",
+        args: ["HEAD", ...params.files],
+      });
+    } catch (error) {
+      this.logger.error("Failed to unstage files:", error);
+      throw error;
+    }
+  }
+
+  async getDiffStats(params: { from: string; to: string }): Promise<{
+    additions: number;
+    deletions: number;
+    files: number;
+  }> {
+    try {
+      const output = await this.execGit({
+        command: "diff",
+        args: ["--numstat", params.from, params.to],
+      });
+
+      const changes = this.parser.parseFileChanges({ numstat: output });
+      return {
+        additions: changes.reduce((sum, file) => sum + file.additions, 0),
+        deletions: changes.reduce((sum, file) => sum + file.deletions, 0),
+        files: changes.length,
+      };
+    } catch (error) {
+      this.logger.error("Failed to get diff stats:", error);
+      throw error;
+    }
+  }
+
+  async getDiff(params: { from: string; to: string }): Promise<string> {
+    try {
+      this.logger.debug(`Getting diff between ${params.from} and ${params.to}`);
+      return await this.execGit({
+        command: "diff",
+        args: [params.from, params.to],
+      });
+    } catch (error) {
+      this.logger.error("Failed to get diff:", error);
       throw error;
     }
   }

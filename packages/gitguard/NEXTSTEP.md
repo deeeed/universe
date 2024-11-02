@@ -1,129 +1,114 @@
-Next Steps: Python Hook Integration
-Current State
-GitGuard currently consists of two main components:
+# GitGuard File Structure
 
-TypeScript codebase for PR analysis
-Python hook (gitguard-prepare.py) for commit message enforcement
-
-Current TypeScript structure:
-Copysrc/
-├── services/
-│   ├── analysis.service.ts
-│   ├── base.service.ts
-│   ├── git.service.ts
-│   ├── logger.service.ts
-│   └── reporter.service.ts
-├── types/
-│   └── [type definitions]
-└── utils/
-    └── commit-parser.util.ts
-Integration Goals
-
-Migrate Python hook functionality to TypeScript
-Unify configuration and logging
-Share common functionality (git operations, parsing, analysis)
-Maintain or improve current features
-Add extensibility for future enhancements
-
-Restructuring Plan
-1. Directory Structure Update
-Copysrc/
-├── cli/                    # CLI commands
-│   ├── analyze.ts         # PR analysis command
-│   ├── commit.ts          # Commit-related commands
-│   └── index.ts          
-│
-├── services/
-│   ├── base.service.ts
-│   ├── git.service.ts
-│   ├── logger.service.ts
-│   ├── reporter.service.ts
+```
+.
+├── src/
+│   ├── cli/                    # CLI commands
+│   │   ├── analyze.ts         # PR analysis command
+│   │   ├── commit.ts          # Commit analysis command
+│   │   └── index.ts           # CLI entry point
 │   │
-│   ├── analysis/          # Analysis services
-│   │   ├── analysis.service.ts
-│   │   ├── complexity.service.ts
-│   │   └── cohesion.service.ts
+│   ├── services/
+│   │   ├── ai/               # AI integration
+│   │   │   ├── ai.service.ts
+│   │   │   ├── azure.service.ts
+│   │   │   └── ollama.service.ts
+│   │   │
+│   │   ├── analysis/         # Analysis services
+│   │   │   ├── commit.service.ts
+│   │   │   └── pr.service.ts
+│   │   │
+│   │   ├── base.service.ts   # Base service with logger
+│   │   ├── git.service.ts    # Git operations
+│   │   └── logger.service.ts # Logging
 │   │
-│   └── ai/               # AI services (from Python hook)
-│       ├── base-ai.service.ts
-│       ├── azure-ai.service.ts
-│       ├── ollama-ai.service.ts
-│       └── prompt.service.ts
+│   ├── hooks/                # Git hooks
+│   │   └── prepare-commit-msg.ts
+│   │
+│   ├── types/
+│   │   ├── ai.types.ts       # AI-related types
+│   │   ├── analysis.types.ts # General analysis types
+│   │   ├── commit.types.ts   # Commit-specific types
+│   │   ├── config.types.ts   # Configuration types
+│   │   ├── git.types.ts      # Git operation types
+│   │   ├── logger.types.ts   # Logger types
+│   │   └── pr.types.ts       # PR-specific types
+│   │
+│   ├── utils/
+│   │   └── commit-parser.util.ts
+│   │
+│   ├── config.ts            # Configuration management
+│   └── index.ts            # Main exports
 │
-├── hooks/                 # Git hooks
-│   ├── prepare-commit-msg.ts
-│   └── install.ts
+├── scripts/                 # Installation scripts
+│   ├── install.sh
+│   └── setup-hooks.sh
 │
-└── utils/
-    ├── commit-parser.util.ts
-    └── file-group.util.ts
-2. Feature Migration from Python
-Current Python Features to Migrate
+└── samples/                # Example configurations
+    └── .gitguard.json
+```
 
- Configuration management (global and local)
- AI integration (Azure OpenAI and Ollama)
- Commit complexity analysis
- Commit cohesion checks
- File grouping and analysis
- Interactive commit message suggestions
+## Key Changes from Current Structure:
 
-New TypeScript Services Required
+1. **New Directories**:
+   - `cli/` - Separated CLI commands
+   - `services/ai/` - AI service implementations
+   - `services/analysis/` - Separate commit and PR analysis
+   - `hooks/` - Git hook implementations
 
-AI Service Layer
-typescriptCopyinterface AiService {
-  getSuggestions(params: {
-    prompt: string;
-    context: CommitContext;
-  }): Promise<CommitSuggestion[]>;
-}
+2. **Additional Types**:
+   - `ai.types.ts` - AI service interfaces
+   - `pr.types.ts` - PR analysis types
 
-Complexity Analysis
-typescriptCopyinterface ComplexityService {
-  analyzeCommit(params: {
-    files: FileChange[];
-    message: string;
-  }): ComplexityAnalysis;
-}
+3. **Simplified Services**:
+   - Moved from generic `analysis.service.ts` to specific services
+   - Separated AI concerns
 
-Enhanced Configuration
-typescriptCopyinterface GitGuardConfig {
-  hooks: {
-    commit: CommitHookOptions;
-    pr: PrAnalysisOptions;
-  };
-  ai: {
-    provider: 'azure' | 'ollama';
-    azure?: AzureAiConfig;
-    ollama?: OllamaConfig;
-  };
-}
+4. **Organized Scripts**:
+   - Moved shell scripts to `scripts/` directory
+   - Added hook setup script
 
+## Migration Steps:
 
-Implementation Phases
-Phase 1: Core Infrastructure (Week 1-2)
+1. **Initial Restructuring**
+```bash
+# Create new directories
+mkdir -p src/cli src/services/ai src/services/analysis src/hooks scripts
 
- Update project structure
- Create AI service interfaces
- Implement configuration system
- Set up hook infrastructure
+# Move existing files
+mv src/cli.ts src/cli/index.ts
+mv install.sh scripts/
+mv setup-cli.sh scripts/
+```
 
-Phase 2: Feature Migration (Week 2-3)
+2. **Service Separation**
+```bash
+# Split analysis.service.ts into:
+touch src/services/analysis/commit.service.ts
+touch src/services/analysis/pr.service.ts
 
- Migrate AI providers
- Implement complexity analysis
- Port file grouping utilities
- Add commit cohesion checks
+# Create AI services
+touch src/services/ai/ai.service.ts
+touch src/services/ai/azure.service.ts
+touch src/services/ai/ollama.service.ts
+```
 
-Phase 3: Hook Integration (Week 3-4)
+3. **Update Types**
+```bash
+# Add new type definitions
+touch src/types/ai.types.ts
+touch src/types/pr.types.ts
+```
 
- Create hook installation system
- Implement prepare-commit-msg hook
- Add interactive CLI features
- Create hook configuration system
+4. **CLI Organization**
+```bash
+# Create CLI commands
+touch src/cli/analyze.ts
+touch src/cli/commit.ts
+```
 
-Phase 4: Testing & Documentation (Week 4)
-
- Add tests for new services
- Create migration documentation
- Update user documentation
- Add examples and usage guides
+Would you like me to:
+1. Define the interfaces for any specific service?
+2. Show the exports structure?
+3. Detail the configuration updates?
+4. Plan the first migration step?

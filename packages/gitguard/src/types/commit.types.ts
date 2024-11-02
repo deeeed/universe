@@ -1,3 +1,4 @@
+// packages/gitguard/src/types/commit.types.ts
 export type CommitType =
   | "feat"
   | "fix"
