@@ -20,57 +20,62 @@ export class SecurityService extends BaseService {
     files: FileChange[];
     diff?: string;
   }): SecurityCheckResult {
+    this.logger.debug("Running security analysis...");
+
     const secretFindings = params.diff
       ? this.detectSecrets({ diff: params.diff })
       : [];
+
+    this.logger.debug(`Found ${secretFindings.length} secret findings`);
 
     const fileFindings = this.detectProblematicFiles({
       files: params.files,
     });
 
+    this.logger.debug(`Found ${fileFindings.length} problematic files`);
+
     const filesToUnstage = [...secretFindings, ...fileFindings].map(
       (f) => f.path,
     );
-
-    const commands = this.generateCommands({
-      findings: [...secretFindings, ...fileFindings],
-    });
 
     return {
       secretFindings,
       fileFindings,
       filesToUnstage,
-      commands,
       shouldBlock: [...secretFindings, ...fileFindings].some(
         (f) => f.severity === "high",
       ),
+      commands: this.generateCommands({
+        findings: [...secretFindings, ...fileFindings],
+      }),
     };
   }
 
-  detectSecrets(params: { diff: string }): SecurityFinding[] {
+  private detectSecrets(params: { diff: string }): SecurityFinding[] {
     const findings: SecurityFinding[] = [];
     const lines = params.diff.split("\n");
-    let currentFile = "";
+    const foundSecrets = new Set<string>();
 
-    // Track the current file being processed from the diff
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const fileMatch = line.match(/^\+\+\+ b\/(.+)$/);
-      if (fileMatch) {
-        currentFile = fileMatch[1];
-        continue;
-      }
+      if (!line.startsWith("+")) continue;
 
       for (const pattern of SECRET_PATTERNS) {
-        const match = this.checkLine({
-          line,
-          pattern,
-          lineNumber: i,
-          currentFile,
-        });
-
+        const match = line.match(pattern.pattern);
         if (match) {
-          findings.push(match);
+          const secretKey = `${i}-${match[0]}`;
+          if (foundSecrets.has(secretKey)) continue;
+
+          foundSecrets.add(secretKey);
+          findings.push({
+            type: "secret",
+            severity: pattern.severity,
+            path: this.extractFilePath(params.diff, i) || "unknown",
+            line: i + 1,
+            content: this.maskSecret(line.substring(1)),
+            match: pattern.name,
+            suggestion: `Detected ${pattern.name}. Consider using environment variables or a secret manager.`,
+          });
         }
       }
     }
@@ -78,31 +83,63 @@ export class SecurityService extends BaseService {
     return findings;
   }
 
-  detectProblematicFiles(params: {
+  private maskSecret(line: string): string {
+    return line.replace(
+      /[a-zA-Z0-9+/=]{8,}/g,
+      (match) =>
+        `${match.slice(0, 4)}${"*".repeat(match.length - 8)}${match.slice(-4)}`,
+    );
+  }
+
+  private extractFilePath(diff: string, lineIndex: number): string | undefined {
+    const lines = diff.split("\n").slice(0, lineIndex).reverse();
+    const fileLineRegex = /^[+-]{3} [ab]\/(.+)$/;
+
+    for (const line of lines) {
+      const match = line.match(fileLineRegex);
+      if (match) return match[1];
+    }
+
+    return undefined;
+  }
+
+  private detectProblematicFiles(params: {
     files: FileChange[];
     patterns?: ProblematicFilePattern[];
   }): SecurityFinding[] {
     const findings: SecurityFinding[] = [];
     const patterns = params.patterns || PROBLEMATIC_FILE_PATTERNS;
+    const foundFiles = new Set<string>();
 
     for (const file of params.files) {
-      const fileFindings = this.checkFile({
-        path: file.path,
-        patterns,
-      });
-      findings.push(...fileFindings);
+      if (foundFiles.has(file.path)) continue;
+
+      for (const category of patterns) {
+        if (category.patterns.some((pattern) => pattern.test(file.path))) {
+          foundFiles.add(file.path);
+          findings.push({
+            type: "sensitive_file",
+            severity: category.severity,
+            path: file.path,
+            suggestion: this.getSuggestionForFile({
+              path: file.path,
+              category: category.category,
+            }),
+          });
+          break;
+        }
+      }
     }
 
     return findings;
   }
 
-  private checkLine(params: {
+  public checkLine(params: {
     line: string;
     pattern: SecurityPattern;
     lineNumber: number;
     currentFile: string;
   }): SecurityFinding | null {
-    // Only check added lines (starting with +)
     if (!params.line.startsWith("+")) {
       return null;
     }
@@ -121,29 +158,6 @@ export class SecurityService extends BaseService {
         .replace(match[0], "*".repeat(match[0].length)),
       suggestion: `Remove ${params.pattern.name} and use environment variables`,
     };
-  }
-
-  private checkFile(params: {
-    path: string;
-    patterns: ProblematicFilePattern[];
-  }): SecurityFinding[] {
-    const findings: SecurityFinding[] = [];
-
-    for (const category of params.patterns) {
-      if (category.patterns.some((pattern) => pattern.test(params.path))) {
-        findings.push({
-          type: "sensitive_file",
-          severity: category.severity,
-          path: params.path,
-          suggestion: this.getSuggestionForFile({
-            path: params.path,
-            category: category.category,
-          }),
-        });
-      }
-    }
-
-    return findings;
   }
 
   private getSuggestionForFile(params: {

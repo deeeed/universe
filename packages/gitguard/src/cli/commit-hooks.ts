@@ -62,10 +62,9 @@ async function handleSecurityFindings(
     // Group findings by file for better readability
     const findingsByFile = secretFindings.reduce(
       (acc, finding) => {
-        if (!acc[finding.path]) {
-          acc[finding.path] = [];
-        }
+        if (!acc[finding.path]) acc[finding.path] = [];
         acc[finding.path].push(finding);
+        affectedFiles.add(finding.path);
         return acc;
       },
       {} as Record<string, SecurityFinding[]>,
@@ -75,9 +74,13 @@ async function handleSecurityFindings(
     for (const [file, findings] of Object.entries(findingsByFile)) {
       logger.error(`\n📁 File: ${file}`);
       for (const finding of findings) {
-        logger.error(`⚠️  ${finding.type} detected on line ${finding.line}:`);
-        logger.error(`   ${finding.content}`);
-        affectedFiles.add(finding.path);
+        logger.error(
+          `⚠️  ${finding.type} detected${finding.line ? ` on line ${finding.line}` : ""}:`,
+        );
+        if (finding.content) {
+          logger.error(`   ${finding.content}`);
+        }
+        logger.error(`   Suggestion: ${finding.suggestion}`);
       }
     }
 
@@ -106,24 +109,11 @@ async function handleSecurityFindings(
   if (fileFindings.length) {
     logger.error("\n📁 WARNING: Potentially problematic new files detected:");
 
-    // Group findings by category
-    const byCategory = fileFindings.reduce(
-      (acc, finding) => {
-        if (!acc[finding.type]) {
-          acc[finding.type] = [];
-        }
-        acc[finding.type].push(finding.path);
-        return acc;
-      },
-      {} as Record<string, string[]>,
-    );
-
-    for (const [category, files] of Object.entries(byCategory)) {
-      logger.error(`\n⚠️  ${category}:`);
-      for (const file of files) {
-        logger.error(`   • ${file}`);
-        affectedFiles.add(file);
-      }
+    // Display each problematic file with its suggestion
+    for (const finding of fileFindings) {
+      logger.error(`\n⚠️  File: ${finding.path}`);
+      logger.error(`   Suggestion: ${finding.suggestion}`);
+      affectedFiles.add(finding.path);
     }
 
     logger.info("\n📋 Recommendations for Files:");
@@ -284,40 +274,31 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       logger,
     });
 
+    // Get staged changes and diff first
+    const files = await git.getStagedChanges();
+    const diff = await git.getStagedDiff();
+
+    // Run security checks before commit analysis
+    const securityResult = security.analyzeSecurity({ files, diff });
+
+    if (
+      securityResult.secretFindings.length ||
+      securityResult.fileFindings.length
+    ) {
+      await handleSecurityFindings({
+        secretFindings: securityResult.secretFindings,
+        fileFindings: securityResult.fileFindings,
+        logger,
+        git,
+      });
+    }
+
     // Run the commit analysis
     const analysis = await commitService.analyze({
       messageFile: options.messageFile,
       enableAI: Boolean(config.ai?.enabled),
       enablePrompts: true,
     });
-
-    // Handle security warnings first
-    if (analysis.warnings.some((w) => w.severity === "error")) {
-      const securityFindings = analysis.warnings
-        .filter((w) => w.severity === "error")
-        .map((w) => ({
-          type: "secret" as const,
-          severity: "high" as const,
-          path: w.type === "file" ? w.message : "",
-          suggestion: w.message,
-        }));
-
-      const fileFindings = analysis.warnings
-        .filter((w) => w.type === "file" && w.severity === "warning")
-        .map((w) => ({
-          type: "sensitive_file" as const,
-          severity: "medium" as const,
-          path: w.message,
-          suggestion: w.message,
-        }));
-
-      await handleSecurityFindings({
-        secretFindings: securityFindings,
-        fileFindings: fileFindings,
-        logger,
-        git,
-      });
-    }
 
     // If we have AI suggestions and user wants them
     const shouldUseAI = await promptUser({

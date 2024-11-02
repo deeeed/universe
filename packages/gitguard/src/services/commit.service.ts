@@ -113,24 +113,7 @@ export class CommitService extends BaseService {
   }): AnalysisWarning[] {
     const warnings: AnalysisWarning[] = [];
 
-    // Add security warnings
-    params.securityResult.secretFindings.forEach((finding) => {
-      warnings.push({
-        type: "file",
-        message: `Security issue: ${finding.type}`,
-        severity: "error",
-      });
-    });
-
-    params.securityResult.fileFindings.forEach((finding) => {
-      warnings.push({
-        type: "file",
-        message: `Problematic file: ${finding.type}`,
-        severity: "warning",
-      });
-    });
-
-    // Add size warnings
+    // Only add size warnings, security warnings are handled separately
     if (params.files.length > 10) {
       warnings.push({
         type: "general",
