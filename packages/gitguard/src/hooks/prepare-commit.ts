@@ -142,10 +142,17 @@ async function handleSecurityFindings(
 // Update promptUser to handle different types of prompts
 async function promptUser(options: PromptOptions): Promise<string | boolean> {
   return new Promise((resolve) => {
+    // Ensure we're using raw mode for TTY
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
+      terminal: true,
     });
+
+    // Force TTY mode
+    if (!process.stdin.isTTY) {
+      process.stdin.isTTY = true;
+    }
 
     const suffix =
       options.type === "yesno"
@@ -154,7 +161,12 @@ async function promptUser(options: PromptOptions): Promise<string | boolean> {
           : "[y/N] "
         : "";
 
-    rl.question(`${options.message} ${suffix}`, (answer) => {
+    const prompt = `${options.message} ${suffix}`;
+
+    // Write prompt directly to ensure it's displayed
+    process.stdout.write(prompt);
+
+    rl.on("line", (answer) => {
       rl.close();
       const normalized = answer.toLowerCase().trim();
 
@@ -168,6 +180,24 @@ async function promptUser(options: PromptOptions): Promise<string | boolean> {
         resolve(normalized);
       }
     });
+
+    // Handle Ctrl+C
+    rl.on("SIGINT", () => {
+      rl.close();
+      process.exit(130);
+    });
+
+    // If no input is provided within 30 seconds, use default
+    setTimeout(() => {
+      rl.close();
+      if (options.type === "yesno") {
+        resolve(!!options.defaultYes);
+      } else if (options.allowEmpty) {
+        resolve("");
+      } else {
+        process.exit(1);
+      }
+    }, 30000);
   });
 }
 
@@ -243,11 +273,20 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
   const logger = new LoggerService({ debug: true });
   logger.debug("🎣 Starting prepareCommit hook with options:", options);
 
+  // Check if we're in an interactive session
+  const isInteractive = process.stdin.isTTY;
+
   try {
     // Load configuration, but prefer passed config if available
     logger.debug("Loading configuration...");
     const config = options.config || (await loadConfig());
     logger.debug("Configuration loaded:", config);
+
+    // If not interactive, skip prompts
+    if (!isInteractive) {
+      logger.info("Non-interactive mode detected, skipping prompts");
+      return;
+    }
 
     // Initialize services with the correct working directory
     logger.debug("Initializing services...");
