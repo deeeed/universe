@@ -1,5 +1,6 @@
 import execa from "execa";
-import fs from "fs";
+import { closeSync, openSync } from "fs";
+import { writeFile } from "fs/promises";
 import readline from "readline";
 import { ReadStream, WriteStream } from "tty";
 import { loadConfig } from "../config.js";
@@ -11,7 +12,6 @@ import { PromptService } from "../services/prompt.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
-import { writeFile } from "fs/promises";
 
 // Add missing interfaces
 interface CommitHookOptions {
@@ -52,6 +52,34 @@ interface NumericPromptOptions extends BasePromptOptions {
 }
 
 type PromptOptions = YesNoPromptOptions | NumericPromptOptions;
+
+interface TTYStreams {
+  input: ReadStream | NodeJS.ReadStream;
+  output: WriteStream | NodeJS.WriteStream;
+  fd?: number;
+}
+
+function createTTYStreams(): TTYStreams {
+  if (process.stdin.isTTY) {
+    return {
+      input: process.stdin,
+      output: process.stdout,
+    };
+  }
+
+  try {
+    const fd = openSync("/dev/tty", "r+");
+    const input = new ReadStream(fd);
+    const output = new WriteStream(fd);
+    return { input, output, fd };
+  } catch (error) {
+    console.warn("Failed to open TTY:", error);
+    return {
+      input: process.stdin,
+      output: process.stdout,
+    };
+  }
+}
 
 async function handleSecurityFindings(
   params: HandleSecurityFindingsParams,
@@ -145,24 +173,24 @@ async function handleSecurityFindings(
 // Update promptUser to handle different types of prompts
 async function promptUser(options: PromptOptions): Promise<string | boolean> {
   return new Promise((resolve) => {
-    let input: NodeJS.ReadStream = process.stdin;
-    let output: NodeJS.WriteStream = process.stdout;
-
-    try {
-      if (!process.stdin.isTTY) {
-        const ttyFd = fs.openSync("/dev/tty", "r+");
-        input = new ReadStream(ttyFd);
-        output = new WriteStream(ttyFd);
-      }
-    } catch (error) {
-      console.warn("Failed to open TTY:", error);
-    }
+    const streams = createTTYStreams();
 
     const rl = readline.createInterface({
-      input,
-      output,
+      input: streams.input,
+      output: streams.output,
       terminal: true,
     });
+
+    const cleanup = (): void => {
+      rl.close();
+      if (streams.fd !== undefined) {
+        try {
+          closeSync(streams.fd);
+        } catch (error) {
+          console.warn("Failed to close TTY:", error);
+        }
+      }
+    };
 
     const suffix =
       options.type === "yesno"
@@ -174,11 +202,11 @@ async function promptUser(options: PromptOptions): Promise<string | boolean> {
     const prompt = `${options.message} ${suffix}`;
 
     // Write prompt directly to ensure it's displayed
-    output.write(prompt);
+    streams.output.write(prompt);
 
     rl.on("line", (answer) => {
-      rl.close();
       const normalized = answer.toLowerCase().trim();
+      cleanup();
 
       if (options.type === "yesno") {
         if (options.defaultYes) {
@@ -193,13 +221,13 @@ async function promptUser(options: PromptOptions): Promise<string | boolean> {
 
     // Handle Ctrl+C
     rl.on("SIGINT", () => {
-      rl.close();
+      cleanup();
       process.exit(130);
     });
 
     // If no input is provided within 30 seconds, use default
     setTimeout(() => {
-      rl.close();
+      cleanup();
       if (options.type === "yesno") {
         resolve(!!options.defaultYes);
       } else if (options.allowEmpty) {
@@ -384,6 +412,9 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     if (useFormatted) {
       await writeFile(options.messageFile, analysis.formattedMessage);
       logger.success("✅ Commit message updated!\n");
+      process.exit(0);
+    } else {
+      process.exit(0);
     }
   } catch (error) {
     console.error("Failed to process commit:", error);
