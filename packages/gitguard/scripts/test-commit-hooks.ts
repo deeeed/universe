@@ -276,7 +276,6 @@ async function runScenario(scenario: TestScenario): Promise<TestResult> {
     const { prepareCommit } = await import("../src/cli/commit-hooks.js");
     await prepareCommit({
       messageFile,
-      debug: true,
       config: {
         git: {
           baseBranch: "main",

@@ -52,7 +52,17 @@ export const SECRET_PATTERNS: SecurityPattern[] = [
     pattern: /AIza[0-9A-Za-z\-_]{35}/,
     severity: "high",
   },
-  // ... other patterns from your Python script
+  {
+    name: "Google OAuth",
+    pattern: /[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com/,
+    severity: "high",
+  },
+  {
+    name: "Azure Key",
+    pattern:
+      /[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/,
+    severity: "high",
+  },
 ];
 
 export const PROBLEMATIC_FILE_PATTERNS: ProblematicFilePattern[] = [
@@ -66,5 +76,4 @@ export const PROBLEMATIC_FILE_PATTERNS: ProblematicFilePattern[] = [
     patterns: [/.*\.pem$/, /.*\.key$/, /.*\.keystore$/, /.*\.p12$/, /id_rsa/],
     severity: "high",
   },
-  // ... other patterns from your Python script
 ];

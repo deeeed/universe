@@ -47,75 +47,38 @@ export class SecurityService extends BaseService {
     };
   }
 
-  private detectSecrets(params: {
-    diff: string;
-    patterns?: SecurityPattern[];
-  }): SecurityFinding[] {
+  detectSecrets(params: { diff: string }): SecurityFinding[] {
     const findings: SecurityFinding[] = [];
     const lines = params.diff.split("\n");
-    const patterns = params.patterns || SECRET_PATTERNS;
+    let currentFile = "";
 
-    for (const pattern of patterns) {
-      const matchFindings = this.findPatternMatches({
-        lines,
-        pattern,
-        diff: params.diff,
-      });
-      findings.push(...matchFindings);
-    }
+    // Track the current file being processed from the diff
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const fileMatch = line.match(/^\+\+\+ b\/(.+)$/);
+      if (fileMatch) {
+        currentFile = fileMatch[1];
+        continue;
+      }
 
-    return findings;
-  }
+      for (const pattern of SECRET_PATTERNS) {
+        const match = this.checkLine({
+          line,
+          pattern,
+          lineNumber: i,
+          currentFile,
+        });
 
-  private findPatternMatches(params: {
-    lines: string[];
-    pattern: SecurityPattern;
-    diff: string;
-  }): SecurityFinding[] {
-    const findings: SecurityFinding[] = [];
-
-    for (let i = 0; i < params.lines.length; i++) {
-      const match = this.checkLine({
-        line: params.lines[i],
-        pattern: params.pattern,
-        lineNumber: i,
-        diff: params.diff,
-      });
-
-      if (match) {
-        findings.push(match);
+        if (match) {
+          findings.push(match);
+        }
       }
     }
 
     return findings;
   }
 
-  private checkLine(params: {
-    line: string;
-    pattern: SecurityPattern;
-    lineNumber: number;
-    diff: string;
-  }): SecurityFinding | null {
-    const match = params.line.match(params.pattern.pattern);
-    if (!match) return null;
-
-    const path = this.extractPathFromDiff({
-      diff: params.diff,
-      lineNumber: params.lineNumber,
-    });
-
-    return {
-      type: "secret",
-      severity: params.pattern.severity,
-      path,
-      line: params.lineNumber + 1,
-      match: "*".repeat(match[0].length),
-      content: params.line.replace(match[0], "*".repeat(match[0].length)),
-      suggestion: `Remove ${params.pattern.name} and use environment variables`,
-    };
-  }
-
-  private detectProblematicFiles(params: {
+  detectProblematicFiles(params: {
     files: FileChange[];
     patterns?: ProblematicFilePattern[];
   }): SecurityFinding[] {
@@ -131,6 +94,33 @@ export class SecurityService extends BaseService {
     }
 
     return findings;
+  }
+
+  private checkLine(params: {
+    line: string;
+    pattern: SecurityPattern;
+    lineNumber: number;
+    currentFile: string;
+  }): SecurityFinding | null {
+    // Only check added lines (starting with +)
+    if (!params.line.startsWith("+")) {
+      return null;
+    }
+
+    const match = params.line.substring(1).match(params.pattern.pattern);
+    if (!match) return null;
+
+    return {
+      type: "secret",
+      severity: params.pattern.severity,
+      path: params.currentFile,
+      line: params.lineNumber + 1,
+      match: "*".repeat(match[0].length),
+      content: params.line
+        .substring(1)
+        .replace(match[0], "*".repeat(match[0].length)),
+      suggestion: `Remove ${params.pattern.name} and use environment variables`,
+    };
   }
 
   private checkFile(params: {
@@ -168,25 +158,6 @@ export class SecurityService extends BaseService {
       default:
         return "Consider if this file should be in version control";
     }
-  }
-
-  private extractPathFromDiff(params: {
-    diff: string;
-    lineNumber: number;
-  }): string {
-    const lines = params.diff.split("\n");
-    let currentFile = "";
-
-    for (let i = 0; i <= params.lineNumber; i++) {
-      const line = lines[i];
-      // Fix the regex escape
-      const fileMatch = line.match(/^[+-]{3} [ab]\/(.+)$/);
-      if (fileMatch) {
-        currentFile = fileMatch[1];
-      }
-    }
-
-    return currentFile;
   }
 
   generateCommands(params: { findings: SecurityFinding[] }): string[] {

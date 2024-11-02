@@ -1,14 +1,16 @@
 // packages/gitguard/src/services/git.service.ts
 import execa from "execa";
-import {
-  CommitInfo,
-  FileChange,
-  GitCommandParams,
-  GitConfig,
-} from "../types/git.types";
+import { CommitInfo, FileChange, GitConfig } from "../types/git.types";
 import { ServiceOptions } from "../types/service.types";
 import { CommitParser } from "../utils/commit-parser.util";
+import { FileUtil } from "../utils/file.util";
 import { BaseService } from "./base.service";
+
+interface GetDiffParams {
+  type: "staged" | "range";
+  from?: string;
+  to?: string;
+}
 
 export class GitService extends BaseService {
   private parser: CommitParser;
@@ -89,8 +91,7 @@ export class GitService extends BaseService {
             path,
             additions: parseInt(additions, 10) || 0,
             deletions: parseInt(deletions, 10) || 0,
-            isTest: this.isTestFile(path),
-            isConfig: this.isConfigFile(path),
+            ...FileUtil.getFileType({ path }),
           };
         });
 
@@ -100,14 +101,6 @@ export class GitService extends BaseService {
       this.logger.error("Failed to get staged changes:", error);
       return [];
     }
-  }
-
-  private isTestFile(path: string): boolean {
-    return /\.(test|spec)\.(ts|tsx|js|jsx)$/.test(path);
-  }
-
-  private isConfigFile(path: string): boolean {
-    return /\.(json|ya?ml|env|config)\.(ts|js)?$/.test(path);
   }
 
   async getStagedDiff(): Promise<string> {
@@ -225,16 +218,51 @@ export class GitService extends BaseService {
     }
   }
 
-  async getDiff(params: { from: string; to: string }): Promise<string> {
+  async getDiff(params: GetDiffParams): Promise<string> {
     try {
-      this.logger.debug(`Getting diff between ${params.from} and ${params.to}`);
-      return await this.execGit({
-        command: "diff",
-        args: [params.from, params.to],
-      });
+      if (params.type === "staged") {
+        return await this.execGit({
+          command: "diff",
+          args: ["--cached"],
+        });
+      }
+
+      if (params.type === "range" && params.from && params.to) {
+        return await this.execGit({
+          command: "diff",
+          args: [params.from, params.to],
+        });
+      }
+
+      throw new Error("Invalid diff parameters");
     } catch (error) {
       this.logger.error("Failed to get diff:", error);
       throw error;
+    }
+  }
+
+  async getNewFiles(): Promise<FileChange[]> {
+    try {
+      const output = await this.execGit({
+        command: "diff",
+        args: ["--cached", "--name-status"],
+      });
+
+      return output
+        .split("\n")
+        .filter((line) => line.startsWith("A"))
+        .map((line) => {
+          const [, path] = line.split(/\s+/);
+          return {
+            path,
+            additions: 0,
+            deletions: 0,
+            ...FileUtil.getFileType({ path }),
+          };
+        });
+    } catch (error) {
+      this.logger.error("Failed to get new files:", error);
+      return [];
     }
   }
 
@@ -280,27 +308,14 @@ export class GitService extends BaseService {
     }
   }
 
-  private async execGit(params: GitCommandParams): Promise<string> {
-    const { command, args } = params;
-    this.logger.debug(
-      `Executing git command: git ${command} ${args.join(" ")} in ${this.cwd}`,
-    );
-
+  async execGit(params: { command: string; args: string[] }): Promise<string> {
     try {
-      const { stdout, stderr } = await execa("git", [command, ...args], {
+      const { stdout } = await execa("git", [params.command, ...params.args], {
         cwd: this.cwd,
       });
-
-      if (stderr) {
-        this.logger.warning("Git command produced stderr:", stderr);
-      }
-
       return stdout;
     } catch (error) {
-      this.logger.error(
-        `Git command failed: git ${command} ${args.join(" ")}`,
-        error,
-      );
+      this.logger.error(`Git command failed: ${params.command}`, error);
       throw error;
     }
   }
