@@ -39,7 +39,8 @@
     ".publisher/**/*",
     "package.json",
     "jest.config.ts",
-    "jest.setup.ts"
+    "jest.setup.ts",
+    "e2e/**/*"
   ],
   "exclude": [
     "node_modules",

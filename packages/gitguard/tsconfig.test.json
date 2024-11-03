@@ -6,7 +6,7 @@
     },
     "include": [
       "src/**/*",
-      "**/*.test.ts",
+      "e2e/**/*",
       "jest.setup.ts",
       "jest.config.ts"
     ],

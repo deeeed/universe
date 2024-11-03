@@ -9,7 +9,7 @@ import { Config } from "./types/config.types.js";
 import { deepMerge } from "./utils/deep-merge.js";
 import type { QuestionCollection, Answers } from "inquirer";
 
-const defaultConfig: Config = {
+export const defaultConfig: Config = {
   git: {
     baseBranch: "main",
     ignorePatterns: ["*.lock", "dist/*"],
