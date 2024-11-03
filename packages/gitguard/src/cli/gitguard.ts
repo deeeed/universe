@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { readFile } from "fs/promises";
 import { fileURLToPath } from "url";
+import { resolve, dirname } from "path";
 import { analyze } from "../commands/analyze.js";
 import { hook } from "../commands/hook.js";
 import { LoggerService } from "../services/logger.service.js";
@@ -40,25 +41,31 @@ async function main(): Promise<void> {
   program
     .command("hook")
     .description("Manage git hooks")
-    .argument("<action>", "Action to perform: install or uninstall")
+    .argument("[action]", "Action to perform: install, uninstall, or status")
     .option("-g, --global", "Apply globally")
     .addHelpText(
       "after",
       `
 Examples:
-  $ gitguard hook install          # Install hook in current repository
-  $ gitguard hook install -g       # Install hook globally
-  $ gitguard hook uninstall        # Remove hook from current repository`,
+  $ gitguard hook                  # Show hook status
+  $ gitguard hook status          # Show hook status
+  $ gitguard hook install         # Install hook in current repository
+  $ gitguard hook install -g      # Install hook globally
+  $ gitguard hook uninstall       # Remove hook from current repository`,
     )
-    .action(async (action: string, options: HookOptions) => {
-      if (!["install", "uninstall"].includes(action)) {
-        logger.error(`Invalid action: ${action}`);
-        logger.info("\nValid actions are: install, uninstall");
+    .action(async (action: string | undefined, options: HookOptions) => {
+      // Default to status if no action provided
+      const hookAction = action || "status";
+
+      if (!["install", "uninstall", "status"].includes(hookAction)) {
+        logger.error(`Invalid action: ${hookAction}`);
+        logger.info("\nValid actions are: install, uninstall, status");
         process.exit(1);
       }
+
       try {
         await hook({
-          action: action as "install" | "uninstall",
+          action: hookAction as "install" | "uninstall" | "status",
           global: !!options.global,
           debug: !!program.opts().debug,
           skipHook: !!process.env.SKIP_GITGUARD,
@@ -102,12 +109,24 @@ Examples:
     program.help();
   });
 
-  // Set version
+  // Set version - Updated to handle both ESM and CJS environments
   try {
-    const packagePath = new URL("../../package.json", import.meta.url);
+    let packagePath: string;
+
+    if (typeof __dirname !== "undefined") {
+      // CJS environment
+      packagePath = resolve(__dirname, "../../package.json");
+    } else {
+      // ESM environment
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      packagePath = resolve(__dirname, "../../package.json");
+    }
+
     const packageJson = JSON.parse(
-      await readFile(fileURLToPath(packagePath), "utf8"),
+      await readFile(packagePath, "utf8"),
     ) as PackageJson;
+
     program.version(packageJson.version);
   } catch (error) {
     logger.error("Failed to load version:", error);
@@ -118,8 +137,25 @@ Examples:
   await program.parseAsync(process.argv);
 }
 
-// Direct execution check
-if (require.main === module || process.argv[1].endsWith("gitguard.cjs")) {
+// Updated execution check that works in both environments
+const isDirectlyExecuted = (): boolean => {
+  if (typeof require !== "undefined" && require.main === module) {
+    return true;
+  }
+
+  if (import.meta.url) {
+    const executedFile = fileURLToPath(import.meta.url);
+    return (
+      process.argv[1] === executedFile ||
+      process.argv[1].endsWith("gitguard.cjs") ||
+      process.argv[1].endsWith("gitguard.js")
+    );
+  }
+
+  return false;
+};
+
+if (isDirectlyExecuted()) {
   const logger = new LoggerService({ debug: false });
   main().catch((error) => {
     logger.error("Fatal error:", error);
