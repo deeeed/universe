@@ -1,4 +1,3 @@
-import { loadConfig } from "../utils/config.util.js";
 import {
   displaySuggestions,
   handleSecurityFindings,
@@ -15,6 +14,7 @@ import {
   CommitAnalysisResult,
   PRAnalysisResult,
 } from "../types/analysis.types.js";
+import { loadConfig } from "../utils/config.util.js";
 
 interface AnalyzeOptions {
   pr?: string | number;
@@ -52,13 +52,104 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
       ? AIFactory.create({ config, logger })
       : undefined;
 
-    // If no specific analysis type is specified, analyze staged changes
+    // If no specific analysis type is specified, analyze working directory
     if (!options.pr && !options.branch) {
       const stagedFiles = await git.getStagedChanges();
+      const unstagedFiles = await git.getUnstagedChanges();
 
-      if (stagedFiles.length === 0) {
+      // If no changes at all, exit with helpful message
+      if (stagedFiles.length === 0 && unstagedFiles.length === 0) {
+        logger.info("No changes found in the working directory.");
+        logger.info("\nTo get started:");
+        logger.info("1. Make some changes to your files");
+        logger.info("2. Use 'git add <file>' to stage changes");
+        logger.info("3. Run 'gitguard analyze' again");
+        process.exit(0);
+      }
+
+      // If there are only unstaged changes, provide helpful suggestions
+      if (stagedFiles.length === 0 && unstagedFiles.length > 0) {
+        logger.info("Found unstaged changes:");
+        unstagedFiles.forEach((file) => {
+          logger.info(
+            `  - ${file.path} (+${file.additions} -${file.deletions})`,
+          );
+        });
+
+        // Run security checks on unstaged files
+        if (security) {
+          const diff = await git.getUnstagedDiff();
+          const securityResult = security.analyzeSecurity({
+            files: unstagedFiles,
+            diff,
+          });
+
+          if (
+            securityResult?.secretFindings.length ||
+            securityResult?.fileFindings.length
+          ) {
+            logger.warning("\n⚠️ Security issues found in unstaged changes:");
+            await handleSecurityFindings({
+              secretFindings: securityResult.secretFindings || [],
+              fileFindings: securityResult.fileFindings || [],
+              logger,
+              git,
+            });
+          }
+        }
+
+        // Generate AI suggestions for unstaged changes if available
+        if (ai) {
+          logger.info("\n🤖 Analyzing unstaged changes...");
+          const commitService = new CommitService({
+            config,
+            git,
+            security,
+            prompt,
+            ai,
+            logger,
+          });
+
+          const diff = await git.getUnstagedDiff();
+          const suggestions = await commitService.getSuggestions({
+            files: unstagedFiles,
+            message: "",
+            diff,
+          });
+
+          if (suggestions?.length) {
+            logger.info("\nSuggested commit messages for these changes:");
+            suggestions.forEach((suggestion, index) => {
+              logger.info(`\n${index + 1}. ${suggestion.message}`);
+              logger.info(`   Explanation: ${suggestion.explanation}`);
+            });
+          }
+
+          // Check if changes should be split
+          const splitSuggestion = commitService.getSplitSuggestion({
+            files: unstagedFiles,
+            message: "",
+          });
+
+          if (splitSuggestion) {
+            logger.info(
+              "\n📦 Suggestion: Split these changes into multiple commits:",
+            );
+            logger.info(`Reason: ${splitSuggestion.reason}`);
+            splitSuggestion.suggestions.forEach((suggestion, index) => {
+              logger.info(`\n${index + 1}. ${suggestion.message}`);
+              logger.info(`   Files: ${suggestion.files.join(", ")}`);
+            });
+          }
+        }
+
+        logger.info("\nNext steps:");
+        logger.info("1. Review the changes above");
         logger.info(
-          "No staged changes found. Stage some changes first or specify a PR/branch to analyze.",
+          "2. Use 'git add <file>' to stage the changes you want to commit",
+        );
+        logger.info(
+          "3. Run 'gitguard analyze' again to analyze staged changes",
         );
         process.exit(0);
       }

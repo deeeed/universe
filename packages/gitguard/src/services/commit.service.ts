@@ -179,7 +179,7 @@ export class CommitService extends BaseService {
     return Array.from(scopes);
   }
 
-  private async getSuggestions(params: {
+  public async getSuggestions(params: {
     files: FileChange[];
     message: string;
     diff: string;
@@ -200,7 +200,7 @@ export class CommitService extends BaseService {
     });
   }
 
-  private getSplitSuggestion(params: {
+  public getSplitSuggestion(params: {
     files: FileChange[];
     message: string;
   }): CommitSplitSuggestion | undefined {

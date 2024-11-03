@@ -348,4 +348,51 @@ export class GitService extends BaseService {
       throw error;
     }
   }
+
+  async getUnstagedChanges(): Promise<FileChange[]> {
+    try {
+      this.logger.debug("Getting unstaged changes");
+      const { stdout } = await execa("git", ["diff", "--numstat"], {
+        cwd: this.cwd,
+      });
+
+      if (!stdout.trim()) {
+        this.logger.debug("No unstaged changes found");
+        return [];
+      }
+
+      const files = stdout
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => {
+          const [additions = "0", deletions = "0", path = ""] =
+            line.split(/\s+/);
+          return {
+            path,
+            additions: parseInt(additions, 10) || 0,
+            deletions: parseInt(deletions, 10) || 0,
+            ...FileUtil.getFileType({ path }),
+          };
+        });
+
+      this.logger.debug("Unstaged files:", files);
+      return files;
+    } catch (error) {
+      this.logger.error("Failed to get unstaged changes:", error);
+      return [];
+    }
+  }
+
+  async getUnstagedDiff(): Promise<string> {
+    try {
+      this.logger.debug("Getting unstaged diff");
+      return await this.execGit({
+        command: "diff",
+        args: [],
+      });
+    } catch (error) {
+      this.logger.error("Failed to get unstaged diff:", error);
+      throw error;
+    }
+  }
 }
