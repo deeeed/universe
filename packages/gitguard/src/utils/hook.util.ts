@@ -101,6 +101,9 @@ export function getHookScript(packagePath: string): string {
     process.exit(0);
   }
   
+  // Force TTY mode for git hooks
+  process.env.FORCE_TTY = 'true';
+  
   debug('🔍 GitGuard Hook Debug:');
   debug('- Package Path:', '${packagePath}');
   debug('- Process CWD:', process.cwd());

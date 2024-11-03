@@ -94,41 +94,40 @@ function createTTYStreams({ logger }: CreateTTYStreamsParams): TTYStreams {
     },
   });
 
-  // First try to use process.stdin/stdout if they're TTY
-  if (process.stdin.isTTY && process.stdout.isTTY) {
-    logger.debug("✅ Using process.stdin/stdout TTY streams");
-    return {
-      input: process.stdin,
-      output: process.stdout,
-      isTTY: true,
-    };
-  }
-
-  // If not TTY, try to open /dev/tty explicitly
+  // First try to use /dev/tty explicitly as it's most reliable in git hooks
   try {
-    logger.debug("⚠️ Process streams not TTY, attempting to open /dev/tty...");
+    logger.debug("🔍 Attempting to open /dev/tty...");
     const fd = openSync("/dev/tty", "r+");
-    const input = new ReadStream(fd);
+    const tty = new ReadStream(fd);
     const output = new WriteStream(fd);
 
-    logger.debug("TTY Stream Status:", {
-      fd,
-      inputReadable: input.readable,
-      outputWritable: output.writable,
-    });
-
-    // Verify streams are writable
-    if (input.readable && output.writable) {
-      logger.debug("✅ Successfully opened /dev/tty streams");
-      return { input, output, fd, isTTY: true };
+    if (!tty.readable || !output.writable) {
+      logger.debug("❌ /dev/tty streams not accessible");
+      closeSync(fd);
+      throw new Error("TTY streams not accessible");
     }
 
-    // If not writable, clean up and fall back
-    logger.debug("❌ TTY streams not writable");
-    closeSync(fd);
-    throw new Error("TTY streams not writable");
+    logger.debug("✅ Successfully opened /dev/tty streams");
+    return {
+      input: tty,
+      output,
+      fd,
+      isTTY: true,
+    };
   } catch (error) {
-    logger.debug("❌ Failed to open TTY:", { error });
+    logger.debug("❌ Failed to open /dev/tty:", error);
+
+    // Fallback to process streams if they're TTY
+    if (process.stdin.isTTY && process.stdout.isTTY) {
+      logger.debug("✅ Using process.stdin/stdout TTY streams");
+      return {
+        input: process.stdin,
+        output: process.stdout,
+        isTTY: true,
+      };
+    }
+
+    // Last resort: non-interactive mode
     logger.debug("⚠️ Falling back to non-interactive mode");
     return {
       input: process.stdin,
@@ -151,10 +150,25 @@ async function promptUser({
     logger.debug("🎯 Initializing prompt:", { options });
     const streams = createTTYStreams({ logger });
 
-    logger.debug("📥 Prompt streams:", {
-      isTTY: streams.isTTY,
-      hasFd: streams.fd !== undefined,
-    });
+    // If we can't get TTY access, use default values
+    if (!streams.isTTY) {
+      logger.info("\n⚠️ Non-interactive environment detected, using defaults");
+
+      if (options.type === "yesno") {
+        const defaultValue = !!options.defaultYes;
+        logger.info(`Using default: ${defaultValue ? "Yes" : "No"}`);
+        resolve(defaultValue);
+        return;
+      } else if (options.type === "numeric" && options.defaultValue) {
+        logger.info(`Using default choice: ${options.defaultValue}`);
+        resolve(options.defaultValue);
+        return;
+      } else {
+        logger.info("No default value available, skipping prompt");
+        resolve("");
+        return;
+      }
+    }
 
     const rl = readline.createInterface({
       input: streams.input,
