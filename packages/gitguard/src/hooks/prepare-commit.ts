@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import execa from "execa";
 import { closeSync, openSync } from "fs";
 import { writeFile } from "fs/promises";
@@ -8,10 +9,10 @@ import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
 import { LoggerService } from "../services/logger.service.js";
 import { SecurityService } from "../services/security.service.js";
+import { AIProvider } from "../types/ai.types.js";
 import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
 import { loadConfig } from "../utils/config.util.js";
-import chalk from "chalk";
 
 interface CommitHookOptions {
   messageFile: string;
@@ -33,6 +34,8 @@ interface DisplaySuggestionsParams {
   }>;
   logger: LoggerService;
   prompt: string;
+  ai?: AIProvider;
+  git?: GitService;
 }
 
 // Add interfaces for different prompt types
@@ -251,11 +254,44 @@ async function promptUser(options: PromptOptions): Promise<string | boolean> {
   });
 }
 
-// Update displaySuggestions to use colors
+// Update displayAICostEstimate to use AIProvider type
+async function displayAICostEstimate(params: {
+  ai: AIProvider;
+  git: GitService;
+  logger: LoggerService;
+}): Promise<void> {
+  const { ai, git, logger } = params;
+  const diff = await git.getStagedDiff();
+  const tokenUsage = ai.calculateTokenUsage({ prompt: diff });
+
+  logger.info(
+    `\n💰 ${chalk.cyan("Estimated cost for AI generation:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
+  );
+  logger.info(
+    `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}`,
+  );
+}
+
+// Update DisplaySuggestionsParams interface
 export async function displaySuggestions(
   params: DisplaySuggestionsParams,
 ): Promise<string | undefined> {
-  const { suggestions, logger } = params;
+  const { suggestions, logger, ai, git } = params;
+
+  // Show cost estimate before generating suggestions
+  if (ai && git) {
+    await displayAICostEstimate({ ai, git, logger });
+
+    const shouldProceed = await promptUser({
+      type: "yesno",
+      message: "\n🤖 Would you like to proceed with AI suggestion generation?",
+      defaultYes: true,
+    });
+
+    if (!shouldProceed) {
+      return undefined;
+    }
+  }
 
   suggestions.forEach((suggestion, index) => {
     logger.info(
@@ -434,12 +470,27 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     });
 
     // Add AI option if enabled
-    if (config.ai?.enabled) {
+    if (config.ai?.enabled && ai) {
       choices.push({
         label: "Generate commit message with AI",
         value: "ai",
         action: async () => {
-          logger.info("\n🤖 Getting AI suggestions...");
+          // Show cost estimate before proceeding
+          await displayAICostEstimate({ ai, git, logger });
+
+          const shouldProceed = await promptUser({
+            type: "yesno",
+            message:
+              "\n🤖 Would you like to proceed with AI suggestion generation?",
+            defaultYes: true,
+          });
+
+          if (!shouldProceed) {
+            process.exit(0);
+            return;
+          }
+
+          logger.info("\n🔄 Getting AI suggestions...");
           const aiAnalysis = await commitService.analyze({
             messageFile: options.messageFile,
             enableAI: true,
@@ -452,6 +503,8 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
               suggestions: aiAnalysis.suggestions,
               logger,
               prompt: aiAnalysis.originalMessage,
+              ai, // Pass AI instance
+              git, // Pass Git instance
             });
 
             if (chosenMessage) {
