@@ -20,7 +20,7 @@ import { SecurityService } from "./security.service.js";
 
 export class PRService extends BaseService {
   private readonly git: GitService;
-  private readonly security: SecurityService;
+  private readonly security?: SecurityService;
   private readonly ai?: AIProvider;
   private readonly prompt: PromptService;
   private readonly config: Config;
@@ -29,7 +29,7 @@ export class PRService extends BaseService {
     params: ServiceOptions & {
       config: Config;
       git: GitService;
-      security: SecurityService;
+      security?: SecurityService;
       prompt: PromptService;
       ai?: AIProvider;
     },
@@ -334,7 +334,7 @@ export class PRService extends BaseService {
         });
       }
 
-      // Security checks
+      // Security checks - only if security service is available
       const diff = await this.git.getDiff({
         from: baseBranch,
         to: branch,
@@ -343,12 +343,15 @@ export class PRService extends BaseService {
 
       const securityAnalysis =
         params.securityResult ??
-        this.security.analyzeSecurity({
-          files: commits.flatMap((c) => c.files),
-          diff,
-        });
+        (this.security
+          ? this.security.analyzeSecurity({
+              files: commits.flatMap((c) => c.files),
+              diff,
+            })
+          : undefined);
 
-      if (securityAnalysis.secretFindings.length > 0) {
+      // Only add security warnings if security analysis exists
+      if (securityAnalysis?.secretFindings.length) {
         warnings.push(
           ...this.mapSecurityToWarnings(securityAnalysis.secretFindings),
         );

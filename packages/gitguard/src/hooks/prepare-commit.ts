@@ -12,8 +12,6 @@ import { PromptService } from "../services/prompt.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
-
-// Add missing interfaces
 interface CommitHookOptions {
   messageFile: string;
   config?: Config;
@@ -225,17 +223,26 @@ async function promptUser(options: PromptOptions): Promise<string | boolean> {
       process.exit(130);
     });
 
-    // If no input is provided within 30 seconds, use default
+    // If no input is provided within 30 seconds, notify user and use default
+    const timeoutDuration = 30000;
     setTimeout(() => {
+      streams.output.write(
+        `\n⏰ No input received after ${timeoutDuration / 1000} seconds. Using default value.\n`,
+      );
       cleanup();
+
       if (options.type === "yesno") {
-        resolve(!!options.defaultYes);
+        const defaultValue = !!options.defaultYes;
+        streams.output.write(`Using default: ${defaultValue ? "Yes" : "No"}\n`);
+        resolve(defaultValue);
       } else if (options.allowEmpty) {
+        streams.output.write("Using empty value\n");
         resolve("");
       } else {
+        streams.output.write("❌ Input required. Aborting.\n");
         process.exit(1);
       }
-    }, 30000);
+    }, timeoutDuration);
   });
 }
 
@@ -308,7 +315,9 @@ async function copyToClipboard(text: string): Promise<void> {
 }
 
 export async function prepareCommit(options: CommitHookOptions): Promise<void> {
-  const logger = new LoggerService({ debug: true });
+  const logger = new LoggerService({
+    debug: process.env.GITGUARD_DEBUG === "true" || options.config?.debug,
+  });
   logger.debug("🎣 Starting prepareCommit hook with options:", options);
 
   try {
@@ -334,7 +343,9 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       },
       logger,
     });
-    const security = new SecurityService({ logger, config });
+    const security = config.security?.enabled
+      ? new SecurityService({ logger, config })
+      : undefined;
     const prompt = new PromptService({ logger });
     const ai = config.ai?.enabled
       ? AIFactory.create({ config, logger })
@@ -345,15 +356,15 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     const diff = await git.getStagedDiff();
 
     // Run security checks ONLY ONCE
-    const securityResult = security.analyzeSecurity({ files, diff });
+    const securityResult = security?.analyzeSecurity({ files, diff });
 
     if (
-      securityResult.secretFindings.length ||
-      securityResult.fileFindings.length
+      securityResult?.secretFindings.length ||
+      securityResult?.fileFindings.length
     ) {
       await handleSecurityFindings({
-        secretFindings: securityResult.secretFindings,
-        fileFindings: securityResult.fileFindings,
+        secretFindings: securityResult?.secretFindings,
+        fileFindings: securityResult?.fileFindings,
         logger,
         git,
       });
@@ -374,7 +385,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       messageFile: options.messageFile,
       enableAI: Boolean(config.ai?.enabled),
       enablePrompts: true,
-      securityResult, // Pass the existing security result
+      securityResult,
     });
 
     // If we have AI suggestions and user wants them

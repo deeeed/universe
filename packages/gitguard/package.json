@@ -14,9 +14,7 @@
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
   "type": "module",
-  "bin": {
-    "gitguard": "./dist/cjs/cli/gitguard.cjs"
-  },
+  "bin": "./dist/cjs/cli/gitguard.cjs",
   "files": [
     "dist",
     "package.json",
@@ -31,17 +29,20 @@
     "build:tsc": "tsc --project tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.json --noEmit",
     "test": "jest",
+    "test:e2e": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./scripts/test-commit-hooks.ts",
+    "test:e2e:debug": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./scripts/test-commit-hooks.ts --debug",
     "lint": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\" \"bin/**/*.ts\"",
     "postbuild": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./scripts/post-build.ts",
+    "dev": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./src/cli/gitguard.ts",
     "setup": "./setup-cli.sh",
     "unsetup": "./uninstall-cli.sh"
   },
   "dependencies": {
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
-    "inquirer": "^9.2.15",
+    "inquirer": "^8.2.6",
     "openai": "^4.70.2"
   },
   "devDependencies": {
@@ -51,6 +52,7 @@
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
     "@siteed/publisher": "workspace:^",
+    "@types/inquirer": "^8.2.10",
     "@types/jest": "^29.5.14",
     "@types/node": "^20.8.0",
     "@typescript-eslint/eslint-plugin": "^6.7.3",

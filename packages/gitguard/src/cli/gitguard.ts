@@ -79,16 +79,44 @@ Examples:
   // Analyze command
   program
     .command("analyze")
-    .description("Analyze current changes or PR")
+    .description("Analyze git changes and get suggestions")
     .option("-p, --pr <number>", "PR number to analyze")
-    .option("-b, --branch <name>", "Branch to analyze")
+    .option("-b, --branch <name>", "Branch to analyze (defaults to current)")
+    .option("-m, --message <text>", "Commit message to analyze")
+    .option(
+      "-f, --format <type>",
+      "Output format: console, json, markdown",
+      "console",
+    )
+    .option("--no-color", "Disable colored output")
+    .option("--detailed", "Show detailed analysis")
     .addHelpText(
       "after",
       `
-Examples:
-  $ gitguard analyze               # Analyze current changes
-  $ gitguard analyze -p 123        # Analyze PR #123
-  $ gitguard analyze -b main       # Analyze branch 'main'`,
+Usage Examples:
+  $ gitguard analyze                    # Analyze current staged changes
+  $ gitguard analyze -m "feat: update"  # Analyze with specific commit message
+  $ gitguard analyze -p 123             # Analyze PR #123
+  $ gitguard analyze -b main            # Analyze branch 'main'
+  $ gitguard analyze --format markdown  # Output in markdown format
+  $ gitguard analyze --detailed         # Show detailed analysis
+  $ gitguard analyze --no-color         # Disable colored output
+
+Options:
+  -p, --pr <number>      PR number to analyze
+  -b, --branch <name>    Branch to analyze (defaults to current)
+  -m, --message <text>   Commit message to analyze
+  -f, --format <type>    Output format: console, json, markdown (default: "console")
+  --no-color            Disable colored output
+  --detailed           Show detailed analysis
+  -c, --config <path>   Path to custom config file
+
+Analysis includes:
+  • Commit message formatting
+  • Security checks
+  • AI-powered suggestions
+  • Split recommendations
+  • Code quality warnings`,
     )
     .action(async (options: AnalyzeOptions) => {
       try {

@@ -118,7 +118,11 @@ try {
     process.exit(1);
   }
 
-  prepareCommit({ messageFile })
+  prepareCommit({ 
+    messageFile,
+    forceTTY: true,
+    debug: DEBUG 
+  })
     .catch((error) => {
       console.error('Hook failed:', error);
       process.exit(1);
@@ -171,27 +175,27 @@ export async function hook(options: HookCommandOptions = {}): Promise<void> {
     const status = await getHookStatus();
 
     // Display current status
-    logger.info("\n📦 GitGuard Hook Status:");
+    logger.info("\nGitGuard Hook Status:");
 
     if (status.isRepo) {
       logger.info(`\nLocal repository detected at: ${process.cwd()}`);
       if (status.localHook.exists) {
-        logger.info("✓ Local hook is installed");
+        logger.info("Local hook is installed");
       } else {
-        logger.info("✗ No local hook installed");
+        logger.info("No local hook installed");
       }
     }
 
     if (status.globalHook.exists) {
       logger.info(`\nGlobal hook detected at: ${status.globalHook.path}`);
     } else {
-      logger.info("\n✗ No global hook installed");
+      logger.info("\nNo global hook installed");
     }
 
     // Handle different modes
     if (options.action === "status") {
       // Show suggestions for status command
-      logger.info("\n📝 Suggested actions:");
+      logger.info("\nSuggested actions:");
       if (status.isRepo) {
         if (status.localHook.exists) {
           logger.info("• To reinstall local hook:  gitguard hook install");
@@ -287,12 +291,10 @@ export async function hook(options: HookCommandOptions = {}): Promise<void> {
 
     // Handle uninstall
     if (options.action === "uninstall") {
-      logger.info(
-        `\n🗑️  Uninstalling ${targetType} hook from: ${targetHook.path}`,
-      );
+      logger.info(`\nUninstalling ${targetType} hook from: ${targetHook.path}`);
       try {
         await fs.unlink(targetHook.path);
-        logger.success(`✅ Git hook uninstalled from ${targetHook.path}`);
+        logger.success(`Git hook uninstalled from ${targetHook.path}`);
       } catch {
         logger.warn(`No hook found at ${targetHook.path}`);
       }
@@ -300,7 +302,7 @@ export async function hook(options: HookCommandOptions = {}): Promise<void> {
     }
 
     // Handle install
-    logger.info(`\n📥 Installing ${targetType} hook to: ${targetHook.path}`);
+    logger.info(`\nInstalling ${targetType} hook to: ${targetHook.path}`);
     await fs.mkdir(targetHook.hooksPath, { recursive: true });
     const hookScript = getHookScript(packagePath);
 
@@ -319,7 +321,7 @@ export async function hook(options: HookCommandOptions = {}): Promise<void> {
       throw new Error("Hook file content verification failed");
     }
 
-    logger.success(`✅ Git hook installed at ${targetHook.path}`);
+    logger.success(`Git hook installed at ${targetHook.path}`);
     if (options.skipHook) {
       logger.info("To skip the hook, set SKIP_GITGUARD=true:");
       logger.info("SKIP_GITGUARD=true git commit -m 'your message'");

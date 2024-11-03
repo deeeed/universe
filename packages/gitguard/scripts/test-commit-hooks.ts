@@ -4,8 +4,8 @@ import { parseArgs } from "node:util";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 import readline from "readline";
-import { LoggerService } from "../src/services/logger.service.js";
 import { prepareCommit } from "../src/hooks/prepare-commit.js";
+import { LoggerService } from "../src/services/logger.service.js";
 
 interface TestScenario {
   name: string;
@@ -15,6 +15,16 @@ interface TestScenario {
       content: string;
     }>;
     monorepo?: boolean;
+    config?: {
+      ai?: { enabled: boolean };
+      analysis?: {
+        maxCommitSize?: number;
+        maxFileSize?: number;
+      };
+      security?: {
+        enabled: boolean;
+      };
+    };
   };
   input: {
     message: string;
@@ -23,6 +33,7 @@ interface TestScenario {
     message: string;
     securityIssues?: boolean;
     splitSuggestion?: boolean;
+    aiSuggestions?: boolean;
   };
 }
 
@@ -109,6 +120,61 @@ const TEST_SCENARIOS: TestScenario[] = [
       splitSuggestion: true,
     },
   },
+  {
+    name: "AI suggestions enabled",
+    setup: {
+      files: [{ path: "src/feature.ts", content: "console.log('test');" }],
+      config: {
+        ai: { enabled: true },
+      },
+    },
+    input: {
+      message: "add new feature",
+    },
+    expected: {
+      message: "feat: add new feature",
+      aiSuggestions: true,
+    },
+  },
+  {
+    name: "Security check - Environment variables",
+    setup: {
+      files: [
+        {
+          path: ".env.local",
+          content: "DATABASE_URL=postgresql://user:password@localhost:5432/db",
+        },
+      ],
+      config: {
+        security: {
+          enabled: true,
+        },
+      },
+    },
+    input: {
+      message: "add database config",
+    },
+    expected: {
+      message: "chore: add database config",
+      securityIssues: true,
+    },
+  },
+  {
+    name: "Large commit detection",
+    setup: {
+      files: Array.from({ length: 10 }, (_, i) => ({
+        path: `src/feature${i}.ts`,
+        content: "console.log('test');".repeat(100),
+      })),
+    },
+    input: {
+      message: "massive update",
+    },
+    expected: {
+      message: "feat: massive update",
+      splitSuggestion: true,
+    },
+  },
 ];
 
 interface GitEnv {
@@ -125,25 +191,10 @@ interface GitEnv {
   [key: string]: string | undefined;
 }
 
-async function execWithTimeout(
-  command: string,
-  args: string[],
-  options: Options,
-  timeoutMs = 5000,
-): Promise<execa.ExecaReturnValue> {
-  const promise = execa(command, args, options);
-  const timeout = new Promise<never>((_, reject) => {
-    setTimeout(
-      () => reject(new Error(`Command timed out after ${timeoutMs}ms`)),
-      timeoutMs,
-    );
-  });
-
-  return Promise.race([promise, timeout]);
-}
-
 async function setupTestRepo(scenario: TestScenario): Promise<string> {
-  const logger = new LoggerService({ debug: true });
+  const logger = new LoggerService({
+    debug: process.argv.includes("--debug"),
+  });
   const testDir = join(tmpdir(), `gitguard-test-${Date.now()}`);
 
   const gitEnv: GitEnv = {
@@ -173,34 +224,22 @@ async function setupTestRepo(scenario: TestScenario): Promise<string> {
     await mkdir(join(testDir, ".gitguard"), { recursive: true });
 
     logger.debug("Initializing git repository");
-    await execWithTimeout("git", ["init"], execOptions);
+    await execa("git", ["init"], execOptions);
 
     logger.debug("Configuring git");
-    await execWithTimeout(
-      "git",
-      ["config", "core.autocrlf", "false"],
-      execOptions,
-    );
-    await execWithTimeout(
-      "git",
-      ["config", "core.safecrlf", "false"],
-      execOptions,
-    );
-    await execWithTimeout(
-      "git",
-      ["config", "commit.gpgsign", "false"],
-      execOptions,
-    );
+    await execa("git", ["config", "core.autocrlf", "false"], execOptions);
+    await execa("git", ["config", "core.safecrlf", "false"], execOptions);
+    await execa("git", ["config", "commit.gpgsign", "false"], execOptions);
 
     logger.debug("Creating initial commit");
     const readmePath = join(testDir, "README.md");
     await writeFile(readmePath, "# Test Repository");
 
     logger.debug("Staging README");
-    await execWithTimeout("git", ["add", "README.md"], execOptions);
+    await execa("git", ["add", "README.md"], execOptions);
 
     logger.debug("Creating commit");
-    await execWithTimeout(
+    await execa(
       "git",
       [
         "commit",
@@ -210,7 +249,6 @@ async function setupTestRepo(scenario: TestScenario): Promise<string> {
         "[automated] Initial commit",
       ],
       execOptions,
-      5000,
     );
 
     // Create test files
@@ -224,22 +262,40 @@ async function setupTestRepo(scenario: TestScenario): Promise<string> {
     }
 
     // Create config
-    logger.debug("Creating GitGuard config");
+    const defaultConfig = {
+      git: {
+        baseBranch: "main",
+        ignorePatterns: ["*.lock", "dist/*"],
+      },
+      analysis: {
+        maxCommitSize: 500,
+        maxFileSize: 800,
+        checkConventionalCommits: true,
+      },
+      ai: { enabled: false },
+      security: {
+        enabled: false, // Disable security by default
+      },
+    };
+
+    const config = scenario.setup.config
+      ? {
+          ...defaultConfig,
+          ...scenario.setup.config,
+          git: { ...defaultConfig.git },
+          analysis: {
+            ...defaultConfig.analysis,
+            ...(scenario.setup.config.analysis || {}),
+          },
+          security: {
+            enabled: Boolean(scenario.setup.config.security?.enabled),
+          },
+        }
+      : defaultConfig;
+
     await writeFile(
       join(testDir, ".gitguard/config.json"),
-      JSON.stringify(
-        {
-          git: { baseBranch: "main" },
-          analysis: {
-            maxCommitSize: 500,
-            maxFileSize: 800,
-            checkConventionalCommits: true,
-          },
-          ai: { enabled: false },
-        },
-        null,
-        2,
-      ),
+      JSON.stringify(config, null, 2),
     );
 
     logger.debug("Test repo setup complete");
@@ -258,7 +314,7 @@ async function runScenario(scenario: TestScenario): Promise<TestResult> {
   let testDir: string | undefined;
 
   try {
-    logger.debug(`\n📁 Setting up test directory for: ${scenario.name}`);
+    logger.debug(`\n Setting up test directory for: ${scenario.name}`);
     testDir = await setupTestRepo(scenario);
     logger.debug(`Created test directory: ${testDir}`);
 
@@ -280,13 +336,39 @@ async function runScenario(scenario: TestScenario): Promise<TestResult> {
         git: {
           baseBranch: "main",
           cwd: testDir,
+          ignorePatterns: ["*.lock", "dist/*"],
         },
         analysis: {
           maxCommitSize: 500,
           maxFileSize: 800,
           checkConventionalCommits: true,
         },
+        security: {
+          enabled: false,
+          checkSecrets: false,
+          checkFiles: false,
+        },
+        ai: {
+          enabled: false,
+          provider: null,
+        },
+        pr: {
+          template: {
+            path: ".github/pull_request_template.md",
+            required: false,
+            sections: {
+              description: true,
+              breaking: true,
+              testing: true,
+              checklist: true,
+            },
+          },
+          maxSize: 800,
+          requireApprovals: 1,
+        },
+        debug: process.argv.includes("--debug"),
       },
+      forceTTY: true,
     });
 
     // Read results
@@ -338,15 +420,12 @@ function createInterface(): readline.Interface {
 
 async function promptUser(question: string): Promise<string> {
   const rl = createInterface();
-  try {
-    return await new Promise((resolve) => {
-      rl.question(question, (answer) => {
-        resolve(answer.trim());
-      });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
     });
-  } finally {
-    rl.close();
-  }
+  });
 }
 
 async function selectScenarios(logger: LoggerService): Promise<TestScenario[]> {

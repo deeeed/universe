@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import { AIProvider } from "../types/ai.types.js";
 import {
   AnalysisWarning,
+  CommitAnalysisOptions,
   CommitAnalysisResult,
   CommitSplitSuggestion,
   CommitStats,
@@ -11,7 +12,10 @@ import {
 import { Config } from "../types/config.types.js";
 import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
-import { SecurityCheckResult } from "../types/security.types.js";
+import {
+  SecurityCheckResult,
+  SecurityFinding,
+} from "../types/security.types.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
 import { PromptService } from "./prompt.service.js";
@@ -19,14 +23,14 @@ import { SecurityService } from "./security.service.js";
 
 export class CommitService extends BaseService {
   private readonly git: GitService;
-  private readonly security: SecurityService;
+  private readonly security?: SecurityService;
   private readonly ai?: AIProvider;
   private readonly prompt: PromptService;
 
   constructor(params: {
     config: Config;
     git: GitService;
-    security: SecurityService;
+    security?: SecurityService;
     prompt: PromptService;
     ai?: AIProvider;
     logger: Logger;
@@ -38,12 +42,7 @@ export class CommitService extends BaseService {
     this.ai = params.ai;
   }
 
-  async analyze(params: {
-    messageFile: string;
-    enableAI?: boolean;
-    enablePrompts?: boolean;
-    securityResult?: SecurityCheckResult;
-  }): Promise<CommitAnalysisResult> {
+  async analyze(params: CommitAnalysisOptions): Promise<CommitAnalysisResult> {
     try {
       const branch = await this.git.getCurrentBranch();
       const baseBranch = this.git.config.baseBranch;
@@ -56,7 +55,14 @@ export class CommitService extends BaseService {
         return this.createEmptyResult({ branch, baseBranch });
       }
 
-      const originalMessage = await fs.readFile(params.messageFile, "utf-8");
+      let originalMessage: string;
+      if (params.messageFile) {
+        originalMessage = await fs.readFile(params.messageFile, "utf-8");
+      } else if (params.message) {
+        originalMessage = params.message;
+      } else {
+        throw new Error("Either message or messageFile must be provided");
+      }
 
       if (!originalMessage || originalMessage.trim().startsWith("Merge")) {
         return this.createEmptyResult({ branch, baseBranch });
@@ -64,10 +70,12 @@ export class CommitService extends BaseService {
 
       const securityResult =
         params.securityResult ||
-        this.security.analyzeSecurity({
-          files,
-          diff,
-        });
+        (this.security
+          ? this.security.analyzeSecurity({
+              files,
+              diff,
+            })
+          : undefined);
 
       const warnings = this.getWarnings({ securityResult, files });
       const formattedMessage = this.formatCommitMessage({
@@ -111,13 +119,20 @@ export class CommitService extends BaseService {
   }
 
   private getWarnings(params: {
-    securityResult: SecurityCheckResult;
+    securityResult?: SecurityCheckResult;
     files: FileChange[];
   }): AnalysisWarning[] {
     const warnings: AnalysisWarning[] = [];
     const scopes = this.detectScopes(params.files);
 
-    // Add size warnings
+    if (params.securityResult) {
+      if (params.securityResult.secretFindings.length > 0) {
+        warnings.push(
+          ...this.mapSecurityToWarnings(params.securityResult.secretFindings),
+        );
+      }
+    }
+
     if (params.files.length > 10) {
       warnings.push({
         type: "file",
@@ -127,7 +142,6 @@ export class CommitService extends BaseService {
       });
     }
 
-    // Add multi-scope warning
     if (scopes.length > 1) {
       warnings.push({
         type: "file",
@@ -138,6 +152,16 @@ export class CommitService extends BaseService {
     }
 
     return warnings;
+  }
+
+  private mapSecurityToWarnings(
+    findings: SecurityFinding[],
+  ): AnalysisWarning[] {
+    return findings.map((finding) => ({
+      type: "security",
+      severity: finding.severity === "high" ? "error" : "warning",
+      message: `Security issue in ${finding.path}: ${finding.type}`,
+    }));
   }
 
   private detectScopes(files: FileChange[]): string[] {
@@ -182,10 +206,8 @@ export class CommitService extends BaseService {
   }): CommitSplitSuggestion | undefined {
     const scopes = this.detectScopes(params.files);
 
-    // Only suggest split if multiple scopes detected
     if (scopes.length <= 1) return undefined;
 
-    // Group files by scope
     const filesByScope = params.files.reduce(
       (acc, file) => {
         const scope = file.path.startsWith("packages/")
@@ -199,7 +221,6 @@ export class CommitService extends BaseService {
       {} as Record<string, string[]>,
     );
 
-    // Create split suggestion
     const suggestions = Object.entries(filesByScope).map(
       ([scope, files], index) => ({
         message: `${this.detectCommitType(files.map((path) => ({ path }) as FileChange))}(${scope}): ${params.message}`,
@@ -212,7 +233,6 @@ export class CommitService extends BaseService {
       }),
     );
 
-    // Generate git commands for splitting
     const commands = suggestions.map(
       (suggestion) =>
         `git reset HEAD ${suggestion.files.map((f) => `"${f}"`).join(" ")}`,

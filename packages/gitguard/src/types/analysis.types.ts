@@ -33,9 +33,11 @@ export interface CommitSplitSuggestion {
 }
 
 export interface CommitAnalysisOptions {
-  messageFile: string;
-  splitStrategy?: "module" | "feature" | "auto";
-  ignorePatterns?: string[];
+  messageFile?: string;
+  message?: string;
+  enableAI?: boolean;
+  enablePrompts?: boolean;
+  securityResult?: SecurityCheckResult;
 }
 
 // PR Analysis Types

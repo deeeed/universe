@@ -5,16 +5,20 @@ import { GitService } from "../services/git.service.js";
 import { LoggerService } from "../services/logger.service.js";
 import { PRService } from "../services/pr.service.js";
 import { PromptService } from "../services/prompt.service.js";
+import { ReporterService } from "../services/reporter.service.js";
 import { SecurityService } from "../services/security.service.js";
 import {
-  AnalysisWarning,
   CommitAnalysisResult,
   PRAnalysisResult,
 } from "../types/analysis.types.js";
 
 interface AnalyzeOptions {
-  pr?: string;
+  pr?: string | number;
   branch?: string;
+  message?: string;
+  format?: "console" | "json" | "markdown";
+  color?: boolean;
+  detailed?: boolean;
   debug?: boolean;
   configPath?: string;
 }
@@ -23,50 +27,38 @@ type AnalyzeResult = CommitAnalysisResult | PRAnalysisResult;
 
 export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
   const logger = new LoggerService({ debug: options.debug });
+  const reporter = new ReporterService({ logger });
 
   try {
-    const config = await loadConfig();
+    const config = await loadConfig({ configPath: options.configPath });
+    const git = new GitService({
+      config: {
+        ...config.git,
+        cwd: process.cwd(),
+      },
+      logger,
+    });
 
-    // Initialize core services
-    const git = new GitService({ config: config.git, logger });
-    const security = new SecurityService({ config, logger });
+    const security = config.security?.enabled
+      ? new SecurityService({ logger, config })
+      : undefined;
+
     const prompt = new PromptService({ logger });
     const ai = config.ai?.enabled
       ? AIFactory.create({ config, logger })
       : undefined;
 
-    // Determine analysis type and create appropriate service
-    if (options.pr) {
-      const prService = new PRService({
-        config,
-        git,
-        security,
-        prompt,
-        ai,
-        logger,
-      });
+    // If no specific analysis type is specified, analyze staged changes
+    if (!options.pr && !options.branch) {
+      const stagedFiles = await git.getStagedChanges();
 
-      const result = await prService.analyze({
-        branch: options.branch,
-        enableAI: Boolean(config.ai?.enabled),
-        enablePrompts: true,
-      });
-
-      logger.info("\n📊 PR Analysis Results:");
-      if (result.warnings.length > 0) {
-        logger.info("\n⚠️ Warnings:");
-        result.warnings.forEach((warning: AnalysisWarning) => {
-          logger.warn(`- ${warning.message} (${warning.severity})`);
-        });
+      if (stagedFiles.length === 0) {
+        logger.info(
+          "No staged changes found. Stage some changes first or specify a PR/branch to analyze.",
+        );
+        process.exit(0);
       }
 
-      if (result.description) {
-        logger.info("\n📝 Suggested Description:");
-        logger.info(result.description.description);
-      }
-
-      return result;
-    } else {
       const commitService = new CommitService({
         config,
         git,
@@ -77,29 +69,50 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
       });
 
       const result = await commitService.analyze({
-        messageFile: ".git/COMMIT_EDITMSG",
+        message: options.message,
         enableAI: Boolean(config.ai?.enabled),
         enablePrompts: true,
       });
 
-      logger.info("\n📊 Commit Analysis Results:");
-      if (result.warnings.length > 0) {
-        logger.info("\n⚠️ Warnings:");
-        result.warnings.forEach((warning: AnalysisWarning) => {
-          logger.warn(`- ${warning.message} (${warning.severity})`);
-        });
-      }
-
-      if (result.suggestions?.length) {
-        logger.info("\n💡 Suggestions:");
-        result.suggestions.forEach((suggestion, index) => {
-          logger.info(`\n${index + 1}. ${suggestion.message}`);
-          logger.info(`   Explanation: ${suggestion.explanation}`);
-        });
-      }
+      // Use reporter service for consistent output
+      reporter.generateReport({
+        result,
+        options: {
+          format: options.format || "console",
+          color: options.color,
+          detailed: options.detailed,
+        },
+      });
 
       return result;
     }
+
+    // PR analysis logic
+    const prService = new PRService({
+      config,
+      git,
+      security,
+      prompt,
+      ai,
+      logger,
+    });
+
+    const result = await prService.analyze({
+      branch: options.branch,
+      enableAI: Boolean(config.ai?.enabled),
+      enablePrompts: true,
+    });
+
+    reporter.generateReport({
+      result,
+      options: {
+        format: options.format || "console",
+        color: options.color,
+        detailed: options.detailed,
+      },
+    });
+
+    return result;
   } catch (error) {
     logger.error("Analysis failed:", error);
     throw error;
