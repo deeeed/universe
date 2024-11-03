@@ -14,9 +14,7 @@
  */
 
 import chalk from "chalk";
-import { execSync } from "child_process";
 import { closeSync, openSync } from "fs";
-import readline from "readline";
 import { ReadStream, WriteStream } from "tty";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
@@ -74,121 +72,42 @@ interface NumericPromptOptions extends BasePromptOptions {
 type PromptOptions = YesNoPromptOptions | NumericPromptOptions;
 
 interface TTYStreams {
-  input: ReadStream | NodeJS.ReadStream;
-  output: WriteStream | NodeJS.WriteStream;
-  fd?: number;
-  isTTY?: boolean;
-  getInput?: (prompt: string) => boolean;
+  input: ReadStream;
+  output: WriteStream;
+  fd: number;
+  cleanup: () => void;
 }
 
 interface CreateTTYStreamsParams {
   logger: LoggerService;
 }
 
-function createTTYStreams({ logger }: CreateTTYStreamsParams): TTYStreams {
-  logger.debug("🔍 TTY Status:", {
-    stdin: process.stdin.isTTY,
-    stdout: process.stdout.isTTY,
-    stderr: process.stderr.isTTY,
-    env: {
-      NODE_ENV: process.env.NODE_ENV,
-      TERM: process.env.TERM,
-    },
-  });
+function cleanup(input: ReadStream, fd: number): void {
+  input.setRawMode(false);
+  input.pause();
+  closeSync(fd);
+}
 
-  // First try to use /dev/tty explicitly as it's most reliable in git hooks
+function createTTYStreams({ logger }: CreateTTYStreamsParams): TTYStreams {
   try {
-    logger.debug("🔍 Attempting to open /dev/tty...");
+    // Try to open /dev/tty for direct terminal access
     const fd = openSync("/dev/tty", "r+");
-    const tty = new ReadStream(fd);
+    const input = new ReadStream(fd);
     const output = new WriteStream(fd);
 
-    // Add error handlers and validity checks
-    tty.on("error", (error) => {
-      logger.debug("TTY input stream error:", error);
-      closeSync(fd);
-      throw error;
-    });
+    input.resume();
+    input.setRawMode(true);
+    input.setEncoding("utf-8");
 
-    output.on("error", (error) => {
-      logger.debug("TTY output stream error:", error);
-      closeSync(fd);
-      throw error;
-    });
-
-    // Verify streams are actually usable
-    if (!tty.readable || !output.writable) {
-      logger.debug("❌ /dev/tty streams not accessible");
-      closeSync(fd);
-      throw new Error("TTY streams not accessible");
-    }
-
-    logger.debug("✅ Successfully opened /dev/tty streams");
     return {
-      input: tty,
+      input,
       output,
       fd,
-      isTTY: true,
+      cleanup: () => cleanup(input, fd),
     };
   } catch (error) {
-    logger.debug("❌ Failed to open /dev/tty:", error);
-
-    // Try spawning a terminal if we're in a GUI environment
-    try {
-      if (process.platform === "darwin") {
-        // On macOS, try using osascript to get user input
-        return {
-          input: process.stdin,
-          output: process.stdout,
-          isTTY: true,
-          getInput: (prompt: string): boolean => {
-            const command = `osascript -e 'Tell application "System Events" to display dialog "${prompt}" buttons {"Yes", "No"} default button "Yes"' -e 'button returned of result'`;
-            try {
-              const result = execSync(command, { encoding: "utf8" }).trim();
-              return result === "Yes";
-            } catch {
-              return false;
-            }
-          },
-        };
-      } else if (process.platform === "win32") {
-        // On Windows, try using powershell
-        return {
-          input: process.stdin,
-          output: process.stdout,
-          isTTY: true,
-          getInput: (prompt: string): boolean => {
-            const command = `powershell -Command "& {$response = $host.UI.PromptForChoice('', '${prompt}', @('&Yes', '&No'), 0); exit $response}"`;
-            try {
-              const result = execSync(command, { encoding: "utf8" });
-              return result.trim() === "0";
-            } catch {
-              return false;
-            }
-          },
-        };
-      }
-    } catch (spawnError) {
-      logger.debug("Failed to spawn terminal:", spawnError);
-    }
-
-    // Fallback to process streams if they're TTY
-    if (process.stdin.isTTY && process.stdout.isTTY) {
-      logger.debug("✅ Using process.stdin/stdout TTY streams");
-      return {
-        input: process.stdin,
-        output: process.stdout,
-        isTTY: true,
-      };
-    }
-
-    // Last resort: non-interactive mode
-    logger.debug("⚠️ Falling back to non-interactive mode");
-    return {
-      input: process.stdin,
-      output: process.stdout,
-      isTTY: false,
-    };
+    logger.debug("Failed to open /dev/tty:", error);
+    throw error;
   }
 }
 
@@ -201,42 +120,57 @@ async function promptUser({
   options,
   logger,
 }: PromptUserParams): Promise<string | boolean> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     logger.debug("🎯 Initializing prompt:", { options });
-    const streams = createTTYStreams({ logger });
 
-    // If we have a custom input method (for GUI environments)
-    if (streams.getInput && options.type === "yesno") {
-      resolve(streams.getInput(options.message));
-      return;
-    }
+    try {
+      const { input, output, cleanup } = createTTYStreams({ logger });
 
-    // If we can't get TTY access, use default values
-    if (!streams.isTTY) {
-      logger.info("\n⚠️ Non-interactive environment detected, using defaults");
-      handleNonInteractive();
-      return;
-    }
+      // Write prompt
+      const suffix =
+        options.type === "yesno"
+          ? options.defaultYes
+            ? chalk.gray("[Y/n] ")
+            : chalk.gray("[y/N] ")
+          : "";
 
-    const rl = readline.createInterface({
-      input: streams.input,
-      output: streams.output,
-      terminal: true,
-    });
+      const prompt = `${options.message} ${suffix}`;
+      output.write(`${prompt}\n`);
 
-    function cleanup(): void {
-      rl.removeAllListeners();
-      rl.close();
-      if (streams.fd !== undefined) {
-        try {
-          closeSync(streams.fd);
-        } catch (error) {
-          logger.debug("Failed to close TTY:", error);
+      // Handle input
+      input.once("data", (key: string) => {
+        if (options.type === "yesno") {
+          const normalized = key.toLowerCase().trim();
+          output.write(`${normalized}\n`);
+          cleanup();
+
+          if (options.defaultYes) {
+            resolve(normalized !== "n" && normalized !== "no");
+          } else {
+            resolve(normalized === "y" || normalized === "yes");
+          }
+        } else {
+          // Numeric input
+          const numKey = Number(key);
+          if (!isNaN(numKey)) {
+            output.write(`${numKey}\n`);
+            cleanup();
+            resolve(String(numKey));
+          } else {
+            output.write("\nInvalid choice. Using default (1)\n");
+            cleanup();
+            resolve("1");
+          }
         }
-      }
-    }
+      });
 
-    function handleNonInteractive(): void {
+      // Handle SIGINT (Ctrl+C)
+      input.once("SIGINT", () => {
+        cleanup();
+        process.exit(130);
+      });
+    } catch (error) {
+      logger.info("\n⚠️ Non-interactive environment detected, using defaults");
       if (options.type === "yesno") {
         const defaultValue = !!options.defaultYes;
         logger.info(`Using default: ${defaultValue ? "Yes" : "No"}`);
@@ -246,66 +180,9 @@ async function promptUser({
         resolve(options.defaultValue);
       } else {
         logger.info("No default value available, using first option");
-        resolve("1"); // Default to first option
+        resolve("1");
       }
     }
-
-    // Write prompt directly to ensure it's displayed
-    const suffix =
-      options.type === "yesno"
-        ? options.defaultYes
-          ? chalk.gray("[Y/n] ")
-          : chalk.gray("[y/N] ")
-        : "";
-
-    const prompt = `${chalk.cyan(options.message)} ${suffix}`;
-    streams.output.write(prompt);
-
-    // Handle input
-    rl.on("line", (answer) => {
-      logger.debug("Received input:", answer);
-      const normalized = answer.toLowerCase().trim();
-      cleanup();
-
-      if (options.type === "yesno") {
-        if (options.defaultYes) {
-          resolve(normalized !== "n" && normalized !== "no");
-        } else {
-          resolve(normalized === "y" || normalized === "yes");
-        }
-      } else {
-        resolve(normalized);
-      }
-    });
-
-    // Handle errors
-    rl.on("error", (error) => {
-      logger.debug("Readline error:", error);
-      cleanup();
-      reject(error);
-    });
-
-    // Handle Ctrl+C and other close events
-    rl.on("SIGINT", () => {
-      cleanup();
-      process.exit(130);
-    });
-
-    rl.on("close", () => {
-      logger.debug("Readline interface closed");
-      cleanup();
-      handleNonInteractive();
-    });
-
-    // Set timeout
-    const timeoutDuration = (options.timeoutSeconds || 90) * 1000;
-    setTimeout(() => {
-      logger.info(
-        `\n${chalk.yellow("⏰ No input received after")} ${chalk.bold(timeoutDuration / 1000)} ${chalk.yellow("seconds. Using default value.")}\n`,
-      );
-      cleanup();
-      handleNonInteractive();
-    }, timeoutDuration);
   });
 }
 
