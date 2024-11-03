@@ -38,9 +38,9 @@ export interface CommitAnalysisOptions {
   enableAI?: boolean;
   enablePrompts?: boolean;
   securityResult?: SecurityCheckResult;
+  files?: FileChange[];
 }
 
-// PR Analysis Types
 export interface PRAnalysisResult {
   branch: string;
   baseBranch: string;
@@ -118,4 +118,11 @@ export interface AnalysisWarning {
   type: "size" | "security" | "structure" | "file";
   severity: "error" | "warning";
   message: string;
+}
+
+export interface CommitCohesionAnalysis {
+  shouldSplit: boolean;
+  primaryScope?: string;
+  splitSuggestion?: CommitSplitSuggestion;
+  warnings: AnalysisWarning[];
 }

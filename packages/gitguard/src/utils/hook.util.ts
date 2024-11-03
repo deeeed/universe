@@ -89,6 +89,12 @@ export function getHookScript(packagePath: string): string {
     }
   }
   
+  debug('🔍 Hook Environment:');
+  debug('- process.stdin.isTTY:', process.stdin.isTTY);
+  debug('- process.stdout.isTTY:', process.stdout.isTTY);
+  debug('- NODE_ENV:', process.env.NODE_ENV);
+  debug('- TERM:', process.env.TERM);
+  
   // Skip hook if SKIP_GITGUARD is set
   if (process.env.SKIP_GITGUARD === 'true') {
     debug('⏭️  Skipping GitGuard hook (SKIP_GITGUARD=true)');

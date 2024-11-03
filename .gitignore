@@ -18,6 +18,7 @@ node_modules/
 **/coverage/
 **/.nyc_output/
 **/*.lcov
+**/*.tsbuildinfo
 
 #!.yarn/cache
 .pnp.*

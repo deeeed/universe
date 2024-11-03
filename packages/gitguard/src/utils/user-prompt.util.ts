@@ -45,9 +45,9 @@ export async function displayChoicesWithActions<T extends string>(params: {
 }): Promise<void> {
   const { choices, logger } = params;
 
-  const selectedValue = await promptChoice({
+  const selectedValue = await promptChoice<T>({
     message: params.message,
-    choices,
+    choices: choices.map(({ label, value }) => ({ label, value })),
     logger,
   });
 
@@ -96,8 +96,8 @@ export async function promptNumeric(params: {
   logger.info(displayMessage);
 
   return new Promise((resolve) => {
-    const onData = (data: string): void => {
-      const response = data.trim();
+    const onData = (buffer: Buffer): void => {
+      const response = buffer.toString().trim();
       process.stdin.removeListener("data", onData);
 
       if (allowEmpty && response === "") {
@@ -118,10 +118,13 @@ export async function promptNumeric(params: {
   });
 }
 
-export async function promptChoice<T extends string>(params: {
+export async function promptChoice<
+  T extends string,
+  L extends string = string,
+>(params: {
   message: string;
   choices: Array<{
-    label: string;
+    label: L;
     value: T;
   }>;
   logger: Logger;
@@ -266,8 +269,8 @@ export async function promptInput(params: {
   logger.info(`${message}${defaultValue ? ` (${defaultValue})` : ""}`);
 
   return new Promise((resolve) => {
-    const onData = (data: string): void => {
-      const response = data.trim();
+    const onData = (buffer: Buffer): void => {
+      const response = buffer.toString().trim();
       process.stdin.removeListener("data", onData);
       resolve(response || defaultValue || "");
     };
@@ -357,4 +360,82 @@ export function getAIConfig(responses: InitPromptResponses): Config["ai"] {
         provider: null,
       };
   }
+}
+
+// Add new interface for promptUser options
+export interface PromptUserOptions {
+  type: "yesno" | "numeric";
+  message: string;
+  logger: Logger;
+  defaultYes?: boolean;
+  allowEmpty?: boolean;
+  defaultValue?: string;
+  timeoutSeconds?: number;
+}
+
+export async function promptUser(
+  options: PromptUserOptions,
+): Promise<string | boolean> {
+  const { type, message, logger, defaultYes, allowEmpty, defaultValue } =
+    options;
+
+  if (type === "yesno") {
+    return promptYesNo({
+      message,
+      logger,
+      defaultValue: defaultYes,
+    });
+  }
+
+  const result = await promptNumeric({
+    message,
+    logger,
+    allowEmpty,
+    defaultValue,
+  });
+
+  return result || "";
+}
+
+// Add new interface and function for AI prompts
+export interface AIPromptResult {
+  action: "generate" | "copy" | "skip";
+}
+
+export async function promptAIAction(params: {
+  logger: Logger;
+  tokenUsage: {
+    count: number;
+    estimatedCost: string;
+  };
+}): Promise<AIPromptResult> {
+  const { logger, tokenUsage } = params;
+
+  logger.info(
+    `\n💰 Estimated cost for AI generation: ${tokenUsage.estimatedCost}`,
+  );
+  logger.info(`📊 Estimated tokens: ${tokenUsage.count}`);
+
+  const choices = [
+    {
+      label: "Generate AI suggestions now",
+      value: "generate" as const,
+    },
+    {
+      label: "Copy prompt to clipboard for manual use",
+      value: "copy" as const,
+    },
+    {
+      label: "Skip AI suggestions",
+      value: "skip" as const,
+    },
+  ];
+
+  const action = await promptChoice<AIPromptResult["action"]>({
+    message: "🤖 How would you like to proceed with AI suggestions?",
+    choices,
+    logger,
+  });
+
+  return { action };
 }

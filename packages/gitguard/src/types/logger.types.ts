@@ -21,4 +21,5 @@ export interface Logger {
   newLine(): void;
   table(data: Record<string, unknown>[]): void;
   warn(message: string, ...args: unknown[]): void;
+  isDebug(): boolean;
 }

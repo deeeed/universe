@@ -23,6 +23,10 @@ interface AnalyzeOptions {
   format?: "console" | "json" | "markdown";
   color?: boolean;
   detailed?: boolean;
+  unstaged?: boolean;
+  staged?: boolean;
+  all?: boolean;
+  ai?: boolean;
 }
 
 interface PackageJson {
@@ -159,7 +163,7 @@ ${chalk.blue("Examples:")}
     .command("analyze")
     .description("Analyze git changes and get suggestions")
     .option("-p, --pr <number>", "PR number to analyze")
-    .option("-b, --branch <name>", "Branch to analyze (defaults to current)")
+    .option("-b, --branch <name>", "Branch to analyze")
     .option("-m, --message <text>", "Commit message to analyze")
     .option(
       "-f, --format <type>",
@@ -168,29 +172,25 @@ ${chalk.blue("Examples:")}
     )
     .option("--no-color", "Disable colored output")
     .option("--detailed", "Show detailed analysis")
-    .option("-d, --debug", "Enable debug mode")
+    .option("--unstaged", "Include analysis of unstaged changes")
+    .option("--staged", "Include analysis of staged changes (default: true)")
+    .option("--all", "Analyze both staged and unstaged changes")
+    .option("--ai", "Enable AI-powered suggestions")
     .addHelpText(
       "after",
       `
-${chalk.blue("Usage Examples:")}
-  ${chalk.yellow("$")} gitguard analyze                    # Analyze current staged changes
-  ${chalk.yellow("$")} gitguard analyze -m "feat: update"  # Analyze with specific commit message
-  ${chalk.yellow("$")} gitguard analyze -p 123             # Analyze PR #123
-  ${chalk.yellow("$")} gitguard analyze -b main            # Analyze branch 'main'
-  ${chalk.yellow("$")} gitguard analyze --format markdown  # Output in markdown format
-  ${chalk.yellow("$")} gitguard analyze --detailed         # Show detailed analysis
-  ${chalk.yellow("$")} gitguard analyze --no-color         # Disable colored output
-  ${chalk.yellow("$")} gitguard analyze -d                 # Run with debug output
+${chalk.blue("Examples:")}
+  ${chalk.yellow("$")} gitguard analyze                  # Analyze staged changes only
+  ${chalk.yellow("$")} gitguard analyze --unstaged       # Include unstaged changes
+  ${chalk.yellow("$")} gitguard analyze --all            # Analyze both staged and unstaged changes
+  ${chalk.yellow("$")} gitguard analyze --no-staged      # Analyze only unstaged changes (with --unstaged)
 
-${chalk.blue("Options:")}
-  ${chalk.yellow("-p, --pr <number>")}      PR number to analyze
-  ${chalk.yellow("-b, --branch <name>")}    Branch to analyze (defaults to current)
-  ${chalk.yellow("-m, --message <text>")}   Commit message to analyze
-  ${chalk.yellow("-f, --format <type>")}    Output format: console, json, markdown (default: "console")
-  ${chalk.yellow("--no-color")}            Disable colored output
-  ${chalk.yellow("--detailed")}           Show detailed analysis
-  ${chalk.yellow("-d, --debug")}          Enable debug mode
-  ${chalk.yellow("-c, --config <path>")}   Path to custom config file`,
+${chalk.blue("Analysis includes:")}
+  ${chalk.green("•")} Package cohesion checks
+  ${chalk.green("•")} Commit message suggestions
+  ${chalk.green("•")} Security checks
+  ${chalk.green("•")} Split recommendations
+  ${chalk.green("•")} Next steps guidance`,
     )
     .action(async (options: AnalyzeOptions) => {
       try {
@@ -210,6 +210,14 @@ ${chalk.blue("Options:")}
           branch: options.branch,
           debug,
           configPath: program.opts().config as string | undefined,
+          message: options.message,
+          format: options.format,
+          color: options.color,
+          detailed: options.detailed,
+          staged: options.staged,
+          unstaged: options.unstaged,
+          all: options.all,
+          ai: options.ai,
         });
 
         process.exit(0);

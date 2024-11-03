@@ -5,6 +5,7 @@ import {
   AnalysisWarning,
   CommitAnalysisOptions,
   CommitAnalysisResult,
+  CommitCohesionAnalysis,
   CommitSplitSuggestion,
   CommitStats,
   CommitSuggestion,
@@ -43,10 +44,11 @@ export class CommitService extends BaseService {
     try {
       const branch = await this.git.getCurrentBranch();
       const baseBranch = this.git.config.baseBranch;
-      const files = await this.git.getStagedChanges();
-      const diff = await this.git.getStagedDiff();
 
-      this.logger.debug("Getting staged changes");
+      // Use the files passed in instead of getting staged changes
+      const files = params.files || (await this.git.getStagedChanges());
+
+      this.logger.debug("Analyzing files:", files);
 
       if (files.length === 0) {
         return this.createEmptyResult({ branch, baseBranch });
@@ -68,38 +70,59 @@ export class CommitService extends BaseService {
         (this.security
           ? this.security.analyzeSecurity({
               files,
-              diff,
+              diff: "",
             })
           : undefined);
 
       const warnings = this.getWarnings({ securityResult, files });
-      const formattedMessage = originalMessage
-        ? this.formatCommitMessage({
-            message: originalMessage.trim(),
-            files,
-          })
-        : "";
+      let formattedMessage = "";
 
       let suggestions: CommitSuggestion[] | undefined;
       let splitSuggestion: CommitSplitSuggestion | undefined;
+      let shouldPromptUser = false;
 
-      if (params.enableAI && this.ai) {
-        [suggestions, splitSuggestion] = await Promise.all([
-          this.getSuggestions({ files, message: originalMessage, diff }),
-          this.getSplitSuggestion({ files, message: originalMessage }),
-        ]);
+      if (originalMessage) {
+        formattedMessage = this.formatCommitMessage({
+          message: originalMessage,
+          files,
+        });
+
+        if (params.enableAI && this.ai) {
+          [suggestions, splitSuggestion] = await Promise.all([
+            this.getSuggestions({
+              files,
+              message: originalMessage,
+              diff: await this.git.getStagedDiff(),
+            }),
+            this.getSplitSuggestion({ files, message: originalMessage }),
+          ]);
+        }
+      }
+
+      const cohesionAnalysis = this.analyzeCommitCohesion({
+        files,
+        originalMessage: params.message || "",
+      });
+
+      // Add cohesion warnings to result
+      warnings.push(...cohesionAnalysis.warnings);
+
+      // Add split suggestion if needed
+      if (cohesionAnalysis.shouldSplit) {
+        splitSuggestion = cohesionAnalysis.splitSuggestion;
+        shouldPromptUser = true;
       }
 
       return {
         branch,
         baseBranch,
-        originalMessage: originalMessage.trim(),
+        originalMessage,
         formattedMessage,
         stats: this.calculateStats(files),
         warnings,
         suggestions,
         splitSuggestion,
-        shouldPromptUser: Boolean(params.enablePrompts),
+        shouldPromptUser,
       };
     } catch (error) {
       this.logger.error("Failed to analyze commit", error);
@@ -183,10 +206,17 @@ export class CommitService extends BaseService {
   }): Promise<CommitSuggestion[] | undefined> {
     if (!this.ai) return undefined;
 
+    this.logger.debug("Generating AI suggestions for files:", {
+      fileCount: params.files.length,
+      diffLength: params.diff.length,
+      message: params.message,
+    });
+
     const prompt = generateCommitSuggestionPrompt({
       files: params.files,
       message: params.message,
       diff: params.diff,
+      logger: this.logger,
     });
 
     try {
@@ -201,6 +231,8 @@ export class CommitService extends BaseService {
             "You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format.",
         },
       });
+
+      this.logger.debug("AI response:", suggestions);
 
       return suggestions?.suggestions?.slice(0, 3);
     } catch (error) {
@@ -344,5 +376,86 @@ export class CommitService extends BaseService {
 
     const packageNames = Array.from(packages);
     return packageNames.length === 1 ? packageNames[0] : packageNames.join(",");
+  }
+
+  private analyzeCommitCohesion(params: {
+    files: FileChange[];
+    originalMessage: string;
+  }): CommitCohesionAnalysis {
+    const filesByScope = new Map<string, FileChange[]>();
+    const warnings: AnalysisWarning[] = [];
+
+    // Group files by scope (package)
+    params.files.forEach((file) => {
+      const scope = file.path.startsWith("packages/")
+        ? file.path.split("/")[1]
+        : "root";
+
+      if (!filesByScope.has(scope)) {
+        filesByScope.set(scope, []);
+      }
+      filesByScope.get(scope)?.push(file);
+    });
+
+    // If only one scope, no need to split
+    if (filesByScope.size <= 1) {
+      return { shouldSplit: false, warnings: [] };
+    }
+
+    // Find primary scope (with most changes)
+    const primaryScope = Array.from(filesByScope.entries()).reduce((a, b) =>
+      a[1].length > b[1].length ? a : b,
+    )[0];
+
+    warnings.push({
+      type: "structure",
+      severity: "warning",
+      message: `Changes span multiple packages: ${Array.from(filesByScope.keys()).join(", ")}`,
+    });
+
+    // Generate split suggestion
+    const splitSuggestion: CommitSplitSuggestion = {
+      reason:
+        "Changes span multiple packages and should be split into separate commits",
+      suggestions: Array.from(filesByScope.entries()).map(
+        ([scope, files], index) => ({
+          message: `${this.detectCommitType(files)}(${scope}): ${params.originalMessage}`,
+          files: files.map((f) => f.path),
+          order: scope === primaryScope ? 1 : index + 2,
+          type: this.detectCommitType(files),
+          scope,
+        }),
+      ),
+      commands: this.generateSplitCommands({
+        suggestions: Array.from(filesByScope.entries()).map(
+          ([scope, files]) => ({
+            files: files.map((f) => f.path),
+            message: `${this.detectCommitType(files)}(${scope}): ${params.originalMessage}`,
+          }),
+        ),
+      }),
+    };
+
+    return {
+      shouldSplit: true,
+      primaryScope,
+      splitSuggestion,
+      warnings,
+    };
+  }
+
+  private generateSplitCommands(params: {
+    suggestions: Array<{ files: string[]; message: string }>;
+  }): string[] {
+    return [
+      "# Unstage all files",
+      "git reset HEAD .",
+      "",
+      "# Create commits for each scope",
+      ...params.suggestions.map(
+        (suggestion) =>
+          `git add ${suggestion.files.map((f) => `"${f}"`).join(" ")} && git commit -m "${suggestion.message}"`,
+      ),
+    ];
   }
 }

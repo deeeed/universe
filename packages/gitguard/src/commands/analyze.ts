@@ -1,4 +1,3 @@
-import { handleSecurityFindings } from "../hooks/prepare-commit.js";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
@@ -10,8 +9,10 @@ import {
   CommitAnalysisResult,
   PRAnalysisResult,
 } from "../types/analysis.types.js";
+import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
+import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
-import { promptYesNo } from "../utils/user-prompt.util.js";
+import { promptAIAction } from "../utils/user-prompt.util.js";
 
 interface AnalyzeOptions {
   pr?: string | number;
@@ -22,131 +23,103 @@ interface AnalyzeOptions {
   detailed?: boolean;
   debug?: boolean;
   configPath?: string;
+  staged?: boolean;
+  unstaged?: boolean;
+  all?: boolean;
+  ai?: boolean;
 }
 
 type AnalyzeResult = CommitAnalysisResult | PRAnalysisResult;
 
-export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
-  const logger = new LoggerService({ debug: options.debug });
+export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
+  const logger = new LoggerService({ debug: params.debug });
   const reporter = new ReporterService({ logger });
 
   try {
-    const config = await loadConfig({ configPath: options.configPath });
+    const config = await loadConfig({ configPath: params.configPath });
     const git = new GitService({
       config: {
         ...config.git,
-        cwd: process.cwd(),
+        baseBranch: config.git?.baseBranch || "main",
       },
       logger,
     });
-
-    const security = config.security?.enabled
-      ? new SecurityService({ logger, config })
-      : undefined;
-
-    const ai = config.ai?.enabled
-      ? AIFactory.create({ config, logger })
-      : undefined;
+    const security = new SecurityService({ config, logger });
+    const ai =
+      (params.ai ?? config.ai?.enabled)
+        ? AIFactory.create({
+            config: {
+              ...config,
+            },
+            logger,
+          })
+        : undefined;
 
     // If no specific analysis type is specified, analyze working directory
-    if (!options.pr && !options.branch) {
+    if (!params.pr && !params.branch) {
       const stagedFiles = await git.getStagedChanges();
       const unstagedFiles = await git.getUnstagedChanges();
+      const currentBranch = await git.getCurrentBranch();
+      const baseBranch = git.config.baseBranch;
 
-      // If no changes at all, exit with helpful message
-      if (stagedFiles.length === 0 && unstagedFiles.length === 0) {
-        logger.info("No changes found in the working directory.");
+      // Determine what to analyze based on options
+      const shouldAnalyzeStaged = params.all || params.staged !== false;
+      const shouldAnalyzeUnstaged = params.all || params.unstaged === true;
+
+      // For debugging
+      logger.debug("Analysis options:", {
+        shouldAnalyzeStaged,
+        shouldAnalyzeUnstaged,
+        stagedFiles: stagedFiles.length,
+        unstagedFiles: unstagedFiles.length,
+        params,
+      });
+
+      // Combine files based on what should be analyzed
+      const filesToAnalyze = [
+        ...(shouldAnalyzeStaged ? stagedFiles : []),
+        ...(shouldAnalyzeUnstaged ? unstagedFiles : []),
+      ];
+
+      // Log what we're analyzing
+      if (filesToAnalyze.length > 0) {
+        logger.info("\n📂 Analyzing changes:");
+        if (shouldAnalyzeStaged && stagedFiles.length > 0) {
+          logger.info(`  • ${stagedFiles.length} staged files`);
+        }
+        if (shouldAnalyzeUnstaged && unstagedFiles.length > 0) {
+          logger.info(`  • ${unstagedFiles.length} unstaged files`);
+        }
+        logger.info(""); // Empty line for spacing
+      }
+
+      // If no changes to analyze, show helpful message
+      if (filesToAnalyze.length === 0) {
+        logger.info("\n📂 No changes found in the working directory.");
         logger.info("\nTo get started:");
         logger.info("1. Make some changes to your files");
         logger.info("2. Use 'git add <file>' to stage changes");
         logger.info("3. Run 'gitguard analyze' again");
-        process.exit(0);
-      }
 
-      // If there are only unstaged changes, provide helpful suggestions
-      if (stagedFiles.length === 0 && unstagedFiles.length > 0) {
-        logger.info("Found unstaged changes:");
-        unstagedFiles.forEach((file) => {
-          logger.info(
-            `  - ${file.path} (+${file.additions} -${file.deletions})`,
-          );
-        });
-
-        // Run security checks on unstaged files
-        if (security) {
-          const diff = await git.getUnstagedDiff();
-          const securityResult = security.analyzeSecurity({
-            files: unstagedFiles,
-            diff,
-          });
-
-          if (
-            securityResult?.secretFindings.length ||
-            securityResult?.fileFindings.length
-          ) {
-            logger.warning("\n⚠️ Security issues found in unstaged changes:");
-            await handleSecurityFindings({
-              secretFindings: securityResult.secretFindings || [],
-              fileFindings: securityResult.fileFindings || [],
-              logger,
-              git,
-            });
-          }
-        }
-
-        // Generate AI suggestions for unstaged changes if available
-        if (ai) {
-          logger.info("\n🤖 Analyzing unstaged changes...");
-          const commitService = new CommitService({
-            config,
-            git,
-            security,
-            ai,
-            logger,
-          });
-
-          const diff = await git.getUnstagedDiff();
-          const suggestions = await commitService.getSuggestions({
-            files: unstagedFiles,
-            message: "",
-            diff,
-          });
-
-          if (suggestions?.length) {
-            logger.info("\nSuggested commit messages for these changes:");
-            suggestions.forEach((suggestion, index) => {
-              logger.info(`\n${index + 1}. ${suggestion.message}`);
-              logger.info(`   Explanation: ${suggestion.explanation}`);
-            });
-          }
-
-          // Check if changes should be split
-          const splitSuggestion = commitService.getSplitSuggestion({
-            files: unstagedFiles,
-            message: "",
-          });
-
-          if (splitSuggestion) {
-            logger.info(
-              "\n📦 Suggestion: Split these changes into multiple commits:",
-            );
-            logger.info(`Reason: ${splitSuggestion.reason}`);
-            splitSuggestion.suggestions.forEach((suggestion, index) => {
-              logger.info(`\n${index + 1}. ${suggestion.message}`);
-              logger.info(`   Files: ${suggestion.files.join(", ")}`);
-            });
-          }
-        }
-
-        logger.info("\nNext steps:");
-        logger.info("1. Review the changes above");
-        logger.info(
-          "2. Use 'git add <file>' to stage the changes you want to commit",
-        );
-        logger.info(
-          "3. Run 'gitguard analyze' again to analyze staged changes",
-        );
-        process.exit(0);
+        const now = new Date();
+        return {
+          branch: currentBranch,
+          baseBranch,
+          stats: {
+            filesChanged: 0,
+            additions: 0,
+            deletions: 0,
+            totalCommits: 0,
+            authors: [],
+            timeSpan: {
+              firstCommit: now,
+              lastCommit: now,
+            },
+          },
+          warnings: [],
+          commits: [],
+          filesByDirectory: {},
+        };
       }
 
       const commitService = new CommitService({
@@ -157,91 +130,137 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
         logger,
       });
 
-      // Run security checks first
-      const diff = await git.getStagedDiff();
+      // Run security checks on all files being analyzed
+      const diff = shouldAnalyzeStaged
+        ? await git.getStagedDiff()
+        : await git.getUnstagedDiff();
+
       const securityResult = security?.analyzeSecurity({
-        files: stagedFiles,
+        files: filesToAnalyze,
         diff,
       });
 
-      if (
-        securityResult?.secretFindings.length ||
-        securityResult?.fileFindings.length
-      ) {
-        await handleSecurityFindings({
-          secretFindings: securityResult.secretFindings || [],
-          fileFindings: securityResult.fileFindings || [],
-          logger,
-          git,
-        });
-      }
-
-      // If no message provided, use AI to suggest one if available
-      if (!options.message && ai) {
-        const stagedDiff = await git.getStagedDiff();
-        const tokenUsage = ai.calculateTokenUsage({
-          prompt: stagedDiff,
-        });
-
-        logger.info(
-          `\n💰 Estimated cost for AI generation: ${tokenUsage.estimatedCost}`,
-        );
-        logger.info(`📊 Estimated tokens: ${tokenUsage.count}`);
-
-        const shouldGenerateAI = await promptYesNo({
-          message:
-            "🤖 Would you like to generate AI suggestions for your commit message?",
-          defaultValue: true,
-          logger,
-        });
-
-        if (shouldGenerateAI) {
-          logger.info("\n🔄 Generating AI suggestions...");
-          const result = await commitService.analyze({
-            enableAI: true,
-            enablePrompts: true,
-            securityResult,
-          });
-
-          if (result.suggestions?.length) {
-            logger.info("\n✨ AI Suggestions:");
-            result.suggestions.forEach((suggestion, index) => {
-              logger.info(`\n${index + 1}. ${suggestion.message}`);
-              logger.info(
-                `   Explanation: ${suggestion.explanation || "No explanation provided"}`,
-              );
-            });
-            logger.info(
-              "\nThese are suggested commit messages you can use when committing your changes.",
-            );
-          } else {
-            logger.warning("\n⚠️ No AI suggestions generated");
-          }
-        }
-      }
-
-      // Continue with analysis using automatic type detection
-      const type = commitService.detectCommitType(stagedFiles);
-      const scope = commitService.detectScope(stagedFiles);
-      logger.info("\n📝 Generated commit type based on changes.");
-      logger.info(`Suggested format: ${type}(${scope}): <description>`);
-
-      // Continue with analysis using the chosen or generated message
+      // Analyze all relevant files
       const result = await commitService.analyze({
-        message: options.message,
-        enableAI: false, // Don't generate AI suggestions again
+        files: filesToAnalyze,
+        message: params.message || "",
+        enableAI: false, // Don't enable AI yet
         enablePrompts: true,
         securityResult,
       });
 
-      reporter.generateReport({
-        result,
-        options: {
-          format: options.format || "console",
-          color: options.color,
-          detailed: options.detailed,
-        },
-      });
+      // Show analysis results
+      if (result.warnings.length > 0) {
+        logger.info("\n⚠️  Analysis found some concerns:");
+        result.warnings.forEach((warning) => {
+          logger.info(`  • ${warning.message}`);
+        });
+      } else {
+        logger.info("\n✅ Analysis completed successfully!");
+      }
+
+      // Message Analysis
+      if (params.message) {
+        logger.info("\n📝 Message Analysis:");
+        if (
+          result.formattedMessage &&
+          result.formattedMessage !== params.message
+        ) {
+          logger.info(`  • Suggested format: "${result.formattedMessage}"`);
+        }
+      }
+
+      // Show next steps based on analysis
+      logger.info("\n📋 Next steps:");
+
+      if (
+        result.formattedMessage &&
+        result.formattedMessage !== params.message
+      ) {
+        logger.info(
+          `  • Run 'git commit -m "${result.formattedMessage}"' to create commit with suggested format`,
+        );
+      }
+
+      if (!params.message) {
+        logger.info(
+          "  • Run 'gitguard analyze --message \"your message\"' to analyze with a commit message",
+        );
+      }
+
+      if (config.ai?.enabled && !params.ai) {
+        logger.info(
+          "  • Run 'gitguard analyze --ai' to generate commit message suggestions",
+        );
+      }
+
+      if (result.warnings.length > 0) {
+        logger.info("  • Address the warnings above before committing");
+      }
+
+      logger.info(""); // Empty line for spacing
+
+      // Handle AI suggestions
+      if (ai) {
+        logger.debug("Preparing AI analysis");
+
+        // Use optimized diff generation
+        const diff = await git.getStagedDiffForAI();
+        const prompt = generateCommitSuggestionPrompt({
+          files: filesToAnalyze,
+          message: params.message || "",
+          diff,
+          logger,
+        });
+
+        const tokenUsage = ai.calculateTokenUsage({ prompt });
+
+        const result = await promptAIAction({
+          logger,
+          tokenUsage,
+        });
+
+        switch (result.action) {
+          case "generate": {
+            const aiResult = await commitService.analyze({
+              files: filesToAnalyze,
+              message: params.message,
+              enableAI: true,
+              enablePrompts: true,
+              securityResult,
+            });
+
+            if (aiResult.suggestions?.length) {
+              logger.info("  • Alternative suggestions:");
+              aiResult.suggestions.forEach((suggestion, index) => {
+                logger.info(`    ${index + 1}. ${suggestion.message}`);
+              });
+            }
+            break;
+          }
+
+          case "copy": {
+            const prompt = generateCommitSuggestionPrompt({
+              files: filesToAnalyze,
+              message: params.message || "",
+              diff,
+              logger,
+            });
+
+            await copyToClipboard({
+              text: prompt,
+              logger,
+            });
+
+            logger.info("\n✅ AI prompt copied to clipboard!");
+            break;
+          }
+
+          case "skip":
+            logger.info("\n⏭️  Skipping AI suggestions");
+            break;
+        }
+      }
 
       return result;
     }
@@ -256,7 +275,7 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
     });
 
     const result = await prService.analyze({
-      branch: options.branch,
+      branch: params.branch,
       enableAI: Boolean(config.ai?.enabled),
       enablePrompts: true,
     });
@@ -264,9 +283,9 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
     reporter.generateReport({
       result,
       options: {
-        format: options.format || "console",
-        color: options.color,
-        detailed: options.detailed,
+        format: params.format || "console",
+        color: params.color,
+        detailed: params.detailed,
       },
     });
 

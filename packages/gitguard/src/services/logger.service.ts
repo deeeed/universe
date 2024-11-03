@@ -88,4 +88,8 @@ export class LoggerService implements Logger {
       console.warn(chalk.yellow("⚠"), message, ...args);
     }
   }
+
+  public isDebug(): boolean {
+    return this.level === LogLevel.DEBUG;
+  }
 }

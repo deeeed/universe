@@ -23,10 +23,10 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist",
-    "build:bundle": "rollup -c rollup.config.mjs",
+    "build:bundle": "rollup -c rollup.config.mjs && yarn build:types",
     "build": "yarn clean && yarn build:bundle && yarn postbuild",
     "build:clean": "yarn clean && yarn build",
-    "build:tsc": "tsc --project tsconfig.build.json",
+    "build:types": "tsc --project tsconfig.types.json",
     "typecheck": "tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.json --noEmit",
     "test": "jest",
     "test:e2e:debug": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./scripts/test-commit-hooks.ts",

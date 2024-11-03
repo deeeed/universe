@@ -1,17 +1,20 @@
 // packages/gitguard/src/services/git.service.ts
-import execa from "execa";
+import { exec } from "child_process";
+import { promises as fs } from "fs";
+import { promisify } from "util";
 import { CommitInfo, FileChange, GitConfig } from "../types/git.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
 import { FileUtil } from "../utils/file.util.js";
 import { BaseService } from "./base.service.js";
-import { promises as fs } from "fs";
 
 interface GetDiffParams {
   type: "staged" | "range";
   from?: string;
   to?: string;
 }
+
+const execPromise = promisify(exec);
 
 export class GitService extends BaseService {
   private parser: CommitParser;
@@ -73,7 +76,7 @@ export class GitService extends BaseService {
   async getStagedChanges(): Promise<FileChange[]> {
     try {
       this.logger.debug("Getting staged changes");
-      const { stdout } = await execa("git", ["diff", "--cached", "--numstat"], {
+      const { stdout } = await execPromise("git diff --cached --numstat", {
         cwd: this.cwd,
       });
 
@@ -311,9 +314,16 @@ export class GitService extends BaseService {
 
   async execGit(params: { command: string; args: string[] }): Promise<string> {
     try {
-      const { stdout } = await execa("git", [params.command, ...params.args], {
-        cwd: this.cwd,
-      });
+      if (!this.cwd) {
+        throw new Error("Git working directory not set");
+      }
+
+      const { stdout } = await execPromise(
+        `git ${params.command} ${params.args.join(" ")}`,
+        {
+          cwd: this.cwd,
+        },
+      );
       return stdout;
     } catch (error) {
       this.logger.error(`Git command failed: ${params.command}`, error);
@@ -352,7 +362,7 @@ export class GitService extends BaseService {
   async getUnstagedChanges(): Promise<FileChange[]> {
     try {
       this.logger.debug("Getting unstaged changes");
-      const { stdout } = await execa("git", ["diff", "--numstat"], {
+      const { stdout } = await execPromise("git diff --numstat", {
         cwd: this.cwd,
       });
 
@@ -392,6 +402,96 @@ export class GitService extends BaseService {
       });
     } catch (error) {
       this.logger.error("Failed to get unstaged diff:", error);
+      throw error;
+    }
+  }
+
+  async getStagedDiffForAI(): Promise<string> {
+    try {
+      this.logger.debug("Getting staged diff for AI analysis");
+      const stagedFiles = await this.getStagedChanges();
+
+      // Get the git root directory
+      const gitRoot = await this.execGit({
+        command: "rev-parse",
+        args: ["--show-toplevel"],
+      });
+
+      this.logger.debug("Git directories:", {
+        gitRoot: gitRoot.trim(),
+        currentCwd: this.cwd,
+      });
+
+      // Update execGit to use proper paths
+      const execGitFromRoot = async (params: {
+        command: string;
+        args: string[];
+      }): Promise<string> => {
+        try {
+          const { stdout } = await execPromise(
+            `git ${params.command} ${params.args.join(" ")}`,
+            { cwd: gitRoot.trim() },
+          );
+          return stdout;
+        } catch (error) {
+          this.logger.error(`Git command failed: ${params.command}`, error);
+          throw error;
+        }
+      };
+
+      // Get individual diffs and combine
+      const diffs = await Promise.all(
+        stagedFiles.map(async (file) => {
+          try {
+            const gitCommand = `diff --cached -- "${file.path}"`;
+            this.logger.debug(`Executing git command for ${file.path}:`, {
+              command: gitCommand,
+              cwd: gitRoot.trim(),
+            });
+
+            const fileDiff = await execGitFromRoot({
+              command: "diff",
+              args: ["--cached", "--", file.path],
+            });
+
+            this.logger.debug(`Diff result for ${file.path}:`, {
+              length: fileDiff.length,
+              preview: fileDiff.slice(0, 100) + "...",
+            });
+
+            return { path: file.path, diff: fileDiff };
+          } catch (error) {
+            this.logger.error(
+              `Failed to get diff for file ${file.path}:`,
+              error,
+            );
+            return { path: file.path, diff: "" };
+          }
+        }),
+      );
+
+      // Filter out empty diffs and combine
+      const combinedDiff = diffs
+        .filter((d) => d.diff.length > 0)
+        .sort((a, b) => b.diff.length - a.diff.length)
+        .slice(0, 10) // Limit to 10 most significant files
+        .map((d) => d.diff)
+        .join("\n");
+
+      this.logger.debug("Final diff statistics:", {
+        totalFiles: diffs.length,
+        filesWithDiff: diffs.filter((d) => d.diff.length > 0).length,
+        totalLength: combinedDiff.length,
+        fileStats: diffs.map((d) => ({
+          path: d.path,
+          length: d.diff.length,
+          hasContent: d.diff.length > 0,
+        })),
+      });
+
+      return combinedDiff;
+    } catch (error) {
+      this.logger.error("Failed to get staged diff for AI:", error);
       throw error;
     }
   }

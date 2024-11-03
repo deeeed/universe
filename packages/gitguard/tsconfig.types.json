@@ -4,14 +4,10 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "declaration": true,
+    "emitDeclarationOnly": true,
     "declarationDir": "./dist/types",
-    "emitDeclarationOnly": false,
-    "composite": false,
     "rootDir": "src",
-    "outDir": "dist",
-    "paths": {
-      "@siteed/gitguard": ["./src"]
-    }
+    "outDir": "dist"
   },
   "include": [
     "src/**/*"

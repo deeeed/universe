@@ -1,7 +1,20 @@
+/**
+ * Git Prepare Commit Hook
+ *
+ * Note on TTY handling:
+ * Git hooks don't always run in a TTY context, especially in GUI clients or CI environments.
+ * We duplicate the prompt logic here (instead of using ../utils/user-prompt.util.ts) to:
+ * 1. Explicitly handle TTY availability
+ * 2. Provide fallback mechanisms when TTY isn't available
+ * 3. Ensure proper resource cleanup
+ * 4. Handle timeouts appropriately in non-interactive environments
+ *
+ * This is separate from the regular CLI prompts in user-prompt.util.ts which assume
+ * a TTY is always available.
+ */
+
 import chalk from "chalk";
-import execa from "execa";
 import { closeSync, openSync } from "fs";
-import { writeFile } from "fs/promises";
 import readline from "readline";
 import { ReadStream, WriteStream } from "tty";
 import { CommitService } from "../services/commit.service.js";
@@ -10,9 +23,11 @@ import { GitService } from "../services/git.service.js";
 import { LoggerService } from "../services/logger.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { AIProvider } from "../types/ai.types.js";
+import { CommitSplitSuggestion } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
 import { loadConfig } from "../utils/config.util.js";
+import { copyToClipboard } from "../utils/clipboard.util.js";
 
 interface CommitHookOptions {
   messageFile: string;
@@ -61,125 +76,85 @@ interface TTYStreams {
   input: ReadStream | NodeJS.ReadStream;
   output: WriteStream | NodeJS.WriteStream;
   fd?: number;
+  isTTY?: boolean;
 }
 
-function createTTYStreams(): TTYStreams {
-  if (process.stdin.isTTY) {
+interface CreateTTYStreamsParams {
+  logger: LoggerService;
+}
+
+function createTTYStreams({ logger }: CreateTTYStreamsParams): TTYStreams {
+  logger.debug("🔍 TTY Status:", {
+    stdin: process.stdin.isTTY,
+    stdout: process.stdout.isTTY,
+    stderr: process.stderr.isTTY,
+    env: {
+      NODE_ENV: process.env.NODE_ENV,
+      TERM: process.env.TERM,
+    },
+  });
+
+  // First try to use process.stdin/stdout if they're TTY
+  if (process.stdin.isTTY && process.stdout.isTTY) {
+    logger.debug("✅ Using process.stdin/stdout TTY streams");
     return {
       input: process.stdin,
       output: process.stdout,
+      isTTY: true,
     };
   }
 
+  // If not TTY, try to open /dev/tty explicitly
   try {
+    logger.debug("⚠️ Process streams not TTY, attempting to open /dev/tty...");
     const fd = openSync("/dev/tty", "r+");
     const input = new ReadStream(fd);
     const output = new WriteStream(fd);
-    return { input, output, fd };
+
+    logger.debug("TTY Stream Status:", {
+      fd,
+      inputReadable: input.readable,
+      outputWritable: output.writable,
+    });
+
+    // Verify streams are writable
+    if (input.readable && output.writable) {
+      logger.debug("✅ Successfully opened /dev/tty streams");
+      return { input, output, fd, isTTY: true };
+    }
+
+    // If not writable, clean up and fall back
+    logger.debug("❌ TTY streams not writable");
+    closeSync(fd);
+    throw new Error("TTY streams not writable");
   } catch (error) {
-    console.warn("Failed to open TTY:", error);
+    logger.debug("❌ Failed to open TTY:", { error });
+    logger.debug("⚠️ Falling back to non-interactive mode");
     return {
       input: process.stdin,
       output: process.stdout,
+      isTTY: false,
     };
   }
 }
 
-export async function handleSecurityFindings(
-  params: HandleSecurityFindingsParams,
-): Promise<void> {
-  const { secretFindings, fileFindings, logger, git } = params;
-  const affectedFiles = new Set<string>();
-
-  if (secretFindings.length) {
-    logger.error(
-      `\n${chalk.red("📛 CRITICAL:")} ${chalk.bold("Potential sensitive data detected:")}`,
-    );
-
-    // Group findings by file for better readability
-    const findingsByFile = secretFindings.reduce(
-      (acc, finding) => {
-        if (!acc[finding.path]) acc[finding.path] = [];
-        acc[finding.path].push(finding);
-        affectedFiles.add(finding.path);
-        return acc;
-      },
-      {} as Record<string, SecurityFinding[]>,
-    );
-
-    // Display findings grouped by file
-    for (const [file, findings] of Object.entries(findingsByFile)) {
-      logger.error(`\n${chalk.yellow("📁 File:")} ${chalk.bold(file)}`);
-      for (const finding of findings) {
-        logger.error(
-          `${chalk.red("⚠️")}  ${chalk.bold(finding.type)} detected${finding.line ? chalk.gray(` on line ${finding.line}`) : ""}:`,
-        );
-        if (finding.content) {
-          logger.error(`   ${chalk.red(finding.content)}`);
-        }
-        logger.error(`   ${chalk.cyan("Suggestion:")} ${finding.suggestion}`);
-      }
-    }
-
-    logger.info("\n🛡️  Security Recommendations for Secrets:");
-    logger.info("   • Review the detected patterns for false positives");
-    logger.info("   • Use environment variables for secrets");
-    logger.info("   • Consider using a secret manager");
-    logger.info("   • Update any exposed secrets immediately");
-
-    const shouldProceed = await promptUser({
-      type: "yesno",
-      message: "\n⚠️  Detected potential secrets. Proceed with commit?",
-      defaultYes: false,
-    });
-
-    if (!shouldProceed) {
-      await handleUnstageFiles({
-        files: Array.from(affectedFiles),
-        git,
-        logger,
-      });
-      process.exit(1);
-    }
-  }
-
-  if (fileFindings.length) {
-    logger.error("\n📁 WARNING: Potentially problematic new files detected:");
-
-    // Display each problematic file with its suggestion
-    for (const finding of fileFindings) {
-      logger.error(`\n⚠️  File: ${finding.path}`);
-      logger.error(`   Suggestion: ${finding.suggestion}`);
-      affectedFiles.add(finding.path);
-    }
-
-    logger.info("\n📋 Recommendations for Files:");
-    logger.info("   • Consider adding sensitive files to .gitignore");
-    logger.info("   • Use example files for templates (e.g., .env.example)");
-    logger.info("   • Consider using git-crypt for encrypted files");
-
-    const shouldProceed = await promptUser({
-      type: "yesno",
-      message:
-        "\n⚠️  Detected potentially sensitive files. Proceed with commit?",
-      defaultYes: false,
-    });
-
-    if (!shouldProceed) {
-      await handleUnstageFiles({
-        files: Array.from(affectedFiles),
-        git,
-        logger,
-      });
-      process.exit(1);
-    }
-  }
+interface PromptUserParams {
+  options: PromptOptions;
+  logger: LoggerService;
 }
 
-// Update promptUser to handle different types of prompts
-async function promptUser(options: PromptOptions): Promise<string | boolean> {
+async function promptUser({
+  options,
+  logger,
+}: PromptUserParams): Promise<string | boolean> {
   return new Promise((resolve) => {
-    const streams = createTTYStreams();
+    logger.debug("🎯 Initializing prompt:", { options });
+    const streams = createTTYStreams({ logger });
+
+    logger.debug("📥 Prompt streams:", {
+      isTTY: streams.isTTY,
+      hasFd: streams.fd !== undefined,
+    });
 
     const rl = readline.createInterface({
       input: streams.input,
@@ -288,9 +263,13 @@ export async function displaySuggestions(
     await displayAICostEstimate({ ai, git, logger });
 
     const shouldProceed = await promptUser({
-      type: "yesno",
-      message: "\n🤖 Would you like to proceed with AI suggestion generation?",
-      defaultYes: true,
+      options: {
+        type: "yesno",
+        message:
+          "\n🤖 Would you like to proceed with AI suggestion generation?",
+        defaultYes: true,
+      },
+      logger,
     });
 
     if (!shouldProceed) {
@@ -306,9 +285,12 @@ export async function displaySuggestions(
   });
 
   const answer = await promptUser({
-    type: "numeric",
-    message: `\n${chalk.cyan("Choose a suggestion number or press Enter to skip:")}`,
-    allowEmpty: true,
+    options: {
+      type: "numeric",
+      message: `\n${chalk.cyan("Choose a suggestion number or press Enter to skip:")}`,
+      allowEmpty: true,
+    },
+    logger,
   });
 
   if (typeof answer !== "string" || !answer || isNaN(parseInt(answer))) {
@@ -329,7 +311,7 @@ async function handleUnstageFiles(params: {
 
   try {
     // Try to copy to clipboard
-    await copyToClipboard(unstageCommand);
+    await copyToClipboard({ text: unstageCommand, logger });
     logger.error("\n❌ Commit aborted. To fix:");
     logger.error(
       "1. Command to unstage sensitive files has been copied to your clipboard:",
@@ -348,24 +330,162 @@ async function handleUnstageFiles(params: {
   await git.unstageFiles({ files });
 }
 
-async function copyToClipboard(text: string): Promise<void> {
-  try {
-    if (process.platform === "darwin") {
-      await execa("pbcopy", { input: text });
-    } else if (process.platform === "win32") {
-      await execa("clip", { input: text });
-    } else {
-      await execa("xclip", ["-selection", "clipboard"], { input: text });
-    }
-  } catch (error) {
-    throw new Error("Failed to copy to clipboard");
-  }
-}
-
 interface Choice {
   label: string;
   value: "keep" | "ai" | "format";
   action: () => Promise<void>;
+}
+
+async function handleSplitSuggestion(params: {
+  splitSuggestion: CommitSplitSuggestion;
+  logger: LoggerService;
+  git: GitService;
+}): Promise<void> {
+  const { splitSuggestion, logger } = params;
+
+  logger.info("\n📦 Multiple package changes detected:");
+  logger.info(chalk.yellow(splitSuggestion.reason));
+
+  // Display suggested splits with proper typing
+  splitSuggestion.suggestions.forEach((suggestion, index: number) => {
+    logger.info(
+      `\n${chalk.cyan(index + 1)}. ${chalk.bold(suggestion.scope || "root")}:`,
+    );
+    logger.info(`   Message: ${chalk.bold(suggestion.message)}`);
+    logger.info("   Files:");
+    suggestion.files.forEach((file) => {
+      logger.info(`     • ${chalk.gray(file)}`);
+    });
+  });
+
+  const shouldSplit = await promptUser({
+    options: {
+      type: "yesno",
+      message: "\n🤔 Would you like to split this commit by package?",
+      defaultYes: true,
+    },
+    logger,
+  });
+
+  if (shouldSplit) {
+    logger.info("\n📋 Commands to execute:");
+    try {
+      await copyToClipboard({
+        text: splitSuggestion.commands.join("\n"),
+        logger,
+      });
+      logger.info(
+        chalk.green("Commands copied to clipboard! Execute them in order:"),
+      );
+    } catch {
+      logger.info("Execute these commands in order:");
+    }
+
+    splitSuggestion.commands.forEach((cmd: string) => {
+      logger.info(chalk.gray(cmd));
+    });
+
+    process.exit(1);
+  }
+}
+
+export async function handleSecurityFindings({
+  secretFindings,
+  fileFindings,
+  logger,
+  git,
+}: HandleSecurityFindingsParams): Promise<void> {
+  const affectedFiles = new Set<string>();
+
+  if (secretFindings.length) {
+    logger.error(
+      `\n${chalk.red("📛 CRITICAL:")} ${chalk.bold("Potential sensitive data detected:")}`,
+    );
+
+    // Group findings by file for better readability
+    const findingsByFile = secretFindings.reduce(
+      (acc, finding) => {
+        if (!acc[finding.path]) acc[finding.path] = [];
+        acc[finding.path].push(finding);
+        affectedFiles.add(finding.path);
+        return acc;
+      },
+      {} as Record<string, SecurityFinding[]>,
+    );
+
+    // Display findings grouped by file
+    for (const [file, findings] of Object.entries(findingsByFile)) {
+      logger.error(`\n${chalk.yellow("📁 File:")} ${chalk.bold(file)}`);
+      for (const finding of findings) {
+        logger.error(
+          `${chalk.red("⚠️")}  ${chalk.bold(finding.type)} detected${finding.line ? chalk.gray(` on line ${finding.line}`) : ""}:`,
+        );
+        if (finding.content) {
+          logger.error(`   ${chalk.red(finding.content)}`);
+        }
+        logger.error(`   ${chalk.cyan("Suggestion:")} ${finding.suggestion}`);
+      }
+    }
+
+    logger.info("\n🛡️  Security Recommendations for Secrets:");
+    logger.info("   • Review the detected patterns for false positives");
+    logger.info("   • Use environment variables for secrets");
+    logger.info("   • Consider using a secret manager");
+    logger.info("   • Update any exposed secrets immediately");
+
+    const shouldProceed = await promptUser({
+      options: {
+        type: "yesno",
+        message: "\n⚠️  Detected potential secrets. Proceed with commit?",
+        defaultYes: false,
+      },
+      logger,
+    });
+
+    if (!shouldProceed) {
+      await handleUnstageFiles({
+        files: Array.from(affectedFiles),
+        git,
+        logger,
+      });
+      process.exit(1);
+    }
+  }
+
+  if (fileFindings.length) {
+    logger.error("\n📁 WARNING: Potentially problematic new files detected:");
+
+    // Display each problematic file with its suggestion
+    for (const finding of fileFindings) {
+      logger.error(`\n⚠️  File: ${finding.path}`);
+      logger.error(`   Suggestion: ${finding.suggestion}`);
+      affectedFiles.add(finding.path);
+    }
+
+    logger.info("\n📋 Recommendations for Files:");
+    logger.info("   • Consider adding sensitive files to .gitignore");
+    logger.info("   • Use example files for templates (e.g., .env.example)");
+    logger.info("   • Consider using git-crypt for encrypted files");
+
+    const shouldProceed = await promptUser({
+      options: {
+        type: "yesno",
+        message:
+          "\n⚠️  Detected potentially sensitive files. Proceed with commit?",
+        defaultYes: false,
+      },
+      logger,
+    });
+
+    if (!shouldProceed) {
+      await handleUnstageFiles({
+        files: Array.from(affectedFiles),
+        git,
+        logger,
+      });
+      process.exit(1);
+    }
+  }
 }
 
 export async function prepareCommit(options: CommitHookOptions): Promise<void> {
@@ -440,115 +560,104 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       securityResult,
     });
 
-    // Build available options based on analysis and configuration
-    const choices: Choice[] = [];
+    // Handle security findings first
+    if (analysis.warnings.some((w) => w.type === "security")) {
+      const securityFindings: SecurityFinding[] = analysis.warnings
+        .filter((w) => w.type === "security")
+        .map((w) => ({
+          type: "secret" as const,
+          severity: w.severity === "error" ? "high" : "medium",
+          path: w.message,
+          suggestion: w.message,
+        }));
 
-    // Keep original message option
-    choices.push({
-      label: `Keep original message: "${analysis.originalMessage}"`,
-      value: "keep",
-      action: () => {
-        process.exit(0);
-        return Promise.resolve();
+      await handleSecurityFindings({
+        secretFindings: securityFindings,
+        fileFindings: [],
+        logger,
+        git,
+      });
+    }
+
+    // Check for split suggestions before other options
+    if (analysis.splitSuggestion) {
+      await handleSplitSuggestion({
+        splitSuggestion: analysis.splitSuggestion,
+        logger,
+        git,
+      });
+    }
+
+    // If we get here, user didn't choose to split, show regular options
+    const choices: Choice[] = [
+      {
+        label: "Keep original message",
+        value: "keep",
+        action: async (): Promise<void> => {
+          // No action needed, original message stays
+        },
       },
-    });
+    ];
 
-    // Add AI option if enabled
-    if (config.ai?.enabled && ai) {
+    if (ai) {
       choices.push({
         label: "Generate commit message with AI",
         value: "ai",
         action: async () => {
-          // Show cost estimate before proceeding
-          await displayAICostEstimate({ ai, git, logger });
-
-          const shouldProceed = await promptUser({
-            type: "yesno",
-            message:
-              "\n🤖 Would you like to proceed with AI suggestion generation?",
-            defaultYes: true,
-          });
-
-          if (!shouldProceed) {
-            process.exit(0);
-            return;
-          }
-
-          logger.info("\n🔄 Getting AI suggestions...");
-          const aiAnalysis = await commitService.analyze({
-            messageFile: options.messageFile,
-            enableAI: true,
-            enablePrompts: true,
-            securityResult,
-          });
-
-          if (aiAnalysis.suggestions?.length) {
-            const chosenMessage = await displaySuggestions({
-              suggestions: aiAnalysis.suggestions,
+          if (analysis.suggestions) {
+            const message = await displaySuggestions({
+              suggestions: analysis.suggestions,
               logger,
-              prompt: aiAnalysis.originalMessage,
-              ai, // Pass AI instance
-              git, // Pass Git instance
+              prompt: "Choose a suggestion:",
+              ai,
+              git,
             });
-
-            if (chosenMessage) {
-              await writeFile(options.messageFile, chosenMessage);
-              logger.success("✅ Commit message updated with AI suggestion!\n");
-              process.exit(0);
+            if (message) {
+              await git.updateCommitMessage({
+                file: options.messageFile,
+                message,
+              });
             }
           }
-          // If no AI suggestion was chosen, continue to next option
-          process.exit(0);
         },
       });
     }
 
-    // Add formatting option
+    // Add format option last (single scope or multi-scope based on analysis)
     choices.push({
       label: `Use formatted message: "${analysis.formattedMessage}"`,
       value: "format",
       action: async () => {
-        await writeFile(options.messageFile, analysis.formattedMessage);
-        logger.success("✅ Commit message updated with formatting!\n");
-        process.exit(0);
+        await git.updateCommitMessage({
+          file: options.messageFile,
+          message: analysis.formattedMessage,
+        });
       },
     });
 
-    // Find default choice index
-    const defaultChoice = choices.findIndex(
-      (c) => c.value === config.hook.defaultChoice,
-    );
-    const defaultIndex = defaultChoice >= 0 ? defaultChoice : 0;
-
-    // Display choices with default highlighted
+    // Display choices
     logger.info("\n🤔 Choose how to proceed with your commit:");
     choices.forEach((choice, index) => {
-      const isDefault = index === defaultIndex;
-      const prefix = isDefault ? chalk.green("→") : " ";
-      logger.info(
-        `${prefix} ${index + 1}. ${choice.label}${isDefault ? chalk.gray(" (default)") : ""}`,
-      );
+      logger.info(`${index + 1}. ${choice.label}`);
     });
 
     const answer = await promptUser({
-      type: "numeric",
-      message: `\nEnter your choice (1-${choices.length}):`,
-      allowEmpty: true,
-      defaultValue: (defaultIndex + 1).toString(),
-      timeoutSeconds: config.hook.timeoutSeconds,
+      options: {
+        type: "numeric",
+        message: "\nEnter your choice (1-" + choices.length + "):",
+        timeoutSeconds: config.hook.timeoutSeconds,
+      },
+      logger,
     });
 
-    // Fix the type error for choiceIndex
-    const choiceIndex =
-      typeof answer === "string" ? parseInt(answer) - 1 : defaultIndex;
-
-    if (choiceIndex >= 0 && choiceIndex < choices.length) {
-      await choices[choiceIndex].action();
-    } else {
-      await choices[defaultIndex].action();
+    if (typeof answer === "string") {
+      const index = parseInt(answer) - 1;
+      if (choices[index]) {
+        await choices[index].action();
+      }
     }
   } catch (error) {
-    console.error("Failed to process commit:", error);
+    logger.error("Hook failed:", error);
     process.exit(1);
   }
 }

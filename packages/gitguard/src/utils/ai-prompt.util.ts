@@ -1,5 +1,6 @@
 import { PRStats } from "../types/analysis.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
+import { Logger } from "../types/logger.types.js";
 
 export interface PRPromptParams {
   commits: CommitInfo[];
@@ -14,9 +15,16 @@ export function buildCommitPrompt(params: {
   packages: Record<string, FileChange[]>;
   originalMessage: string;
   diff: string;
+  logger: Logger;
 }): string {
-  const fileChanges = formatFileChanges(params.files);
-  const packageSummary = formatPackageSummary(params.packages);
+  const fileChanges = formatFileChanges({ files: params.files });
+  const packageSummary = formatPackageSummary({
+    packages: params.packages,
+  });
+  const truncatedDiff = truncateDiff({
+    diff: params.diff,
+    logger: params.logger,
+  });
 
   return `Analyze these git changes and suggest commit messages following conventional commits format.
 
@@ -28,9 +36,9 @@ ${packageSummary}
 
 Original message: "${params.originalMessage}"
 
-Git diff:
+Git diff (truncated):
 \`\`\`diff
-${params.diff}
+${truncatedDiff}
 \`\`\`
 
 Please provide 3 suggestions in this JSON format:
@@ -45,14 +53,16 @@ Guidelines:
 }
 
 // Helper functions to keep the code DRY
-function formatFileChanges(files: FileChange[]): string {
-  return files
+function formatFileChanges(params: { files: FileChange[] }): string {
+  return params.files
     .map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`)
     .join("\n");
 }
 
-function formatPackageSummary(packages: Record<string, FileChange[]>): string {
-  return Object.entries(packages)
+function formatPackageSummary(params: {
+  packages: Record<string, FileChange[]>;
+}): string {
+  return Object.entries(params.packages)
     .map(([pkg, files]) => {
       const changes = files.reduce(
         (sum, f) => sum + f.additions + f.deletions,
@@ -77,37 +87,67 @@ function getCommitSuggestionFormat(): string {
 }`;
 }
 
-export function generateCommitSuggestionPrompt(params: {
+function truncateDiff(params: {
+  diff: string;
+  maxLength?: number;
+  logger: Logger;
+}): string {
+  const { diff, maxLength = 8000, logger } = params;
+
+  if (diff.length <= maxLength) return diff;
+
+  // Split by file sections and take most important ones
+  const sections = diff.split("diff --git");
+  const truncatedSections = sections
+    .slice(0, 5) // Take first 5 files
+    .join("diff --git");
+
+  logger.debug("Truncating diff:", {
+    originalLength: diff.length,
+    sectionsCount: sections.length,
+    truncatedLength: truncatedSections.length,
+  });
+
+  return (
+    truncatedSections.slice(0, maxLength) +
+    `\n\n... (truncated ${sections.length - 5} more files)`
+  );
+}
+
+interface PromptParams {
   files: FileChange[];
   message: string;
   diff: string;
-}): string {
-  const fileChanges = formatFileChanges(params.files);
+  logger: Logger;
+}
 
-  return `Analyze these git changes and suggest a commit message:
+export function generateCommitSuggestionPrompt(params: PromptParams): string {
+  const { files, message, diff, logger } = params;
+
+  const fileChanges = formatFileChanges({ files });
+  const truncatedDiff = truncateDiff({ diff, logger });
+
+  logger.debug("Generating commit suggestion prompt:", {
+    filesCount: files.length,
+    originalDiffLength: diff.length,
+    truncatedDiffLength: truncatedDiff.length,
+    message,
+  });
+
+  const prompt = `Analyze these git changes and suggest a commit message:
 
 Files Changed:
 ${fileChanges}
 
-Original message: "${params.message}"
+Original message: "${message}"
 
-Git diff:
+Git diff (truncated):
 \`\`\`diff
-${params.diff}
+${truncatedDiff}
 \`\`\`
 
 Please provide suggestions in this JSON format:
-{
-    "suggestions": [
-        {
-            "message": "complete conventional commit message",
-            "explanation": "detailed reasoning for the suggestion",
-            "type": "commit type",
-            "scope": "affected package or component",
-            "description": "clear description of changes"
-        }
-    ]
-}
+${getCommitSuggestionFormat()}
 
 Guidelines:
 1. Follow conventional commits format
@@ -115,13 +155,21 @@ Guidelines:
 3. Keep descriptions concise
 4. Include scope when appropriate
 5. Use appropriate type based on changes`;
+
+  logger.debug("Generated prompt:", {
+    length: prompt.length,
+    preview: prompt.slice(0, 200) + "...",
+  });
+
+  return prompt;
 }
 
 export function generateSplitSuggestionPrompt(params: {
   files: FileChange[];
   message: string;
+  logger: Logger;
 }): string {
-  const fileChanges = formatFileChanges(params.files);
+  const fileChanges = formatFileChanges({ files: params.files });
 
   return `Analyze these git changes and suggest if they should be split into multiple commits:
 
@@ -158,7 +206,7 @@ export function generatePRDescriptionPrompt(params: PRPromptParams): string {
     .map((c) => `- ${c.hash.slice(0, 7)}: ${c.message}`)
     .join("\n");
 
-  const fileChanges = formatFileChanges(params.files);
+  const fileChanges = formatFileChanges({ files: params.files });
   const templateInstructions = params.template
     ? `\nFollow this PR template structure:\n${params.template}`
     : "";
@@ -204,7 +252,7 @@ export function generatePRSplitPrompt(params: PRPromptParams): string {
     .map((c) => `- ${c.hash.slice(0, 7)}: ${c.message}`)
     .join("\n");
 
-  const fileChanges = formatFileChanges(params.files);
+  const fileChanges = formatFileChanges({ files: params.files });
 
   return `Analyze these changes and suggest how to split them into multiple PRs:
 

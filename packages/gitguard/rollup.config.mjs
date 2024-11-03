@@ -13,6 +13,8 @@ const external = [
   "fs",
   "chalk",
   "inquirer",
+  "js-tiktoken",
+  "clipboardy",
   "openai",
 ];
 
