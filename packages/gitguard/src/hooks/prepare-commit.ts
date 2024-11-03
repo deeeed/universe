@@ -383,48 +383,112 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     // Run the commit analysis without re-running security checks
     const analysis = await commitService.analyze({
       messageFile: options.messageFile,
-      enableAI: Boolean(config.ai?.enabled),
+      enableAI: false, // Don't generate AI suggestions yet
       enablePrompts: true,
       securityResult,
     });
 
-    // If we have AI suggestions and user wants them
-    const shouldUseAI = await promptUser({
-      type: "yesno",
-      message: "\nWould you like AI suggestions?",
-      defaultYes: true,
-    });
+    // Build available options based on analysis and configuration
+    const choices: Array<{
+      label: string;
+      value: string;
+      action: () => Promise<void>;
+    }> = [];
 
-    if (analysis.suggestions?.length && shouldUseAI) {
-      logger.info("\n🤖 Getting AI suggestions...");
-      const chosenMessage = await displaySuggestions({
-        suggestions: analysis.suggestions,
-        logger,
-        prompt: analysis.originalMessage,
+    // If analysis suggests splitting, add that as first option
+    if (analysis.splitSuggestion) {
+      choices.push({
+        label: "Split into multiple commits (recommended)",
+        value: "split",
+        action: () => {
+          logger.info("\n📦 Suggested split structure:");
+          const splitSuggestion = analysis.splitSuggestion;
+          if (!splitSuggestion) return Promise.resolve();
+
+          for (const suggestion of splitSuggestion.suggestions) {
+            logger.info(`\n${suggestion.order}. ${suggestion.message}`);
+            logger.info("   Files:");
+            suggestion.files.forEach((file) => logger.info(`   - ${file}`));
+          }
+          logger.info("\n📋 Commands to execute:");
+          splitSuggestion.commands.forEach((cmd) => logger.info(`   ${cmd}`));
+          process.exit(1);
+          return Promise.resolve();
+        },
       });
-
-      if (chosenMessage) {
-        await writeFile(options.messageFile, chosenMessage);
-        logger.success("✅ Commit message updated!\n");
-        return;
-      }
     }
 
-    // Show automatic formatting suggestion
-    logger.info("\n⚙️ Using automatic formatting...");
-    logger.info(`\n✨ Suggested message:\n${analysis.formattedMessage}`);
-
-    const useFormatted = await promptUser({
-      type: "yesno",
-      message: "\nUse suggested message?",
-      defaultYes: true,
+    // Keep original message option
+    choices.push({
+      label: `Keep original message: "${analysis.originalMessage}"`,
+      value: "keep",
+      action: () => {
+        process.exit(0);
+        return Promise.resolve();
+      },
     });
 
-    if (useFormatted) {
-      await writeFile(options.messageFile, analysis.formattedMessage);
-      logger.success("✅ Commit message updated!\n");
-      process.exit(0);
+    // Add AI option if enabled
+    if (config.ai?.enabled) {
+      choices.push({
+        label: "Generate commit message with AI",
+        value: "ai",
+        action: async () => {
+          logger.info("\n🤖 Getting AI suggestions...");
+          const aiAnalysis = await commitService.analyze({
+            messageFile: options.messageFile,
+            enableAI: true,
+            enablePrompts: true,
+            securityResult,
+          });
+
+          if (aiAnalysis.suggestions?.length) {
+            const chosenMessage = await displaySuggestions({
+              suggestions: aiAnalysis.suggestions,
+              logger,
+              prompt: aiAnalysis.originalMessage,
+            });
+
+            if (chosenMessage) {
+              await writeFile(options.messageFile, chosenMessage);
+              logger.success("✅ Commit message updated with AI suggestion!\n");
+              process.exit(0);
+            }
+          }
+          // If no AI suggestion was chosen, continue to next option
+          process.exit(0);
+        },
+      });
+    }
+
+    // Add automatic formatting option
+    choices.push({
+      label: `Use formatted message: "${analysis.formattedMessage}"`,
+      value: "format",
+      action: async () => {
+        await writeFile(options.messageFile, analysis.formattedMessage);
+        logger.success("✅ Commit message updated with formatting!\n");
+        process.exit(0);
+      },
+    });
+
+    // Display single prompt with all options
+    logger.info("\n🤔 Choose how to proceed with your commit:");
+    const answer = await promptUser({
+      type: "numeric",
+      message:
+        choices.map((c, i) => `${i + 1}. ${c.label}`).join("\n") +
+        "\n\nEnter your choice (1-" +
+        choices.length +
+        "):",
+      allowEmpty: false,
+    });
+
+    const index = parseInt(String(answer)) - 1;
+    if (index >= 0 && index < choices.length) {
+      await choices[index].action();
     } else {
+      logger.error("Invalid choice. Keeping original message.");
       process.exit(0);
     }
   } catch (error) {

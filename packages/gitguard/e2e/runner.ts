@@ -4,15 +4,15 @@ import { commitMessageTest } from "./test/commit-message.test.js";
 import { securityTest } from "./test/security.test.js";
 import { aiSuggestionsTest } from "./test/ai-suggestions.test.js";
 import { largeCommitsTest } from "./test/large-commits.test.js";
-import { E2ETest } from "./tests.types.js";
+import { E2ETest, TestSuites, TestSuiteKey } from "./tests.types.js";
 import { createInterface } from "readline";
 
-const ALL_TESTS = [
-  commitMessageTest,
-  securityTest,
-  aiSuggestionsTest,
-  largeCommitsTest,
-] satisfies E2ETest[];
+const TEST_MAP = new Map<TestSuiteKey, E2ETest>([
+  [TestSuites.COMMIT_MESSAGE, commitMessageTest],
+  [TestSuites.SECURITY, securityTest],
+  [TestSuites.AI_SUGGESTIONS, aiSuggestionsTest],
+  [TestSuites.LARGE_COMMITS, largeCommitsTest],
+]);
 
 interface ParsedArgs {
   tests?: string;
@@ -45,36 +45,33 @@ async function selectTests(logger: LoggerService): Promise<E2ETest[]> {
   const args = values as ParsedArgs;
 
   if (args.tests) {
-    const selectedIndices = args.tests
-      .split(",")
-      .map((n: string) => parseInt(n.trim(), 10) - 1)
-      .filter((n: number) => n >= 0 && n < ALL_TESTS.length);
-    return selectedIndices.map((i: number) => ALL_TESTS[i]);
+    const selectedKeys = args.tests.split(",").map((key) => key.trim());
+    return selectedKeys
+      .map((key) => TEST_MAP.get(key as TestSuiteKey))
+      .filter((test): test is E2ETest => test !== undefined);
   }
 
   if (args.all) {
-    return ALL_TESTS;
+    return Array.from(TEST_MAP.values());
   }
 
   logger.info("\n📋 Available Test Suites:");
-  ALL_TESTS.forEach((test, index) => {
-    logger.info(`${index + 1}. ${test.name}`);
+  Array.from(TEST_MAP.entries()).forEach(([key, test]) => {
+    logger.info(`${key}: ${test.name}`);
   });
 
   const answer = await promptUser(
-    "\nEnter test suite numbers to run (comma-separated) or 'all': ",
+    "\nEnter test suite keys to run (comma-separated) or 'all': ",
   );
 
   if (answer.toLowerCase() === "all") {
-    return ALL_TESTS;
+    return Array.from(TEST_MAP.values());
   }
 
-  const selectedIndices = answer
-    .split(",")
-    .map((n: string) => parseInt(n.trim(), 10) - 1)
-    .filter((n: number) => n >= 0 && n < ALL_TESTS.length);
-
-  return selectedIndices.map((i: number) => ALL_TESTS[i]);
+  const selectedKeys = answer.split(",").map((key) => key.trim());
+  return selectedKeys
+    .map((key) => TEST_MAP.get(key as TestSuiteKey))
+    .filter((test): test is E2ETest => test !== undefined);
 }
 
 export async function runTests(): Promise<void> {

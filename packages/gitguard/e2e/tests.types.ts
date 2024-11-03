@@ -38,3 +38,12 @@ export interface E2ETest {
   scenarios: TestScenario[];
   run: (logger: LoggerService) => Promise<TestResult[]>;
 }
+
+export const TestSuites = {
+  COMMIT_MESSAGE: "commit-message",
+  SECURITY: "security",
+  AI_SUGGESTIONS: "ai-suggestions",
+  LARGE_COMMITS: "large-commits",
+} as const;
+
+export type TestSuiteKey = (typeof TestSuites)[keyof typeof TestSuites];

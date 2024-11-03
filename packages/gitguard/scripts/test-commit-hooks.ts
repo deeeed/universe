@@ -366,7 +366,7 @@ async function runScenario(scenario: TestScenario): Promise<TestResult> {
           maxSize: 800,
           requireApprovals: 1,
         },
-        debug: process.argv.includes("--debug"),
+        debug: true,
       },
       forceTTY: true,
     });
