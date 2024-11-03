@@ -1,4 +1,8 @@
 import { loadConfig } from "../config.js";
+import {
+  displaySuggestions,
+  handleSecurityFindings,
+} from "../hooks/prepare-commit.js";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
@@ -68,13 +72,67 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
         logger,
       });
 
+      // Run security checks first
+      const diff = await git.getStagedDiff();
+      const securityResult = security?.analyzeSecurity({
+        files: stagedFiles,
+        diff,
+      });
+
+      if (
+        securityResult?.secretFindings.length ||
+        securityResult?.fileFindings.length
+      ) {
+        await handleSecurityFindings({
+          secretFindings: securityResult.secretFindings || [],
+          fileFindings: securityResult.fileFindings || [],
+          logger,
+          git,
+        });
+      }
+
+      // If no message provided, use AI to suggest one if available
+      if (!options.message && ai) {
+        logger.info(
+          "\n🤖 No commit message provided. Generating AI suggestions...",
+        );
+        const result = await commitService.analyze({
+          message: "", // Empty message to bypass the error
+          enableAI: true,
+          enablePrompts: true,
+          securityResult,
+        });
+
+        if (result.suggestions?.length) {
+          const chosenMessage = await displaySuggestions({
+            suggestions: result.suggestions,
+            logger,
+            prompt: "",
+          });
+
+          if (chosenMessage) {
+            options.message = chosenMessage;
+          }
+        }
+      }
+
+      // If still no message, use automatic type detection
+      if (!options.message) {
+        const type = commitService.detectCommitType(stagedFiles);
+        const scope = commitService.detectScope(stagedFiles);
+        options.message = scope ? `${type}(${scope}): ` : `${type}: `;
+
+        logger.info("\n📝 Generated commit type based on changes.");
+        logger.info(`Suggested format: ${options.message}<description>`);
+      }
+
       const result = await commitService.analyze({
         message: options.message,
         enableAI: Boolean(config.ai?.enabled),
         enablePrompts: true,
+        securityResult,
       });
 
-      // Use reporter service for consistent output
       reporter.generateReport({
         result,
         options: {

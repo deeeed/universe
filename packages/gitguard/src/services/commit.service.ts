@@ -289,7 +289,7 @@ export class CommitService extends BaseService {
     return conventionalPattern.test(message);
   }
 
-  private detectCommitType(files: FileChange[]): string {
+  public detectCommitType(files: FileChange[]): string {
     const hasFeature = files.some(
       (f) =>
         f.path.includes("/src/") ||
@@ -316,7 +316,7 @@ export class CommitService extends BaseService {
     return "feat"; // Default to feat
   }
 
-  private detectScope(files: FileChange[]): string | undefined {
+  public detectScope(files: FileChange[]): string | undefined {
     const isMonorepo = files.some((f) => f.path.startsWith("packages/"));
 
     if (!isMonorepo) {

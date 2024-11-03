@@ -79,7 +79,7 @@ function createTTYStreams(): TTYStreams {
   }
 }
 
-async function handleSecurityFindings(
+export async function handleSecurityFindings(
   params: HandleSecurityFindingsParams,
 ): Promise<void> {
   const { secretFindings, fileFindings, logger, git } = params;
@@ -247,7 +247,7 @@ async function promptUser(options: PromptOptions): Promise<string | boolean> {
 }
 
 // Update displaySuggestions to use the new prompt interface
-async function displaySuggestions(
+export async function displaySuggestions(
   params: DisplaySuggestionsParams,
 ): Promise<string | undefined> {
   const { suggestions, logger } = params;
