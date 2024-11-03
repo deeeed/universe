@@ -6,6 +6,10 @@ import { resolve, dirname } from "path";
 import { analyze } from "../commands/analyze.js";
 import { hook } from "../commands/hook.js";
 import { LoggerService } from "../services/logger.service.js";
+import { getConfigStatus } from "../utils/config.util.js";
+import { getHookStatus } from "../utils/hook.util.js";
+import { init, InitOptions } from "../commands/init.js";
+import chalk from "chalk";
 
 interface HookOptions {
   global?: boolean;
@@ -30,12 +34,70 @@ async function main(): Promise<void> {
   program.showHelpAfterError();
   program.showSuggestionAfterError();
 
+  // Set version early
+  let version = "0.0.0-dev";
+  try {
+    let packagePath: string;
+
+    if (typeof __dirname !== "undefined") {
+      packagePath = resolve(__dirname, "../../package.json");
+    } else {
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      packagePath = resolve(__dirname, "../../package.json");
+    }
+
+    const packageJson = JSON.parse(
+      await readFile(packagePath, "utf8"),
+    ) as PackageJson;
+    version = packageJson.version;
+  } catch (error) {
+    logger.error("Failed to load version:", error);
+  }
+
   // Create the program
   program
     .name("gitguard")
-    .description("A smart Git commit message and PR analysis tool")
-    .option("-d, --debug", "Enable debug mode")
-    .option("-c, --config <path>", "Path to config file");
+    .version(version)
+    .helpOption("-h, --help", "Display help for command")
+    .configureHelp({
+      sortSubcommands: true,
+      sortOptions: true,
+    })
+    .configureOutput({
+      writeOut: (str) => {
+        // Prevent default help output
+        if (!str.includes("Usage: gitguard")) {
+          process.stdout.write(str);
+        }
+      },
+      writeErr: (str) => process.stderr.write(str),
+    })
+    .addHelpText(
+      "beforeAll",
+      `${chalk.blue(`GitGuard v${version}`)} - A Git workflow enhancement tool that provides:
+
+  ${chalk.green("•")} Commit message validation and formatting
+  ${chalk.green("•")} AI-powered suggestions
+  ${chalk.green("•")} Security checks for secrets and sensitive files
+  ${chalk.green("•")} PR template validation
+  ${chalk.green("•")} Customizable Git hooks
+  ${chalk.green("•")} Local and global configuration
+
+${chalk.blue("Commands:")}
+  ${chalk.cyan("hook")} [options] [action]        ${chalk.gray("Manage git hooks")}
+  ${chalk.cyan("analyze")} [options]              ${chalk.gray("Analyze git changes and get suggestions")}
+  ${chalk.cyan("status")} [options]               ${chalk.gray("Show GitGuard status (hooks and configuration)")}
+  ${chalk.cyan("init")} [options]                 ${chalk.gray("Initialize GitGuard configuration")}
+
+${chalk.blue("Options:")}
+  ${chalk.yellow("-d, --debug")}              Enable debug mode
+  ${chalk.yellow("-c, --config <path>")}      Path to config file
+  ${chalk.yellow("-V, --version")}            Output the version number
+  ${chalk.yellow("-h, --help")}               Display help for command`,
+    )
+    .option(`${chalk.yellow("-d, --debug")}`, "Enable debug mode")
+    .option(`${chalk.yellow("-c, --config <path>")}`, "Path to config file");
 
   // Hook command
   program
@@ -46,12 +108,12 @@ async function main(): Promise<void> {
     .addHelpText(
       "after",
       `
-Examples:
-  $ gitguard hook                  # Show hook status
-  $ gitguard hook status          # Show hook status
-  $ gitguard hook install         # Install hook in current repository
-  $ gitguard hook install -g      # Install hook globally
-  $ gitguard hook uninstall       # Remove hook from current repository`,
+${chalk.blue("Examples:")}
+  ${chalk.yellow("$")} gitguard hook                  # Show hook status
+  ${chalk.yellow("$")} gitguard hook status          # Show hook status
+  ${chalk.yellow("$")} gitguard hook install         # Install hook in current repository
+  ${chalk.yellow("$")} gitguard hook install -g      # Install hook globally
+  ${chalk.yellow("$")} gitguard hook uninstall       # Remove hook from current repository`,
     )
     .action(async (action: string | undefined, options: HookOptions) => {
       // Default to status if no action provided
@@ -93,30 +155,30 @@ Examples:
     .addHelpText(
       "after",
       `
-Usage Examples:
-  $ gitguard analyze                    # Analyze current staged changes
-  $ gitguard analyze -m "feat: update"  # Analyze with specific commit message
-  $ gitguard analyze -p 123             # Analyze PR #123
-  $ gitguard analyze -b main            # Analyze branch 'main'
-  $ gitguard analyze --format markdown  # Output in markdown format
-  $ gitguard analyze --detailed         # Show detailed analysis
-  $ gitguard analyze --no-color         # Disable colored output
+${chalk.blue("Usage Examples:")}
+  ${chalk.yellow("$")} gitguard analyze                    # Analyze current staged changes
+  ${chalk.yellow("$")} gitguard analyze -m "feat: update"  # Analyze with specific commit message
+  ${chalk.yellow("$")} gitguard analyze -p 123             # Analyze PR #123
+  ${chalk.yellow("$")} gitguard analyze -b main            # Analyze branch 'main'
+  ${chalk.yellow("$")} gitguard analyze --format markdown  # Output in markdown format
+  ${chalk.yellow("$")} gitguard analyze --detailed         # Show detailed analysis
+  ${chalk.yellow("$")} gitguard analyze --no-color         # Disable colored output
 
-Options:
-  -p, --pr <number>      PR number to analyze
-  -b, --branch <name>    Branch to analyze (defaults to current)
-  -m, --message <text>   Commit message to analyze
-  -f, --format <type>    Output format: console, json, markdown (default: "console")
-  --no-color            Disable colored output
-  --detailed           Show detailed analysis
-  -c, --config <path>   Path to custom config file
+${chalk.blue("Options:")}
+  ${chalk.yellow("-p, --pr <number")}      PR number to analyze
+  ${chalk.yellow("-b, --branch <name>")}    Branch to analyze (defaults to current)
+  ${chalk.yellow("-m, --message <text>")}   Commit message to analyze
+  ${chalk.yellow("-f, --format <type>")}    Output format: console, json, markdown (default: "console")
+  ${chalk.yellow("--no-color")}            Disable colored output
+  ${chalk.yellow("--detailed")}           Show detailed analysis
+  ${chalk.yellow("-c, --config <path>")}   Path to custom config file
 
-Analysis includes:
-  • Commit message formatting
-  • Security checks
-  • AI-powered suggestions
-  • Split recommendations
-  • Code quality warnings`,
+${chalk.blue("Analysis includes:")}
+  ${chalk.green("•")} Commit message formatting
+  ${chalk.green("•")} Security checks
+  ${chalk.green("•")} AI-powered suggestions
+  ${chalk.green("•")} Split recommendations
+  ${chalk.green("•")} Code quality warnings`,
     )
     .action(async (options: AnalyzeOptions) => {
       try {
@@ -132,34 +194,135 @@ Analysis includes:
       }
     });
 
+  // Status command
+  program
+    .command("status")
+    .description("Show GitGuard status (hooks and configuration)")
+    .option("-c, --config-only", "Show only configuration status")
+    .option("-h, --hooks-only", "Show only hooks status")
+    .addHelpText(
+      "after",
+      `
+Examples:
+  $ gitguard status           # Show all status information
+  $ gitguard status -c        # Show only configuration status
+  $ gitguard status -h        # Show only hooks status`,
+    )
+    .action(async (options: { configOnly?: boolean; hooksOnly?: boolean }) => {
+      const logger = new LoggerService({ debug: !!program.opts().debug });
+
+      try {
+        if (!options.hooksOnly) {
+          const configStatus = await getConfigStatus();
+          logger.info(chalk.blue("\n📝 Configuration Status:"));
+
+          if (configStatus.global.exists) {
+            logger.info(
+              `\nGlobal config found at: ${chalk.cyan(configStatus.global.path)}`,
+            );
+            if (configStatus.global.config) {
+              logger.info(chalk.yellow("Enabled features:"));
+              if (configStatus.global.config.ai?.enabled)
+                logger.info(chalk.green("• AI assistance"));
+              if (configStatus.global.config.security?.enabled)
+                logger.info(chalk.green("• Security checks"));
+            }
+          } else {
+            logger.info(chalk.yellow("\nNo global config found"));
+          }
+
+          if (configStatus.local.exists) {
+            logger.info(
+              `\nLocal config found at: ${chalk.cyan(configStatus.local.path)}`,
+            );
+            if (configStatus.local.config) {
+              logger.info(chalk.yellow("Enabled features:"));
+              if (configStatus.local.config.ai?.enabled)
+                logger.info(chalk.green("• AI assistance"));
+              if (configStatus.local.config.security?.enabled)
+                logger.info(chalk.green("• Security checks"));
+            }
+          } else {
+            logger.info(chalk.yellow("\nNo local config found"));
+          }
+        }
+
+        if (!options.configOnly) {
+          const hookStatus = await getHookStatus();
+          logger.info(chalk.blue("\n🔗 Git Hooks Status:"));
+
+          if (hookStatus.isRepo) {
+            logger.info(
+              `\nLocal repository detected at: ${chalk.cyan(process.cwd())}`,
+            );
+            if (hookStatus.localHook.exists) {
+              logger.info(chalk.green("• Local hook is installed"));
+            } else {
+              logger.info(chalk.yellow("• No local hook installed"));
+            }
+          }
+
+          if (hookStatus.globalHook.exists) {
+            logger.info(
+              `\nGlobal hook detected at: ${chalk.cyan(hookStatus.globalHook.path)}`,
+            );
+          } else {
+            logger.info(chalk.yellow("\nNo global hook installed"));
+          }
+        }
+
+        // Show suggestions
+        logger.info(chalk.blue("\n💡 Suggested actions:"));
+        if (!options.configOnly) {
+          logger.info(
+            `• To manage hooks:        ${chalk.cyan("gitguard hook")}`,
+          );
+        }
+        logger.info(`• To create config:      ${chalk.cyan("gitguard init")}`);
+        logger.info(
+          `• To view full status:   ${chalk.cyan("gitguard status")}`,
+        );
+      } catch (error) {
+        logger.error(chalk.red("Failed to get status:"), error);
+        process.exit(1);
+      }
+    });
+
+  // Init command
+  program
+    .command("init")
+    .description("Initialize GitGuard configuration")
+    .option("-g, --global", "Create global configuration")
+    .addHelpText(
+      "after",
+      `
+${chalk.blue("Examples:")}
+  ${chalk.yellow("$")} gitguard init           # Initialize local configuration
+  ${chalk.yellow("$")} gitguard init -g        # Initialize global configuration
+
+${chalk.blue("Configuration includes:")}
+  ${chalk.green("•")} Git base branch
+  ${chalk.green("•")} Conventional commits validation
+  ${chalk.green("•")} Security checks
+  ${chalk.green("•")} AI assistance
+  ${chalk.green("•")} PR template validation`,
+    )
+    .action(async (options: InitOptions) => {
+      try {
+        await init({
+          global: options.global,
+          debug: !!program.opts().debug,
+        });
+      } catch (error) {
+        logger.error("Init command failed:", error);
+        process.exit(1);
+      }
+    });
+
   // Add a default action when no command is provided
   program.action(() => {
     program.help();
   });
-
-  // Set version - Updated to handle both ESM and CJS environments
-  try {
-    let packagePath: string;
-
-    if (typeof __dirname !== "undefined") {
-      // CJS environment
-      packagePath = resolve(__dirname, "../../package.json");
-    } else {
-      // ESM environment
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = dirname(__filename);
-      packagePath = resolve(__dirname, "../../package.json");
-    }
-
-    const packageJson = JSON.parse(
-      await readFile(packagePath, "utf8"),
-    ) as PackageJson;
-
-    program.version(packageJson.version);
-  } catch (error) {
-    logger.error("Failed to load version:", error);
-    program.version("0.0.0-dev");
-  }
 
   // Parse arguments
   await program.parseAsync(process.argv);

@@ -1,4 +1,4 @@
-import { loadConfig } from "../config.js";
+import { loadConfig } from "../utils/config.util.js";
 import {
   displaySuggestions,
   handleSecurityFindings,

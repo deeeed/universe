@@ -3,7 +3,7 @@ import { closeSync, openSync } from "fs";
 import { writeFile } from "fs/promises";
 import readline from "readline";
 import { ReadStream, WriteStream } from "tty";
-import { loadConfig } from "../config.js";
+import { loadConfig } from "../utils/config.util.js";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";

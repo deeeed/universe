@@ -1,8 +1,20 @@
+import { promises as fs } from "fs";
+
 interface CheckFileParams {
   path: string;
 }
 
 export const FileUtil = {
+  async mkdirp(dir: string): Promise<void> {
+    try {
+      await fs.mkdir(dir, { recursive: true });
+    } catch (error) {
+      if ((error as { code?: string }).code !== "EEXIST") {
+        throw error;
+      }
+    }
+  },
+
   isTestFile(params: CheckFileParams): boolean {
     return /\.(test|spec)\.(ts|js|tsx|jsx)$/.test(params.path);
   },

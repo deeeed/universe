@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { existsSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
-import { loadConfig } from "../config.js";
+import { loadConfig } from "../utils/config.util.js";
 import { LoggerService } from "../services/logger.service.js";
 import { Config } from "../types/config.types.js";
 import { getGitRoot } from "../utils/git.util.js";

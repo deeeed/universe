@@ -2,7 +2,7 @@ import execa, { Options } from "execa";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
-import { defaultConfig } from "../src/config.js";
+import { defaultConfig } from "../src/utils/config.util.js";
 import { prepareCommit } from "../src/hooks/prepare-commit.js";
 import { LoggerService } from "../src/services/logger.service.js";
 import { Config } from "../src/types/config.types.js";
