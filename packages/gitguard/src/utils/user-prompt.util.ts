@@ -85,9 +85,15 @@ export async function promptNumeric(params: {
   message: string;
   logger: Logger;
   allowEmpty?: boolean;
+  defaultValue?: string;
 }): Promise<string | undefined> {
-  const { message, logger, allowEmpty = true } = params;
-  logger.info(message);
+  const { message, logger, allowEmpty = true, defaultValue } = params;
+
+  const displayMessage = defaultValue
+    ? `${message} (${defaultValue})`
+    : message;
+
+  logger.info(displayMessage);
 
   return new Promise((resolve) => {
     const onData = (data: string): void => {
@@ -95,7 +101,7 @@ export async function promptNumeric(params: {
       process.stdin.removeListener("data", onData);
 
       if (allowEmpty && response === "") {
-        resolve(undefined);
+        resolve(defaultValue);
         return;
       }
 
@@ -156,6 +162,10 @@ interface InitPromptResponses {
   aiEndpoint?: string;
   aiDeployment?: string;
   prTemplate: boolean;
+  hook: {
+    defaultChoice: "keep" | "ai" | "format";
+    timeoutSeconds: number;
+  };
 }
 
 export async function promptForInit(params: {
@@ -193,6 +203,25 @@ export async function promptForInit(params: {
       defaultValue: currentConfig?.pr?.template?.required ?? true,
       logger,
     }),
+    hook: {
+      defaultChoice: await promptChoice<"keep" | "ai" | "format">({
+        message: "\nSelect default action for commit hooks:",
+        choices: [
+          { label: "Keep original message", value: "keep" },
+          { label: "Generate with AI", value: "ai" },
+          { label: "Use formatted message", value: "format" },
+        ],
+        logger,
+      }),
+      timeoutSeconds: parseInt(
+        (await promptNumeric({
+          message: "Enter timeout for hook prompts (seconds) [30-300]:",
+          logger,
+          allowEmpty: true,
+          defaultValue: currentConfig?.hook?.timeoutSeconds?.toString() ?? "90",
+        })) || "90",
+      ),
+    },
   };
   if (responses.enableAI) {
     responses.aiProvider = await promptChoice<"azure" | "openai" | "ollama">({

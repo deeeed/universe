@@ -109,7 +109,28 @@ function displayConfigFeatures(config: Partial<Config> | null): string[] {
   output.push("\nDebug Mode:");
   output.push(`  Status: ${formatEnabled(config?.debug ?? false)}`);
 
+  // Add Hook Configuration section
+  output.push("\nHook Configuration:");
+  output.push(
+    `  Default Action: ${formatHookChoice(config?.hook?.defaultChoice)}`,
+  );
+  output.push(
+    `  Timeout: ${formatConfigValue(config?.hook?.timeoutSeconds ?? 90)} seconds`,
+  );
+
   return output;
+}
+
+// Add helper function to format hook choice
+function formatHookChoice(choice?: string): string {
+  const choices = {
+    keep: "Keep original message",
+    ai: "Generate with AI",
+    format: "Use formatted message",
+  };
+
+  if (!choice) return chalk.gray("Not configured (defaults to keep)");
+  return chalk.cyan(choices[choice as keyof typeof choices] || choice);
 }
 
 export async function status(options: StatusOptions): Promise<void> {

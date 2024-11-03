@@ -61,6 +61,10 @@ export async function init(options: InitOptions): Promise<void> {
           required: responses.prTemplate,
         },
       },
+      hook: {
+        defaultChoice: responses.hook.defaultChoice,
+        timeoutSeconds: responses.hook.timeoutSeconds,
+      },
     };
 
     await fs.writeFile(configPath, JSON.stringify(config, null, 2));

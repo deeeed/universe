@@ -41,6 +41,7 @@ interface DisplaySuggestionsParams {
 // Add interfaces for different prompt types
 interface BasePromptOptions {
   message: string;
+  timeoutSeconds?: number;
 }
 
 interface YesNoPromptOptions extends BasePromptOptions {
@@ -51,6 +52,7 @@ interface YesNoPromptOptions extends BasePromptOptions {
 interface NumericPromptOptions extends BasePromptOptions {
   type: "numeric";
   allowEmpty?: boolean;
+  defaultValue?: string;
 }
 
 type PromptOptions = YesNoPromptOptions | NumericPromptOptions;
@@ -230,14 +232,17 @@ async function promptUser(options: PromptOptions): Promise<string | boolean> {
     });
 
     // If no input is provided within 90 seconds, notify user and use default
-    const timeoutDuration = 90000;
+    const timeoutDuration = (options.timeoutSeconds || 90) * 1000;
     setTimeout(() => {
       streams.output.write(
         `\n${chalk.yellow("⏰ No input received after")} ${chalk.bold(timeoutDuration / 1000)} ${chalk.yellow("seconds. Using default value.")}\n`,
       );
       cleanup();
 
-      if (options.type === "yesno") {
+      if (options.type === "numeric" && options.defaultValue) {
+        streams.output.write(`${chalk.cyan("Using default choice")}\n`);
+        resolve(options.defaultValue);
+      } else if (options.type === "yesno") {
         const defaultValue = !!options.defaultYes;
         streams.output.write(
           `${chalk.cyan("Using default:")} ${chalk.bold(defaultValue ? "Yes" : "No")}\n`,
@@ -357,6 +362,12 @@ async function copyToClipboard(text: string): Promise<void> {
   }
 }
 
+interface Choice {
+  label: string;
+  value: "keep" | "ai" | "format";
+  action: () => Promise<void>;
+}
+
 export async function prepareCommit(options: CommitHookOptions): Promise<void> {
   const logger = new LoggerService({
     debug: process.env.GITGUARD_DEBUG === "true" || options.config?.debug,
@@ -430,34 +441,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     });
 
     // Build available options based on analysis and configuration
-    const choices: Array<{
-      label: string;
-      value: string;
-      action: () => Promise<void>;
-    }> = [];
-
-    // If analysis suggests splitting, add that as first option
-    if (analysis.splitSuggestion) {
-      choices.push({
-        label: "Split into multiple commits (recommended)",
-        value: "split",
-        action: () => {
-          logger.info("\n📦 Suggested split structure:");
-          const splitSuggestion = analysis.splitSuggestion;
-          if (!splitSuggestion) return Promise.resolve();
-
-          for (const suggestion of splitSuggestion.suggestions) {
-            logger.info(`\n${suggestion.order}. ${suggestion.message}`);
-            logger.info("   Files:");
-            suggestion.files.forEach((file) => logger.info(`   - ${file}`));
-          }
-          logger.info("\n📋 Commands to execute:");
-          splitSuggestion.commands.forEach((cmd) => logger.info(`   ${cmd}`));
-          process.exit(1);
-          return Promise.resolve();
-        },
-      });
-    }
+    const choices: Choice[] = [];
 
     // Keep original message option
     choices.push({
@@ -519,7 +503,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       });
     }
 
-    // Add automatic formatting option
+    // Add formatting option
     choices.push({
       label: `Use formatted message: "${analysis.formattedMessage}"`,
       value: "format",
@@ -530,24 +514,38 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       },
     });
 
-    // Display single prompt with all options
+    // Find default choice index
+    const defaultChoice = choices.findIndex(
+      (c) => c.value === config.hook.defaultChoice,
+    );
+    const defaultIndex = defaultChoice >= 0 ? defaultChoice : 0;
+
+    // Display choices with default highlighted
     logger.info("\n🤔 Choose how to proceed with your commit:");
-    const answer = await promptUser({
-      type: "numeric",
-      message:
-        choices.map((c, i) => `${i + 1}. ${c.label}`).join("\n") +
-        "\n\nEnter your choice (1-" +
-        choices.length +
-        "):",
-      allowEmpty: false,
+    choices.forEach((choice, index) => {
+      const isDefault = index === defaultIndex;
+      const prefix = isDefault ? chalk.green("→") : " ";
+      logger.info(
+        `${prefix} ${index + 1}. ${choice.label}${isDefault ? chalk.gray(" (default)") : ""}`,
+      );
     });
 
-    const index = parseInt(String(answer)) - 1;
-    if (index >= 0 && index < choices.length) {
-      await choices[index].action();
+    const answer = await promptUser({
+      type: "numeric",
+      message: `\nEnter your choice (1-${choices.length}):`,
+      allowEmpty: true,
+      defaultValue: (defaultIndex + 1).toString(),
+      timeoutSeconds: config.hook.timeoutSeconds,
+    });
+
+    // Fix the type error for choiceIndex
+    const choiceIndex =
+      typeof answer === "string" ? parseInt(answer) - 1 : defaultIndex;
+
+    if (choiceIndex >= 0 && choiceIndex < choices.length) {
+      await choices[choiceIndex].action();
     } else {
-      logger.error("Invalid choice. Keeping original message.");
-      process.exit(0);
+      await choices[defaultIndex].action();
     }
   } catch (error) {
     console.error("Failed to process commit:", error);

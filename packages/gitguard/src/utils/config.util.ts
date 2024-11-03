@@ -129,6 +129,10 @@ export const defaultConfig: Config = {
     maxSize: 800,
     requireApprovals: 1,
   },
+  hook: {
+    defaultChoice: "keep",
+    timeoutSeconds: 90,
+  },
 };
 
 export async function loadConfig(
