@@ -3,15 +3,14 @@ import { closeSync, openSync } from "fs";
 import { writeFile } from "fs/promises";
 import readline from "readline";
 import { ReadStream, WriteStream } from "tty";
-import { loadConfig } from "../utils/config.util.js";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
 import { LoggerService } from "../services/logger.service.js";
-import { PromptService } from "../services/prompt.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
+import { loadConfig } from "../utils/config.util.js";
 interface CommitHookOptions {
   messageFile: string;
   config?: Config;
@@ -346,7 +345,6 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     const security = config.security?.enabled
       ? new SecurityService({ logger, config })
       : undefined;
-    const prompt = new PromptService({ logger });
     const ai = config.ai?.enabled
       ? AIFactory.create({ config, logger })
       : undefined;
@@ -375,7 +373,6 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       config,
       git,
       security,
-      prompt,
       ai,
       logger,
     });

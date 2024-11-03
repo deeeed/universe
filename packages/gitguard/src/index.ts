@@ -1,7 +1,6 @@
 export * from "./services/commit.service.js";
 export * from "./services/pr.service.js";
 export * from "./services/security.service.js";
-export * from "./services/prompt.service.js";
 export * from "./services/git.service.js";
 
 export * from "./hooks/prepare-commit.js";

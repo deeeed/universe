@@ -18,27 +18,24 @@ import {
 } from "../types/security.types.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
-import { PromptService } from "./prompt.service.js";
 import { SecurityService } from "./security.service.js";
+import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 
 export class CommitService extends BaseService {
   private readonly git: GitService;
   private readonly security?: SecurityService;
   private readonly ai?: AIProvider;
-  private readonly prompt: PromptService;
 
   constructor(params: {
     config: Config;
     git: GitService;
     security?: SecurityService;
-    prompt: PromptService;
     ai?: AIProvider;
     logger: Logger;
   }) {
     super({ logger: params.logger });
     this.git = params.git;
     this.security = params.security;
-    this.prompt = params.prompt;
     this.ai = params.ai;
   }
 
@@ -186,7 +183,7 @@ export class CommitService extends BaseService {
   }): Promise<CommitSuggestion[] | undefined> {
     if (!this.ai) return undefined;
 
-    const prompt = this.prompt.generateCommitSuggestionPrompt({
+    const prompt = generateCommitSuggestionPrompt({
       files: params.files,
       message: params.message,
     });

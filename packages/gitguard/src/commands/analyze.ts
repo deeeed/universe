@@ -1,13 +1,9 @@
-import {
-  displaySuggestions,
-  handleSecurityFindings,
-} from "../hooks/prepare-commit.js";
+import { handleSecurityFindings } from "../hooks/prepare-commit.js";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
 import { LoggerService } from "../services/logger.service.js";
 import { PRService } from "../services/pr.service.js";
-import { PromptService } from "../services/prompt.service.js";
 import { ReporterService } from "../services/reporter.service.js";
 import { SecurityService } from "../services/security.service.js";
 import {
@@ -15,6 +11,7 @@ import {
   PRAnalysisResult,
 } from "../types/analysis.types.js";
 import { loadConfig } from "../utils/config.util.js";
+import { displaySuggestions } from "../utils/user-prompt.util.js";
 
 interface AnalyzeOptions {
   pr?: string | number;
@@ -47,7 +44,6 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
       ? new SecurityService({ logger, config })
       : undefined;
 
-    const prompt = new PromptService({ logger });
     const ai = config.ai?.enabled
       ? AIFactory.create({ config, logger })
       : undefined;
@@ -105,7 +101,6 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
             config,
             git,
             security,
-            prompt,
             ai,
             logger,
           });
@@ -158,7 +153,6 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
         config,
         git,
         security,
-        prompt,
         ai,
         logger,
       });
@@ -198,7 +192,7 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
           const chosenMessage = await displaySuggestions({
             suggestions: result.suggestions,
             logger,
-            prompt: "",
+            originalMessage: "",
           });
 
           if (chosenMessage) {
@@ -241,7 +235,6 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
       config,
       git,
       security,
-      prompt,
       ai,
       logger,
     });

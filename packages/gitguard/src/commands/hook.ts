@@ -3,29 +3,13 @@ import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import { LoggerService } from "../services/logger.service.js";
 import { getHookScript, getHookStatus } from "../utils/hook.util.js";
+import { promptYesNo } from "../utils/user-prompt.util.js";
 
 interface HookCommandOptions {
   action?: "install" | "uninstall" | "status";
   global?: boolean;
   debug?: boolean;
   skipHook?: boolean;
-}
-
-async function prompt(
-  logger: LoggerService,
-  question: string,
-): Promise<boolean> {
-  return new Promise((resolve) => {
-    logger.info(`${question} [Y/n]`);
-
-    const onData = (data: string): void => {
-      const response = data.trim().toLowerCase();
-      process.stdin.removeListener("data", onData);
-      resolve(response === "" || response === "y" || response === "yes");
-    };
-
-    process.stdin.once("data", onData);
-  });
 }
 
 export function getPackagePath(): string {
@@ -93,73 +77,80 @@ export async function hook(options: HookCommandOptions = {}): Promise<void> {
 
     // Interactive mode when no action is provided
     if (!options.action) {
-      // Set up stdin for the entire interactive session
-      process.stdin.resume();
-      process.stdin.setEncoding("utf8");
-
-      try {
-        if (status.isRepo) {
-          if (status.localHook.exists) {
-            if (
-              await prompt(
-                logger,
-                "\nLocal hook exists. Would you like to update it?",
-              )
-            ) {
-              options.action = "install";
-              options.global = false;
-            } else if (await prompt(logger, "Would you like to remove it?")) {
-              options.action = "uninstall";
-              options.global = false;
-            }
-          } else {
-            if (
-              await prompt(logger, "\nWould you like to install a local hook?")
-            ) {
-              options.action = "install";
-              options.global = false;
-            }
-          }
-        }
-
-        // If no local action chosen and global hook exists
-        if (!options.action && status.globalHook.exists) {
+      if (status.isRepo) {
+        if (status.localHook.exists) {
           if (
-            await prompt(
+            await promptYesNo({
+              message: "\nLocal hook exists. Would you like to update it?",
               logger,
-              "\nGlobal hook exists. Would you like to update it?",
-            )
+            })
           ) {
             options.action = "install";
-            options.global = true;
-          } else if (await prompt(logger, "Would you like to remove it?")) {
+            options.global = false;
+          } else if (
+            await promptYesNo({
+              message: "Would you like to remove it?",
+              logger,
+            })
+          ) {
             options.action = "uninstall";
-            options.global = true;
+            options.global = false;
           }
-        }
-
-        // If still no action chosen and no hooks exist
-        if (
-          !options.action &&
-          !status.globalHook.exists &&
-          (!status.isRepo || !status.localHook.exists)
-        ) {
+        } else {
           if (
-            await prompt(logger, "\nWould you like to install a global hook?")
+            await promptYesNo({
+              message: "\nWould you like to install a local hook?",
+              logger,
+            })
           ) {
             options.action = "install";
-            options.global = true;
+            options.global = false;
           }
         }
+      }
 
-        // Exit if no action was chosen
-        if (!options.action) {
-          logger.info("\nNo action taken.");
-          return;
+      // If no local action chosen and global hook exists
+      if (!options.action && status.globalHook.exists) {
+        if (
+          await promptYesNo({
+            message: "\nGlobal hook exists. Would you like to update it?",
+            logger,
+          })
+        ) {
+          options.action = "install";
+          options.global = true;
+        } else if (
+          await promptYesNo({
+            message: "Would you like to remove it?",
+            logger,
+          })
+        ) {
+          options.action = "uninstall";
+          options.global = true;
         }
-      } finally {
-        // Clean up stdin
-        process.stdin.pause();
+      }
+
+      // If still no action chosen and no hooks exist
+      if (
+        !options.action &&
+        !status.globalHook.exists &&
+        (!status.isRepo || !status.localHook.exists)
+      ) {
+        if (
+          await promptYesNo({
+            message: "\nWould you like to install a global hook?",
+            logger,
+          })
+        ) {
+          options.action = "install";
+          options.global = true;
+        }
+      }
+
+      // Exit if no action was chosen
+      if (!options.action) {
+        logger.info("\nNo action taken.");
+        return;
       }
     }
 

@@ -13,16 +13,18 @@ import { Config } from "../types/config.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { SecurityFinding } from "../types/security.types.js";
 import { ServiceOptions } from "../types/service.types.js";
+import {
+  generatePRDescriptionPrompt,
+  generatePRSplitPrompt,
+} from "../utils/ai-prompt.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
-import { PromptService } from "./prompt.service.js";
 import { SecurityService } from "./security.service.js";
 
 export class PRService extends BaseService {
   private readonly git: GitService;
   private readonly security?: SecurityService;
   private readonly ai?: AIProvider;
-  private readonly prompt: PromptService;
   private readonly config: Config;
 
   constructor(
@@ -30,7 +32,6 @@ export class PRService extends BaseService {
       config: Config;
       git: GitService;
       security?: SecurityService;
-      prompt: PromptService;
       ai?: AIProvider;
     },
   ) {
@@ -38,7 +39,6 @@ export class PRService extends BaseService {
     this.git = params.git;
     this.security = params.security;
     this.ai = params.ai;
-    this.prompt = params.prompt;
     this.config = params.config;
   }
 
@@ -212,7 +212,7 @@ export class PRService extends BaseService {
 
     const template = await this.loadPRTemplate();
 
-    const prompt = this.prompt.generatePRDescriptionPrompt({
+    const prompt = generatePRDescriptionPrompt({
       commits: params.commits,
       stats: params.stats,
       files: params.files,
@@ -243,9 +243,12 @@ export class PRService extends BaseService {
   }): Promise<PRSplitSuggestion | undefined> {
     if (!this.ai) return undefined;
 
-    const prompt = this.prompt.generatePRSplitPrompt({
+    const stats = this.calculateStats({ commits: params.commits });
+
+    const prompt = generatePRSplitPrompt({
       commits: params.commits,
       files: params.files,
+      stats,
       baseBranch: params.baseBranch,
     });
 

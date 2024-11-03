@@ -1,15 +1,14 @@
 #!/usr/bin/env node
+import chalk from "chalk";
 import { Command } from "commander";
 import { readFile } from "fs/promises";
+import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
-import { resolve, dirname } from "path";
 import { analyze } from "../commands/analyze.js";
 import { hook } from "../commands/hook.js";
-import { LoggerService } from "../services/logger.service.js";
-import { getConfigStatus } from "../utils/config.util.js";
-import { getHookStatus } from "../utils/hook.util.js";
 import { init, InitOptions } from "../commands/init.js";
-import chalk from "chalk";
+import { status } from "../commands/status.js";
+import { LoggerService } from "../services/logger.service.js";
 
 interface HookOptions {
   global?: boolean;
@@ -26,8 +25,18 @@ interface PackageJson {
   version: string;
 }
 
+function isDebugEnabled(): boolean {
+  const debugEnv = process.env.GITGUARD_DEBUG;
+  if (!debugEnv) return false;
+
+  // Accept common truthy values
+  return ["1", "true", "yes", "on", "y"].includes(debugEnv.toLowerCase());
+}
+
 async function main(): Promise<void> {
-  const logger = new LoggerService({ debug: false });
+  // Check both CLI flag and environment variable for debug mode
+  const isDebug = isDebugEnabled();
+  const logger = new LoggerService({ debug: isDebug });
   const program = new Command();
 
   // Add error handling for unknown commands and options
@@ -209,79 +218,12 @@ Examples:
   $ gitguard status -h        # Show only hooks status`,
     )
     .action(async (options: { configOnly?: boolean; hooksOnly?: boolean }) => {
-      const logger = new LoggerService({ debug: !!program.opts().debug });
-
       try {
-        if (!options.hooksOnly) {
-          const configStatus = await getConfigStatus();
-          logger.info(chalk.blue("\n📝 Configuration Status:"));
-
-          if (configStatus.global.exists) {
-            logger.info(
-              `\nGlobal config found at: ${chalk.cyan(configStatus.global.path)}`,
-            );
-            if (configStatus.global.config) {
-              logger.info(chalk.yellow("Enabled features:"));
-              if (configStatus.global.config.ai?.enabled)
-                logger.info(chalk.green("• AI assistance"));
-              if (configStatus.global.config.security?.enabled)
-                logger.info(chalk.green("• Security checks"));
-            }
-          } else {
-            logger.info(chalk.yellow("\nNo global config found"));
-          }
-
-          if (configStatus.local.exists) {
-            logger.info(
-              `\nLocal config found at: ${chalk.cyan(configStatus.local.path)}`,
-            );
-            if (configStatus.local.config) {
-              logger.info(chalk.yellow("Enabled features:"));
-              if (configStatus.local.config.ai?.enabled)
-                logger.info(chalk.green("• AI assistance"));
-              if (configStatus.local.config.security?.enabled)
-                logger.info(chalk.green("• Security checks"));
-            }
-          } else {
-            logger.info(chalk.yellow("\nNo local config found"));
-          }
-        }
-
-        if (!options.configOnly) {
-          const hookStatus = await getHookStatus();
-          logger.info(chalk.blue("\n🔗 Git Hooks Status:"));
-
-          if (hookStatus.isRepo) {
-            logger.info(
-              `\nLocal repository detected at: ${chalk.cyan(process.cwd())}`,
-            );
-            if (hookStatus.localHook.exists) {
-              logger.info(chalk.green("• Local hook is installed"));
-            } else {
-              logger.info(chalk.yellow("• No local hook installed"));
-            }
-          }
-
-          if (hookStatus.globalHook.exists) {
-            logger.info(
-              `\nGlobal hook detected at: ${chalk.cyan(hookStatus.globalHook.path)}`,
-            );
-          } else {
-            logger.info(chalk.yellow("\nNo global hook installed"));
-          }
-        }
-
-        // Show suggestions
-        logger.info(chalk.blue("\n💡 Suggested actions:"));
-        if (!options.configOnly) {
-          logger.info(
-            `• To manage hooks:        ${chalk.cyan("gitguard hook")}`,
-          );
-        }
-        logger.info(`• To create config:      ${chalk.cyan("gitguard init")}`);
-        logger.info(
-          `• To view full status:   ${chalk.cyan("gitguard status")}`,
-        );
+        await status({
+          debug: isDebug || !!program.opts().debug, // Check both sources
+          configOnly: options.configOnly,
+          hooksOnly: options.hooksOnly,
+        });
       } catch (error) {
         logger.error(chalk.red("Failed to get status:"), error);
         process.exit(1);

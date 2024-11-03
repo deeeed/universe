@@ -37,13 +37,13 @@ export class LoggerService implements Logger {
 
   public info(message: string, ...args: unknown[]): void {
     if (this.shouldLog(LogLevel.INFO)) {
-      console.log(chalk.blue("ℹ"), message, ...args);
+      console.log(message, ...args);
     }
   }
 
   public success(message: string, ...args: unknown[]): void {
     if (this.shouldLog(LogLevel.INFO)) {
-      console.log(chalk.green("✔"), message, ...args);
+      console.log(chalk.green("✓"), message, ...args);
     }
   }
 
