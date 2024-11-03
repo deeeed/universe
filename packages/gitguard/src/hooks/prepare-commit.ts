@@ -90,14 +90,14 @@ function cleanup(input: ReadStream, fd: number): void {
 
 function createTTYStreams({ logger }: CreateTTYStreamsParams): TTYStreams {
   try {
-    // Try to open /dev/tty for direct terminal access
     const fd = openSync("/dev/tty", "r+");
     const input = new ReadStream(fd);
     const output = new WriteStream(fd);
 
-    input.resume();
+    // These settings are crucial for single-key input
     input.setRawMode(true);
     input.setEncoding("utf-8");
+    input.resume();
 
     return {
       input,
@@ -119,40 +119,52 @@ interface PromptUserParams {
 async function promptUser({
   options,
   logger,
-}: PromptUserParams): Promise<string | boolean> {
+  prompt,
+}: PromptUserParams & { prompt?: string }): Promise<string | boolean> {
   return new Promise((resolve) => {
     logger.debug("🎯 Initializing prompt:", { options });
 
     try {
       const { input, output, cleanup } = createTTYStreams({ logger });
 
-      // Write prompt
-      const suffix =
-        options.type === "yesno"
-          ? options.defaultYes
-            ? chalk.gray("[Y/n] ")
-            : chalk.gray("[y/N] ")
-          : "";
+      // Only print the menu if no prompt was provided
+      if (options.type === "numeric" && !prompt) {
+        logger.info("\n🤔 Choose how to proceed with your commit:");
+        logger.info("1. Keep original message");
+        logger.info("2. Generate commit message with AI");
+        logger.info("3. Use formatted message");
+        logger.info("c. Cancel commit");
+      } else if (prompt) {
+        // Use the provided prompt
+        logger.info(prompt);
+      }
 
-      const prompt = `${options.message} ${suffix}`;
-      output.write(`${prompt}\n`);
+      output.write("\nEnter your choice (1-3 or c): ");
 
       // Handle input
       input.once("data", (key: string) => {
+        const keyStr = key.toString().toLowerCase();
+
         if (options.type === "yesno") {
-          const normalized = key.toLowerCase().trim();
-          output.write(`${normalized}\n`);
+          output.write(`${keyStr}\n`);
           cleanup();
 
           if (options.defaultYes) {
-            resolve(normalized !== "n" && normalized !== "no");
+            resolve(keyStr !== "n" && keyStr !== "no");
           } else {
-            resolve(normalized === "y" || normalized === "yes");
+            resolve(keyStr === "y" || keyStr === "yes");
           }
         } else {
-          // Numeric input
-          const numKey = Number(key);
-          if (!isNaN(numKey)) {
+          // Handle numeric input or cancel
+          if (keyStr === "c") {
+            output.write("c\n");
+            cleanup();
+            logger.info("\n❌ Commit cancelled by user");
+            process.exit(1);
+          }
+
+          const numKey = Number(keyStr);
+          if (numKey >= 1 && numKey <= 3) {
             output.write(`${numKey}\n`);
             cleanup();
             resolve(String(numKey));
@@ -167,7 +179,8 @@ async function promptUser({
       // Handle SIGINT (Ctrl+C)
       input.once("SIGINT", () => {
         cleanup();
-        process.exit(130);
+        logger.info("\n❌ Commit cancelled by user");
+        process.exit(1);
       });
     } catch (error) {
       logger.info("\n⚠️ Non-interactive environment detected, using defaults");
@@ -600,6 +613,12 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
         timeoutSeconds: config.hook.timeoutSeconds,
       },
       logger,
+      prompt:
+        "\n🤔 Choose how to proceed with your commit:\n" +
+        "1. Keep original message\n" +
+        "2. Generate commit message with AI\n" +
+        `3. Use formatted message: "${analysis.formattedMessage}"\n` +
+        "c. Cancel commit",
     });
 
     if (typeof answer === "string") {
