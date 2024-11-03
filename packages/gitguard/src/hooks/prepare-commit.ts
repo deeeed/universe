@@ -11,6 +11,8 @@ import { SecurityService } from "../services/security.service.js";
 import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
 import { loadConfig } from "../utils/config.util.js";
+import chalk from "chalk";
+
 interface CommitHookOptions {
   messageFile: string;
   config?: Config;
@@ -85,7 +87,9 @@ export async function handleSecurityFindings(
   const affectedFiles = new Set<string>();
 
   if (secretFindings.length) {
-    logger.error("\n📛 CRITICAL: Potential sensitive data detected:");
+    logger.error(
+      `\n${chalk.red("📛 CRITICAL:")} ${chalk.bold("Potential sensitive data detected:")}`,
+    );
 
     // Group findings by file for better readability
     const findingsByFile = secretFindings.reduce(
@@ -100,15 +104,15 @@ export async function handleSecurityFindings(
 
     // Display findings grouped by file
     for (const [file, findings] of Object.entries(findingsByFile)) {
-      logger.error(`\n📁 File: ${file}`);
+      logger.error(`\n${chalk.yellow("📁 File:")} ${chalk.bold(file)}`);
       for (const finding of findings) {
         logger.error(
-          `⚠️  ${finding.type} detected${finding.line ? ` on line ${finding.line}` : ""}:`,
+          `${chalk.red("⚠️")}  ${chalk.bold(finding.type)} detected${finding.line ? chalk.gray(` on line ${finding.line}`) : ""}:`,
         );
         if (finding.content) {
-          logger.error(`   ${finding.content}`);
+          logger.error(`   ${chalk.red(finding.content)}`);
         }
-        logger.error(`   Suggestion: ${finding.suggestion}`);
+        logger.error(`   ${chalk.cyan("Suggestion:")} ${finding.suggestion}`);
       }
     }
 
@@ -192,11 +196,11 @@ async function promptUser(options: PromptOptions): Promise<string | boolean> {
     const suffix =
       options.type === "yesno"
         ? options.defaultYes
-          ? "[Y/n] "
-          : "[y/N] "
+          ? chalk.gray("[Y/n] ")
+          : chalk.gray("[y/N] ")
         : "";
 
-    const prompt = `${options.message} ${suffix}`;
+    const prompt = `${chalk.cyan(options.message)} ${suffix}`;
 
     // Write prompt directly to ensure it's displayed
     streams.output.write(prompt);
@@ -222,43 +226,47 @@ async function promptUser(options: PromptOptions): Promise<string | boolean> {
       process.exit(130);
     });
 
-    // If no input is provided within 30 seconds, notify user and use default
-    const timeoutDuration = 30000;
+    // If no input is provided within 90 seconds, notify user and use default
+    const timeoutDuration = 90000;
     setTimeout(() => {
       streams.output.write(
-        `\n⏰ No input received after ${timeoutDuration / 1000} seconds. Using default value.\n`,
+        `\n${chalk.yellow("⏰ No input received after")} ${chalk.bold(timeoutDuration / 1000)} ${chalk.yellow("seconds. Using default value.")}\n`,
       );
       cleanup();
 
       if (options.type === "yesno") {
         const defaultValue = !!options.defaultYes;
-        streams.output.write(`Using default: ${defaultValue ? "Yes" : "No"}\n`);
+        streams.output.write(
+          `${chalk.cyan("Using default:")} ${chalk.bold(defaultValue ? "Yes" : "No")}\n`,
+        );
         resolve(defaultValue);
       } else if (options.allowEmpty) {
-        streams.output.write("Using empty value\n");
+        streams.output.write(chalk.cyan("Using empty value\n"));
         resolve("");
       } else {
-        streams.output.write("❌ Input required. Aborting.\n");
+        streams.output.write(`${chalk.red("❌ Input required. Aborting.")}\n`);
         process.exit(1);
       }
     }, timeoutDuration);
   });
 }
 
-// Update displaySuggestions to use the new prompt interface
+// Update displaySuggestions to use colors
 export async function displaySuggestions(
   params: DisplaySuggestionsParams,
 ): Promise<string | undefined> {
   const { suggestions, logger } = params;
 
   suggestions.forEach((suggestion, index) => {
-    logger.info(`\n${index + 1}. ${suggestion.message}`);
-    logger.info(`   Explanation: ${suggestion.explanation}`);
+    logger.info(
+      `\n${chalk.cyan(index + 1)}. ${chalk.bold(suggestion.message)}`,
+    );
+    logger.info(`   ${chalk.gray("Explanation:")} ${suggestion.explanation}`);
   });
 
   const answer = await promptUser({
     type: "numeric",
-    message: "\nChoose a suggestion number or press Enter to skip:",
+    message: `\n${chalk.cyan("Choose a suggestion number or press Enter to skip:")}`,
     allowEmpty: true,
   });
 
