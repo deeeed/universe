@@ -47,6 +47,7 @@
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
     "inquirer": "^12.0.1",
+    "js-tiktoken": "^1.0.15",
     "openai": "^4.70.2"
   },
   "devDependencies": {

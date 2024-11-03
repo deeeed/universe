@@ -16,10 +16,10 @@ import {
   SecurityCheckResult,
   SecurityFinding,
 } from "../types/security.types.js";
+import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
 import { SecurityService } from "./security.service.js";
-import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 
 export class CommitService extends BaseService {
   private readonly git: GitService;
@@ -52,16 +52,14 @@ export class CommitService extends BaseService {
         return this.createEmptyResult({ branch, baseBranch });
       }
 
-      let originalMessage: string;
+      let originalMessage = "";
       if (params.messageFile) {
         originalMessage = await fs.readFile(params.messageFile, "utf-8");
       } else if (params.message) {
         originalMessage = params.message;
-      } else {
-        throw new Error("Either message or messageFile must be provided");
       }
 
-      if (!originalMessage || originalMessage.trim().startsWith("Merge")) {
+      if (originalMessage.trim().startsWith("Merge")) {
         return this.createEmptyResult({ branch, baseBranch });
       }
 
@@ -75,10 +73,12 @@ export class CommitService extends BaseService {
           : undefined);
 
       const warnings = this.getWarnings({ securityResult, files });
-      const formattedMessage = this.formatCommitMessage({
-        message: originalMessage.trim(),
-        files,
-      });
+      const formattedMessage = originalMessage
+        ? this.formatCommitMessage({
+            message: originalMessage.trim(),
+            files,
+          })
+        : "";
 
       let suggestions: CommitSuggestion[] | undefined;
       let splitSuggestion: CommitSplitSuggestion | undefined;
@@ -186,15 +186,27 @@ export class CommitService extends BaseService {
     const prompt = generateCommitSuggestionPrompt({
       files: params.files,
       message: params.message,
+      diff: params.diff,
     });
 
-    return this.ai.generateCompletion<CommitSuggestion[]>({
-      prompt,
-      options: {
-        requireJson: true,
-        temperature: 0.7,
-      },
-    });
+    try {
+      const suggestions = await this.ai.generateCompletion<{
+        suggestions: CommitSuggestion[];
+      }>({
+        prompt,
+        options: {
+          requireJson: true,
+          temperature: 0.7,
+          systemPrompt:
+            "You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format.",
+        },
+      });
+
+      return suggestions?.suggestions?.slice(0, 3);
+    } catch (error) {
+      this.logger.error("Failed to generate AI suggestions:", error);
+      return undefined;
+    }
   }
 
   public getSplitSuggestion(params: {

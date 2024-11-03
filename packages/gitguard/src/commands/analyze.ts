@@ -11,7 +11,7 @@ import {
   PRAnalysisResult,
 } from "../types/analysis.types.js";
 import { loadConfig } from "../utils/config.util.js";
-import { displaySuggestions } from "../utils/user-prompt.util.js";
+import { promptYesNo } from "../utils/user-prompt.util.js";
 
 interface AnalyzeOptions {
   pr?: string | number;
@@ -178,42 +178,58 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
 
       // If no message provided, use AI to suggest one if available
       if (!options.message && ai) {
-        logger.info(
-          "\n🤖 No commit message provided. Generating AI suggestions...",
-        );
-        const result = await commitService.analyze({
-          message: "", // Empty message to bypass the error
-          enableAI: true,
-          enablePrompts: true,
-          securityResult,
+        const stagedDiff = await git.getStagedDiff();
+        const tokenUsage = ai.calculateTokenUsage({
+          prompt: stagedDiff,
         });
 
-        if (result.suggestions?.length) {
-          const chosenMessage = await displaySuggestions({
-            suggestions: result.suggestions,
-            logger,
-            originalMessage: "",
+        logger.info(
+          `\n💰 Estimated cost for AI generation: ${tokenUsage.estimatedCost}`,
+        );
+        logger.info(`📊 Estimated tokens: ${tokenUsage.count}`);
+
+        const shouldGenerateAI = await promptYesNo({
+          message:
+            "🤖 Would you like to generate AI suggestions for your commit message?",
+          defaultValue: true,
+          logger,
+        });
+
+        if (shouldGenerateAI) {
+          logger.info("\n🔄 Generating AI suggestions...");
+          const result = await commitService.analyze({
+            enableAI: true,
+            enablePrompts: true,
+            securityResult,
           });
 
-          if (chosenMessage) {
-            options.message = chosenMessage;
+          if (result.suggestions?.length) {
+            logger.info("\n✨ AI Suggestions:");
+            result.suggestions.forEach((suggestion, index) => {
+              logger.info(`\n${index + 1}. ${suggestion.message}`);
+              logger.info(
+                `   Explanation: ${suggestion.explanation || "No explanation provided"}`,
+              );
+            });
+            logger.info(
+              "\nThese are suggested commit messages you can use when committing your changes.",
+            );
+          } else {
+            logger.warning("\n⚠️ No AI suggestions generated");
           }
         }
       }
 
-      // If still no message, use automatic type detection
-      if (!options.message) {
-        const type = commitService.detectCommitType(stagedFiles);
-        const scope = commitService.detectScope(stagedFiles);
-        options.message = scope ? `${type}(${scope}): ` : `${type}: `;
+      // Continue with analysis using automatic type detection
+      const type = commitService.detectCommitType(stagedFiles);
+      const scope = commitService.detectScope(stagedFiles);
+      logger.info("\n📝 Generated commit type based on changes.");
+      logger.info(`Suggested format: ${type}(${scope}): <description>`);
 
-        logger.info("\n📝 Generated commit type based on changes.");
-        logger.info(`Suggested format: ${options.message}<description>`);
-      }
-
+      // Continue with analysis using the chosen or generated message
       const result = await commitService.analyze({
         message: options.message,
-        enableAI: Boolean(config.ai?.enabled),
+        enableAI: false, // Don't generate AI suggestions again
         enablePrompts: true,
         securityResult,
       });

@@ -19,6 +19,10 @@ interface AnalyzeOptions {
   pr?: string | number;
   branch?: string;
   debug?: boolean;
+  message?: string;
+  format?: "console" | "json" | "markdown";
+  color?: boolean;
+  detailed?: boolean;
 }
 
 interface PackageJson {
@@ -26,11 +30,14 @@ interface PackageJson {
 }
 
 function isDebugEnabled(): boolean {
+  // Check environment variable first
   const debugEnv = process.env.GITGUARD_DEBUG;
-  if (!debugEnv) return false;
+  if (debugEnv) {
+    return ["1", "true", "yes", "on", "y"].includes(debugEnv.toLowerCase());
+  }
 
-  // Accept common truthy values
-  return ["1", "true", "yes", "on", "y"].includes(debugEnv.toLowerCase());
+  // Check CLI flag
+  return process.argv.includes("--debug") || process.argv.includes("-d");
 }
 
 async function main(): Promise<void> {
@@ -161,6 +168,7 @@ ${chalk.blue("Examples:")}
     )
     .option("--no-color", "Disable colored output")
     .option("--detailed", "Show detailed analysis")
+    .option("-d, --debug", "Enable debug mode")
     .addHelpText(
       "after",
       `
@@ -172,31 +180,39 @@ ${chalk.blue("Usage Examples:")}
   ${chalk.yellow("$")} gitguard analyze --format markdown  # Output in markdown format
   ${chalk.yellow("$")} gitguard analyze --detailed         # Show detailed analysis
   ${chalk.yellow("$")} gitguard analyze --no-color         # Disable colored output
+  ${chalk.yellow("$")} gitguard analyze -d                 # Run with debug output
 
 ${chalk.blue("Options:")}
-  ${chalk.yellow("-p, --pr <number")}      PR number to analyze
+  ${chalk.yellow("-p, --pr <number>")}      PR number to analyze
   ${chalk.yellow("-b, --branch <name>")}    Branch to analyze (defaults to current)
   ${chalk.yellow("-m, --message <text>")}   Commit message to analyze
   ${chalk.yellow("-f, --format <type>")}    Output format: console, json, markdown (default: "console")
   ${chalk.yellow("--no-color")}            Disable colored output
   ${chalk.yellow("--detailed")}           Show detailed analysis
-  ${chalk.yellow("-c, --config <path>")}   Path to custom config file
-
-${chalk.blue("Analysis includes:")}
-  ${chalk.green("•")} Commit message formatting
-  ${chalk.green("•")} Security checks
-  ${chalk.green("•")} AI-powered suggestions
-  ${chalk.green("•")} Split recommendations
-  ${chalk.green("•")} Code quality warnings`,
+  ${chalk.yellow("-d, --debug")}          Enable debug mode
+  ${chalk.yellow("-c, --config <path>")}   Path to custom config file`,
     )
     .action(async (options: AnalyzeOptions) => {
       try {
+        const debug = isDebugEnabled() || options.debug;
+
+        if (debug) {
+          logger.debug("Debug mode enabled");
+          logger.debug("CLI Options:", options);
+          logger.debug("Environment:", {
+            NODE_ENV: process.env.NODE_ENV,
+            GITGUARD_DEBUG: process.env.GITGUARD_DEBUG,
+          });
+        }
+
         await analyze({
           pr: options.pr?.toString(),
           branch: options.branch,
-          debug: !!program.opts().debug,
+          debug,
           configPath: program.opts().config as string | undefined,
         });
+
+        process.exit(0);
       } catch (error) {
         logger.error("Analyze command failed:", error);
         process.exit(1);

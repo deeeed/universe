@@ -64,12 +64,12 @@ export async function promptYesNo(params: {
   logger: Logger;
   defaultValue?: boolean;
 }): Promise<boolean> {
-  const { message, logger, defaultValue = false } = params;
-  logger.info(`${message} [${defaultValue ? "Y/n" : "y/N"}]`);
+  const { message, defaultValue = false } = params;
+  process.stdout.write(`${message} [${defaultValue ? "Y/n" : "y/N"}] `);
 
   return new Promise((resolve) => {
-    const onData = (data: string): void => {
-      const response = data.trim().toLowerCase();
+    const onData = (buffer: Buffer): void => {
+      const response = buffer.toString().trim().toLowerCase();
       process.stdin.removeListener("data", onData);
       if (response === "") {
         resolve(defaultValue);

@@ -1,4 +1,4 @@
-// packages/gitguard/src/services/openai.service.ts
+import { encodingForModel, Tiktoken, TiktokenModel } from "js-tiktoken";
 import { AzureOpenAI, OpenAI } from "openai";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { AIProvider, TokenUsage } from "../types/ai.types.js";
@@ -19,6 +19,28 @@ export interface OpenAIConfig {
     organization?: string;
   };
 }
+
+interface ModelPricing {
+  input: number;
+  output: number;
+}
+
+const GPT_MODELS = {
+  GPT4_OPUS: "gpt-4-0125-preview",
+  GPT4_VISION: "gpt-4-vision-preview",
+  GPT4_TURBO: "gpt-4-1106-preview",
+  GPT4_32K: "gpt-4-32k",
+  GPT4: "gpt-4",
+  GPT35_TURBO_1106: "gpt-3.5-turbo-1106",
+  GPT35_TURBO_16K: "gpt-3.5-turbo-16k",
+  GPT35_TURBO: "gpt-3.5-turbo",
+} as const;
+
+// Type guard for tiktoken model names
+const isTiktokenModel = (model: string): model is TiktokenModel => {
+  const supportedModels = new Set<string>(["gpt-4", "gpt-3.5-turbo"]);
+  return supportedModels.has(model);
+};
 
 export class OpenAIService extends BaseService implements AIProvider {
   private readonly config: OpenAIConfig;
@@ -88,7 +110,7 @@ export class OpenAIService extends BaseService implements AIProvider {
         try {
           return JSON.parse(content) as T;
         } catch (error) {
-          throw new Error(`Failed to parse JSON response`, { cause: error });
+          throw new Error("Failed to parse JSON response", { cause: error });
         }
       }
 
@@ -105,10 +127,99 @@ export class OpenAIService extends BaseService implements AIProvider {
       model?: string;
     };
   }): TokenUsage {
-    return {
-      count: Math.ceil(params.prompt.length / 4),
-      estimatedCost: "$0.01",
-    };
+    const modelName = this.getModel();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const encoder = this.getTokenEncoder(modelName);
+
+    if (!encoder) {
+      return {
+        count: Math.ceil(params.prompt.length / 4),
+        estimatedCost: "unknown",
+      };
+    }
+
+    try {
+      type EncodedTokens = number[];
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+      const encoded = encoder.encode(params.prompt) as unknown as EncodedTokens;
+      const tokenCount = encoded.length;
+      const pricing = this.getModelPricing(modelName);
+      const estimatedCost = (tokenCount / 1000) * pricing.input;
+
+      return {
+        count: tokenCount,
+        estimatedCost: `$${estimatedCost.toFixed(4)}`,
+      };
+    } catch (error) {
+      this.logger.error("Token calculation error:", error);
+      return {
+        count: Math.ceil(params.prompt.length / 4),
+        estimatedCost: "unknown",
+      };
+    }
+  }
+
+  private getModelPricing(model: string): ModelPricing {
+    const normalizedModel = model.toLowerCase();
+
+    if (normalizedModel.includes(GPT_MODELS.GPT4_OPUS)) {
+      return { input: 0.015, output: 0.075 }; // $0.015/1K tokens input, $0.075/1K tokens output
+    }
+
+    if (normalizedModel.includes(GPT_MODELS.GPT4_VISION)) {
+      return { input: 0.01, output: 0.03 };
+    }
+
+    if (
+      normalizedModel.includes(GPT_MODELS.GPT4_TURBO) ||
+      normalizedModel.includes("gpt-4-turbo")
+    ) {
+      return { input: 0.01, output: 0.03 };
+    }
+
+    if (normalizedModel.includes(GPT_MODELS.GPT4_32K)) {
+      return { input: 0.06, output: 0.12 };
+    }
+
+    if (normalizedModel.includes(GPT_MODELS.GPT4)) {
+      return { input: 0.03, output: 0.06 };
+    }
+
+    if (normalizedModel.includes(GPT_MODELS.GPT35_TURBO_1106)) {
+      return { input: 0.001, output: 0.002 };
+    }
+
+    if (normalizedModel.includes(GPT_MODELS.GPT35_TURBO_16K)) {
+      return { input: 0.003, output: 0.004 };
+    }
+
+    if (normalizedModel.includes(GPT_MODELS.GPT35_TURBO)) {
+      return { input: 0.0005, output: 0.0015 };
+    }
+
+    return { input: 0.0005, output: 0.0015 }; // Default to GPT-3.5 pricing
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  private getTokenEncoder(model: string): Tiktoken | null {
+    try {
+      const normalizedModel = model.toLowerCase();
+      const baseModel = normalizedModel.startsWith("gpt-4")
+        ? GPT_MODELS.GPT4
+        : GPT_MODELS.GPT35_TURBO;
+
+      if (!isTiktokenModel(baseModel)) {
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        this.logger.warn(`Unsupported model for tokenization: ${baseModel}`);
+        return null;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      return encodingForModel(baseModel);
+    } catch (error) {
+      this.logger.error("Failed to get token encoder:", error);
+      return null;
+    }
   }
 
   private getModel(): string {

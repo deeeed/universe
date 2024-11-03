@@ -80,6 +80,7 @@ function getCommitSuggestionFormat(): string {
 export function generateCommitSuggestionPrompt(params: {
   files: FileChange[];
   message: string;
+  diff: string;
 }): string {
   const fileChanges = formatFileChanges(params.files);
 
@@ -89,6 +90,11 @@ Files Changed:
 ${fileChanges}
 
 Original message: "${params.message}"
+
+Git diff:
+\`\`\`diff
+${params.diff}
+\`\`\`
 
 Please provide suggestions in this JSON format:
 {
