@@ -12,7 +12,9 @@
   "main": "dist/src/index.js",
   "module": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
-  "bin": "dist/bin/publisher.js",
+  "bin": {
+    "publisher": "./dist/bin/publisher.js"
+  },
   "files": [
     "dist",
     "templates",
@@ -34,7 +36,8 @@
     "dev": "DEBUG=true node --inspect -r ts-node/register bin/publisher.ts",
     "publisher": "ts-node bin/publisher.ts",
     "publisher:debug": "DEBUG=true node --inspect -r ts-node/register bin/publisher.ts",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "setup-cli": "chmod +x setup-cli.sh && ./setup-cli.sh"
   },
   "dependencies": {
     "chalk": "4.1.2",
