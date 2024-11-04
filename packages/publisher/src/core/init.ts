@@ -296,6 +296,27 @@ export class InitService {
     };
   }
 
+  private async validateNoExistingConfig(packagePath: string): Promise<void> {
+    const possibleConfigs = [
+      path.join(packagePath, "publisher.config.json"),
+      path.join(packagePath, "publisher.config.ts"),
+    ];
+
+    for (const configPath of possibleConfigs) {
+      try {
+        await fs.access(configPath);
+        throw new Error(
+          `Configuration already exists at ${configPath}. Use --force to overwrite.`,
+        );
+      } catch (error) {
+        // File doesn't exist, continue checking
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw error;
+        }
+      }
+    }
+  }
+
   private async initializePackageFiles({
     packagePath,
     force = false,
@@ -306,6 +327,11 @@ export class InitService {
     const absolutePackagePath = path.isAbsolute(packagePath)
       ? packagePath
       : path.join(rootDir, packagePath);
+
+    // Add validation before proceeding
+    if (!force) {
+      await this.validateNoExistingConfig(absolutePackagePath);
+    }
 
     // Ensure directory structure exists
     await this.createDirectoryStructure({ packagePath: absolutePackagePath });
@@ -405,18 +431,9 @@ export class InitService {
       return;
     }
 
-    const rootConfigPath = path.join(rootDir, "publisher.config.ts");
-
-    try {
-      await fs.access(rootConfigPath);
-      if (!force) {
-        this.logger.info(
-          "Root config already exists. Use --force to overwrite.",
-        );
-        return;
-      }
-    } catch {
-      // File doesn't exist, continue
+    // Add validation before proceeding
+    if (!force) {
+      await this.validateNoExistingConfig(rootDir);
     }
 
     const packageManager = options?.packageManager ?? this.packageManager;
@@ -429,6 +446,12 @@ export class InitService {
         throw new Error("Could not read package.json for root config");
       });
 
+    const configExtension = format === "json" ? "json" : "ts";
+    const rootConfigPath = path.join(
+      rootDir,
+      `publisher.config.${configExtension}`,
+    );
+
     const content = generateMonorepoConfig({
       options: {
         packageJson,
@@ -436,7 +459,8 @@ export class InitService {
         conventionalCommits: options?.conventionalCommits,
         versionStrategy: options?.versionStrategy,
         bumpStrategy: options?.bumpStrategy,
-        packagesGlob: "packages/*",
+        packagesGlob: options?.packagesGlob ?? "packages/*",
+        changelogFormat: options?.changelogFormat,
       },
       format,
     });

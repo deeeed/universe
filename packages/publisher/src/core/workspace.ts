@@ -55,7 +55,7 @@ export class WorkspaceService {
           const pkgJson = await this.readPackageJson(packagePath);
 
           if (!pkgJson.name) {
-            this.logger.warning(
+            this.logger.debug(
               `Package at ${packagePath} has no name, skipping`,
             );
             return null;
@@ -95,10 +95,15 @@ export class WorkspaceService {
           );
           return context;
         } catch (error) {
-          this.logger.error(
-            `Error processing package at ${packagePath}:`,
-            error,
-          );
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+            // Package.json doesn't exist, log as debug and skip
+            this.logger.debug(
+              `No package.json found at ${packagePath}, skipping`,
+            );
+            return null;
+          }
+          // Log other errors as debug since they're not critical
+          this.logger.debug(`Skipping package at ${packagePath}:`, error);
           return null;
         }
       }),

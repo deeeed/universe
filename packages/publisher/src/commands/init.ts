@@ -10,11 +10,6 @@ interface InitOptions {
   format?: GenerateFileFormat["format"];
 }
 
-export interface InitCommandParams {
-  packages: string[];
-  commandOptions: InitOptions;
-}
-
 export const initCommand = new Command()
   .name("init")
   .description(
@@ -32,14 +27,14 @@ export const initCommand = new Command()
     "Format of generated config files (json or typescript)",
     "json",
   )
-  .action(async ({ packages, commandOptions }: InitCommandParams) => {
+  .action(async (packages: string[], commandOptions: InitOptions) => {
     const logger = new Logger();
     try {
       const initService = new InitService(logger);
       const workspaceService = new WorkspaceService();
 
       // If no packages specified, try to get current package
-      if (packages.length === 0) {
+      if (!packages || packages.length === 0) {
         const currentPackage = await workspaceService.getCurrentPackage();
         if (currentPackage) {
           packages = [currentPackage.name];
