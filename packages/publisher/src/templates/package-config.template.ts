@@ -66,10 +66,24 @@ export function generateDefaultConfig(
   };
 }
 
-export function generatePackageConfig(
-  options: GeneratePackageConfigOptions,
-): string {
+export interface GenerateFileFormat {
+  format: "json" | "typescript";
+}
+
+export interface GeneratePackageConfigParams {
+  options: GeneratePackageConfigOptions;
+  format?: GenerateFileFormat["format"];
+}
+
+export function generatePackageConfig({
+  options,
+  format = "json",
+}: GeneratePackageConfigParams): string {
   const config = generateDefaultConfig(options);
+
+  if (format === "json") {
+    return JSON.stringify(config, null, 2);
+  }
 
   return `import type { ReleaseConfig, DeepPartial } from '@siteed/publisher';
 
@@ -80,6 +94,8 @@ export default config;`;
 
 // Export a default template string for backward compatibility
 export const packageConfigTemplate = generatePackageConfig({
-  packageJson: { name: "${packageName}" },
-  packageManager: "yarn",
+  options: {
+    packageJson: { name: "${packageName}" },
+    packageManager: "yarn",
+  },
 });

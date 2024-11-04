@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import inquirer from "inquirer";
 import path from "path";
 import {
+  GenerateFileFormat,
   generateMonorepoConfig,
   generatePackageConfig,
   getChangelogTemplate,
@@ -16,9 +17,10 @@ import { Logger } from "../utils/logger";
 import { detectPackageManager } from "../utils/detect-package-manager";
 import { WorkspaceService } from "./workspace";
 
-interface InitOptions {
+export interface InitOptions {
   force?: boolean;
   interactive?: boolean;
+  format?: GenerateFileFormat["format"];
 }
 
 // Base shared options
@@ -55,11 +57,13 @@ interface InitializePackageFilesParams {
   packagePath: string;
   force?: boolean;
   options?: PackageInteractiveAnswers;
+  format?: "json" | "typescript";
 }
 
 interface InitializeRootConfigParams {
   force?: boolean;
   options?: MonorepoInteractiveAnswers;
+  format?: GenerateFileFormat["format"];
 }
 
 interface CreateDirectoryStructureParams {
@@ -120,6 +124,7 @@ export class InitService {
           packagePath: pkg.path,
           force: options.force,
           options: packageOptions,
+          format: options.format,
         });
 
         this.logger.success(`Initialized ${pkg.name}`);
@@ -129,6 +134,7 @@ export class InitService {
       await this.initializeRootConfig({
         force: options.force,
         options: monorepoOptions,
+        format: options.format,
       });
 
       this.logger.success("\nInitialization completed successfully!");
@@ -294,6 +300,7 @@ export class InitService {
     packagePath,
     force = false,
     options,
+    format = "json",
   }: InitializePackageFilesParams): Promise<void> {
     const rootDir = this.workspaceService.getRootDir();
     const absolutePackagePath = path.isAbsolute(packagePath)
@@ -316,22 +323,30 @@ export class InitService {
     this.logger.debug(`Creating files in: ${absolutePackagePath}`);
 
     // Ensure all parent directories exist for each file
+    const configExtension = format === "json" ? "json" : "ts";
+
     for (const file of [
       {
-        path: path.join(absolutePackagePath, "publisher.config.ts"),
+        path: path.join(
+          absolutePackagePath,
+          `publisher.config.${configExtension}`,
+        ),
         content: generatePackageConfig({
-          packageJson,
-          packageManager: this.packageManager,
-          conventionalCommits: options?.conventionalCommits,
-          changelogFormat: options?.changelogFormat,
-          versionStrategy: options?.versionStrategy,
-          bumpStrategy: options?.bumpStrategy,
-          npm: options
-            ? {
-                publish: options.npmPublish,
-                access: options.npmAccess,
-              }
-            : undefined,
+          options: {
+            packageJson,
+            packageManager: this.packageManager,
+            conventionalCommits: options?.conventionalCommits,
+            changelogFormat: options?.changelogFormat,
+            versionStrategy: options?.versionStrategy,
+            bumpStrategy: options?.bumpStrategy,
+            npm: options
+              ? {
+                  publish: options.npmPublish,
+                  access: options.npmAccess,
+                }
+              : undefined,
+          },
+          format,
         }),
         description: "package configuration",
       },
@@ -380,6 +395,7 @@ export class InitService {
   private async initializeRootConfig({
     force = false,
     options,
+    format = "json",
   }: InitializeRootConfigParams): Promise<void> {
     const rootDir = this.workspaceService.getRootDir();
     const currentDir = process.cwd();
@@ -414,12 +430,15 @@ export class InitService {
       });
 
     const content = generateMonorepoConfig({
-      packageJson,
-      packageManager,
-      conventionalCommits: options?.conventionalCommits,
-      versionStrategy: options?.versionStrategy,
-      bumpStrategy: options?.bumpStrategy,
-      packagesGlob: "packages/*",
+      options: {
+        packageJson,
+        packageManager,
+        conventionalCommits: options?.conventionalCommits,
+        versionStrategy: options?.versionStrategy,
+        bumpStrategy: options?.bumpStrategy,
+        packagesGlob: "packages/*",
+      },
+      format,
     });
 
     await fs.writeFile(rootConfigPath, content);

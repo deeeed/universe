@@ -5,8 +5,9 @@ import type {
   PackageJson,
   DeepPartial,
 } from "../types/config";
+import { GenerateFileFormat } from "./package-config.template";
 
-interface GenerateMonorepoConfigOptions {
+export interface GenerateMonorepoConfigOptions {
   packageJson: PackageJson;
   packageManager: PackageManager;
   conventionalCommits?: boolean;
@@ -16,9 +17,15 @@ interface GenerateMonorepoConfigOptions {
   packagesGlob?: string;
 }
 
-export function generateMonorepoConfig(
-  options: GenerateMonorepoConfigOptions,
-): string {
+export interface GenerateMonorepoConfigParams {
+  options: GenerateMonorepoConfigOptions;
+  format?: GenerateFileFormat["format"];
+}
+
+export function generateMonorepoConfig({
+  options,
+  format = "json",
+}: GenerateMonorepoConfigParams): string {
   if (!options.packageJson.name) {
     throw new Error("Package name is required");
   }
@@ -63,6 +70,10 @@ export function generateMonorepoConfig(
     changelogFile: "CHANGELOG.md",
     hooks: {},
   };
+
+  if (format === "json") {
+    return JSON.stringify(defaultConfig, null, 2);
+  }
 
   return `import type { MonorepoConfig } from '@siteed/publisher';
 
