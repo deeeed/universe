@@ -46,6 +46,26 @@ interface MonorepoInteractiveAnswers extends BaseInteractiveAnswers {
   // Add any other monorepo-specific options
 }
 
+interface InitializeParams {
+  packages: string[];
+  options?: InitOptions;
+}
+
+interface InitializePackageFilesParams {
+  packagePath: string;
+  force?: boolean;
+  options?: PackageInteractiveAnswers;
+}
+
+interface InitializeRootConfigParams {
+  force?: boolean;
+  options?: MonorepoInteractiveAnswers;
+}
+
+interface CreateDirectoryStructureParams {
+  packagePath: string;
+}
+
 export class InitService {
   private packageManager: PackageManager;
 
@@ -56,10 +76,10 @@ export class InitService {
     this.packageManager = detectPackageManager(process.cwd());
   }
 
-  async initialize(
-    packages: string[],
-    options: InitOptions = {},
-  ): Promise<void> {
+  async initialize({
+    packages,
+    options = {},
+  }: InitializeParams): Promise<void> {
     try {
       let packageOptions: PackageInteractiveAnswers | undefined;
       let monorepoOptions: MonorepoInteractiveAnswers | undefined;
@@ -93,20 +113,23 @@ export class InitService {
         this.logger.info(`\nInitializing ${pkg.name}...`);
 
         // Create directory structure
-        await this.createDirectoryStructure(pkg.path);
+        await this.createDirectoryStructure({ packagePath: pkg.path });
 
         // Initialize package files
-        await this.initializePackageFiles(
-          pkg.path,
-          options.force,
-          packageOptions,
-        );
+        await this.initializePackageFiles({
+          packagePath: pkg.path,
+          force: options.force,
+          options: packageOptions,
+        });
 
         this.logger.success(`Initialized ${pkg.name}`);
       }
 
       // Create root config if it doesn't exist
-      await this.initializeRootConfig(options.force, monorepoOptions);
+      await this.initializeRootConfig({
+        force: options.force,
+        options: monorepoOptions,
+      });
 
       this.logger.success("\nInitialization completed successfully!");
       this.logger.info("\nNext steps:");
@@ -267,18 +290,18 @@ export class InitService {
     };
   }
 
-  private async initializePackageFiles(
-    packagePath: string,
+  private async initializePackageFiles({
+    packagePath,
     force = false,
-    options?: PackageInteractiveAnswers,
-  ): Promise<void> {
+    options,
+  }: InitializePackageFilesParams): Promise<void> {
     const rootDir = this.workspaceService.getRootDir();
     const absolutePackagePath = path.isAbsolute(packagePath)
       ? packagePath
       : path.join(rootDir, packagePath);
 
     // Ensure directory structure exists
-    await this.createDirectoryStructure(absolutePackagePath);
+    await this.createDirectoryStructure({ packagePath: absolutePackagePath });
 
     const packageJsonPath = path.join(absolutePackagePath, "package.json");
     const packageJson = await fs
@@ -354,10 +377,10 @@ export class InitService {
     }
   }
 
-  private async initializeRootConfig(
+  private async initializeRootConfig({
     force = false,
-    options?: MonorepoInteractiveAnswers,
-  ): Promise<void> {
+    options,
+  }: InitializeRootConfigParams): Promise<void> {
     const rootDir = this.workspaceService.getRootDir();
     const currentDir = process.cwd();
 
@@ -403,7 +426,9 @@ export class InitService {
     this.logger.success("Created root configuration");
   }
 
-  private async createDirectoryStructure(packagePath: string): Promise<void> {
+  private async createDirectoryStructure({
+    packagePath,
+  }: CreateDirectoryStructureParams): Promise<void> {
     const publisherDir = path.join(packagePath, ".publisher");
     const hooksDir = path.join(publisherDir, "hooks");
 

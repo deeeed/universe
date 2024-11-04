@@ -1,11 +1,16 @@
 import { Command } from "commander";
 import { InitService } from "../core/init";
-import { Logger } from "../utils/logger";
 import { WorkspaceService } from "../core/workspace";
+import { Logger } from "../utils/logger";
 
 interface InitOptions {
   force?: boolean;
   interactive?: boolean;
+}
+
+interface InitCommandParams {
+  packages: string[];
+  commandOptions: InitOptions;
 }
 
 export const initCommand = new Command()
@@ -20,7 +25,7 @@ export const initCommand = new Command()
   )
   .option("-f, --force", "Overwrite existing configuration")
   .option("-i, --interactive", "Run in interactive mode")
-  .action(async (packages: string[], commandOptions: InitOptions) => {
+  .action(async ({ packages, commandOptions }: InitCommandParams) => {
     const logger = new Logger();
     try {
       const initService = new InitService(logger);
@@ -34,13 +39,12 @@ export const initCommand = new Command()
         }
       }
 
-      // Extract options
       const options = {
         force: commandOptions.force,
         interactive: commandOptions.interactive,
       };
 
-      await initService.initialize(packages, options);
+      await initService.initialize({ packages, options });
     } catch (error) {
       logger.error(
         "Initialization failed:",

@@ -65,7 +65,7 @@ describe("InitService", () => {
     it("should handle no packages found", async () => {
       mockWorkspaceService.getPackages.mockResolvedValue([]);
 
-      await expect(initService.initialize([])).rejects.toThrow(
+      await expect(initService.initialize({ packages: [] })).rejects.toThrow(
         "No packages found to initialize",
       );
     });
