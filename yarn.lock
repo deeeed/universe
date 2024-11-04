@@ -6253,7 +6253,7 @@ __metadata:
     update-notifier: "npm:^5.1.0"
     zod: "npm:^3.22.4"
   bin:
-    publisher: dist/bin/publisher.js
+    publisher: ./dist/bin/publisher.js
   languageName: unknown
   linkType: soft
 
