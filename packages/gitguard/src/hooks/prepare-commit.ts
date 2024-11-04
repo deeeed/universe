@@ -143,118 +143,145 @@ async function promptUser({
 }: PromptUserParams & { prompt?: string }): Promise<string | boolean> {
   return new Promise((resolve) => {
     try {
-      // Ensure we have TTY streams
       if (!context.tty?.isActive) {
         context.tty = createTTYStreams({ logger });
       }
 
       const { input, output } = context.tty;
-      let buffer = "";
-
-      const displayPrompt = (): void => {
-        if (!context.tty?.isActive) return;
-        output.write("\r"); // Clear current line
-
-        if (options.type === "numeric") {
-          output.write(
-            `Enter your choice (1-${options.maxValue} or c): ${buffer}`,
-          );
-        } else if (options.type === "yesno") {
-          const message = options.message || "Would you like to proceed?";
-          output.write(`${message} (Y/n): ${buffer}`);
-        }
-      };
-
-      // Initial prompt display
-      if (prompt) {
-        output.write(prompt);
-      }
-      displayPrompt();
+      let isActive = true;
 
       const cleanup = (): void => {
-        input.removeListener("data", handleInput);
+        if (!isActive) return;
+        logger.debug("Cleaning up prompt...");
+        isActive = false;
+        input.removeAllListeners("data");
         if (context.tty?.isActive) {
           output.write("\n");
         }
       };
 
-      const handleInput = (data: Buffer): void => {
-        if (!context.tty?.isActive) return;
+      // Display initial prompt only once
+      if (prompt) {
+        output.write(prompt);
+      }
 
-        const key = data.toString();
+      if (options.type === "yesno") {
+        const message = options.message || "Would you like to proceed?";
+        output.write(`${message} (Y/n): `);
+      } else if (options.type === "numeric") {
+        output.write(`Enter your choice (1-${options.maxValue} or c): `);
+      }
+
+      const handleInput = (data: unknown): void => {
+        if (!isActive || !context.tty?.isActive) return;
+
+        const inputStr =
+          typeof data === "string"
+            ? data
+            : Buffer.isBuffer(data)
+              ? data.toString()
+              : String(data);
+
+        logger.debug("Received input:", {
+          raw: data,
+          parsed: inputStr,
+          charCodes: Array.from(inputStr).map((c) => c.charCodeAt(0)),
+          isActive,
+          ttyActive: context.tty?.isActive,
+        });
 
         // Handle Ctrl+C
-        if (key === "\u0003") {
+        if (inputStr === "\u0003") {
           cleanup();
           output.write("\n\n❌ Operation cancelled by user (Ctrl+C)\n");
           process.exit(1);
         }
 
-        // Handle backspace
-        if (key === "\u007f") {
-          if (buffer.length > 0) {
-            buffer = buffer.slice(0, -1);
-            displayPrompt();
+        if (options.type === "yesno") {
+          // Immediate validation for yes/no
+          const char = inputStr.toLowerCase();
+
+          if (char === "\r" || char === "\n") {
+            cleanup();
+            output.write("yes\n");
+            logger.debug("Resolving with default yes");
+            resolve(true);
+            return;
           }
+
+          if (char === "y") {
+            cleanup();
+            output.write("yes\n");
+            logger.debug("Resolving with yes");
+            resolve(true);
+            return;
+          }
+
+          if (char === "n") {
+            cleanup();
+            output.write("no\n");
+            logger.debug("Resolving with no");
+            resolve(false);
+            return;
+          }
+
           return;
         }
 
-        // Handle enter
-        if (key === "\r" || key === "\n") {
-          const value = buffer.toLowerCase().trim() || "y"; // Default to 'y' for empty input
-          cleanup();
+        // Handle numeric input
+        if (options.type === "numeric") {
+          const char = inputStr.toLowerCase();
 
-          if (options.type === "yesno") {
-            if (value === "y" || value === "yes") {
-              output.write("yes\n");
-              resolve(true);
-            } else if (value === "n" || value === "no") {
-              output.write("no\n");
-              resolve(false);
-            } else {
-              buffer = "";
-              output.write(
-                "\nInvalid input. Please enter y or n (or press Enter for yes).\n",
-              );
-              displayPrompt();
-              input.on("data", handleInput);
-            }
+          if (char === "c") {
+            cleanup();
+            output.write("cancelled\n");
+            logger.debug("Resolving with cancel");
+            resolve("c");
             return;
           }
 
-          if (options.type === "numeric") {
-            if (value === "c") {
-              output.write("c\n");
-              resolve(false);
+          const num = parseInt(char, 10);
+          if (!isNaN(num) && num >= 1 && num <= options.maxValue) {
+            cleanup();
+            output.write(`${num}\n`);
+            logger.debug("Resolving with number:", num);
+            resolve(num.toString());
+            return;
+          }
+
+          if (char === "\r" || char === "\n") {
+            if (options.defaultValue) {
+              cleanup();
+              output.write(`${options.defaultValue}\n`);
+              logger.debug("Resolving with default:", options.defaultValue);
+              resolve(options.defaultValue);
               return;
             }
-            const num = parseInt(value, 10);
-            if (!isNaN(num) && num >= 1 && num <= options.maxValue) {
-              output.write(`${num}\n`);
-              resolve(String(num));
-            } else {
-              buffer = "";
-              output.write(
-                `\nInvalid choice. Please enter 1-${options.maxValue} or c.\n`,
-              );
-              displayPrompt();
-              input.on("data", handleInput);
-            }
-            return;
           }
-        }
 
-        // Add printable characters to buffer
-        if (key.length === 1 && key >= " " && key <= "~") {
-          buffer += key;
-          displayPrompt();
+          // Ignore invalid input
+          return;
         }
       };
 
+      logger.debug("Setting up input handler");
       input.on("data", handleInput);
+
+      // Cleanup handlers
+      process.once("exit", () => {
+        logger.debug("Process exit cleanup");
+        cleanup();
+      });
+      process.once("SIGINT", () => {
+        logger.debug("SIGINT cleanup");
+        cleanup();
+      });
+      process.once("SIGTERM", () => {
+        logger.debug("SIGTERM cleanup");
+        cleanup();
+      });
     } catch (error) {
-      logger.debug("Failed to create interactive prompt:", error);
-      // Default fallback for non-interactive environments
+      logger.error("Failed to create interactive prompt:", error);
       if (options.type === "yesno") {
         logger.info(
           "\n⚠️ Non-interactive environment detected, using default: Yes",
@@ -333,18 +360,19 @@ async function handleSplitSuggestion({
   git: GitService;
   context: PrepareCommitContext;
 }): Promise<void> {
-  logger.info("\n📦 Multiple package changes detected:");
+  logger.info(`\n${chalk.yellow("📦")} Multiple package changes detected:`);
   logger.info(chalk.yellow(suggestion.reason));
 
-  // Display suggested splits with proper typing
   suggestion.suggestions.forEach((suggestedSplit, index: number) => {
     logger.info(
-      `\n${chalk.cyan(index + 1)}. ${chalk.bold(suggestedSplit.scope || "root")}:`,
+      `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold.cyan(suggestedSplit.scope || "root")}:`,
     );
-    logger.info(`   Message: ${chalk.bold(suggestedSplit.message)}`);
-    logger.info("   Files:");
+    logger.info(
+      `   ${chalk.dim("Message:")} ${chalk.bold(suggestedSplit.message)}`,
+    );
+    logger.info(`   ${chalk.dim("Files:")}`);
     suggestedSplit.files.forEach((file) => {
-      logger.info(`     • ${chalk.gray(file)}`);
+      logger.info(`     ${chalk.dim("•")} ${chalk.gray(file)}`);
     });
   });
 
@@ -393,7 +421,7 @@ export async function handleSecurityFindings({
 
   if (secretFindings.length) {
     logger.error(
-      `\n${chalk.red("📛 CRITICAL:")} ${chalk.bold("Potential sensitive data detected:")}`,
+      `\n${chalk.bold.red("⚠️ CRITICAL:")} ${chalk.bold("Potential sensitive data detected:")}`,
     );
 
     // Group findings by file for better readability
@@ -409,23 +437,25 @@ export async function handleSecurityFindings({
 
     // Display findings grouped by file
     for (const [file, findings] of Object.entries(findingsByFile)) {
-      logger.error(`\n${chalk.yellow("📁 File:")} ${chalk.bold(file)}`);
+      logger.error(`\n${chalk.yellow("📁")} ${chalk.bold.underline(file)}`);
       for (const finding of findings) {
         logger.error(
-          `${chalk.red("⚠️")}  ${chalk.bold(finding.type)} detected${finding.line ? chalk.gray(` on line ${finding.line}`) : ""}:`,
+          `${chalk.red("▶")} ${chalk.bold(finding.type)}${finding.line ? chalk.dim(` (line ${finding.line})`) : ""}:`,
         );
         if (finding.content) {
-          logger.error(`   ${chalk.red(finding.content)}`);
+          logger.error(`   ${chalk.red.dim(finding.content)}`);
         }
-        logger.error(`   ${chalk.cyan("Suggestion:")} ${finding.suggestion}`);
+        logger.error(`   ${chalk.cyan("→")} ${finding.suggestion}`);
       }
     }
 
-    logger.info("\n🛡️  Security Recommendations for Secrets:");
-    logger.info("   • Review the detected patterns for false positives");
-    logger.info("   • Use environment variables for secrets");
-    logger.info("   • Consider using a secret manager");
-    logger.info("   • Update any exposed secrets immediately");
+    logger.info("\n🛡️  Security Recommendations:");
+    logger.info(
+      `   ${chalk.dim("•")} Review the detected patterns for false positives`,
+    );
+    logger.info(`   ${chalk.dim("•")} Use environment variables for secrets`);
+    logger.info(`   ${chalk.dim("•")} Consider using a secret manager`);
+    logger.info(`   ${chalk.dim("•")} Update any exposed secrets immediately`);
 
     const shouldProceed = await promptUser({
       options: {
@@ -506,18 +536,22 @@ async function displaySuggestions({
   originalMessage: string;
   context: PrepareCommitContext;
 }): Promise<string | undefined> {
-  logger.info(`\nOriginal message: "${originalMessage}"\n`);
+  logger.info(
+    `\n${chalk.dim("Original message:")} ${chalk.cyan(`"${originalMessage}"`)})\n`,
+  );
 
   suggestions.forEach((suggestion, index) => {
-    logger.info(`\n${index + 1}. ${suggestion.message}`);
-    logger.info(`   Explanation: ${suggestion.explanation}`);
+    logger.info(
+      `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(suggestion.message)}`,
+    );
+    logger.info(`   ${chalk.dim("Explanation:")} ${suggestion.explanation}`);
   });
 
   const answer = await promptUser({
     options: {
       type: "numeric",
       maxValue: suggestions.length,
-      message: "\nChoose a suggestion number or press Enter to skip:",
+      message: `\n${chalk.yellow("?")} Choose a suggestion number or press Enter to skip:`,
       allowEmpty,
     },
     logger,
@@ -739,9 +773,9 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     // Display choices once
     logger.info("\n🤔 Choose how to proceed with your commit:");
     choices.forEach((choice, index) => {
-      logger.info(`${index + 1}. ${choice.label}`);
+      logger.info(`${chalk.bold.green(`${index + 1}.`)} ${choice.label}`);
     });
-    logger.info("c. Cancel commit");
+    logger.info(`${chalk.bold.red("c.")} Cancel commit`);
 
     const answer = await promptUser({
       options: {
@@ -753,23 +787,23 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       context,
     });
 
-    logger.debug("🔑 Selected choice:", { answer, type: typeof answer });
+    logger.debug("Selected choice:", { answer, type: typeof answer });
 
-    if (answer === false) {
+    // Handle cancellation
+    if (answer === "c") {
       logger.info("\n❌ Operation cancelled by user");
       process.exit(1);
     }
 
     const index = parseInt(String(answer)) - 1;
     if (choices[index]) {
-      logger.debug("🔑 Starting action execution for choice:", {
+      logger.debug("Starting action execution for choice:", {
         choice: choices[index].value,
       });
       try {
         await choices[index].action();
-        // No need for return here as actions will exit process
       } catch (error) {
-        logger.error("❌ Action failed:", error);
+        logger.error("Action failed:", error);
         process.exit(1);
       }
     } else {

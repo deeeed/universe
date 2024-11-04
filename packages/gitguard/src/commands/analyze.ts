@@ -199,6 +199,12 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
         return result;
       }
 
+      // Inside the analyze function, before AI analysis
+      if (params.ai && !params.message) {
+        params.message = "ai commit";
+        logger.debug("Using default message for AI analysis:", params.message);
+      }
+
       // Only proceed with AI analysis if --ai flag is provided
       logger.info("\nPreparing AI suggestions...");
       const aiDiff = await git.getStagedDiffForAI();
@@ -232,9 +238,30 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
             aiResult.suggestions.forEach((suggestion, index) => {
               logger.info(`  ${index + 1}. ${suggestion.message}`);
             });
-            return aiResult;
+          } else {
+            logger.info("\n❌ No AI suggestions could be generated");
           }
-          break;
+
+          // Always show next steps
+          logger.info("\n📋 Next steps:");
+          if (!aiResult.suggestions?.length) {
+            logger.info(
+              "  • Try running the command again with a more detailed commit message",
+            );
+            logger.info("  • Check if your AI configuration is correct");
+            logger.info(
+              "  • Try using the 'copy' option to manually use the prompt",
+            );
+          } else {
+            logger.info(
+              "  • Run 'gitguard commit' to use these suggestions in your commit",
+            );
+            logger.info(
+              "  • Run with --message to provide a different base message",
+            );
+          }
+
+          return aiResult;
         }
 
         case "copy": {

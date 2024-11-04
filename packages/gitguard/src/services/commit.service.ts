@@ -204,12 +204,16 @@ export class CommitService extends BaseService {
     message: string;
     diff: string;
   }): Promise<CommitSuggestion[] | undefined> {
-    if (!this.ai) return undefined;
+    if (!this.ai) {
+      this.logger.debug("AI service not configured");
+      return undefined;
+    }
 
     this.logger.debug("Generating AI suggestions for files:", {
       fileCount: params.files.length,
       diffLength: params.diff.length,
       message: params.message,
+      aiProvider: this.ai.constructor.name,
     });
 
     const prompt = generateCommitSuggestionPrompt({
@@ -234,7 +238,12 @@ export class CommitService extends BaseService {
 
       this.logger.debug("AI response:", suggestions);
 
-      return suggestions?.suggestions?.slice(0, 3);
+      if (!suggestions?.suggestions?.length) {
+        this.logger.debug("No suggestions received from AI service");
+        return undefined;
+      }
+
+      return suggestions.suggestions.slice(0, 3);
     } catch (error) {
       this.logger.error("Failed to generate AI suggestions:", error);
       return undefined;
