@@ -116,6 +116,13 @@ interface PromptUserParams {
   logger: LoggerService;
 }
 
+function setupGlobalSigIntHandler(logger: LoggerService): void {
+  process.on("SIGINT", () => {
+    logger.info("\n\n❌ Commit cancelled by user (Ctrl+C)");
+    process.exit(1);
+  });
+}
+
 async function promptUser({
   options,
   logger,
@@ -127,84 +134,102 @@ async function promptUser({
     try {
       const { input, output, cleanup } = createTTYStreams({ logger });
 
-      // Only print the menu if no prompt was provided
-      if (options.type === "numeric" && !prompt) {
-        logger.info("\n🤔 Choose how to proceed with your commit:");
-        logger.info("1. Keep original message");
-        logger.info("2. Generate commit message with AI");
-        logger.info("3. Use formatted message");
-        logger.info("c. Cancel commit");
-      } else if (prompt) {
-        // Use the provided prompt
-        logger.info(prompt);
-      }
-
-      output.write("\nEnter your choice (1-3 or c): ");
-
-      // Handle input
-      input.once("data", (key: string) => {
-        const keyStr = key.toString().toLowerCase();
-        logger.debug("🔑 Received key input:", {
-          raw: key,
-          keyStr,
-          charCodes: Array.from(key).map((c) => c.charCodeAt(0)),
-          length: key.length,
-        });
-
-        // Handle numeric input or cancel
-        if (keyStr === "c") {
-          output.write("c\n");
+      // Add SIGINT handling for the input stream
+      input.once("data", (data: Buffer) => {
+        // Check for Ctrl+C (ASCII code 3)
+        if (data[0] === 3) {
           cleanup();
-          logger.info("\n❌ Commit cancelled by user");
+          logger.info("\n\n❌ Commit cancelled by user (Ctrl+C)");
           process.exit(1);
         }
+      });
 
-        // Check for numeric keys (1 = 49, 2 = 50, 3 = 51)
-        const charCode = key.charCodeAt(0);
-        if (charCode >= 49 && charCode <= 51) {
-          const numKey = charCode - 48; // Convert ASCII to number (49 -> 1, 50 -> 2, 51 -> 3)
-          output.write(`${numKey}\n`);
-
-          // Log the selected choice
-          logger.info(
-            `\n✅ Selected: ${
-              numKey === 1
-                ? "Keep original message"
-                : numKey === 2
-                  ? "Generate commit message with AI"
-                  : "Use formatted message"
-            }`,
-          );
-
-          cleanup();
-          resolve(String(numKey));
-          return;
+      const handleInput = (): void => {
+        // Display the appropriate prompt
+        if (options.type === "numeric") {
+          if (prompt) {
+            logger.info(prompt);
+          } else {
+            logger.info("\n🤔 Choose how to proceed with your commit:");
+            logger.info("1. Keep original message");
+            logger.info("2. Generate commit message with AI");
+            logger.info("3. Use formatted message");
+            logger.info("c. Cancel commit");
+          }
+          output.write("\nEnter your choice (1-3 or c): ");
+        } else if (options.type === "yesno") {
+          const message = prompt || "Would you like to proceed?";
+          output.write(`${message} (Y/n): `);
         }
 
-        // Invalid input
-        output.write("\nInvalid choice. Using default (1)\n");
-        logger.info("\n✅ Selected: Keep original message (default)");
-        cleanup();
-        resolve("1");
-      });
+        input.once("data", (key: string) => {
+          const keyStr = key.toString().toLowerCase();
+          logger.debug("🔑 Received key input:", { keyStr });
 
-      // Handle SIGINT (Ctrl+C)
-      input.once("SIGINT", () => {
-        cleanup();
-        logger.info("\n❌ Commit cancelled by user");
-        process.exit(1);
-      });
+          if (keyStr === "\x03") {
+            cleanup();
+            logger.info("\n\n❌ Commit cancelled by user (Ctrl+C)");
+            process.exit(1);
+          }
+
+          if (options.type === "yesno") {
+            if (keyStr === "\r" || keyStr === "\n" || keyStr === "") {
+              output.write("yes\n");
+              cleanup();
+              resolve(true);
+              return;
+            }
+            if (keyStr === "y" || keyStr === "yes") {
+              output.write("yes\n");
+              cleanup();
+              resolve(true);
+              return;
+            }
+            if (keyStr === "n" || keyStr === "no") {
+              output.write("no\n");
+              cleanup();
+              resolve(false);
+              return;
+            }
+            output.write(
+              "\nInvalid input. Please enter 'y' or 'n' (or press Enter for yes).\n",
+            );
+            handleInput();
+            return;
+          }
+
+          if (options.type === "numeric") {
+            if (keyStr === "c") {
+              output.write("c\n");
+              cleanup();
+              logger.info("\n❌ Commit cancelled by user");
+              process.exit(1);
+            }
+
+            const charCode = key.charCodeAt(0);
+            if (charCode >= 49 && charCode <= 51) {
+              const numKey = charCode - 48;
+              output.write(`${numKey}\n`);
+              cleanup();
+              resolve(String(numKey));
+              return;
+            }
+
+            output.write("\nInvalid choice. Please enter 1-3 or c.\n");
+            handleInput();
+            return;
+          }
+        });
+      };
+
+      handleInput();
     } catch (error) {
       logger.info("\n⚠️ Non-interactive environment detected, using defaults");
       if (options.type === "yesno") {
-        const defaultValue = !!options.defaultYes;
-        logger.info(`Using default: ${defaultValue ? "Yes" : "No"}`);
-        resolve(defaultValue);
-      } else if (options.type === "numeric" && options.defaultValue) {
-        logger.info(`Using default choice: ${options.defaultValue}`);
-        resolve(options.defaultValue);
+        logger.info("Using default: Yes");
+        resolve(true);
       } else {
-        logger.info("No default value available, using first option");
+        logger.info("Using default choice: 1");
         resolve("1");
       }
     }
@@ -250,8 +275,11 @@ export async function displaySuggestions(
     });
 
     if (!shouldProceed) {
+      logger.info("\n❌ AI generation cancelled");
       return undefined;
     }
+
+    logger.info("\n⏳ Generating AI suggestions...");
   }
 
   suggestions.forEach((suggestion, index) => {
@@ -469,6 +497,9 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
   const logger = new LoggerService({
     debug: process.env.GITGUARD_DEBUG === "true" || options.config?.debug,
   });
+
+  setupGlobalSigIntHandler(logger);
+
   logger.debug("🎣 Starting prepareCommit hook with options:", options);
 
   try {
@@ -600,7 +631,8 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
             });
 
             if (!shouldProceed) {
-              process.exit(0);
+              logger.info("\n❌ AI generation cancelled");
+              process.exit(1); // Exit if user cancels AI generation
             }
           }
 
