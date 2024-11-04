@@ -27,7 +27,6 @@ import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
-import { displaySuggestions } from "../utils/user-prompt.util.js";
 
 interface CommitHookOptions {
   messageFile: string;
@@ -491,6 +490,46 @@ interface PrepareCommitContext {
   // ... other context properties
 }
 
+async function displaySuggestions({
+  suggestions,
+  logger,
+  allowEmpty,
+  originalMessage,
+  context,
+}: {
+  suggestions: Array<{
+    message: string;
+    explanation: string;
+  }>;
+  logger: LoggerService;
+  allowEmpty: boolean;
+  originalMessage: string;
+  context: PrepareCommitContext;
+}): Promise<string | undefined> {
+  logger.info(`\nOriginal message: "${originalMessage}"\n`);
+
+  suggestions.forEach((suggestion, index) => {
+    logger.info(`\n${index + 1}. ${suggestion.message}`);
+    logger.info(`   Explanation: ${suggestion.explanation}`);
+  });
+
+  const answer = await promptUser({
+    options: {
+      type: "numeric",
+      maxValue: suggestions.length,
+      message: "\nChoose a suggestion number or press Enter to skip:",
+      allowEmpty,
+    },
+    logger,
+    context,
+  });
+
+  if (!answer) return undefined;
+
+  const index = parseInt(String(answer)) - 1;
+  return suggestions[index]?.message;
+}
+
 export async function prepareCommit(options: CommitHookOptions): Promise<void> {
   const logger = new LoggerService({
     debug: process.env.GITGUARD_DEBUG === "true" || options.config?.debug,
@@ -652,6 +691,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
               logger,
               allowEmpty: false,
               originalMessage: analysis.originalMessage,
+              context,
             });
             if (message) {
               logger.debug(
