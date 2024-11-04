@@ -537,7 +537,7 @@ async function displaySuggestions({
   context: PrepareCommitContext;
 }): Promise<string | undefined> {
   logger.info(
-    `\n${chalk.dim("Original message:")} ${chalk.cyan(`"${originalMessage}"`)})\n`,
+    `\n${chalk.dim("Original message:")} ${chalk.cyan(`"${originalMessage.trim()}"`)}\n`,
   );
 
   suggestions.forEach((suggestion, index) => {
@@ -757,13 +757,16 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     }
 
     choices.push({
-      label: `Use formatted message: "${analysis.formattedMessage}"`,
+      label: `Use formatted message: ${analysis.formattedMessage.trim()}`,
       value: "format",
       action: async () => {
-        logger.debug("✨ Using formatted message:", analysis.formattedMessage);
+        logger.debug(
+          "✨ Using formatted message:",
+          analysis.formattedMessage.trim(),
+        );
         await git.updateCommitMessage({
           file: options.messageFile,
-          message: analysis.formattedMessage,
+          message: analysis.formattedMessage.trim(),
         });
         logger.debug("✅ Commit message updated successfully");
         process.exit(0);
