@@ -27,6 +27,11 @@ import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
+import {
+  displaySuggestions,
+  promptNumeric,
+  promptYesNo,
+} from "../utils/user-prompt.util.js";
 
 interface CommitHookOptions {
   messageFile: string;
@@ -39,17 +44,6 @@ interface HandleSecurityFindingsParams {
   fileFindings: SecurityFinding[];
   logger: LoggerService;
   git: GitService;
-}
-
-interface DisplaySuggestionsParams {
-  suggestions: Array<{
-    message: string;
-    explanation: string;
-  }>;
-  logger: LoggerService;
-  prompt: string;
-  ai?: AIProvider;
-  git?: GitService;
 }
 
 // Add interfaces for different prompt types
@@ -115,13 +109,6 @@ function createTTYStreams({ logger }: CreateTTYStreamsParams): TTYStreams {
 interface PromptUserParams {
   options: PromptOptions;
   logger: LoggerService;
-}
-
-function setupGlobalSigIntHandler(logger: LoggerService): void {
-  process.on("SIGINT", () => {
-    logger.info("\n\n❌ Commit cancelled by user (Ctrl+C)");
-    process.exit(1);
-  });
 }
 
 async function promptUser({
@@ -236,37 +223,6 @@ async function displayAICostEstimate(params: {
   logger.info(
     `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}`,
   );
-}
-
-// Update DisplaySuggestionsParams interface
-export async function displaySuggestions(
-  params: DisplaySuggestionsParams,
-): Promise<string | undefined> {
-  const { suggestions, logger } = params;
-
-  suggestions.forEach((suggestion, index) => {
-    logger.info(
-      `\n${chalk.cyan(index + 1)}. ${chalk.bold(suggestion.message)}`,
-    );
-    logger.info(`   ${chalk.gray("Explanation:")} ${suggestion.explanation}`);
-  });
-
-  const answer = await promptUser({
-    options: {
-      type: "numeric",
-      message: `\nChoose a suggestion (1-${suggestions.length} or c):`,
-      maxValue: suggestions.length,
-    },
-    logger,
-    prompt: `\nChoose a suggestion (1-${suggestions.length} or c): `,
-  });
-
-  if (typeof answer !== "string" || !answer || isNaN(parseInt(answer))) {
-    return undefined;
-  }
-
-  const index = parseInt(answer) - 1;
-  return suggestions[index]?.message;
 }
 
 async function handleUnstageFiles(params: {
@@ -401,13 +357,11 @@ export async function handleSecurityFindings({
     logger.info("   • Consider using a secret manager");
     logger.info("   • Update any exposed secrets immediately");
 
-    const shouldProceed = await promptUser({
-      options: {
-        type: "yesno",
-        message: "\n⚠️  Detected potential secrets. Proceed with commit?",
-        defaultYes: false,
-      },
+    const shouldProceed = await promptYesNo({
+      message: "\n⚠️  Detected potential secrets. Proceed with commit?",
+      defaultValue: false,
       logger,
+      forceTTY: true,
     });
 
     if (!shouldProceed) {
@@ -425,7 +379,7 @@ export async function handleSecurityFindings({
 
     // Display each problematic file with its suggestion
     for (const finding of fileFindings) {
-      logger.error(`\n⚠️  File: ${finding.path}`);
+      logger.error(`\n⚠  File: ${finding.path}`);
       logger.error(`   Suggestion: ${finding.suggestion}`);
       affectedFiles.add(finding.path);
     }
@@ -435,14 +389,12 @@ export async function handleSecurityFindings({
     logger.info("   • Use example files for templates (e.g., .env.example)");
     logger.info("   • Consider using git-crypt for encrypted files");
 
-    const shouldProceed = await promptUser({
-      options: {
-        type: "yesno",
-        message:
-          "\n⚠️  Detected potentially sensitive files. Proceed with commit?",
-        defaultYes: false,
-      },
+    const shouldProceed = await promptYesNo({
+      message:
+        "\n⚠️  Detected potentially sensitive files. Proceed with commit?",
+      defaultValue: false,
       logger,
+      forceTTY: true,
     });
 
     if (!shouldProceed) {
@@ -460,8 +412,6 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
   const logger = new LoggerService({
     debug: process.env.GITGUARD_DEBUG === "true" || options.config?.debug,
   });
-
-  setupGlobalSigIntHandler(logger);
 
   logger.debug("🎣 Starting prepareCommit hook with options:", options);
 
@@ -609,7 +559,8 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
             const message = await displaySuggestions({
               suggestions: analysis.suggestions,
               logger,
-              prompt: "\nChoose a suggestion (1-3) or 'c' to cancel:",
+              allowEmpty: false,
+              originalMessage: analysis.originalMessage,
             });
             if (message) {
               logger.debug(
@@ -654,13 +605,13 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     });
     logger.info("c. Cancel commit");
 
-    const answer = await promptUser({
-      options: {
-        type: "numeric",
-        message: `\nEnter your choice (1-${choices.length} or c):`,
-        maxValue: choices.length,
-      },
+    const answer = await promptNumeric({
+      message: `\nEnter your choice (1-${choices.length}) or 'c' to cancel:`,
+      allowEmpty: false,
+      defaultValue: undefined,
       logger,
+      forceTTY: true,
+      maxValue: choices.length,
     });
 
     logger.debug("🔑 Selected choice:", { answer, type: typeof answer });

@@ -1,5 +1,7 @@
 import { Config } from "../types/config.types.js";
 import { Logger } from "../types/logger.types.js";
+import { ReadStream, WriteStream } from "tty";
+import { openSync, closeSync } from "fs";
 
 // Common patterns helpers
 export async function displaySuggestions(params: {
@@ -63,22 +65,59 @@ export async function promptYesNo(params: {
   message: string;
   logger: Logger;
   defaultValue?: boolean;
+  forceTTY?: boolean;
 }): Promise<boolean> {
-  const { message, defaultValue = false } = params;
-  process.stdout.write(`${message} [${defaultValue ? "Y/n" : "y/N"}] `);
+  const { message, logger, defaultValue = false, forceTTY } = params;
 
-  return new Promise((resolve) => {
-    const onData = (buffer: Buffer): void => {
-      const response = buffer.toString().trim().toLowerCase();
-      process.stdin.removeListener("data", onData);
-      if (response === "") {
-        resolve(defaultValue);
-      } else {
-        resolve(response === "y" || response === "yes");
-      }
-    };
-    process.stdin.once("data", onData);
-  });
+  if (forceTTY) {
+    try {
+      const { input, output, cleanup } = createTTYStreams();
+      output.write(`${message} [${defaultValue ? "Y/n" : "y/N"}] `);
+
+      return new Promise<boolean>((resolve) => {
+        input.once("data", (key: string) => {
+          cleanup();
+          const keyStr = key.toLowerCase();
+
+          if (keyStr === "\r" || keyStr === "\n" || keyStr === "") {
+            resolve(defaultValue);
+            return;
+          }
+          if (keyStr === "y") {
+            resolve(true);
+            return;
+          }
+          if (keyStr === "n") {
+            resolve(false);
+            return;
+          }
+          logger.info("\nInvalid input. Please enter 'y' or 'n'.");
+          resolve(promptYesNo(params));
+        });
+      });
+    } catch {
+      logger.info(
+        "\nNon-interactive environment detected, using default value.",
+      );
+      return defaultValue;
+    }
+  } else {
+    process.stdout.write(`${message} [${defaultValue ? "Y/n" : "y/N"}] `);
+
+    return new Promise<boolean>((resolve) => {
+      const onData = (buffer: Buffer): void => {
+        const response = buffer.toString().trim().toLowerCase();
+        process.stdin.removeListener("data", onData);
+
+        if (response === "") {
+          resolve(defaultValue);
+        } else {
+          resolve(response === "y" || response === "yes");
+        }
+      };
+      process.stdin.once("data", onData);
+    });
+  }
 }
 
 export async function promptNumeric(params: {
@@ -86,36 +125,76 @@ export async function promptNumeric(params: {
   logger: Logger;
   allowEmpty?: boolean;
   defaultValue?: string;
+  forceTTY?: boolean;
+  maxValue?: number;
 }): Promise<string | undefined> {
-  const { message, logger, allowEmpty = true, defaultValue } = params;
+  const {
+    message,
+    logger,
+    allowEmpty = true,
+    defaultValue,
+    forceTTY,
+    maxValue,
+  } = params;
 
-  const displayMessage = defaultValue
-    ? `${message} (${defaultValue})`
-    : message;
+  if (forceTTY) {
+    try {
+      const { input, output, cleanup } = createTTYStreams();
+      output.write(`${message} `);
 
-  logger.info(displayMessage);
+      return new Promise<string | undefined>((resolve) => {
+        input.once("data", (key: string) => {
+          cleanup();
+          const keyStr = key.trim();
 
-  return new Promise((resolve) => {
-    const onData = (buffer: Buffer): void => {
-      const response = buffer.toString().trim();
-      process.stdin.removeListener("data", onData);
+          // Handle cancellation
+          if (keyStr.toLowerCase() === "c") {
+            logger.info("\nCommit cancelled by user.");
+            process.exit(1);
+          }
 
-      if (allowEmpty && response === "") {
-        resolve(defaultValue);
-        return;
-      }
+          // Validate numeric input
+          const num = parseInt(keyStr, 10);
+          if (!isNaN(num) && (!maxValue || (num >= 1 && num <= maxValue))) {
+            resolve(String(num));
+            return;
+          }
 
-      const num = parseInt(response);
-      if (isNaN(num)) {
-        logger.error("Please enter a valid number");
-        process.stdin.once("data", onData);
-        return;
-      }
+          logger.info("\nInvalid input. Please enter a valid number.");
+          resolve(promptNumeric(params));
+        });
+      });
+    } catch {
+      logger.info(
+        "\nNon-interactive environment detected, using default value.",
+      );
+      return defaultValue;
+    }
+  } else {
+    logger.info(message);
 
-      resolve(response);
-    };
-    process.stdin.once("data", onData);
-  });
+    return new Promise<string | undefined>((resolve) => {
+      const onData = (buffer: Buffer): void => {
+        const response = buffer.toString().trim();
+        process.stdin.removeListener("data", onData);
+
+        if (allowEmpty && response === "") {
+          resolve(defaultValue);
+          return;
+        }
+
+        const num = parseInt(response);
+        if (isNaN(num)) {
+          logger.error("Please enter a valid number.");
+          resolve(promptNumeric(params));
+          return;
+        }
+
+        resolve(response);
+      };
+      process.stdin.once("data", onData);
+    });
+  }
 }
 
 export async function promptChoice<
@@ -438,4 +517,29 @@ export async function promptAIAction(params: {
   });
 
   return { action };
+}
+
+export interface TTYStreams {
+  input: ReadStream;
+  output: WriteStream;
+  fd: number;
+  cleanup: () => void;
+}
+
+export function createTTYStreams(): TTYStreams {
+  const fd = openSync("/dev/tty", "r+");
+  const input = new ReadStream(fd);
+  const output = new WriteStream(fd);
+
+  input.setRawMode(true);
+  input.setEncoding("utf-8");
+  input.resume();
+
+  function cleanup(): void {
+    input.setRawMode(false);
+    input.pause();
+    closeSync(fd);
+  }
+
+  return { input, output, fd, cleanup };
 }
