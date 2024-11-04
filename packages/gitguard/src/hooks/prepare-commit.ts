@@ -144,36 +144,48 @@ async function promptUser({
       // Handle input
       input.once("data", (key: string) => {
         const keyStr = key.toString().toLowerCase();
+        logger.debug("🔑 Received key input:", {
+          raw: key,
+          keyStr,
+          charCodes: Array.from(key).map((c) => c.charCodeAt(0)),
+          length: key.length,
+        });
 
-        if (options.type === "yesno") {
-          output.write(`${keyStr}\n`);
+        // Handle numeric input or cancel
+        if (keyStr === "c") {
+          output.write("c\n");
           cleanup();
-
-          if (options.defaultYes) {
-            resolve(keyStr !== "n" && keyStr !== "no");
-          } else {
-            resolve(keyStr === "y" || keyStr === "yes");
-          }
-        } else {
-          // Handle numeric input or cancel
-          if (keyStr === "c") {
-            output.write("c\n");
-            cleanup();
-            logger.info("\n❌ Commit cancelled by user");
-            process.exit(1);
-          }
-
-          const numKey = Number(keyStr);
-          if (numKey >= 1 && numKey <= 3) {
-            output.write(`${numKey}\n`);
-            cleanup();
-            resolve(String(numKey));
-          } else {
-            output.write("\nInvalid choice. Using default (1)\n");
-            cleanup();
-            resolve("1");
-          }
+          logger.info("\n❌ Commit cancelled by user");
+          process.exit(1);
         }
+
+        // Check for numeric keys (1 = 49, 2 = 50, 3 = 51)
+        const charCode = key.charCodeAt(0);
+        if (charCode >= 49 && charCode <= 51) {
+          const numKey = charCode - 48; // Convert ASCII to number (49 -> 1, 50 -> 2, 51 -> 3)
+          output.write(`${numKey}\n`);
+
+          // Log the selected choice
+          logger.info(
+            `\n✅ Selected: ${
+              numKey === 1
+                ? "Keep original message"
+                : numKey === 2
+                  ? "Generate commit message with AI"
+                  : "Use formatted message"
+            }`,
+          );
+
+          cleanup();
+          resolve(String(numKey));
+          return;
+        }
+
+        // Invalid input
+        output.write("\nInvalid choice. Using default (1)\n");
+        logger.info("\n✅ Selected: Keep original message (default)");
+        cleanup();
+        resolve("1");
       });
 
       // Handle SIGINT (Ctrl+C)
@@ -517,8 +529,8 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       logger,
     });
 
-    // Run the commit analysis without re-running security checks
-    const analysis = await commitService.analyze({
+    // Make analysis mutable
+    let analysis = await commitService.analyze({
       messageFile: options.messageFile,
       enableAI: false, // Don't generate AI suggestions yet
       enablePrompts: true,
@@ -559,7 +571,9 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
         label: "Keep original message",
         value: "keep",
         action: async (): Promise<void> => {
-          // No action needed, original message stays
+          await Promise.resolve();
+          logger.debug("📝 Keeping original message");
+          process.exit(0); // Immediate exit for keep
         },
       },
     ];
@@ -569,6 +583,37 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
         label: "Generate commit message with AI",
         value: "ai",
         action: async () => {
+          logger.debug("🤖 Starting AI message generation");
+
+          // Show cost estimate before generating suggestions
+          if (ai && git) {
+            await displayAICostEstimate({ ai, git, logger });
+
+            const shouldProceed = await promptUser({
+              options: {
+                type: "yesno",
+                message:
+                  "\n🤖 Would you like to proceed with AI suggestion generation?",
+                defaultYes: true,
+              },
+              logger,
+            });
+
+            if (!shouldProceed) {
+              process.exit(0);
+            }
+          }
+
+          // Generate suggestions if none exist
+          if (!analysis.suggestions) {
+            logger.info("\n⏳ Generating AI suggestions...");
+            analysis = await commitService.analyze({
+              messageFile: options.messageFile,
+              enableAI: true,
+              enablePrompts: true,
+            });
+          }
+
           if (analysis.suggestions) {
             const message = await displaySuggestions({
               suggestions: analysis.suggestions,
@@ -578,25 +623,38 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
               git,
             });
             if (message) {
+              logger.debug(
+                "✍️ Updating commit message with AI suggestion:",
+                message,
+              );
               await git.updateCommitMessage({
                 file: options.messageFile,
                 message,
               });
+              process.exit(0);
+            } else {
+              logger.debug("❌ No AI suggestion selected");
+              process.exit(1);
             }
+          } else {
+            logger.error("❌ Failed to generate AI suggestions");
+            process.exit(1);
           }
         },
       });
     }
 
-    // Add format option last (single scope or multi-scope based on analysis)
     choices.push({
       label: `Use formatted message: "${analysis.formattedMessage}"`,
       value: "format",
       action: async () => {
+        logger.debug("✨ Using formatted message:", analysis.formattedMessage);
         await git.updateCommitMessage({
           file: options.messageFile,
           message: analysis.formattedMessage,
         });
+        logger.debug("✅ Commit message updated successfully");
+        process.exit(0);
       },
     });
 
@@ -609,7 +667,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     const answer = await promptUser({
       options: {
         type: "numeric",
-        message: "\nEnter your choice (1-" + choices.length + "):",
+        message: "\nEnter your choice (1-3):",
         timeoutSeconds: config.hook.timeoutSeconds,
       },
       logger,
@@ -621,10 +679,25 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
         "c. Cancel commit",
     });
 
+    logger.debug("🔑 Selected choice:", { answer, type: typeof answer });
+
     if (typeof answer === "string") {
       const index = parseInt(answer) - 1;
+      logger.debug("🔑 Selected index:", { index });
       if (choices[index]) {
-        await choices[index].action();
+        logger.debug("🔑 Starting action execution for choice:", {
+          choice: choices[index].value,
+        });
+        try {
+          await choices[index].action();
+          // No need for return here as actions will exit process
+        } catch (error) {
+          logger.error("❌ Action failed:", error);
+          process.exit(1);
+        }
+      } else {
+        logger.error("Invalid choice:", { index });
+        process.exit(1);
       }
     }
   } catch (error) {

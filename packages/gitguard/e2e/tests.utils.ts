@@ -1,4 +1,3 @@
-import execa, { Options } from "execa";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
@@ -7,6 +6,7 @@ import { prepareCommit } from "../src/hooks/prepare-commit.js";
 import { LoggerService } from "../src/services/logger.service.js";
 import { Config } from "../src/types/config.types.js";
 import { TestResult, TestScenario } from "./tests.types.js";
+import { spawn } from "child_process";
 
 interface GitEnv {
   GIT_AUTHOR_NAME: string;
@@ -43,7 +43,7 @@ async function setupTestRepo(
     AUTOMATED_COMMIT: "1",
   };
 
-  const execOptions: Options = {
+  const execOptions = {
     cwd: testDir,
     env: gitEnv,
   };
@@ -100,14 +100,22 @@ async function setupTestRepo(
     );
 
     logger.debug("Initializing git repository");
-    await execa("git", ["init"], execOptions);
+    await execCommand("git", ["init"], execOptions);
 
     logger.debug("Configuring git");
-    await execa("git", ["config", "core.autocrlf", "false"], execOptions);
-    await execa("git", ["config", "core.safecrlf", "false"], execOptions);
-    await execa("git", ["config", "commit.gpgsign", "false"], execOptions);
+    await execCommand("git", ["config", "core.autocrlf", "false"], execOptions);
+    await execCommand("git", ["config", "core.safecrlf", "false"], execOptions);
+    await execCommand(
+      "git",
+      ["config", "commit.gpgsign", "false"],
+      execOptions,
+    );
     // Set hooks path to our temporary directory
-    await execa("git", ["config", "core.hooksPath", tempHooksDir], execOptions);
+    await execCommand(
+      "git",
+      ["config", "core.hooksPath", tempHooksDir],
+      execOptions,
+    );
 
     // Create test files
     logger.debug("Creating test files");
@@ -121,8 +129,8 @@ async function setupTestRepo(
 
     // Create initial commit to establish HEAD
     logger.debug("Creating initial commit");
-    await execa("git", ["add", "."], execOptions);
-    await execa(
+    await execCommand("git", ["add", "."], execOptions);
+    await execCommand(
       "git",
       ["commit", "--allow-empty", "-m", "Initial commit"],
       execOptions,
@@ -171,6 +179,28 @@ function validateResult(
   return true;
 }
 
+function execCommand(
+  command: string,
+  args: string[],
+  options: { cwd: string; env: Record<string, string | undefined> },
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const process = spawn(command, args, options);
+
+    process.on("error", (error) => {
+      reject(error);
+    });
+
+    process.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Command failed with exit code ${code}`));
+      }
+    });
+  });
+}
+
 export async function runScenario(
   scenario: TestScenario,
   logger: LoggerService,
@@ -184,7 +214,7 @@ export async function runScenario(
 
     // Stage files
     logger.debug("Staging test files...");
-    await execa("git", ["add", "."], { cwd: testDir });
+    await execCommand("git", ["add", "."], { cwd: testDir, env: process.env });
     logger.debug("Files staged successfully");
 
     // Create commit message

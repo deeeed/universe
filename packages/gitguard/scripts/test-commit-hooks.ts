@@ -1,4 +1,3 @@
-import execa, { Options } from "execa";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { parseArgs } from "node:util";
 import { tmpdir } from "os";
@@ -6,6 +5,7 @@ import { dirname, join } from "path";
 import readline from "readline";
 import { prepareCommit } from "../src/hooks/prepare-commit.js";
 import { LoggerService } from "../src/services/logger.service.js";
+import { spawn } from "child_process";
 
 interface TestScenario {
   name: string;
@@ -191,6 +191,33 @@ interface GitEnv {
   [key: string]: string | undefined;
 }
 
+interface SpawnOptions {
+  cwd: string;
+  env: Record<string, string | undefined>;
+}
+
+function execCommand(
+  command: string,
+  args: string[],
+  options: SpawnOptions,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const process = spawn(command, args, options);
+
+    process.on("error", (error) => {
+      reject(error);
+    });
+
+    process.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Command failed with exit code ${code}`));
+      }
+    });
+  });
+}
+
 async function setupTestRepo(scenario: TestScenario): Promise<string> {
   const logger = new LoggerService({
     debug: process.argv.includes("--debug"),
@@ -211,7 +238,7 @@ async function setupTestRepo(scenario: TestScenario): Promise<string> {
     AUTOMATED_COMMIT: "1",
   };
 
-  const execOptions: Options = {
+  const execOptions: SpawnOptions = {
     cwd: testDir,
     env: gitEnv,
   };
@@ -224,22 +251,26 @@ async function setupTestRepo(scenario: TestScenario): Promise<string> {
     await mkdir(join(testDir, ".gitguard"), { recursive: true });
 
     logger.debug("Initializing git repository");
-    await execa("git", ["init"], execOptions);
+    await execCommand("git", ["init"], execOptions);
 
     logger.debug("Configuring git");
-    await execa("git", ["config", "core.autocrlf", "false"], execOptions);
-    await execa("git", ["config", "core.safecrlf", "false"], execOptions);
-    await execa("git", ["config", "commit.gpgsign", "false"], execOptions);
+    await execCommand("git", ["config", "core.autocrlf", "false"], execOptions);
+    await execCommand("git", ["config", "core.safecrlf", "false"], execOptions);
+    await execCommand(
+      "git",
+      ["config", "commit.gpgsign", "false"],
+      execOptions,
+    );
 
     logger.debug("Creating initial commit");
     const readmePath = join(testDir, "README.md");
     await writeFile(readmePath, "# Test Repository");
 
     logger.debug("Staging README");
-    await execa("git", ["add", "README.md"], execOptions);
+    await execCommand("git", ["add", "README.md"], execOptions);
 
     logger.debug("Creating commit");
-    await execa(
+    await execCommand(
       "git",
       [
         "commit",
@@ -320,7 +351,7 @@ async function runScenario(scenario: TestScenario): Promise<TestResult> {
 
     // Stage files
     logger.debug("Staging test files...");
-    await execa("git", ["add", "."], { cwd: testDir });
+    await execCommand("git", ["add", "."], { cwd: testDir, env: process.env });
     logger.debug("Files staged successfully");
 
     // Create commit message
@@ -351,6 +382,10 @@ async function runScenario(scenario: TestScenario): Promise<TestResult> {
         ai: {
           enabled: false,
           provider: null,
+        },
+        hook: {
+          defaultChoice: "keep",
+          timeoutSeconds: 10,
         },
         pr: {
           template: {
