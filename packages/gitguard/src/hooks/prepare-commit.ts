@@ -201,11 +201,11 @@ async function promptUser({
 
         // Handle enter
         if (key === "\r" || key === "\n") {
-          const value = buffer.toLowerCase() || "y"; // Default to 'y' for empty input
+          const value = buffer.toLowerCase().trim() || "y"; // Default to 'y' for empty input
           cleanup();
 
           if (options.type === "yesno") {
-            if (value === "y" || value === "yes" || value === "") {
+            if (value === "y" || value === "yes") {
               output.write("yes\n");
               resolve(true);
             } else if (value === "n" || value === "no") {
@@ -531,6 +531,13 @@ async function displaySuggestions({
 }
 
 export async function prepareCommit(options: CommitHookOptions): Promise<void> {
+  if (
+    process.env.SKIP_GITGUARD === "true" ||
+    process.env.GITGUARD_SKIP === "true"
+  ) {
+    process.exit(0);
+  }
+
   const logger = new LoggerService({
     debug: process.env.GITGUARD_DEBUG === "true" || options.config?.debug,
   });
