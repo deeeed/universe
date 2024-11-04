@@ -1,6 +1,28 @@
-# Publishing Monorepo Packages
+# New Release Workflow using @siteed/publisher
+This document outlines the recommended approach for publishing packages in our monorepo using `@siteed/publisher`.
 
-## Migrate away from release-it.js
+## Recommended Approach: Using @siteed/publisher
+
+Install the package:
+```bash
+yarn add -D @siteed/publisher
+```
+
+### Setup
+
+1. Initialize publisher configuration:
+```bash
+yarn publisher init
+yarn publisher release
+```
+
+----------------
+
+## Legacy Methods (Deprecated)
+
+> Note: The following methods are kept for historical reference but are no longer recommended.
+
+### Migrate away from release-it.js
 
 Historically I was using release-it to auto publish package, while it works fine with npm on single package, I find it buggy with monorepo.
 This document is a wip of new steps to publish packages in monorepo.
