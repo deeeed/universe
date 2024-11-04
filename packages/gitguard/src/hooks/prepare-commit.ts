@@ -67,6 +67,7 @@ interface NumericPromptOptions extends BasePromptOptions {
   type: "numeric";
   allowEmpty?: boolean;
   defaultValue?: string;
+  maxValue: number;
 }
 
 type PromptOptions = YesNoPromptOptions | NumericPromptOptions;
@@ -134,31 +135,13 @@ async function promptUser({
     try {
       const { input, output, cleanup } = createTTYStreams({ logger });
 
-      // Add SIGINT handling for the input stream
-      input.once("data", (data: Buffer) => {
-        // Check for Ctrl+C (ASCII code 3)
-        if (data[0] === 3) {
-          cleanup();
-          logger.info("\n\n❌ Commit cancelled by user (Ctrl+C)");
-          process.exit(1);
-        }
-      });
-
       const handleInput = (): void => {
-        // Display the appropriate prompt
-        if (options.type === "numeric") {
-          if (prompt) {
-            logger.info(prompt);
-          } else {
-            logger.info("\n🤔 Choose how to proceed with your commit:");
-            logger.info("1. Keep original message");
-            logger.info("2. Generate commit message with AI");
-            logger.info("3. Use formatted message");
-            logger.info("c. Cancel commit");
-          }
-          output.write("\nEnter your choice (1-3 or c): ");
+        if (prompt) {
+          output.write(prompt);
+        } else if (options.type === "numeric") {
+          output.write(`\nEnter your choice (1-${options.maxValue} or c): `);
         } else if (options.type === "yesno") {
-          const message = prompt || "Would you like to proceed?";
+          const message = options.message || "Would you like to proceed?";
           output.write(`${message} (Y/n): `);
         }
 
@@ -170,6 +153,29 @@ async function promptUser({
             cleanup();
             logger.info("\n\n❌ Commit cancelled by user (Ctrl+C)");
             process.exit(1);
+          }
+
+          if (options.type === "numeric") {
+            if (keyStr === "c") {
+              output.write("c\n");
+              cleanup();
+              logger.info("\n❌ Commit cancelled by user");
+              process.exit(1);
+            }
+
+            const num = parseInt(keyStr, 10);
+            if (!isNaN(num) && num >= 1 && num <= options.maxValue) {
+              output.write(`${num}\n`);
+              cleanup();
+              resolve(String(num));
+              return;
+            }
+
+            output.write(
+              `\nInvalid choice. Please enter 1-${options.maxValue} or c.\n`,
+            );
+            handleInput();
+            return;
           }
 
           if (options.type === "yesno") {
@@ -194,28 +200,6 @@ async function promptUser({
             output.write(
               "\nInvalid input. Please enter 'y' or 'n' (or press Enter for yes).\n",
             );
-            handleInput();
-            return;
-          }
-
-          if (options.type === "numeric") {
-            if (keyStr === "c") {
-              output.write("c\n");
-              cleanup();
-              logger.info("\n❌ Commit cancelled by user");
-              process.exit(1);
-            }
-
-            const charCode = key.charCodeAt(0);
-            if (charCode >= 49 && charCode <= 51) {
-              const numKey = charCode - 48;
-              output.write(`${numKey}\n`);
-              cleanup();
-              resolve(String(numKey));
-              return;
-            }
-
-            output.write("\nInvalid choice. Please enter 1-3 or c.\n");
             handleInput();
             return;
           }
@@ -258,29 +242,7 @@ async function displayAICostEstimate(params: {
 export async function displaySuggestions(
   params: DisplaySuggestionsParams,
 ): Promise<string | undefined> {
-  const { suggestions, logger, ai, git } = params;
-
-  // Show cost estimate before generating suggestions
-  if (ai && git) {
-    await displayAICostEstimate({ ai, git, logger });
-
-    const shouldProceed = await promptUser({
-      options: {
-        type: "yesno",
-        message:
-          "\n🤖 Would you like to proceed with AI suggestion generation?",
-        defaultYes: true,
-      },
-      logger,
-    });
-
-    if (!shouldProceed) {
-      logger.info("\n❌ AI generation cancelled");
-      return undefined;
-    }
-
-    logger.info("\n⏳ Generating AI suggestions...");
-  }
+  const { suggestions, logger } = params;
 
   suggestions.forEach((suggestion, index) => {
     logger.info(
@@ -292,10 +254,11 @@ export async function displaySuggestions(
   const answer = await promptUser({
     options: {
       type: "numeric",
-      message: `\n${chalk.cyan("Choose a suggestion number or press Enter to skip:")}`,
-      allowEmpty: true,
+      message: `\nChoose a suggestion (1-${suggestions.length} or c):`,
+      maxValue: suggestions.length,
     },
     logger,
+    prompt: `\nChoose a suggestion (1-${suggestions.length} or c): `,
   });
 
   if (typeof answer !== "string" || !answer || isNaN(parseInt(answer))) {
@@ -616,8 +579,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
         action: async () => {
           logger.debug("🤖 Starting AI message generation");
 
-          // Show cost estimate before generating suggestions
-          if (ai && git) {
+          if (!analysis.suggestions) {
             await displayAICostEstimate({ ai, git, logger });
 
             const shouldProceed = await promptUser({
@@ -632,12 +594,9 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
 
             if (!shouldProceed) {
               logger.info("\n❌ AI generation cancelled");
-              process.exit(1); // Exit if user cancels AI generation
+              process.exit(1);
             }
-          }
 
-          // Generate suggestions if none exist
-          if (!analysis.suggestions) {
             logger.info("\n⏳ Generating AI suggestions...");
             analysis = await commitService.analyze({
               messageFile: options.messageFile,
@@ -650,9 +609,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
             const message = await displaySuggestions({
               suggestions: analysis.suggestions,
               logger,
-              prompt: "Choose a suggestion:",
-              ai,
-              git,
+              prompt: "\nChoose a suggestion (1-3) or 'c' to cancel:",
             });
             if (message) {
               logger.debug(
@@ -690,25 +647,20 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       },
     });
 
-    // Display choices
+    // Display choices once
     logger.info("\n🤔 Choose how to proceed with your commit:");
     choices.forEach((choice, index) => {
       logger.info(`${index + 1}. ${choice.label}`);
     });
+    logger.info("c. Cancel commit");
 
     const answer = await promptUser({
       options: {
         type: "numeric",
-        message: "\nEnter your choice (1-3):",
-        timeoutSeconds: config.hook.timeoutSeconds,
+        message: `\nEnter your choice (1-${choices.length} or c):`,
+        maxValue: choices.length,
       },
       logger,
-      prompt:
-        "\n🤔 Choose how to proceed with your commit:\n" +
-        "1. Keep original message\n" +
-        "2. Generate commit message with AI\n" +
-        `3. Use formatted message: "${analysis.formattedMessage}"\n` +
-        "c. Cancel commit",
     });
 
     logger.debug("🔑 Selected choice:", { answer, type: typeof answer });
