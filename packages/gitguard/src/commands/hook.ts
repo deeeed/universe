@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { LoggerService } from "../services/logger.service.js";
 import { getHookScript, getHookStatus } from "../utils/hook.util.js";
 import { promptYesNo } from "../utils/user-prompt.util.js";
+import chalk from "chalk";
 
 interface HookCommandOptions {
   action?: "install" | "uninstall" | "status";
@@ -191,10 +192,46 @@ export async function hook(options: HookCommandOptions = {}): Promise<void> {
     }
 
     logger.success(`Git hook installed at ${targetHook.path}`);
-    if (options.skipHook) {
-      logger.info("To skip the hook, set SKIP_GITGUARD=true:");
-      logger.info("SKIP_GITGUARD=true git commit -m 'your message'");
-    }
+    logger.info("\nTo activate the hook, set GITGUARD=true:");
+    logger.info(`${chalk.cyan("GITGUARD=true git commit -m 'your message'")}"`);
+
+    logger.info(
+      `\n${chalk.yellow("💡 Pro tip:")} Create an alias to save time!`,
+    );
+    logger.info(
+      `${chalk.bold("Add one of these to your shell profile (~/.bashrc, ~/.zshrc):")}`,
+    );
+
+    // Option 1
+    logger.info(
+      `\n${chalk.green("# Option 1:")} ${chalk.bold("Quick alias for GitGuard commits")}`,
+    );
+    logger.info(chalk.cyan('alias gitg="GITGUARD=true git commit -m"'));
+    logger.info(chalk.dim("# Usage:"));
+    logger.info(chalk.yellow('gitg "your commit message"'));
+
+    // Option 2
+    logger.info(
+      `\n${chalk.green("# Option 2:")} ${chalk.bold("Always enable GitGuard")}`,
+    );
+    logger.info(chalk.cyan("export GITGUARD=true"));
+    logger.info(chalk.dim("# Then use regular git commands"));
+
+    // Option 3
+    logger.info(
+      `\n${chalk.green("# Option 3:")} ${chalk.bold("Function with optional GitGuard")}`,
+    );
+    logger.info(chalk.cyan("function gcommit() {"));
+    logger.info(chalk.cyan('  if [ "$1" = "-g" ]; then'));
+    logger.info(chalk.cyan("    shift"));
+    logger.info(chalk.cyan('    GITGUARD=true git commit -m "$@"'));
+    logger.info(chalk.cyan("  else"));
+    logger.info(chalk.cyan('    git commit -m "$@"'));
+    logger.info(chalk.cyan("  fi"));
+    logger.info(chalk.cyan("}"));
+    logger.info(chalk.dim("# Usage:"));
+    logger.info(chalk.yellow('gcommit "regular commit"'));
+    logger.info(chalk.yellow('gcommit -g "GitGuard commit"'));
   } catch (error) {
     logger.error("Failed to manage hook:", error);
     throw error;

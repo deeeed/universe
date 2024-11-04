@@ -95,11 +95,13 @@ export function getHookScript(packagePath: string): string {
   debug('- NODE_ENV:', process.env.NODE_ENV);
   debug('- TERM:', process.env.TERM);
   debug('- argv:', process.argv);
+  debug('- GITGUARD:', process.env.GITGUARD);
   
-  // Skip hook if SKIP_GITGUARD is set or if git is in quiet mode
-  const isQuietMode = process.argv.includes('--quiet') || process.argv.includes('-q');
-  if (process.env.SKIP_GITGUARD === 'true' || isQuietMode) {
-    debug('⏭️  Skipping GitGuard hook (SKIP_GITGUARD=true or quiet mode)');
+  // Only activate when GITGUARD is explicitly enabled
+  const isGitGuardEnabled = ['true', 'y', '1'].includes((process.env.GITGUARD || '').toLowerCase());
+  
+  if (!isGitGuardEnabled) {
+    debug('⏭️  Skipping GitGuard hook (GITGUARD not enabled)');
     process.exit(0);
   }
   
