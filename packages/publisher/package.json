@@ -31,7 +31,7 @@
     "lint:fix": "eslint \"**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\" \"bin/**/*.ts\"",
     "release": "node ./dist/bin/publisher.js publish",
-    "dev": "ts-node bin/publisher.ts",
+    "dev": "DEBUG=true node --inspect -r ts-node/register bin/publisher.ts",
     "publisher": "ts-node bin/publisher.ts",
     "publisher:debug": "DEBUG=true node --inspect -r ts-node/register bin/publisher.ts",
     "prepare": "husky install"

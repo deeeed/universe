@@ -42,6 +42,7 @@ export class GitService {
   async validateStatus(options?: {
     skipUpstreamTracking?: boolean;
     force?: boolean;
+    allowBranch?: boolean;
   }): Promise<void> {
     const status = await this.git.status();
 
@@ -79,11 +80,18 @@ export class GitService {
       }
     }
 
-    if (this.config.allowedBranches?.length && !options?.force) {
+    if (
+      this.config.allowedBranches?.length &&
+      !options?.force &&
+      !options?.allowBranch
+    ) {
       const currentBranch = status.current || "";
       if (!this.config.allowedBranches.includes(currentBranch)) {
         throw new Error(
-          `Current branch ${currentBranch} is not in allowed branches: ${this.config.allowedBranches.join(", ")}`,
+          `Current branch ${currentBranch} is not in allowed branches: ${this.config.allowedBranches.join(", ")}.\n\n` +
+            `To proceed anyway, you can:\n` +
+            `1. Switch to an allowed branch\n` +
+            `2. Run with --allow-branch to bypass branch restrictions`,
         );
       }
     }

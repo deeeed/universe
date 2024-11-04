@@ -43,7 +43,11 @@ changelogCommand
     try {
       const config = await loadConfig();
       const workspaceService = new WorkspaceService(config, logger);
-      const git = new GitService(config.git, process.cwd(), logger);
+      const git = new GitService(
+        config.git,
+        workspaceService.getRootDir(),
+        logger,
+      );
       const changelogService = new ChangelogService(logger);
 
       // Create package manager service
@@ -233,7 +237,11 @@ changelogCommand
     try {
       const config = await loadConfig();
       const workspaceService = new WorkspaceService(config, logger);
-      const git = new GitService(config.git, process.cwd(), logger);
+      const git = new GitService(
+        config.git,
+        workspaceService.getRootDir(),
+        logger,
+      );
       const changelogService = new ChangelogService(logger);
 
       // Get packages to check
@@ -406,7 +414,11 @@ changelogCommand
     try {
       const config = await loadConfig();
       const workspaceService = new WorkspaceService(config, logger);
-      const git = new GitService(config.git, process.cwd(), logger);
+      const git = new GitService(
+        config.git,
+        workspaceService.getRootDir(),
+        logger,
+      );
       const changelogService = new ChangelogService(logger);
 
       // Get packages to update

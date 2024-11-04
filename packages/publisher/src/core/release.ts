@@ -65,6 +65,7 @@ export class ReleaseService {
       checkIntegrity?: boolean;
       skipGitCheck?: boolean;
       skipUpstreamTracking?: boolean;
+      allowBranch?: boolean;
     },
   ): Promise<Array<ReleaseResult | DryRunReport>> {
     this.logger.info("Starting release process...");
@@ -130,6 +131,7 @@ export class ReleaseService {
       skipUpstreamTracking?: boolean;
       checkIntegrity?: boolean;
       force?: boolean;
+      allowBranch?: boolean;
     },
   ): Promise<ReleaseResult | DryRunReport> {
     let tempFiles: { path: string; content: string }[] = [];
@@ -153,6 +155,7 @@ export class ReleaseService {
         skipGitCheck: options.skipGitCheck,
         skipUpstreamTracking: options.skipUpstreamTracking,
         checkIntegrity: options.checkIntegrity,
+        allowBranch: options.allowBranch,
       });
 
       this.logger.info("Determining new version...");
@@ -243,6 +246,7 @@ export class ReleaseService {
     skipGitCheck?: boolean;
     skipUpstreamTracking?: boolean;
     checkIntegrity?: boolean;
+    allowBranch?: boolean;
   }): Promise<void> {
     const context = await this.workspace.getCurrentPackage();
     if (!context) {
@@ -663,6 +667,7 @@ export class ReleaseService {
       skipGitCheck?: boolean;
       skipUpstreamTracking?: boolean;
       checkIntegrity?: boolean;
+      allowBranch?: boolean;
     },
   ): Promise<void> {
     const validations = [
@@ -673,6 +678,7 @@ export class ReleaseService {
           this.logger.info("Validating git status...");
           await this.git.validateStatus({
             skipUpstreamTracking: options.skipUpstreamTracking,
+            allowBranch: options.allowBranch,
           });
         },
       },

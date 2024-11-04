@@ -17,6 +17,7 @@ interface ReleaseCommandOptions {
   gitCheck?: boolean;
   skipUpstreamTracking?: boolean;
   force?: boolean;
+  allowBranch?: boolean;
 }
 
 export const releaseCommand = new Command()
@@ -41,6 +42,10 @@ export const releaseCommand = new Command()
   .option(
     "-f, --force",
     "Force release, overwriting existing tags if necessary",
+  )
+  .option(
+    "--allow-branch",
+    "Allow release from any branch, bypassing branch restrictions",
   )
   .action(async (packages: string[], commandOptions: ReleaseCommandOptions) => {
     const logger = new Logger();
@@ -185,6 +190,7 @@ export const releaseCommand = new Command()
         skipGitCheck: !commandOptions.gitCheck,
         skipUpstreamTracking: commandOptions.skipUpstreamTracking,
         force: commandOptions.force,
+        allowBranch: commandOptions.allowBranch,
       };
 
       if (commandOptions.all) {

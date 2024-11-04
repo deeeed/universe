@@ -217,19 +217,38 @@ export class YarnService implements PackageManagerService {
   ): Promise<string> {
     const effectiveConfig = this.getEffectiveConfig(config);
     try {
-      const result: ExecaReturnValue<string> = await execa("yarn", [
-        "npm",
-        "info",
-        packageName,
-        "version",
-        "--registry",
-        effectiveConfig.registry,
-        "--json",
-      ]);
+      const version = await this.getYarnVersion();
+      let result: ExecaReturnValue<string>;
 
-      const parsed = this.parseJsonResponse<YarnInfoResponse>(result.stdout);
-      return parsed.data ?? "0.0.0";
-    } catch {
+      if (version.major === 1) {
+        result = await execa("yarn", [
+          "info",
+          packageName,
+          "version",
+          "--registry",
+          effectiveConfig.registry,
+          "--json",
+        ]);
+        const parsed = this.parseJsonResponse<YarnInfoResponse>(result.stdout);
+        return parsed.data ?? "0.0.0";
+      } else {
+        // For Yarn Berry (2+), use npm view command
+        result = await execa("npm", [
+          "view",
+          packageName,
+          "version",
+          "--registry",
+          effectiveConfig.registry,
+          "--json",
+        ]);
+        // npm view returns the version directly when using --json
+        const version = result.stdout.trim().replace(/^"|"$/g, "");
+        return version || "0.0.0";
+      }
+    } catch (error) {
+      this.logger.warn("Failed to get latest version", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
       return "0.0.0";
     }
   }

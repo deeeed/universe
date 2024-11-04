@@ -104,7 +104,10 @@ export class NpmService implements PackageManagerService {
       ]);
 
       return result.stdout.toString().trim();
-    } catch {
+    } catch (error) {
+      this.logger.debug("Failed to get latest version", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
       return "0.0.0";
     }
   }
