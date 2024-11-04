@@ -581,7 +581,11 @@ async function displaySuggestions({
 }
 
 export async function prepareCommit(options: CommitHookOptions): Promise<void> {
+  // Add check for quiet mode
+  const isQuietMode =
+    process.argv.includes("--quiet") || process.argv.includes("-q");
   if (
+    isQuietMode ||
     process.env.SKIP_GITGUARD === "true" ||
     process.env.GITGUARD_SKIP === "true"
   ) {

@@ -94,10 +94,12 @@ export function getHookScript(packagePath: string): string {
   debug('- process.stdout.isTTY:', process.stdout.isTTY);
   debug('- NODE_ENV:', process.env.NODE_ENV);
   debug('- TERM:', process.env.TERM);
+  debug('- argv:', process.argv);
   
-  // Skip hook if SKIP_GITGUARD is set
-  if (process.env.SKIP_GITGUARD === 'true') {
-    debug('⏭️  Skipping GitGuard hook (SKIP_GITGUARD=true)');
+  // Skip hook if SKIP_GITGUARD is set or if git is in quiet mode
+  const isQuietMode = process.argv.includes('--quiet') || process.argv.includes('-q');
+  if (process.env.SKIP_GITGUARD === 'true' || isQuietMode) {
+    debug('⏭️  Skipping GitGuard hook (SKIP_GITGUARD=true or quiet mode)');
     process.exit(0);
   }
   
