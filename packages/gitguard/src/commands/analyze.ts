@@ -130,26 +130,26 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
         logger,
       });
 
-      // Run security checks on all files being analyzed
-      const diff = shouldAnalyzeStaged
+      // First diff declaration (for security checks)
+      const securityDiff = shouldAnalyzeStaged
         ? await git.getStagedDiff()
         : await git.getUnstagedDiff();
 
       const securityResult = security?.analyzeSecurity({
         files: filesToAnalyze,
-        diff,
+        diff: securityDiff,
       });
 
       // Analyze all relevant files
       const result = await commitService.analyze({
         files: filesToAnalyze,
         message: params.message || "",
-        enableAI: false, // Don't enable AI yet
+        enableAI: false,
         enablePrompts: true,
         securityResult,
       });
 
-      // Show analysis results
+      // Show analysis results first
       if (result.warnings.length > 0) {
         logger.info("\n⚠️  Analysis found some concerns:");
         result.warnings.forEach((warning) => {
@@ -157,109 +157,106 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
         });
       } else {
         logger.info("\n✅ Analysis completed successfully!");
+        logger.info("No issues detected.");
       }
 
-      // Message Analysis
-      if (params.message) {
-        logger.info("\n📝 Message Analysis:");
-        if (
-          result.formattedMessage &&
-          result.formattedMessage !== params.message
-        ) {
-          logger.info(`  • Suggested format: "${result.formattedMessage}"`);
-        }
-      }
+      // Generate and display the report
+      reporter.generateReport({
+        result,
+        options: {
+          format: params.format || "console",
+          color: params.color,
+          detailed: params.detailed,
+        },
+      });
 
-      // Show next steps based on analysis
-      logger.info("\n📋 Next steps:");
-
+      // Only show next steps if there are actions to take
       if (
-        result.formattedMessage &&
-        result.formattedMessage !== params.message
+        !params.message ||
+        (config.ai?.enabled && !params.ai) ||
+        result.warnings.length > 0
       ) {
-        logger.info(
-          `  • Run 'git commit -m "${result.formattedMessage}"' to create commit with suggested format`,
-        );
-      }
-
-      if (!params.message) {
-        logger.info(
-          "  • Run 'gitguard analyze --message \"your message\"' to analyze with a commit message",
-        );
-      }
-
-      if (config.ai?.enabled && !params.ai) {
-        logger.info(
-          "  • Run 'gitguard analyze --ai' to generate commit message suggestions",
-        );
-      }
-
-      if (result.warnings.length > 0) {
-        logger.info("  • Address the warnings above before committing");
-      }
-
-      logger.info(""); // Empty line for spacing
-
-      // Handle AI suggestions
-      if (ai) {
-        logger.debug("Preparing AI analysis");
-
-        // Use optimized diff generation
-        const diff = await git.getStagedDiffForAI();
-        const prompt = generateCommitSuggestionPrompt({
-          files: filesToAnalyze,
-          message: params.message || "",
-          diff,
-          logger,
-        });
-
-        const tokenUsage = ai.calculateTokenUsage({ prompt });
-
-        const result = await promptAIAction({
-          logger,
-          tokenUsage,
-        });
-
-        switch (result.action) {
-          case "generate": {
-            const aiResult = await commitService.analyze({
-              files: filesToAnalyze,
-              message: params.message,
-              enableAI: true,
-              enablePrompts: true,
-              securityResult,
-            });
-
-            if (aiResult.suggestions?.length) {
-              logger.info("  • Alternative suggestions:");
-              aiResult.suggestions.forEach((suggestion, index) => {
-                logger.info(`    ${index + 1}. ${suggestion.message}`);
-              });
-            }
-            break;
-          }
-
-          case "copy": {
-            const prompt = generateCommitSuggestionPrompt({
-              files: filesToAnalyze,
-              message: params.message || "",
-              diff,
-              logger,
-            });
-
-            await copyToClipboard({
-              text: prompt,
-              logger,
-            });
-
-            logger.info("\n✅ AI prompt copied to clipboard!");
-            break;
-          }
-
-          case "skip":
-            logger.info("\n⏭️  Skipping AI suggestions");
-            break;
+        logger.info("\n📋 Next steps:");
+        if (!params.message) {
+          logger.info(
+            "  • Run 'gitguard analyze --message \"your message\"' to analyze with a commit message",
+          );
         }
+
+        if (config.ai?.enabled && !params.ai) {
+          logger.info(
+            "  • Run 'gitguard analyze --ai' to generate commit message suggestions",
+          );
+        }
+
+        if (result.warnings.length > 0) {
+          logger.info("  • Address the warnings above before committing");
+        }
+      }
+
+      // Return early if AI is not explicitly requested
+      if (!params.ai || !ai) {
+        return result;
+      }
+
+      // Only proceed with AI analysis if --ai flag is provided
+      logger.info("\nPreparing AI suggestions...");
+      const aiDiff = await git.getStagedDiffForAI();
+      const prompt = generateCommitSuggestionPrompt({
+        files: filesToAnalyze,
+        message: params.message || "",
+        diff: aiDiff,
+        logger,
+      });
+
+      const tokenUsage = ai.calculateTokenUsage({ prompt });
+      const aiPromptResult = await promptAIAction({
+        logger,
+        tokenUsage,
+      });
+
+      // Process AI result based on user choice
+      switch (aiPromptResult.action) {
+        case "generate": {
+          logger.info("\nGenerating AI suggestions...");
+          const aiResult = await commitService.analyze({
+            files: filesToAnalyze,
+            message: params.message || "",
+            enableAI: true,
+            enablePrompts: true,
+            securityResult,
+          });
+
+          if (aiResult.suggestions?.length) {
+            logger.info("\n🤖 AI Suggestions:");
+            aiResult.suggestions.forEach((suggestion, index) => {
+              logger.info(`  ${index + 1}. ${suggestion.message}`);
+            });
+            return aiResult;
+          }
+          break;
+        }
+
+        case "copy": {
+          const prompt = generateCommitSuggestionPrompt({
+            files: filesToAnalyze,
+            message: params.message || "",
+            diff: aiDiff,
+            logger,
+          });
+
+          await copyToClipboard({
+            text: prompt,
+            logger,
+          });
+
+          logger.info("\n✅ AI prompt copied to clipboard!");
+          break;
+        }
+
+        case "skip":
+          logger.info("\n⏭️  Skipping AI suggestions");
+          break;
       }
 
       return result;

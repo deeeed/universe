@@ -37,7 +37,7 @@ export class ReporterService extends BaseService {
           detailed: options.detailed,
         });
       default:
-        return this.generateConsoleReport({ result, color: options.color });
+        return this.generateConsoleReport({ result, options });
     }
   }
 
@@ -97,41 +97,94 @@ export class ReporterService extends BaseService {
 
   private generateConsoleReport(params: {
     result: AnalysisResult;
-    color?: boolean;
+    options: ReportOptions;
   }): string {
-    const { result } = params;
+    const { result, options } = params;
 
-    // Using logger for console output to handle colors automatically
-    this.logger.info(`Analysis Results for ${result.branch}`);
+    this.logger.info("\n📊 Analysis Report");
+    this.logger.info(`Branch: ${result.branch}`);
     this.logger.info(`Base branch: ${result.baseBranch}`);
     this.logger.newLine();
 
-    this.logger.info("Statistics:");
+    this.logger.info("Changes Summary:");
     if (this.isPRResult(result)) {
       this.logger.table([
         {
           "Total Commits": result.stats.totalCommits,
           "Files Changed": result.stats.filesChanged,
-          Additions: result.stats.additions,
-          Deletions: result.stats.deletions,
+          "Lines Added": `+${result.stats.additions}`,
+          "Lines Removed": `-${result.stats.deletions}`,
         },
       ]);
+
+      // Show file changes by directory for PR
+      if (result.commits.length > 0 && options.detailed) {
+        this.logger.newLine();
+        this.logger.info("Changed Files:");
+        result.commits.forEach((commit) => {
+          commit.files.forEach((file: FileChange) => {
+            this.logger.info(
+              `  • ${file.path} (+${file.additions} -${file.deletions})`,
+            );
+          });
+        });
+      }
     } else {
+      // Enhanced commit analysis display
       this.logger.table([
         {
           "Files Changed": result.stats.filesChanged,
-          Additions: result.stats.additions,
-          Deletions: result.stats.deletions,
+          "Lines Added": `+${result.stats.additions}`,
+          "Lines Removed": `-${result.stats.deletions}`,
         },
       ]);
+
+      if (result.formattedMessage) {
+        this.logger.newLine();
+        this.logger.info("Commit Message:");
+        this.logger.info(`Original: ${result.originalMessage}`);
+        this.logger.info(`Formatted: ${result.formattedMessage}`);
+      }
+
+      // Show files from staged/unstaged changes
+      const files = (result as CommitAnalysisResult & { files?: FileChange[] })
+        .files;
+      if (!files?.length) {
+        return "";
+      }
+
+      // Group files by directory manually
+      const filesByDir = files.reduce((acc, file) => {
+        const dir = file.path.split("/").slice(0, -1).join("/") || ".";
+        if (!acc.has(dir)) {
+          acc.set(dir, []);
+        }
+        acc.get(dir)?.push(file);
+        return acc;
+      }, new Map<string, FileChange[]>());
+
+      // Display files grouped by directory
+      Array.from(filesByDir.entries()).forEach(([dir, dirFiles]) => {
+        this.logger.info(`  ${dir}/`);
+        dirFiles.forEach((file) => {
+          const fileName = file.path.split("/").pop() || file.path;
+          this.logger.info(
+            `    • ${fileName} (+${file.additions} -${file.deletions})`,
+            { color: options.color },
+          );
+        });
+      });
     }
 
     if (result.warnings.length > 0) {
       this.logger.newLine();
-      this.logger.warning(`Found ${result.warnings.length} warnings:`);
+      this.logger.warning(`⚠️  Found ${result.warnings.length} warnings:`);
       result.warnings.forEach((warning: AnalysisWarning) => {
-        this.logger.warning(`[${warning.type}] ${warning.message}`);
+        this.logger.warning(`  • [${warning.type}] ${warning.message}`);
       });
+    } else {
+      this.logger.newLine();
+      this.logger.info("✅ No issues detected");
     }
 
     return "";

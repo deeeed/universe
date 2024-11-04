@@ -171,7 +171,7 @@ export async function promptNumeric(params: {
       return defaultValue;
     }
   } else {
-    logger.info(message);
+    process.stdout.write(`${message} `);
 
     return new Promise<string | undefined>((resolve) => {
       const onData = (buffer: Buffer): void => {
@@ -184,7 +184,7 @@ export async function promptNumeric(params: {
         }
 
         const num = parseInt(response);
-        if (isNaN(num)) {
+        if (isNaN(num) || (maxValue && (num < 1 || num > maxValue))) {
           logger.error("Please enter a valid number.");
           resolve(promptNumeric(params));
           return;
@@ -197,13 +197,10 @@ export async function promptNumeric(params: {
   }
 }
 
-export async function promptChoice<
-  T extends string,
-  L extends string = string,
->(params: {
+export async function promptChoice<T extends string>(params: {
   message: string;
   choices: Array<{
-    label: L;
+    label: string;
     value: T;
   }>;
   logger: Logger;
@@ -218,17 +215,20 @@ export async function promptChoice<
     message: "\nEnter your choice (number):",
     allowEmpty: false,
     logger,
+    maxValue: choices.length,
   });
 
   if (!answer) {
-    throw new Error("No choice selected");
+    logger.error("Invalid selection. Please try again.");
+    return promptChoice(params);
   }
 
   const index = parseInt(answer) - 1;
   const choice = choices[index];
 
   if (!choice) {
-    throw new Error("Invalid choice selected");
+    logger.error(`Please select a number between 1 and ${choices.length}`);
+    return promptChoice(params);
   }
 
   return choice.value;
