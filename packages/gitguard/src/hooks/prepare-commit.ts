@@ -353,6 +353,7 @@ interface Choice {
 async function handleSplitSuggestion({
   suggestion,
   logger,
+  git,
   context,
 }: {
   suggestion: CommitSplitSuggestion;
@@ -387,10 +388,25 @@ async function handleSplitSuggestion({
   });
 
   if (shouldSplit) {
+    // Get workspace root
+    const workspaceRoot = await git.getRepositoryRoot();
+
+    // Prepare commands with cd to workspace root first
+    const commands = [
+      `# Navigate to workspace root`,
+      `cd "${workspaceRoot}"`,
+      ``,
+      `# Unstage all files`,
+      `git reset HEAD .`,
+      ``,
+      `# Create commits for each scope`,
+      ...suggestion.commands,
+    ];
+
     logger.info("\n📋 Commands to execute:");
     try {
       await copyToClipboard({
-        text: suggestion.commands.join("\n"),
+        text: commands.join("\n"),
         logger,
       });
       logger.info(
@@ -400,7 +416,7 @@ async function handleSplitSuggestion({
       logger.info("Execute these commands in order:");
     }
 
-    suggestion.commands.forEach((cmd: string) => {
+    commands.forEach((cmd: string) => {
       logger.info(chalk.gray(cmd));
     });
 
