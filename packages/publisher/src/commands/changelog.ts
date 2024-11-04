@@ -40,6 +40,7 @@ changelogCommand
   )
   .action(async (packages: string[], options: ChangelogCommandOptions) => {
     const logger = new Logger();
+
     try {
       const config = await loadConfig();
       const workspaceService = new WorkspaceService(config, logger);
@@ -96,7 +97,13 @@ changelogCommand
 
         // Get last git tag
         const lastTag = await git.getLastTag(pkg.name);
-        logger.debug(`Using last tag: ${lastTag}`);
+        if (!lastTag) {
+          logger.info(
+            `No previous tags found for ${pkg.name}. Will analyze all commits.`,
+          );
+        } else {
+          logger.debug(`Using last tag: ${lastTag}`);
+        }
 
         // Get commits since last tag with proper typing
         const gitChanges: GitCommit[] = lastTag
@@ -106,6 +113,11 @@ changelogCommand
               filterByPath: options.filterByPackage,
             })
           : await git.getAllCommits();
+
+        if (gitChanges.length === 0) {
+          logger.info("No commits found to analyze.");
+          continue;
+        }
 
         // Preview the changes
         logger.info(`\n📦 ${chalk.bold(pkg.name)}`);
@@ -161,7 +173,7 @@ changelogCommand
           logger.info("\nSuggested changelog entry:");
           logger.info(preview);
 
-          logger.info("\nOriginal Git Commits:");
+          logger.info("\nMatching Git Commits:");
           for (const commit of gitChanges) {
             logger.info(
               `  - ${commit.message} (${commit.files.length} files changed)`,

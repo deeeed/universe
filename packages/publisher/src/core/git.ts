@@ -144,7 +144,7 @@ export class GitService {
     return 0;
   }
 
-  private extractFilePaths(diff: DiffResult | undefined): string[] {
+  public extractFilePaths(diff: DiffResult | undefined): string[] {
     if (!diff?.files) return [];
 
     return diff.files
@@ -172,6 +172,11 @@ export class GitService {
     options?: GetCommitsOptions,
   ): Promise<GitCommit[]> {
     try {
+      if (!tag) {
+        this.logger.info("No previous tag found. Getting all commits instead.");
+        return this.getAllCommits();
+      }
+
       // First verify we can get commits with a simple command
       const verifyCommand = ["log", "-1", "--oneline"];
       const verifyResult = await this.git.raw(verifyCommand);
@@ -531,25 +536,54 @@ export class GitService {
 
   async getAllCommits(): Promise<GitCommit[]> {
     try {
-      const logOptions = {
-        format: {
-          hash: "%H",
-          date: "%aI",
-          message: "%s",
-          body: "%b",
-        },
-        multiLine: true,
-        nameOnly: true,
-      };
+      const logOptions = [
+        "log",
+        `--format=COMMIT%n%H%n%aI%n%s%n%b%nFILES`, // Use same format as getCommitsSinceTag
+        "--name-only", // Correct flag for showing changed files
+      ];
 
-      const log = await this.git.log(logOptions);
-      return log.all.map((commit) => ({
-        hash: commit.hash,
-        date: commit.date,
-        message: commit.message,
-        body: commit.body || null,
-        files: this.extractFilePaths(commit.diff),
-      }));
+      this.logger.debug("Getting all commits with command:", {
+        command: logOptions.join(" "),
+      });
+
+      const result = await this.git.raw(logOptions);
+
+      if (!result) {
+        this.logger.info("No commits found in repository");
+        return [];
+      }
+
+      // Use the same parsing logic as getCommitsSinceTag
+      const commits: GitCommit[] = [];
+      const commitChunks = result.split("\nCOMMIT\n").filter(Boolean);
+
+      for (const chunk of commitChunks) {
+        const [commitData, filesList] = chunk.split("\nFILES\n");
+        const lines = commitData.split("\n").filter(Boolean);
+
+        const startIndex = lines[0] === "COMMIT" ? 1 : 0;
+        if (lines.length < startIndex + 3) continue;
+
+        const hash = lines[startIndex];
+        const date = lines[startIndex + 1];
+        const message = lines[startIndex + 2];
+        const bodyLines = lines.slice(startIndex + 3);
+        const files = filesList?.split("\n").filter(Boolean) || [];
+
+        commits.push({
+          hash,
+          date,
+          message,
+          body: bodyLines.length > 0 ? bodyLines.join("\n") : null,
+          files,
+        });
+      }
+
+      this.logger.debug("Successfully parsed all commits:", {
+        totalCommits: commits.length,
+      });
+
+      return commits;
     } catch (error) {
       this.logger.error("Failed to get all commits:", error);
       return [];
