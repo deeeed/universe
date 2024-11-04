@@ -27,11 +27,7 @@ import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
-import {
-  displaySuggestions,
-  promptNumeric,
-  promptYesNo,
-} from "../utils/user-prompt.util.js";
+import { displaySuggestions } from "../utils/user-prompt.util.js";
 
 interface CommitHookOptions {
   messageFile: string;
@@ -70,17 +66,12 @@ interface TTYStreams {
   input: ReadStream;
   output: WriteStream;
   fd: number;
-  cleanup: () => void;
+  isActive: boolean;
+  dispose: () => void;
 }
 
 interface CreateTTYStreamsParams {
   logger: LoggerService;
-}
-
-function cleanup(input: ReadStream, fd: number): void {
-  input.setRawMode(false);
-  input.pause();
-  closeSync(fd);
 }
 
 function createTTYStreams({ logger }: CreateTTYStreamsParams): TTYStreams {
@@ -88,18 +79,51 @@ function createTTYStreams({ logger }: CreateTTYStreamsParams): TTYStreams {
     const fd = openSync("/dev/tty", "r+");
     const input = new ReadStream(fd);
     const output = new WriteStream(fd);
+    let isActive = true;
 
-    // These settings are crucial for single-key input
     input.setRawMode(true);
     input.setEncoding("utf-8");
     input.resume();
 
-    return {
+    // Centralized cleanup function
+    const cleanup = (): void => {
+      if (!isActive) return;
+
+      input.setRawMode(false);
+      input.pause();
+      closeSync(fd);
+      isActive = false;
+
+      logger.debug("TTY streams cleaned up");
+    };
+
+    // Handle SIGINT (Ctrl+C) globally for this TTY
+    const handleSigInt = (data: string): void => {
+      if (data === "\x03") {
+        output.write("\n\n❌ Operation cancelled by user (Ctrl+C)\n");
+        cleanup();
+        process.exit(1);
+      }
+    };
+
+    input.on("data", handleSigInt);
+
+    // Handle process exit
+    process.once("exit", cleanup);
+    process.once("SIGTERM", cleanup);
+    process.once("SIGINT", cleanup);
+
+    const tty: TTYStreams = {
       input,
       output,
       fd,
-      cleanup: () => cleanup(input, fd),
+      get isActive(): boolean {
+        return isActive;
+      },
+      dispose: cleanup,
     };
+
+    return tty;
   } catch (error) {
     logger.debug("Failed to open /dev/tty:", error);
     throw error;
@@ -109,98 +133,138 @@ function createTTYStreams({ logger }: CreateTTYStreamsParams): TTYStreams {
 interface PromptUserParams {
   options: PromptOptions;
   logger: LoggerService;
+  context: PrepareCommitContext;
 }
 
 async function promptUser({
   options,
   logger,
+  context,
   prompt,
 }: PromptUserParams & { prompt?: string }): Promise<string | boolean> {
   return new Promise((resolve) => {
-    logger.debug("🎯 Initializing prompt:", { options });
-
     try {
-      const { input, output, cleanup } = createTTYStreams({ logger });
+      // Ensure we have TTY streams
+      if (!context.tty?.isActive) {
+        context.tty = createTTYStreams({ logger });
+      }
 
-      const handleInput = (): void => {
-        if (prompt) {
-          output.write(prompt);
-        } else if (options.type === "numeric") {
-          output.write(`\nEnter your choice (1-${options.maxValue} or c): `);
+      const { input, output } = context.tty;
+      let buffer = "";
+
+      const displayPrompt = (): void => {
+        if (!context.tty?.isActive) return;
+        output.write("\r"); // Clear current line
+
+        if (options.type === "numeric") {
+          output.write(
+            `Enter your choice (1-${options.maxValue} or c): ${buffer}`,
+          );
         } else if (options.type === "yesno") {
           const message = options.message || "Would you like to proceed?";
-          output.write(`${message} (Y/n): `);
+          output.write(`${message} (Y/n): ${buffer}`);
+        }
+      };
+
+      // Initial prompt display
+      if (prompt) {
+        output.write(prompt);
+      }
+      displayPrompt();
+
+      const cleanup = (): void => {
+        input.removeListener("data", handleInput);
+        if (context.tty?.isActive) {
+          output.write("\n");
+        }
+      };
+
+      const handleInput = (data: Buffer): void => {
+        if (!context.tty?.isActive) return;
+
+        const key = data.toString();
+
+        // Handle Ctrl+C
+        if (key === "\u0003") {
+          cleanup();
+          output.write("\n\n❌ Operation cancelled by user (Ctrl+C)\n");
+          process.exit(1);
         }
 
-        input.once("data", (key: string) => {
-          const keyStr = key.toString().toLowerCase();
-          logger.debug("🔑 Received key input:", { keyStr });
+        // Handle backspace
+        if (key === "\u007f") {
+          if (buffer.length > 0) {
+            buffer = buffer.slice(0, -1);
+            displayPrompt();
+          }
+          return;
+        }
 
-          if (keyStr === "\x03") {
-            cleanup();
-            logger.info("\n\n❌ Commit cancelled by user (Ctrl+C)");
-            process.exit(1);
+        // Handle enter
+        if (key === "\r" || key === "\n") {
+          const value = buffer.toLowerCase() || "y"; // Default to 'y' for empty input
+          cleanup();
+
+          if (options.type === "yesno") {
+            if (value === "y" || value === "yes" || value === "") {
+              output.write("yes\n");
+              resolve(true);
+            } else if (value === "n" || value === "no") {
+              output.write("no\n");
+              resolve(false);
+            } else {
+              buffer = "";
+              output.write(
+                "\nInvalid input. Please enter y or n (or press Enter for yes).\n",
+              );
+              displayPrompt();
+              input.on("data", handleInput);
+            }
+            return;
           }
 
           if (options.type === "numeric") {
-            if (keyStr === "c") {
+            if (value === "c") {
               output.write("c\n");
-              cleanup();
-              logger.info("\n❌ Commit cancelled by user");
-              process.exit(1);
-            }
-
-            const num = parseInt(keyStr, 10);
-            if (!isNaN(num) && num >= 1 && num <= options.maxValue) {
-              output.write(`${num}\n`);
-              cleanup();
-              resolve(String(num));
-              return;
-            }
-
-            output.write(
-              `\nInvalid choice. Please enter 1-${options.maxValue} or c.\n`,
-            );
-            handleInput();
-            return;
-          }
-
-          if (options.type === "yesno") {
-            if (keyStr === "\r" || keyStr === "\n" || keyStr === "") {
-              output.write("yes\n");
-              cleanup();
-              resolve(true);
-              return;
-            }
-            if (keyStr === "y" || keyStr === "yes") {
-              output.write("yes\n");
-              cleanup();
-              resolve(true);
-              return;
-            }
-            if (keyStr === "n" || keyStr === "no") {
-              output.write("no\n");
-              cleanup();
               resolve(false);
               return;
             }
-            output.write(
-              "\nInvalid input. Please enter 'y' or 'n' (or press Enter for yes).\n",
-            );
-            handleInput();
+            const num = parseInt(value, 10);
+            if (!isNaN(num) && num >= 1 && num <= options.maxValue) {
+              output.write(`${num}\n`);
+              resolve(String(num));
+            } else {
+              buffer = "";
+              output.write(
+                `\nInvalid choice. Please enter 1-${options.maxValue} or c.\n`,
+              );
+              displayPrompt();
+              input.on("data", handleInput);
+            }
             return;
           }
-        });
+        }
+
+        // Add printable characters to buffer
+        if (key.length === 1 && key >= " " && key <= "~") {
+          buffer += key;
+          displayPrompt();
+        }
       };
 
-      handleInput();
+      input.on("data", handleInput);
     } catch (error) {
-      logger.info("\n⚠️ Non-interactive environment detected, using defaults");
+      logger.debug("Failed to create interactive prompt:", error);
+      // Default fallback for non-interactive environments
       if (options.type === "yesno") {
-        logger.info("Using default: Yes");
+        logger.info(
+          "\n⚠️ Non-interactive environment detected, using default: Yes",
+        );
         resolve(true);
       } else {
-        logger.info("Using default choice: 1");
+        logger.info(
+          "\n⚠️ Non-interactive environment detected, using default: 1",
+        );
         resolve("1");
       }
     }
@@ -260,24 +324,27 @@ interface Choice {
   action: () => Promise<void>;
 }
 
-async function handleSplitSuggestion(params: {
-  splitSuggestion: CommitSplitSuggestion;
+async function handleSplitSuggestion({
+  suggestion,
+  logger,
+  context,
+}: {
+  suggestion: CommitSplitSuggestion;
   logger: LoggerService;
   git: GitService;
+  context: PrepareCommitContext;
 }): Promise<void> {
-  const { splitSuggestion, logger } = params;
-
   logger.info("\n📦 Multiple package changes detected:");
-  logger.info(chalk.yellow(splitSuggestion.reason));
+  logger.info(chalk.yellow(suggestion.reason));
 
   // Display suggested splits with proper typing
-  splitSuggestion.suggestions.forEach((suggestion, index: number) => {
+  suggestion.suggestions.forEach((suggestedSplit, index: number) => {
     logger.info(
-      `\n${chalk.cyan(index + 1)}. ${chalk.bold(suggestion.scope || "root")}:`,
+      `\n${chalk.cyan(index + 1)}. ${chalk.bold(suggestedSplit.scope || "root")}:`,
     );
-    logger.info(`   Message: ${chalk.bold(suggestion.message)}`);
+    logger.info(`   Message: ${chalk.bold(suggestedSplit.message)}`);
     logger.info("   Files:");
-    suggestion.files.forEach((file) => {
+    suggestedSplit.files.forEach((file) => {
       logger.info(`     • ${chalk.gray(file)}`);
     });
   });
@@ -289,13 +356,14 @@ async function handleSplitSuggestion(params: {
       defaultYes: true,
     },
     logger,
+    context,
   });
 
   if (shouldSplit) {
     logger.info("\n📋 Commands to execute:");
     try {
       await copyToClipboard({
-        text: splitSuggestion.commands.join("\n"),
+        text: suggestion.commands.join("\n"),
         logger,
       });
       logger.info(
@@ -305,7 +373,7 @@ async function handleSplitSuggestion(params: {
       logger.info("Execute these commands in order:");
     }
 
-    splitSuggestion.commands.forEach((cmd: string) => {
+    suggestion.commands.forEach((cmd: string) => {
       logger.info(chalk.gray(cmd));
     });
 
@@ -318,7 +386,10 @@ export async function handleSecurityFindings({
   fileFindings,
   logger,
   git,
-}: HandleSecurityFindingsParams): Promise<void> {
+  context,
+}: HandleSecurityFindingsParams & {
+  context: PrepareCommitContext;
+}): Promise<void> {
   const affectedFiles = new Set<string>();
 
   if (secretFindings.length) {
@@ -357,11 +428,14 @@ export async function handleSecurityFindings({
     logger.info("   • Consider using a secret manager");
     logger.info("   • Update any exposed secrets immediately");
 
-    const shouldProceed = await promptYesNo({
-      message: "\n⚠️  Detected potential secrets. Proceed with commit?",
-      defaultValue: false,
+    const shouldProceed = await promptUser({
+      options: {
+        type: "yesno",
+        message: "\n⚠️  Detected potential secrets. Proceed with commit?",
+        defaultYes: false,
+      },
       logger,
-      forceTTY: true,
+      context,
     });
 
     if (!shouldProceed) {
@@ -389,12 +463,15 @@ export async function handleSecurityFindings({
     logger.info("   • Use example files for templates (e.g., .env.example)");
     logger.info("   • Consider using git-crypt for encrypted files");
 
-    const shouldProceed = await promptYesNo({
-      message:
-        "\n⚠️  Detected potentially sensitive files. Proceed with commit?",
-      defaultValue: false,
+    const shouldProceed = await promptUser({
+      options: {
+        type: "yesno",
+        message:
+          "\n⚠️  Detected potentially sensitive files. Proceed with commit?",
+        defaultYes: false,
+      },
       logger,
-      forceTTY: true,
+      context,
     });
 
     if (!shouldProceed) {
@@ -408,26 +485,36 @@ export async function handleSecurityFindings({
   }
 }
 
+interface PrepareCommitContext {
+  tty?: TTYStreams;
+  logger: LoggerService;
+  // ... other context properties
+}
+
 export async function prepareCommit(options: CommitHookOptions): Promise<void> {
   const logger = new LoggerService({
     debug: process.env.GITGUARD_DEBUG === "true" || options.config?.debug,
   });
 
-  logger.debug("🎣 Starting prepareCommit hook with options:", options);
+  // Create context object to share TTY
+  const context: PrepareCommitContext = {
+    logger,
+  };
+
+  // Create TTY once if in interactive mode
+  if (process.stdin.isTTY || options.forceTTY) {
+    try {
+      context.tty = createTTYStreams({ logger });
+    } catch (error) {
+      logger.debug("Failed to create TTY streams:", error);
+    }
+  }
 
   try {
     // Load configuration, but prefer passed config if available
     logger.debug("Loading configuration...");
     const config = options.config || (await loadConfig());
     logger.debug("Configuration loaded:", config);
-
-    // Check if we're in an interactive session or if TTY is forced
-    const isInteractive = process.stdin.isTTY || options.forceTTY;
-
-    if (!isInteractive) {
-      logger.info("Non-interactive mode detected, skipping prompts");
-      return;
-    }
 
     // Initialize services with the correct working directory
     logger.debug("Initializing services...");
@@ -461,6 +548,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
         fileFindings: securityResult?.fileFindings,
         logger,
         git,
+        context,
       });
     }
 
@@ -497,15 +585,17 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
         fileFindings: [],
         logger,
         git,
+        context,
       });
     }
 
     // Check for split suggestions before other options
     if (analysis.splitSuggestion) {
       await handleSplitSuggestion({
-        splitSuggestion: analysis.splitSuggestion,
+        suggestion: analysis.splitSuggestion,
         logger,
         git,
+        context,
       });
     }
 
@@ -540,6 +630,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
                 defaultYes: true,
               },
               logger,
+              context,
             });
 
             if (!shouldProceed) {
@@ -605,38 +696,46 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     });
     logger.info("c. Cancel commit");
 
-    const answer = await promptNumeric({
-      message: `\nEnter your choice (1-${choices.length}) or 'c' to cancel:`,
-      allowEmpty: false,
-      defaultValue: undefined,
+    const answer = await promptUser({
+      options: {
+        type: "numeric",
+        maxValue: choices.length,
+        message: `\nEnter your choice (1-${choices.length}) or 'c' to cancel:`,
+      },
       logger,
-      forceTTY: true,
-      maxValue: choices.length,
+      context,
     });
 
     logger.debug("🔑 Selected choice:", { answer, type: typeof answer });
 
-    if (typeof answer === "string") {
-      const index = parseInt(answer) - 1;
-      logger.debug("🔑 Selected index:", { index });
-      if (choices[index]) {
-        logger.debug("🔑 Starting action execution for choice:", {
-          choice: choices[index].value,
-        });
-        try {
-          await choices[index].action();
-          // No need for return here as actions will exit process
-        } catch (error) {
-          logger.error("❌ Action failed:", error);
-          process.exit(1);
-        }
-      } else {
-        logger.error("Invalid choice:", { index });
+    if (answer === false) {
+      logger.info("\n❌ Operation cancelled by user");
+      process.exit(1);
+    }
+
+    const index = parseInt(String(answer)) - 1;
+    if (choices[index]) {
+      logger.debug("🔑 Starting action execution for choice:", {
+        choice: choices[index].value,
+      });
+      try {
+        await choices[index].action();
+        // No need for return here as actions will exit process
+      } catch (error) {
+        logger.error("❌ Action failed:", error);
         process.exit(1);
       }
+    } else {
+      logger.error("Invalid choice:", { index });
+      process.exit(1);
     }
   } catch (error) {
     logger.error("Hook failed:", error);
+  } finally {
+    // Cleanup TTY at the end
+    if (context.tty?.isActive) {
+      context.tty.dispose();
+    }
     process.exit(1);
   }
 }
