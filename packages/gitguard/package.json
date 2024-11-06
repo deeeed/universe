@@ -38,7 +38,7 @@
     "test:e2e:ai:complex": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=complex-suggestions",
     "test:e2e:large:size": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=large-commits --scenario=size-detection",
     "test:e2e:large:files": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=large-commits --scenario=many-files",
-    "test:e2e:i": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --interactive",
+    "test:e2e:i": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --interactive ",
     "test:e2e": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts",
     "lint": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",

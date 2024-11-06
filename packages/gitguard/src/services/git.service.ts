@@ -194,10 +194,46 @@ export class GitService extends BaseService {
       if (!params.files.length) return;
 
       this.logger.debug(`Unstaging files: ${params.files.join(", ")}`);
-      await this.execGit({
-        command: "reset",
-        args: ["HEAD", ...params.files],
-      });
+
+      // Get repository root for correct path resolution
+      const repoRoot = await this.getRepositoryRoot();
+      this.logger.debug(`Repository root: ${repoRoot}`);
+
+      // Log initial staged files for verification
+      const initialStaged = await this.getStagedChanges();
+      this.logger.debug(
+        "Initially staged files:",
+        initialStaged.map((f) => f.path),
+      );
+
+      for (const file of params.files) {
+        this.logger.debug(`Executing git reset for: ${file}`);
+        const result = await this.execGit({
+          command: "reset",
+          args: ["HEAD", "--", file],
+          cwd: repoRoot, // Use repository root as working directory
+        });
+        this.logger.debug(`Reset result for ${file}:`, result);
+      }
+
+      // Verify files were actually unstaged
+      const remainingStaged = await this.getStagedChanges();
+      this.logger.debug(
+        "Remaining staged files:",
+        remainingStaged.map((f) => f.path),
+      );
+
+      // Validate unstaging worked
+      const failedToUnstage = params.files.filter((file) =>
+        remainingStaged.some((staged) => staged.path === file),
+      );
+
+      if (failedToUnstage.length > 0) {
+        this.logger.error("Failed to unstage files:", failedToUnstage);
+        throw new Error(
+          `Failed to unstage files: ${failedToUnstage.join(", ")}`,
+        );
+      }
     } catch (error) {
       this.logger.error("Failed to unstage files:", error);
       throw error;
@@ -325,31 +361,40 @@ export class GitService extends BaseService {
     }
   }
 
-  async execGit(params: { command: string; args: string[] }): Promise<string> {
+  async execGit(params: {
+    command: string;
+    args: string[];
+    cwd?: string; // Add optional cwd parameter
+  }): Promise<string> {
     try {
-      if (!this.cwd) {
+      if (!params.cwd && !this.cwd) {
         throw new Error("Git working directory not set");
       }
 
+      const workingDir = params.cwd || this.cwd;
+
       // Escape special characters in args
       const escapedArgs = params.args.map((arg) => {
-        // If the argument contains spaces or special characters, wrap it in quotes
         if (
           arg.includes(" ") ||
           arg.includes("(") ||
           arg.includes(")") ||
           arg.includes(":")
         ) {
-          // Escape quotes within the argument and wrap in quotes
           return `"${arg.replace(/"/g, '\\"')}"`;
         }
         return arg;
       });
 
+      this.logger.debug(`Executing git command in ${workingDir}:`, {
+        command: params.command,
+        args: escapedArgs,
+      });
+
       const { stdout } = await execPromise(
         `git ${params.command} ${escapedArgs.join(" ")}`,
         {
-          cwd: this.cwd,
+          cwd: workingDir,
         },
       );
       return stdout;

@@ -25,9 +25,9 @@ import { AIProvider } from "../types/ai.types.js";
 import { CommitSplitSuggestion } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
+import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
-import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 
 interface CommitHookOptions {
   messageFile: string;
@@ -373,11 +373,12 @@ async function handleSplitSuggestion({
   logger: LoggerService;
   git: GitService;
   context: PrepareCommitContext;
-}): Promise<number> {
+}): Promise<ActionResult> {
   logger.info(`\n${chalk.yellow("📦")} Multiple package changes detected:`);
   logger.info(chalk.yellow(suggestion.reason));
 
-  suggestion.suggestions.forEach((suggestedSplit, index: number) => {
+  // Display detected scopes
+  suggestion.suggestions.forEach((suggestedSplit, index) => {
     logger.info(
       `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold.cyan(suggestedSplit.scope ?? "root")}:`,
     );
@@ -390,52 +391,73 @@ async function handleSplitSuggestion({
     });
   });
 
-  const shouldSplit = await promptUser({
+  // Create dynamic choices with clearer messaging
+  logger.info("\n📋 Choose how to proceed:");
+  logger.info(`${chalk.yellow("0.")} Keep all changes together`);
+  suggestion.suggestions.forEach((s, i) => {
+    logger.info(
+      `${chalk.green(`${i + 1}.`)} Keep only ${chalk.cyan(s.scope ?? "root")} changes and unstage others`,
+    );
+  });
+
+  const answer = await promptUser({
     options: {
-      type: "yesno",
-      message: "\n🤔 Would you like to split this commit by package?",
-      defaultYes: true,
+      type: "numeric",
+      maxValue: suggestion.suggestions.length,
+      message: `\nEnter choice (0-${suggestion.suggestions.length}):`,
     },
     logger,
     context,
   });
 
-  if (shouldSplit) {
-    // Get workspace root
-    const workspaceRoot = await git.getRepositoryRoot();
+  const selection = parseInt(String(answer));
 
-    // Prepare commands with cd to workspace root first
-    const commands = [
-      `# Navigate to workspace root`,
-      `cd "${workspaceRoot}"`,
-      ``,
-      `# Unstage all files`,
-      `git reset HEAD .`,
-      ``,
-      `# Create commits for each scope`,
-      ...suggestion.commands,
-    ];
+  if (selection === 0) {
+    logger.info(chalk.yellow("\n⏭️  Continuing with all changes..."));
+    return { status: 0 };
+  }
 
-    logger.info("\n📋 Commands to execute:");
-    try {
-      await copyToClipboard({
-        text: commands.join("\n"),
-        logger,
-      });
-      logger.info(
-        chalk.green("Commands copied to clipboard! Execute them in order:"),
-      );
-    } catch {
-      logger.info("Execute these commands in order:");
-    }
+  if (selection > 0 && selection <= suggestion.suggestions.length) {
+    const selectedSplit = suggestion.suggestions[selection - 1];
 
-    commands.forEach((cmd: string) => {
-      logger.info(chalk.gray(cmd));
+    logger.info(
+      `\n📦 ${chalk.cyan(`Keeping only ${selectedSplit.scope ?? "root"} changes:`)}`,
+    );
+    selectedSplit.files.forEach((file) => {
+      logger.info(`   ${chalk.dim("•")} ${chalk.gray(file)}`);
     });
 
-    return 1;
+    // Unstage files not in the selected scope
+    const filesToUnstage = suggestion.suggestions
+      .filter((_, index) => index + 1 !== selection)
+      .flatMap((s) => s.files);
+
+    if (filesToUnstage.length > 0) {
+      logger.info(`\n🗑️  ${chalk.yellow("Unstaging other files:")}`);
+      filesToUnstage.forEach((file) => {
+        logger.info(`   ${chalk.dim("•")} ${chalk.gray(file)}`);
+      });
+
+      try {
+        await git.unstageFiles({ files: filesToUnstage });
+        logger.info(chalk.green("\n✅ Successfully unstaged other files"));
+
+        // Return the selected message for the commit
+        return {
+          status: 0,
+          message: selectedSplit.message.replace(
+            /^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)\([^)]+\):\s*/,
+            "",
+          ),
+        };
+      } catch (error) {
+        logger.error(chalk.red("\n❌ Failed to unstage files:"), error);
+        return { status: 1 };
+      }
+    }
   }
-  return 0;
+
+  return { status: 1 };
 }
 
 export async function handleSecurityFindings({

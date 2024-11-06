@@ -477,46 +477,40 @@ export async function promptUser(
 }
 
 // Add new interface and function for AI prompts
-export interface AIPromptResult {
-  action: "generate" | "copy" | "skip";
-}
-
 export async function promptAIAction(params: {
   logger: Logger;
   tokenUsage: {
     count: number;
     estimatedCost: string;
   };
-}): Promise<AIPromptResult> {
-  const { logger, tokenUsage } = params;
+}): Promise<{ action: "generate" | "copy" | "skip" }> {
+  const { logger } = params;
 
-  logger.info(
-    `\n💰 Estimated cost for AI generation: ${tokenUsage.estimatedCost}`,
-  );
-  logger.info(`📊 Estimated tokens: ${tokenUsage.count}`);
+  logger.info("\n1. Generate AI suggestions now");
+  logger.info("2. Copy prompt to clipboard for manual use");
+  logger.info("3. Skip AI suggestions");
 
-  const choices = [
-    {
-      label: "Generate AI suggestions now",
-      value: "generate" as const,
-    },
-    {
-      label: "Copy prompt to clipboard for manual use",
-      value: "copy" as const,
-    },
-    {
-      label: "Skip AI suggestions",
-      value: "skip" as const,
-    },
-  ];
-
-  const action = await promptChoice<AIPromptResult["action"]>({
-    message: "🤖 How would you like to proceed with AI suggestions?",
-    choices,
-    logger,
+  const readline = await import("readline/promises");
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
   });
 
-  return { action };
+  try {
+    const answer = await rl.question("\nEnter your choice (number): ");
+
+    switch (answer.trim()) {
+      case "1":
+        return { action: "generate" };
+      case "2":
+        return { action: "copy" };
+      case "3":
+      default:
+        return { action: "skip" };
+    }
+  } finally {
+    rl.close();
+  }
 }
 
 export interface TTYStreams {

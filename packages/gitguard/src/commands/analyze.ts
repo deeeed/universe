@@ -9,10 +9,12 @@ import {
   CommitAnalysisResult,
   PRAnalysisResult,
 } from "../types/analysis.types.js";
+import { FileChange } from "../types/git.types.js";
 import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
 import { promptAIAction } from "../utils/user-prompt.util.js";
+import chalk from "chalk";
 
 interface AnalyzeOptions {
   pr?: string | number;
@@ -86,21 +88,39 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
       if (filesToAnalyze.length > 0) {
         logger.info("\n📂 Analyzing changes:");
         if (shouldAnalyzeStaged && stagedFiles.length > 0) {
-          logger.info(`  • ${stagedFiles.length} staged files`);
+          logger.info(
+            `  ${chalk.dim("•")} ${chalk.cyan(`${stagedFiles.length} staged files`)}`,
+          );
         }
         if (shouldAnalyzeUnstaged && unstagedFiles.length > 0) {
-          logger.info(`  • ${unstagedFiles.length} unstaged files`);
+          logger.info(
+            `  ${chalk.dim("•")} ${chalk.cyan(`${unstagedFiles.length} unstaged files`)}`,
+          );
         }
         logger.info(""); // Empty line for spacing
+      } else {
+        logger.info("\n📂 No changes found in the working directory.");
+        logger.info("\n📋 To get started:");
+        logger.info(`${chalk.dim("1.")} Make some changes to your files`);
+        logger.info(
+          `${chalk.dim("2.")} Use ${chalk.cyan("'git add <file>'")} to stage changes`,
+        );
+        logger.info(
+          `${chalk.dim("3.")} Run ${chalk.cyan("'gitguard analyze'")} again`,
+        );
       }
 
       // If no changes to analyze, show helpful message
       if (filesToAnalyze.length === 0) {
         logger.info("\n📂 No changes found in the working directory.");
-        logger.info("\nTo get started:");
-        logger.info("1. Make some changes to your files");
-        logger.info("2. Use 'git add <file>' to stage changes");
-        logger.info("3. Run 'gitguard analyze' again");
+        logger.info("\n📋 To get started:");
+        logger.info(`${chalk.dim("1.")} Make some changes to your files`);
+        logger.info(
+          `${chalk.dim("2.")} Use ${chalk.cyan("'git add <file>'")} to stage changes`,
+        );
+        logger.info(
+          `${chalk.dim("3.")} Run ${chalk.cyan("'gitguard analyze'")} again`,
+        );
 
         const now = new Date();
         return {
@@ -142,7 +162,7 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
       });
 
       // Analyze all relevant files
-      const result = await commitService.analyze({
+      let result = await commitService.analyze({
         files: filesToAnalyze,
         message: params.message || "",
         enableAI: false,
@@ -150,15 +170,131 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
         securityResult,
       });
 
-      // Show analysis results first
+      // Update split suggestion handling
+      if (result.splitSuggestion) {
+        logger.info(
+          `\n${chalk.yellow("📦")} Multiple package changes detected:`,
+        );
+        logger.info(chalk.yellow(result.splitSuggestion.reason));
+
+        // Display detected scopes
+        result.splitSuggestion.suggestions.forEach((suggestedSplit, index) => {
+          logger.info(
+            `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold.cyan(suggestedSplit.scope ?? "root")}:`,
+          );
+          logger.info(
+            `   ${chalk.dim("Message:")} ${chalk.bold(suggestedSplit.message)}`,
+          );
+          logger.info(`   ${chalk.dim("Files:")}`);
+          suggestedSplit.files.forEach((file) => {
+            logger.info(`     ${chalk.dim("•")} ${chalk.gray(file)}`);
+          });
+        });
+
+        // Create dynamic choices with clearer messaging
+        const choices = [
+          `${chalk.yellow("0.")} Keep all changes together`,
+          ...result.splitSuggestion.suggestions.map(
+            (suggestion, index) =>
+              `${chalk.green(`${index + 1}.`)} Keep only ${chalk.cyan(suggestion.scope ?? "root")} changes and unstage others`,
+          ),
+        ];
+
+        logger.info("\n📋 Choose how to proceed:");
+        choices.forEach((choice) => logger.info(choice));
+
+        const readline = await import("readline/promises");
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
+
+        const answer = await rl.question(
+          `\nEnter choice (0-${result.splitSuggestion.suggestions.length}): `,
+        );
+        rl.close();
+
+        const selection = parseInt(answer, 10);
+
+        // Handle user choice
+        if (selection === 0) {
+          logger.info(chalk.yellow("\n⏭️  Continuing with all changes..."));
+        } else if (
+          selection > 0 &&
+          selection <= result.splitSuggestion.suggestions.length
+        ) {
+          const selectedSplit =
+            result.splitSuggestion.suggestions[selection - 1];
+
+          logger.info(
+            `\n📦 ${chalk.cyan(`Keeping only ${selectedSplit.scope ?? "root"} changes:`)}`,
+          );
+          selectedSplit.files.forEach((file) => {
+            logger.info(`   ${chalk.dim("•")} ${chalk.gray(file)}`);
+          });
+
+          // Unstage files not in the selected scope
+          const filesToUnstage = result.splitSuggestion.suggestions
+            .filter((_, index) => index + 1 !== selection)
+            .flatMap((suggestion) => suggestion.files);
+
+          if (filesToUnstage.length > 0) {
+            logger.info(`\n🗑️  ${chalk.yellow("Unstaging other files:")}`);
+            filesToUnstage.forEach((file) => {
+              logger.info(`   ${chalk.dim("•")} ${chalk.gray(file)}`);
+            });
+
+            try {
+              await git.unstageFiles({ files: filesToUnstage });
+              logger.info(
+                chalk.green("\n✅ Successfully unstaged other files"),
+              );
+
+              // Update the analysis result to reflect only the kept files
+              const keptFiles = selectedSplit.files
+                .map((filePath) =>
+                  filesToAnalyze.find((f) => f.path === filePath),
+                )
+                .filter((file): file is FileChange => file !== undefined);
+
+              if (keptFiles.length !== selectedSplit.files.length) {
+                logger.debug(
+                  "Some files were not found in original analysis:",
+                  {
+                    expected: selectedSplit.files,
+                    found: keptFiles.map((f) => f.path),
+                  },
+                );
+              }
+
+              // Use the raw message from the split suggestion
+              result = await commitService.analyze({
+                files: keptFiles,
+                message: selectedSplit.message.replace(
+                  /^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)\([^)]+\):\s*/,
+                  "",
+                ), // Remove any existing prefix
+                enableAI: false,
+                enablePrompts: true,
+                securityResult,
+              });
+            } catch (error) {
+              logger.error(chalk.red("\n❌ Failed to unstage files:"), error);
+              throw error;
+            }
+          }
+        }
+      }
+
+      // Show analysis results
       if (result.warnings.length > 0) {
-        logger.info("\n⚠️  Analysis found some concerns:");
+        logger.info(`\n${chalk.yellow("⚠️")} Analysis found some concerns:`);
         result.warnings.forEach((warning) => {
-          logger.info(`  • ${warning.message}`);
+          logger.info(`  ${chalk.dim("•")} ${chalk.yellow(warning.message)}`);
         });
       } else {
         logger.info("\n✅ Analysis completed successfully!");
-        logger.info("No issues detected.");
+        logger.info(chalk.green("No issues detected."));
       }
 
       // Generate and display the report
@@ -171,6 +307,18 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
         },
       });
 
+      // Handle commit if option is set
+      if (params.commit && result.formattedMessage) {
+        logger.info("\n📝 Creating commit...");
+        try {
+          await git.createCommit({ message: result.formattedMessage });
+          logger.info(chalk.green("✅ Commit created successfully!"));
+        } catch (error) {
+          logger.error(chalk.red("❌ Failed to create commit:"), error);
+          throw error;
+        }
+      }
+
       // Only show next steps if there are actions to take
       if (
         !params.message ||
@@ -180,18 +328,20 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
         logger.info("\n📋 Next steps:");
         if (!params.message) {
           logger.info(
-            "  • Run 'gitguard analyze --message \"your message\"' to analyze with a commit message",
+            `  ${chalk.dim("•")} Run ${chalk.cyan("'gitguard analyze --message \"your message\"'")} to analyze with a commit message`,
           );
         }
 
         if (config.ai?.enabled && !params.ai) {
           logger.info(
-            "  • Run 'gitguard analyze --ai' to generate commit message suggestions",
+            `  ${chalk.dim("•")} Run ${chalk.cyan("'gitguard analyze --ai'")} to generate commit message suggestions`,
           );
         }
 
         if (result.warnings.length > 0) {
-          logger.info("  • Address the warnings above before committing");
+          logger.info(
+            `  ${chalk.dim("•")} ${chalk.yellow("Address the warnings above before committing")}`,
+          );
         }
       }
 
@@ -207,7 +357,7 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
       }
 
       // Only proceed with AI analysis if --ai flag is provided
-      logger.info("\nPreparing AI suggestions...");
+      logger.info("\n🤖 Preparing AI suggestions...");
       const aiDiff = await git.getStagedDiffForAI();
       const prompt = generateCommitSuggestionPrompt({
         files: filesToAnalyze,
@@ -217,6 +367,13 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
       });
 
       const tokenUsage = ai.calculateTokenUsage({ prompt });
+      logger.info(
+        `\n💰 ${chalk.cyan("Estimated cost for AI generation:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
+      );
+      logger.info(
+        `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}`,
+      );
+
       const aiPromptResult = await promptAIAction({
         logger,
         tokenUsage,
@@ -237,15 +394,18 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
           if (aiResult.suggestions?.length) {
             logger.info("\n🤖 AI Suggestions:");
             aiResult.suggestions.forEach((suggestion, index) => {
-              logger.info(`  ${index + 1}. ${suggestion.message}`);
+              logger.info(
+                `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(suggestion.message)}`,
+              );
+              logger.info(
+                `   ${chalk.dim("Explanation:")} ${suggestion.explanation}`,
+              );
             });
 
             // Add commit handling for AI suggestions
             if (params.commit) {
               logger.info(
-                "\n📝 Select a suggestion to commit (1-" +
-                  aiResult.suggestions.length +
-                  "):",
+                `\n📝 ${chalk.yellow("Select a suggestion to commit")} (${chalk.cyan(`1-${aiResult.suggestions.length}`)}):`,
               );
               const readline = await import("readline/promises");
               const rl = readline.createInterface({
@@ -277,16 +437,18 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
               }
             }
           } else {
-            logger.info("\n❌ No AI suggestions could be generated");
+            logger.info(
+              `\n${chalk.red("❌")} No AI suggestions could be generated`,
+            );
           }
 
           // Only show next steps if no commit was created
           logger.info("\n📋 Next steps:");
           logger.info(
-            "  • Run 'gitguard commit' to use these suggestions in your commit",
+            `  ${chalk.dim("•")} Run ${chalk.cyan("'gitguard commit'")} to use these suggestions in your commit`,
           );
           logger.info(
-            "  • Run with --message to provide a different base message",
+            `  ${chalk.dim("•")} Run with ${chalk.cyan("--message")} to provide a different base message`,
           );
 
           return aiResult;
@@ -355,7 +517,7 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
 
     return result;
   } catch (error) {
-    logger.error("Analysis failed:", error);
+    logger.error(`\n${chalk.red("❌")} Analysis failed:`, error);
     throw error;
   }
 }

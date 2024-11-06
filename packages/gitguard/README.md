@@ -61,6 +61,7 @@ yarn dlx @siteed/gitguard hook install --global
   - Local Ollama models
 - 📦 **Repository-Aware Formatting**:
   - Monorepo: Enforces package scopes and detects cross-package changes
+  - Smart package split detection with interactive unstaging
   - Standard Repos: Uses conventional commits without forcing scopes
 
 ## Installation Options
@@ -199,6 +200,10 @@ npx @siteed/gitguard format "update colors" --scope design-system
 
 # Check commit history
 npx @siteed/gitguard check --last 10
+
+# Analyze changes with smart package splitting
+npx @siteed/gitguard analyze --staged
+# Will detect cross-package changes and offer to split them
 ```
 
 // ... (keep rest of troubleshooting section) ...
@@ -211,5 +216,7 @@ The key changes are:
 4. Added more examples and use cases
 5. Updated Husky integration with simpler options
 6. Added comprehensive CLI commands section
+7. Added "Smart package split detection" bullet point under Repository-Aware Formatting
+8. Added example for package splitting feature in Advanced Usage section
 
 Would you like me to continue with any other sections or add more examples?
