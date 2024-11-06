@@ -267,6 +267,7 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
                     message: selectedSuggestion.message,
                   });
                   logger.info("✅ Commit created successfully!");
+                  return aiResult; // Return early after successful commit
                 } catch (error) {
                   logger.error("Failed to create commit:", error);
                   throw error;
@@ -279,24 +280,14 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
             logger.info("\n❌ No AI suggestions could be generated");
           }
 
-          // Always show next steps
+          // Only show next steps if no commit was created
           logger.info("\n📋 Next steps:");
-          if (!aiResult.suggestions?.length) {
-            logger.info(
-              "  • Try running the command again with a more detailed commit message",
-            );
-            logger.info("  • Check if your AI configuration is correct");
-            logger.info(
-              "  • Try using the 'copy' option to manually use the prompt",
-            );
-          } else {
-            logger.info(
-              "  • Run 'gitguard commit' to use these suggestions in your commit",
-            );
-            logger.info(
-              "  • Run with --message to provide a different base message",
-            );
-          }
+          logger.info(
+            "  • Run 'gitguard commit' to use these suggestions in your commit",
+          );
+          logger.info(
+            "  • Run with --message to provide a different base message",
+          );
 
           return aiResult;
         }

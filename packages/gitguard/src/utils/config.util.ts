@@ -97,6 +97,7 @@ export async function getConfigStatus(): Promise<ConfigStatus> {
 export const defaultConfig: Config = {
   git: {
     baseBranch: "main",
+    monorepoPatterns: ["packages/", "apps/", "libs/"],
     ignorePatterns: ["*.lock", "dist/*"],
     cwd: process.cwd(),
   },

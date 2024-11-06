@@ -16,6 +16,7 @@ export function buildCommitPrompt(params: {
   originalMessage: string;
   diff: string;
   logger: Logger;
+  scope?: string;
 }): string {
   const fileChanges = formatFileChanges({ files: params.files });
   const packageSummary = formatPackageSummary({
@@ -26,6 +27,10 @@ export function buildCommitPrompt(params: {
     logger: params.logger,
   });
 
+  const scopeGuideline = params.scope
+    ? `\nValid scope: "${params.scope}"\n`
+    : "\nNo specific scope detected\n";
+
   return `Analyze these git changes and suggest commit messages following conventional commits format.
 
 Files Changed:
@@ -33,7 +38,7 @@ ${fileChanges}
 
 Package Changes:
 ${packageSummary}
-
+${scopeGuideline}
 Original message: "${params.originalMessage}"
 
 Git diff (truncated):
@@ -41,14 +46,14 @@ Git diff (truncated):
 ${truncatedDiff}
 \`\`\`
 
-Please provide 3 suggestions in this JSON format:
+Please provide suggestions in this JSON format:
 ${getCommitSuggestionFormat()}
 
 Guidelines:
 1. Follow conventional commits format: type(scope): description
 2. Be specific about the changes
 3. Keep descriptions concise but informative
-4. Include scope when changes affect specific packages
+4. Only use the provided scope if one is specified
 5. Use appropriate type based on the changes`;
 }
 
@@ -119,49 +124,38 @@ interface PromptParams {
   message: string;
   diff: string;
   logger: Logger;
+  scope?: string;
 }
 
 export function generateCommitSuggestionPrompt(params: PromptParams): string {
-  const { files, message, diff, logger } = params;
+  const { files, message, diff, logger, scope } = params;
 
-  const fileChanges = formatFileChanges({ files });
-  const truncatedDiff = truncateDiff({ diff, logger });
+  // Group files by package for summary
+  const packages: Record<string, FileChange[]> = {};
+  files.forEach((file) => {
+    const parts = file.path.split("/");
+    const pkg = parts.length >= 2 ? parts[1] : "root";
+    if (!packages[pkg]) packages[pkg] = [];
+    packages[pkg].push(file);
+  });
 
   logger.debug("Generating commit suggestion prompt:", {
     filesCount: files.length,
     originalDiffLength: diff.length,
-    truncatedDiffLength: truncatedDiff.length,
+    truncatedDiffLength: truncateDiff({ diff, logger }).length,
     message,
+    scope,
+    packages: Object.keys(packages),
   });
 
-  const prompt = `Analyze these git changes and suggest a commit message:
-
-Files Changed:
-${fileChanges}
-
-Original message: "${message}"
-
-Git diff (truncated):
-\`\`\`diff
-${truncatedDiff}
-\`\`\`
-
-Please provide suggestions in this JSON format:
-${getCommitSuggestionFormat()}
-
-Guidelines:
-1. Follow conventional commits format
-2. Be specific about the changes
-3. Keep descriptions concise
-4. Include scope when appropriate
-5. Use appropriate type based on changes`;
-
-  logger.debug("Generated prompt:", {
-    length: prompt.length,
-    preview: prompt.slice(0, 200) + "...",
+  return buildCommitPrompt({
+    files,
+    packages,
+    originalMessage: message,
+    diff,
+    logger,
+    scope,
   });
-
-  return prompt;
 }
 
 export function generateSplitSuggestionPrompt(params: {

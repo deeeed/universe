@@ -2,7 +2,8 @@
 import { exec } from "child_process";
 import { promises as fs } from "fs";
 import { promisify } from "util";
-import { CommitInfo, FileChange, GitConfig } from "../types/git.types.js";
+import { CommitInfo, FileChange } from "../types/git.types.js";
+import { GitConfig } from "../types/config.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
 import { FileUtil } from "../utils/file.util.js";
@@ -138,11 +139,22 @@ export class GitService extends BaseService {
   async isMonorepo(): Promise<boolean> {
     try {
       const root = await this.getRepositoryRoot();
-      const result = await this.execGit({
-        command: "ls-files",
-        args: [`${root}/packages`],
-      });
-      return result.trim().length > 0;
+      const patterns = this.gitConfig.monorepoPatterns || [
+        "packages/",
+        "apps/",
+        "libs/",
+      ];
+
+      const results = await Promise.all(
+        patterns.map((pattern) =>
+          this.execGit({
+            command: "ls-files",
+            args: [`${root}/${pattern}`],
+          }),
+        ),
+      );
+
+      return results.some((result) => result.trim().length > 0);
     } catch {
       return false;
     }

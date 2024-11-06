@@ -3,17 +3,17 @@
 export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
-
-export interface GitConfig {
-  baseBranch: string;
-  ignorePatterns: string[];
-  cwd: string;
-}
-
 export interface AnalysisConfig {
   maxCommitSize: number;
   maxFileSize: number;
   checkConventionalCommits: boolean;
+}
+
+export interface GitConfig {
+  baseBranch: string;
+  monorepoPatterns: string[];
+  ignorePatterns?: string[];
+  cwd?: string;
 }
 
 export interface SecurityConfig {

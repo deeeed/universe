@@ -41,6 +41,7 @@ export async function init(options: InitOptions): Promise<void> {
     const config: Partial<Config> = {
       git: {
         baseBranch: responses.baseBranch,
+        monorepoPatterns: defaultConfig.git.monorepoPatterns,
         ignorePatterns: defaultConfig.git.ignorePatterns,
         cwd: process.cwd(),
       },

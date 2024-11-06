@@ -209,11 +209,14 @@ export class CommitService extends BaseService {
       return undefined;
     }
 
+    const detectedScope = this.detectScope(params.files);
+
     this.logger.debug("Generating AI suggestions for files:", {
       fileCount: params.files.length,
       diffLength: params.diff.length,
       message: params.message,
       aiProvider: this.ai.constructor.name,
+      detectedScope,
     });
 
     const prompt = generateCommitSuggestionPrompt({
@@ -221,6 +224,7 @@ export class CommitService extends BaseService {
       message: params.message,
       diff: params.diff,
       logger: this.logger,
+      scope: detectedScope,
     });
 
     try {
@@ -232,7 +236,7 @@ export class CommitService extends BaseService {
           requireJson: true,
           temperature: 0.7,
           systemPrompt:
-            "You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format.",
+            "You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. Only use the provided scope if one is specified.",
         },
       });
 
@@ -367,24 +371,57 @@ export class CommitService extends BaseService {
   }
 
   public detectScope(files: FileChange[]): string | undefined {
-    const isMonorepo = files.some((f) => f.path.startsWith("packages/"));
+    const patterns = this.git.config.monorepoPatterns;
+
+    this.logger.debug("Detecting scope with patterns:", {
+      patterns,
+      fileCount: files.length,
+      filePaths: files.map((f) => f.path),
+    });
+
+    const isMonorepo = files.some((f) =>
+      patterns.some((pattern) => f.path.startsWith(pattern)),
+    );
+
+    this.logger.debug("Monorepo detection result:", {
+      isMonorepo,
+      patterns,
+    });
 
     if (!isMonorepo) {
+      this.logger.debug("Not a monorepo structure, skipping scope detection");
       return undefined;
     }
 
-    const packages = new Set<string>();
+    const scopes = new Set<string>();
     for (const file of files) {
-      if (file.path.startsWith("packages/")) {
-        const parts = file.path.split("/");
-        if (parts.length >= 2) {
-          packages.add(parts[1]);
+      for (const pattern of patterns) {
+        if (file.path.startsWith(pattern)) {
+          const parts = file.path.split("/");
+          if (parts.length >= 2) {
+            scopes.add(parts[1]);
+            this.logger.debug("Found scope for file:", {
+              file: file.path,
+              pattern,
+              scope: parts[1],
+            });
+          }
+          break;
         }
       }
     }
 
-    const packageNames = Array.from(packages);
-    return packageNames.length === 1 ? packageNames[0] : packageNames.join(",");
+    const scopeNames = Array.from(scopes);
+    const result =
+      scopeNames.length === 1 ? scopeNames[0] : scopeNames.join(",");
+
+    this.logger.debug("Final scope detection result:", {
+      scopeCount: scopeNames.length,
+      scopes: scopeNames,
+      result,
+    });
+
+    return result;
   }
 
   private analyzeCommitCohesion(params: {

@@ -3,12 +3,6 @@ export interface GitCommandParams {
   args: string[];
 }
 
-export interface GitConfig {
-  baseBranch: string;
-  ignorePatterns?: string[];
-  cwd?: string;
-}
-
 export type CommitType =
   | "feat"
   | "fix"

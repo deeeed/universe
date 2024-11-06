@@ -453,9 +453,19 @@ export class PRService extends BaseService {
     // Group files by scope
     const filesByScope = files.reduce(
       (acc, file) => {
-        const scope = file.path.startsWith("packages/")
-          ? file.path.split("/")[1]
-          : "root";
+        let scope = "root";
+        const patterns = this.git.config.monorepoPatterns;
+
+        for (const pattern of patterns) {
+          if (file.path.startsWith(pattern)) {
+            const parts = file.path.split("/");
+            if (parts.length >= 2) {
+              const scopeType = pattern.replace("/", "");
+              scope = `${scopeType}/${parts[1]}`;
+            }
+            break;
+          }
+        }
 
         if (!acc[scope]) {
           acc[scope] = {
@@ -464,7 +474,6 @@ export class PRService extends BaseService {
           };
         }
         acc[scope].files.push(file);
-        // Track which commits modified this scope
         params.commits
           .filter((c) => c.files.some((f) => f.path === file.path))
           .forEach((c) => acc[scope].commits.add(c.hash));
