@@ -1,14 +1,14 @@
-import { PRService } from "../services/pr.service.js";
+import chalk from "chalk";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
 import { LoggerService } from "../services/logger.service.js";
+import { PRService } from "../services/pr.service.js";
 import { ReporterService } from "../services/reporter.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { PRAnalysisResult } from "../types/analysis.types.js";
-import { loadConfig } from "../utils/config.util.js";
-import chalk from "chalk";
 import { generatePRDescriptionPrompt } from "../utils/ai-prompt.util.js";
-import { promptAIAction } from "../utils/user-prompt.util.js";
+import { loadConfig } from "../utils/config.util.js";
+import { promptNumeric, promptYesNo } from "../utils/user-prompt.util.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 
 interface BranchAnalyzeParams {
@@ -31,7 +31,10 @@ export async function analyzeBranch({
   const reporter = new ReporterService({ logger });
 
   try {
+    logger.debug("Starting branch analysis with options:", options);
     const config = await loadConfig({ configPath: options.configPath });
+    logger.debug("Loaded config:", config);
+
     const git = new GitService({
       config: {
         ...config.git,
@@ -39,6 +42,7 @@ export async function analyzeBranch({
       },
       logger,
     });
+
     const security = new SecurityService({ config, logger });
     const ai =
       (options.ai ?? config.ai?.enabled)
@@ -49,6 +53,12 @@ export async function analyzeBranch({
             logger,
           })
         : undefined;
+
+    logger.debug("Initialized services:", {
+      git: !!git,
+      security: !!security,
+      ai: !!ai,
+    });
 
     const prService = new PRService({
       config,
@@ -63,8 +73,11 @@ export async function analyzeBranch({
     const branchToAnalyze = options.name || currentBranch;
     const baseBranch = git.config.baseBranch;
 
-    logger.info("\n📊 Analyzing branch:", chalk.cyan(branchToAnalyze));
-    logger.info("Base branch:", chalk.cyan(baseBranch));
+    logger.debug("Branch analysis context:", {
+      currentBranch,
+      branchToAnalyze,
+      baseBranch,
+    });
 
     // Get branch analysis
     let result = await prService.analyze({
@@ -147,7 +160,29 @@ export async function analyzeBranch({
 
     // Handle AI suggestions if enabled
     if (options.ai && ai) {
-      logger.info("\n🤖 Preparing AI suggestions...");
+      logger.debug("Starting AI suggestion flow");
+      logger.info("\n🤖 AI Assistant Options:");
+      logger.info("1. Generate PR title and description");
+      logger.info("2. Suggest branch name improvements");
+      logger.info("3. Review changes and suggest improvements");
+      logger.info("4. Skip AI assistance");
+
+      const answer = await promptNumeric({
+        message: "\nChoose an option (1-4):",
+        allowEmpty: false,
+        logger,
+      });
+
+      const choice = parseInt(answer ?? "0", 10);
+      logger.debug("User selected AI option:", choice);
+
+      // Early return if user chooses to skip
+      if (choice === 4 || choice < 1 || choice > 4) {
+        logger.debug("User chose to skip AI suggestions");
+        logger.info("\n⏭️  Skipping AI suggestions");
+        return result;
+      }
+
       const prompt = generatePRDescriptionPrompt({
         commits: result.commits,
         stats: result.stats,
@@ -164,40 +199,104 @@ export async function analyzeBranch({
         `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}`,
       );
 
-      const aiPromptResult = await promptAIAction({
+      const shouldProceed = await promptYesNo({
+        message: "Would you like to proceed with AI generation?",
         logger,
-        tokenUsage,
+        defaultValue: true,
       });
 
-      switch (aiPromptResult.action) {
-        case "generate": {
-          logger.info("\nGenerating AI suggestions...");
-          result = await prService.analyze({
-            branch: branchToAnalyze,
-            enableAI: true,
-            enablePrompts: true,
-          });
-          break;
-        }
+      if (!shouldProceed) {
+        logger.debug("User chose not to proceed with AI generation");
+        logger.info("\n⏭️  Skipping AI suggestions");
+        return result;
+      }
 
-        case "copy": {
+      logger.info("\nGenerating AI suggestions...");
+      result = await prService.analyze({
+        branch: branchToAnalyze,
+        enableAI: true,
+        enablePrompts: true,
+        aiMode: choice === 1 ? "pr" : choice === 2 ? "branch" : "review",
+      });
+
+      // Display AI suggestions based on mode
+      if (choice === 1 && result.description) {
+        // PR title and description mode
+        logger.info("\n🤖 Generated PR Description:");
+        logger.info(`\n${chalk.bold("Title:")} ${result.description.title}`);
+        logger.info(
+          `\n${chalk.dim("Description:")}\n${result.description.description}`,
+        );
+
+        // Offer to copy to clipboard
+        const shouldCopy = await promptYesNo({
+          message: "\nWould you like to copy this to clipboard?",
+          logger,
+          defaultValue: true,
+        });
+
+        if (shouldCopy) {
           await copyToClipboard({
-            text: prompt,
+            text: `${result.description.title}\n\n${result.description.description}`,
             logger,
           });
-          logger.info("\n✅ AI prompt copied to clipboard!");
-          break;
+          logger.info("\n✅ Copied to clipboard!");
+        }
+      } else if (choice === 2 && result.suggestedTitle) {
+        // Branch name improvement mode
+        logger.info("\n🤖 Branch Name Suggestion:");
+        logger.info(`${chalk.bold("Current:")} ${branchToAnalyze}`);
+        logger.info(`${chalk.bold("Suggested:")} ${result.suggestedTitle}`);
+
+        if (result.description?.explanation) {
+          logger.info(
+            `\n${chalk.dim("Explanation:")} ${result.description.explanation}`,
+          );
         }
 
-        case "skip":
-          logger.info("\n⏭️  Skipping AI suggestions");
-          break;
+        const shouldRename = await promptYesNo({
+          message: `\nWould you like to rename the branch to "${result.suggestedTitle}"?`,
+          logger,
+          defaultValue: false,
+        });
+
+        if (shouldRename) {
+          await git.renameBranch({
+            from: branchToAnalyze,
+            to: result.suggestedTitle,
+          });
+          logger.info(
+            `\n✅ Branch renamed to: ${chalk.cyan(result.suggestedTitle)}`,
+          );
+        }
+      } else if (choice === 3 && result.aiSuggestions?.length) {
+        // Review mode
+        logger.info("\n🤖 AI Review Suggestions:");
+        result.aiSuggestions.forEach((suggestion, index) => {
+          logger.info(
+            `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(suggestion.title)}`,
+          );
+          if (suggestion.description) {
+            logger.info(
+              `   ${chalk.dim("Description:")} ${suggestion.description}`,
+            );
+          }
+          if (suggestion.explanation) {
+            logger.info(
+              `   ${chalk.dim("Explanation:")} ${suggestion.explanation}`,
+            );
+          }
+        });
+      } else {
+        logger.info("\n❌ No AI suggestions were generated.");
       }
     }
 
+    logger.debug("Branch analysis completed successfully");
     return result;
   } catch (error) {
     logger.error(`\n${chalk.red("❌")} Branch analysis failed:`, error);
+    logger.debug("Full error details:", error);
     throw error;
   }
 }

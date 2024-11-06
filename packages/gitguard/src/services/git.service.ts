@@ -572,4 +572,73 @@ export class GitService extends BaseService {
       throw error;
     }
   }
+
+  async renameBranch(params: { from: string; to: string }): Promise<void> {
+    try {
+      const { from, to } = params;
+      this.logger.debug(`Renaming branch from "${from}" to "${to}"`);
+
+      // Check if target branch name already exists
+      const branches = await this.execGit({
+        command: "branch",
+        args: ["--list", to],
+      });
+
+      if (branches.trim()) {
+        throw new Error(`Branch "${to}" already exists`);
+      }
+
+      // Rename the branch
+      await this.execGit({
+        command: "branch",
+        args: ["-m", from, to],
+      });
+
+      // Check if the old branch was tracked remotely
+      const remoteInfo = await this.execGit({
+        command: "config",
+        args: ["--get", `branch.${from}.remote`],
+      }).catch(() => "");
+
+      if (remoteInfo.trim()) {
+        this.logger.debug("Branch was tracked remotely, updating remote...");
+
+        // Delete the old branch from remote if it exists
+        await this.execGit({
+          command: "push",
+          args: ["origin", "--delete", from],
+        }).catch((error) => {
+          this.logger.debug("Failed to delete old remote branch:", error);
+        });
+
+        // Push the new branch and set upstream
+        await this.execGit({
+          command: "push",
+          args: ["-u", "origin", to],
+        });
+
+        this.logger.debug("Remote branch updated successfully");
+      }
+
+      this.logger.debug("Branch renamed successfully");
+    } catch (error) {
+      this.logger.error("Failed to rename branch:", error);
+      throw new Error(
+        `Failed to rename branch from "${params.from}" to "${params.to}": ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  async getBranchExists(params: { branch: string }): Promise<boolean> {
+    try {
+      const result = await this.execGit({
+        command: "branch",
+        args: ["--list", params.branch],
+      });
+      return Boolean(result.trim());
+    } catch (error) {
+      this.logger.error("Failed to check branch existence:", error);
+      return false;
+    }
+  }
 }

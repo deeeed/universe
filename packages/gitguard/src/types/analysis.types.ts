@@ -50,6 +50,15 @@ export interface PRAnalysisResult {
   description?: PRDescription;
   splitSuggestion?: PRSplitSuggestion;
   filesByDirectory: Record<string, string[]>;
+  securityResult?: SecurityCheckResult;
+  aiSuggestions?: Array<{
+    title: string;
+    description?: string;
+    type?: string;
+    scope?: string;
+    explanation: string;
+  }>;
+  suggestedTitle?: string;
 }
 
 export interface PRStats {
@@ -89,6 +98,7 @@ export interface SplitAnalysisOptions extends BaseAIOptions {
 export interface PRDescription {
   title: string;
   description: string;
+  explanation?: string;
 }
 
 export interface PRDescriptionOptions extends BaseAIOptions {}
@@ -107,10 +117,10 @@ export interface PRSplitSuggestion {
 }
 
 export interface PRAnalysisOptions {
-  branch?: string;
-  securityResult?: SecurityCheckResult;
+  branch: string;
   enableAI?: boolean;
   enablePrompts?: boolean;
+  aiMode?: "pr" | "branch" | "review";
 }
 
 // Shared only where absolutely necessary

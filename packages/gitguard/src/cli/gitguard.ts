@@ -225,24 +225,35 @@ ${chalk.blue("Examples:")}
     .option("--no-color", "Disable colored output")
     .option("--detailed", "Show detailed analysis")
     .option("--ai", "Enable AI-powered suggestions")
+    .option("-d, --debug", "Enable debug mode")
     .addHelpText(
       "after",
       `
 ${chalk.blue("Examples:")}
   ${chalk.yellow("$")} gitguard branch                # Analyze current branch
   ${chalk.yellow("$")} gitguard branch -n feature-1   # Analyze specific branch
-  ${chalk.yellow("$")} gitguard branch -p 123         # Analyze pull request`,
+  ${chalk.yellow("$")} gitguard branch -p 123         # Analyze pull request
+  ${chalk.yellow("$")} gitguard branch --ai           # Get AI suggestions for PR
+  ${chalk.yellow("$")} gitguard branch --ai -d        # Get AI suggestions with debug logs`,
     )
     .action(async (options: BranchCommandOptions) => {
+      const debug = isDebugEnabled() || options.debug;
+      const logger = new LoggerService({ debug });
+
+      logger.debug("Starting branch command with options:", options);
+
       try {
         await analyzeBranch({
           options: {
             ...options,
-            debug: isDebugEnabled() || options.debug,
+            debug,
           },
         });
+        logger.debug("Branch command completed successfully");
+        process.exit(0);
       } catch (error) {
         logger.error("Branch command failed:", error);
+        logger.debug("Full error details:", error);
         process.exit(1);
       }
     });

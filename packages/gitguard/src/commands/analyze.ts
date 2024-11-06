@@ -1,8 +1,8 @@
+import chalk from "chalk";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
 import { LoggerService } from "../services/logger.service.js";
-import { PRService } from "../services/pr.service.js";
 import { ReporterService } from "../services/reporter.service.js";
 import { SecurityService } from "../services/security.service.js";
 import {
@@ -14,7 +14,6 @@ import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
 import { promptAIAction } from "../utils/user-prompt.util.js";
-import chalk from "chalk";
 
 interface AnalyzeOptions {
   pr?: string | number;
@@ -491,31 +490,31 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
       return result;
     }
 
-    // PR analysis logic
-    const prService = new PRService({
-      config,
-      git,
-      security,
-      ai,
-      logger,
-    });
+    throw new Error("Not implemented");
+    // // PR analysis logic
+    // const prService = new PRService({
+    //   config,
+    //   git,
+    //   security,
+    //   ai,
+    //   logger,
+    // });
 
-    const result = await prService.analyze({
-      branch: params.branch,
-      enableAI: Boolean(config.ai?.enabled),
-      enablePrompts: true,
-    });
+    // const result = await prService.analyze({
+    //   branch: params.branch,
+    //   enableAI: Boolean(config.ai?.enabled),
+    //   enablePrompts: true,
+    // });
 
-    reporter.generateReport({
-      result,
-      options: {
-        format: params.format || "console",
-        color: params.color,
-        detailed: params.detailed,
-      },
-    });
-
-    return result;
+    // reporter.generateReport({
+    //   result,
+    //   options: {
+    //     format: params.format || "console",
+    //     color: params.color,
+    //     detailed: params.detailed,
+    //   },
+    // });
+    // return result;
   } catch (error) {
     logger.error(`\n${chalk.red("❌")} Analysis failed:`, error);
     throw error;
