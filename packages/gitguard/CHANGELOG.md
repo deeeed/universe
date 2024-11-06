@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- feat(gitguard): add smart package split detection in analyze command ([92a1ae8](https://github.com/deeeed/universe/commit/92a1ae8f4ef4dc22f833876e27b70af807f74074))
 
 ## [0.3.2] - 2024-11-06
 - feat(gitguard): add monorepoPatterns to init command configuration ([11995bd](https://github.com/deeeed/universe/commit/11995bdc661d9426b1af84fe80ac36806fca3011))
