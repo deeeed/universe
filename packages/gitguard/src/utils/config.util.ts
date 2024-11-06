@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import { homedir } from "os";
 import { join } from "path";
-import { Config } from "../types/config.types.js";
+import { Config, DeepPartial } from "../types/config.types.js";
 import { getGitRoot, isGitRepository } from "./git.util.js";
 import { deepMerge } from "./deep-merge.js";
 
@@ -187,4 +187,28 @@ export function getConfigPaths(): ConfigPaths {
     global: globalConfigPath,
     local: localConfigPath,
   };
+}
+
+interface CreateConfigParams {
+  partial?: DeepPartial<Config>;
+  cwd?: string;
+}
+
+export function createConfig({
+  partial = {},
+  cwd,
+}: CreateConfigParams = {}): Config {
+  const merged = deepMerge(defaultConfig, partial);
+
+  if (cwd) {
+    return {
+      ...merged,
+      git: {
+        ...merged.git,
+        cwd,
+      },
+    };
+  }
+
+  return merged;
 }

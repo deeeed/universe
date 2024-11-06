@@ -1,11 +1,18 @@
+import chalk from "chalk";
 import { parseArgs } from "node:util";
-import { LoggerService } from "../src/services/logger.service.js";
-import { commitMessageTest } from "./test/commit-message.test.js";
-import { securityTest } from "./test/security.test.js";
-import { aiSuggestionsTest } from "./test/ai-suggestions.test.js";
-import { largeCommitsTest } from "./test/large-commits.test.js";
-import { E2ETest, TestSuites, TestSuiteKey } from "./tests.types.js";
 import { createInterface } from "readline";
+import { LoggerService } from "../src/services/logger.service.js";
+import { aiSuggestionsTest } from "./test/ai-suggestions.test.js";
+import { commitMessageTest } from "./test/commit-message.test.js";
+import { largeCommitsTest } from "./test/large-commits.test.js";
+import { securityTest } from "./test/security.test.js";
+import {
+  E2ETest,
+  TestResult,
+  TestScenario,
+  TestSuiteKey,
+  TestSuites,
+} from "./tests.types.js";
 
 const TEST_MAP = new Map<TestSuiteKey, E2ETest>([
   [TestSuites.COMMIT_MESSAGE, commitMessageTest],
@@ -18,6 +25,7 @@ interface ParsedArgs {
   tests?: string;
   all?: boolean;
   interactive?: boolean;
+  scenario?: string;
 }
 
 async function promptUser(question: string): Promise<string> {
@@ -34,57 +42,170 @@ async function promptUser(question: string): Promise<string> {
   });
 }
 
-async function selectTests(logger: LoggerService): Promise<E2ETest[]> {
+async function promptForTestSuite(logger: LoggerService): Promise<E2ETest> {
+  const testEntries = Array.from(TEST_MAP.entries());
+
+  logger.info("\n📋 Available Test Suites:");
+  testEntries.forEach(([key, test], index) => {
+    logger.info(
+      `${chalk.cyan(`${index + 1}`)}. ${chalk.bold(test.name)} ${chalk.gray(`(${key})`)}`,
+    );
+  });
+
+  const answer = await promptUser(
+    `\nEnter number to select test suite ${chalk.cyan(`(1-${testEntries.length})`)}: `,
+  );
+  const testIndex = parseInt(answer) - 1;
+
+  if (isNaN(testIndex) || testIndex < 0 || testIndex >= testEntries.length) {
+    throw new Error(
+      `Invalid selection. Please enter a number between ${chalk.cyan("1")} and ${chalk.cyan(testEntries.length)}`,
+    );
+  }
+
+  const selectedTest = testEntries[testIndex][1];
+  if (!selectedTest) {
+    throw new Error("Invalid test suite selection");
+  }
+
+  return selectedTest;
+}
+
+async function promptForScenario(
+  test: E2ETest,
+  logger: LoggerService,
+): Promise<TestScenario> {
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  logger.info("\n📋 Available Scenarios:");
+  test.scenarios.forEach((scenario, index) => {
+    logger.info(`${chalk.cyan(`${index + 1}`)}. ${chalk.bold(scenario.name)}`);
+  });
+
+  const answer = await new Promise<string>((resolve) => {
+    rl.question(
+      `\nEnter number to select scenario ${chalk.cyan(`(1-${test.scenarios.length})`)}: `,
+      (answer: string) => {
+        rl.close();
+        resolve(answer.trim());
+      },
+    );
+  });
+
+  const scenarioIndex = parseInt(answer) - 1;
+  if (
+    isNaN(scenarioIndex) ||
+    scenarioIndex < 0 ||
+    scenarioIndex >= test.scenarios.length
+  ) {
+    throw new Error(
+      `Invalid selection. Please enter a number between ${chalk.cyan("1")} and ${chalk.cyan(test.scenarios.length)}`,
+    );
+  }
+
+  return test.scenarios[scenarioIndex];
+}
+
+async function selectTests(logger: LoggerService): Promise<{
+  tests: E2ETest[];
+  interactive: boolean;
+  scenarioId?: string;
+}> {
   const { values } = parseArgs({
     options: {
       tests: { type: "string" },
       all: { type: "boolean" },
+      interactive: { type: "boolean" },
+      scenario: { type: "string" },
     },
   });
 
   const args = values as ParsedArgs;
+  const scenarioId = args.scenario;
 
+  // Return early if interactive mode is specified
+  if (args.interactive) {
+    const selectedTest = await promptForTestSuite(logger);
+    return { tests: [selectedTest], interactive: true, scenarioId };
+  }
+
+  // Original logic for non-interactive mode
   if (args.tests) {
     const selectedKeys = args.tests.split(",").map((key) => key.trim());
-    return selectedKeys
-      .map((key) => TEST_MAP.get(key as TestSuiteKey))
-      .filter((test): test is E2ETest => test !== undefined);
+    return {
+      tests: selectedKeys
+        .map((key) => TEST_MAP.get(key as TestSuiteKey))
+        .filter((test): test is E2ETest => test !== undefined),
+      interactive: false,
+      scenarioId,
+    };
   }
 
   if (args.all) {
-    return Array.from(TEST_MAP.values());
+    return {
+      tests: Array.from(TEST_MAP.values()),
+      interactive: false,
+      scenarioId,
+    };
   }
-
-  logger.info("\n📋 Available Test Suites:");
-  Array.from(TEST_MAP.entries()).forEach(([key, test]) => {
-    logger.info(`${key}: ${test.name}`);
-  });
 
   const answer = await promptUser(
     "\nEnter test suite keys to run (comma-separated) or 'all': ",
   );
 
   if (answer.toLowerCase() === "all") {
-    return Array.from(TEST_MAP.values());
+    return {
+      tests: Array.from(TEST_MAP.values()),
+      interactive: false,
+      scenarioId,
+    };
   }
 
   const selectedKeys = answer.split(",").map((key) => key.trim());
-  return selectedKeys
-    .map((key) => TEST_MAP.get(key as TestSuiteKey))
-    .filter((test): test is E2ETest => test !== undefined);
+  return {
+    tests: selectedKeys
+      .map((key) => TEST_MAP.get(key as TestSuiteKey))
+      .filter((test): test is E2ETest => test !== undefined),
+    interactive: false,
+    scenarioId,
+  };
 }
 
 export async function runTests(): Promise<void> {
   const logger = new LoggerService({ debug: true });
 
   try {
-    const selectedTests = await selectTests(logger);
+    const {
+      tests: selectedTests,
+      interactive,
+      scenarioId,
+    } = await selectTests(logger);
     let totalSuccess = 0;
     let totalFailed = 0;
 
     for (const test of selectedTests) {
       logger.info(`\n🧪 Running test suite: ${test.name}`);
-      const results = await test.run(logger);
+
+      let results: TestResult[];
+
+      if (interactive) {
+        // Run single scenario in interactive mode
+        const scenario = await promptForScenario(test, logger);
+        results = await test.run(logger, [scenario]);
+      } else if (scenarioId) {
+        // Run specific scenario by ID
+        const scenario = test.scenarios.find((s) => s.id === scenarioId);
+        if (!scenario) {
+          throw new Error(`Invalid scenario ID: ${scenarioId}`);
+        }
+        results = await test.run(logger, [scenario]);
+      } else {
+        // Run all scenarios in non-interactive mode
+        results = await test.run(logger);
+      }
 
       const success = results.filter((r) => r.success).length;
       const failed = results.length - success;
@@ -92,9 +213,16 @@ export async function runTests(): Promise<void> {
       totalSuccess += success;
       totalFailed += failed;
 
-      logger.info(
-        `\n📊 ${test.name} Results: ${success}/${results.length} passed`,
-      );
+      // Show results based on whether we're running a single scenario or multiple
+      if (interactive || scenarioId) {
+        logger.info(
+          `\n📊 Scenario Result: ${results[0].success ? "✅ Passed" : "❌ Failed"}`,
+        );
+      } else {
+        logger.info(
+          `\n📊 ${test.name} Results: ${success}/${results.length} passed`,
+        );
+      }
     }
 
     logger.info(

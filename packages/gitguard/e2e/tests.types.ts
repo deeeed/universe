@@ -2,6 +2,7 @@ import { LoggerService } from "../src/services/logger.service.js";
 import { Config, DeepPartial } from "../src/types/config.types.js";
 
 export interface TestScenario {
+  id: string;
   name: string;
   setup: {
     files: Array<{
@@ -19,6 +20,8 @@ export interface TestScenario {
     securityIssues?: boolean;
     splitSuggestion?: boolean;
     aiSuggestions?: boolean;
+    warnings?: string[];
+    exitCode?: number;
   };
 }
 
@@ -36,7 +39,10 @@ export interface TestResult {
 export interface E2ETest {
   name: string;
   scenarios: TestScenario[];
-  run: (logger: LoggerService) => Promise<TestResult[]>;
+  run: (
+    logger: LoggerService,
+    selectedScenarios?: TestScenario[],
+  ) => Promise<TestResult[]>;
 }
 
 export const TestSuites = {

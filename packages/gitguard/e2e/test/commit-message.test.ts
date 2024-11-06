@@ -4,9 +4,13 @@ import { runScenario } from "../tests.utils.js";
 
 const scenarios: TestScenario[] = [
   {
+    id: "basic-formatting",
     name: "Basic commit message formatting",
     setup: {
       files: [{ path: "src/feature.ts", content: "console.log('test');" }],
+      config: {
+        debug: false,
+      },
     },
     input: {
       message: "add new feature",
@@ -16,6 +20,7 @@ const scenarios: TestScenario[] = [
     },
   },
   {
+    id: "monorepo-detection",
     name: "Monorepo package detection",
     setup: {
       monorepo: true,
@@ -34,6 +39,7 @@ const scenarios: TestScenario[] = [
     },
   },
   {
+    id: "multi-package",
     name: "Multi-package changes",
     setup: {
       monorepo: true,
@@ -61,11 +67,17 @@ const scenarios: TestScenario[] = [
 export const commitMessageTest: E2ETest = {
   name: "Commit Message Formatting",
   scenarios,
-  async run(logger: LoggerService): Promise<TestResult[]> {
+  async run(
+    logger: LoggerService,
+    selectedScenarios?: TestScenario[],
+  ): Promise<TestResult[]> {
+    const scenariosToRun = selectedScenarios || scenarios;
     const results: TestResult[] = [];
-    for (const scenario of scenarios) {
+
+    for (const scenario of scenariosToRun) {
       results.push(await runScenario(scenario, logger));
     }
+
     return results;
   },
 };

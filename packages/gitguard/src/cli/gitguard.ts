@@ -162,6 +162,7 @@ ${chalk.blue("Examples:")}
   program
     .command("analyze")
     .description("Analyze git changes and get suggestions")
+    .option("-d, --debug", "Enable debug mode")
     .option("-p, --pr <number>", "PR number to analyze")
     .option("-b, --branch <name>", "Branch to analyze")
     .option("-m, --message <text>", "Commit message to analyze")

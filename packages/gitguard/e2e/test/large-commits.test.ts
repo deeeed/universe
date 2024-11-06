@@ -4,6 +4,7 @@ import { runScenario } from "../tests.utils.js";
 
 const scenarios: TestScenario[] = [
   {
+    id: "size-detection",
     name: "Large commit detection",
     setup: {
       files: Array.from({ length: 10 }, (_, i) => ({
@@ -22,6 +23,29 @@ const scenarios: TestScenario[] = [
     },
     expected: {
       message: "feat: massive update",
+      splitSuggestion: true,
+    },
+  },
+  {
+    id: "many-files",
+    name: "Many files detection",
+    setup: {
+      files: Array.from({ length: 50 }, (_, i) => ({
+        path: `src/feature${i}.ts`,
+        content: "console.log('test');",
+      })),
+      config: {
+        analysis: {
+          maxFileSize: 800,
+          maxCommitSize: 500,
+        },
+      },
+    },
+    input: {
+      message: "update multiple files",
+    },
+    expected: {
+      message: "feat: update multiple files",
       splitSuggestion: true,
     },
   },

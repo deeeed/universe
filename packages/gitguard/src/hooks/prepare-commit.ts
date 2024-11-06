@@ -32,6 +32,7 @@ interface CommitHookOptions {
   messageFile: string;
   config?: Config;
   forceTTY?: boolean;
+  isTest?: boolean;
 }
 
 interface HandleSecurityFindingsParams {
@@ -152,7 +153,7 @@ async function promptUser({
 
       const cleanup = (): void => {
         if (!isActive) return;
-        logger.debug("Cleaning up prompt...");
+        logger.debug("Cleaning up prompt listeners...");
         isActive = false;
         input.removeAllListeners("data");
         if (context.tty?.isActive) {
@@ -347,7 +348,7 @@ async function handleUnstageFiles(params: {
 interface Choice {
   label: string;
   value: "keep" | "ai" | "format";
-  action: () => Promise<void>;
+  action: () => Promise<ActionResult>;
 }
 
 async function handleSplitSuggestion({
@@ -360,13 +361,13 @@ async function handleSplitSuggestion({
   logger: LoggerService;
   git: GitService;
   context: PrepareCommitContext;
-}): Promise<void> {
+}): Promise<number> {
   logger.info(`\n${chalk.yellow("📦")} Multiple package changes detected:`);
   logger.info(chalk.yellow(suggestion.reason));
 
   suggestion.suggestions.forEach((suggestedSplit, index: number) => {
     logger.info(
-      `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold.cyan(suggestedSplit.scope || "root")}:`,
+      `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold.cyan(suggestedSplit.scope ?? "root")}:`,
     );
     logger.info(
       `   ${chalk.dim("Message:")} ${chalk.bold(suggestedSplit.message)}`,
@@ -420,8 +421,9 @@ async function handleSplitSuggestion({
       logger.info(chalk.gray(cmd));
     });
 
-    process.exit(1);
+    return 1;
   }
+  return 0;
 }
 
 export async function handleSecurityFindings({
@@ -432,7 +434,7 @@ export async function handleSecurityFindings({
   context,
 }: HandleSecurityFindingsParams & {
   context: PrepareCommitContext;
-}): Promise<void> {
+}): Promise<number> {
   const affectedFiles = new Set<string>();
 
   if (secretFindings.length) {
@@ -489,7 +491,7 @@ export async function handleSecurityFindings({
         git,
         logger,
       });
-      process.exit(1);
+      return 1;
     }
   }
 
@@ -525,15 +527,16 @@ export async function handleSecurityFindings({
         git,
         logger,
       });
-      process.exit(1);
+      return 1;
     }
   }
+  return 0;
 }
 
 interface PrepareCommitContext {
   tty?: TTYStreams;
   logger: LoggerService;
-  // ... other context properties
+  isTest?: boolean;
 }
 
 async function displaySuggestions({
@@ -580,16 +583,14 @@ async function displaySuggestions({
   return suggestions[index]?.message;
 }
 
-export async function prepareCommit(options: CommitHookOptions): Promise<void> {
-  // Only activate when GITGUARD is explicitly enabled
-  const isGitGuardEnabled = ["true", "y", "1"].includes(
-    (process.env.GITGUARD || "").toLowerCase(),
-  );
+interface ActionResult {
+  status: number;
+  message?: string;
+}
 
-  if (!isGitGuardEnabled) {
-    process.exit(0);
-  }
-
+export async function prepareCommit(
+  options: CommitHookOptions,
+): Promise<number> {
   const logger = new LoggerService({
     debug: process.env.GITGUARD_DEBUG === "true" || options.config?.debug,
   });
@@ -597,6 +598,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
   // Create context object to share TTY
   const context: PrepareCommitContext = {
     logger,
+    isTest: options.isTest,
   };
 
   // Create TTY once if in interactive mode
@@ -700,24 +702,23 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
     // If we get here, user didn't choose to split, show regular options
     const choices: Choice[] = [
       {
-        label: "Keep original message",
+        label: `Keep original message: ${chalk.cyan(`"${analysis.originalMessage.trim()}"`)},`,
         value: "keep",
-        action: async (): Promise<void> => {
-          await Promise.resolve();
+        action: function (): Promise<ActionResult> {
           logger.debug("📝 Keeping original message");
-          process.exit(0); // Immediate exit for keep
+          return Promise.resolve({
+            status: 0,
+            message: analysis.originalMessage,
+          });
         },
       },
-    ];
-
-    if (ai) {
-      choices.push({
+      {
         label: "Generate commit message with AI",
         value: "ai",
-        action: async () => {
+        action: async function (): Promise<ActionResult> {
           logger.debug("🤖 Starting AI message generation");
 
-          if (!analysis.suggestions) {
+          if (!analysis.suggestions && ai) {
             await displayAICostEstimate({ ai, git, logger });
 
             const shouldProceed = await promptUser({
@@ -733,7 +734,7 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
 
             if (!shouldProceed) {
               logger.info("\n❌ AI generation cancelled");
-              process.exit(1);
+              return { status: 1 };
             }
 
             logger.info("\n⏳ Generating AI suggestions...");
@@ -757,39 +758,32 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
                 "✍️ Updating commit message with AI suggestion:",
                 message,
               );
-              await git.updateCommitMessage({
-                file: options.messageFile,
-                message,
-              });
-              process.exit(0);
+              return { status: 0, message };
             } else {
               logger.debug("❌ No AI suggestion selected");
-              process.exit(1);
+              return { status: 1 };
             }
           } else {
             logger.error("❌ Failed to generate AI suggestions");
-            process.exit(1);
+            return { status: 1 };
           }
         },
-      });
-    }
-
-    choices.push({
-      label: `Use formatted message: ${analysis.formattedMessage.trim()}`,
-      value: "format",
-      action: async () => {
-        logger.debug(
-          "✨ Using formatted message:",
-          analysis.formattedMessage.trim(),
-        );
-        await git.updateCommitMessage({
-          file: options.messageFile,
-          message: analysis.formattedMessage.trim(),
-        });
-        logger.debug("✅ Commit message updated successfully");
-        process.exit(0);
       },
-    });
+      {
+        label: `Use formatted message: ${chalk.cyan(`"${analysis.formattedMessage.trim()}"`)},`,
+        value: "format",
+        action: async function (): Promise<ActionResult> {
+          logger.debug(
+            "✨ Using formatted message:",
+            analysis.formattedMessage.trim(),
+          );
+          return Promise.resolve({
+            status: 0,
+            message: analysis.formattedMessage.trim(),
+          });
+        },
+      },
+    ];
 
     // Display choices once
     logger.info("\n🤔 Choose how to proceed with your commit:");
@@ -808,12 +802,23 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
       context,
     });
 
-    logger.debug("Selected choice:", { answer, type: typeof answer });
-
-    // Handle cancellation
     if (answer === "c") {
       logger.info("\n❌ Operation cancelled by user");
-      process.exit(1);
+      // Write an empty message to the commit message file to prevent the commit
+      await git.updateCommitMessage({
+        file: options.messageFile,
+        message: "",
+      });
+
+      if (context.tty?.isActive) {
+        context.tty.dispose();
+      }
+
+      // Only exit if not in test mode
+      if (!context.isTest) {
+        process.exit(1);
+      }
+      return 1;
     }
 
     const index = parseInt(String(answer)) - 1;
@@ -822,22 +827,47 @@ export async function prepareCommit(options: CommitHookOptions): Promise<void> {
         choice: choices[index].value,
       });
       try {
-        await choices[index].action();
+        const result = await choices[index].action();
+        if (result.status !== 0) {
+          // Also clear the commit message on failure
+          await git.updateCommitMessage({
+            file: options.messageFile,
+            message: "",
+          });
+          return result.status;
+        }
+
+        if (result.message) {
+          await git.updateCommitMessage({
+            file: options.messageFile,
+            message: result.message,
+          });
+        }
+        return 0;
       } catch (error) {
         logger.error("Action failed:", error);
-        process.exit(1);
+        // Clear commit message on error
+        await git.updateCommitMessage({
+          file: options.messageFile,
+          message: "",
+        });
+        return 1;
       }
-    } else {
-      logger.error("Invalid choice:", { index });
-      process.exit(1);
     }
+
+    // Only proceed with the commit if we get here with a successful result
+    await git.updateCommitMessage({
+      file: options.messageFile,
+      message: analysis.originalMessage,
+    });
+    return 0;
   } catch (error) {
     logger.error("Hook failed:", error);
+    return 1;
   } finally {
-    // Cleanup TTY at the end
+    // Only cleanup TTY at the very end of all operations
     if (context.tty?.isActive) {
       context.tty.dispose();
     }
-    process.exit(1);
   }
 }

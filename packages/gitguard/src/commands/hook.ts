@@ -37,47 +37,29 @@ export async function hook(options: HookCommandOptions = {}): Promise<void> {
     const packagePath = getPackagePath();
     const status = await getHookStatus();
 
-    // Display current status
-    logger.info("\nGitGuard Hook Status:");
+    // Skip status display and prompts if skipHook is true
+    if (!options.skipHook) {
+      // Display current status
+      logger.info("\nGitGuard Hook Status:");
 
-    if (status.isRepo) {
-      logger.info(`\nLocal repository detected at: ${process.cwd()}`);
-      if (status.localHook.exists) {
-        logger.info("Local hook is installed");
-      } else {
-        logger.info("No local hook installed");
-      }
-    }
-
-    if (status.globalHook.exists) {
-      logger.info(`\nGlobal hook detected at: ${status.globalHook.path}`);
-    } else {
-      logger.info("\nNo global hook installed");
-    }
-
-    // Handle different modes
-    if (options.action === "status") {
-      // Show suggestions for status command
-      logger.info("\nSuggested actions:");
       if (status.isRepo) {
+        logger.info(`\nLocal repository detected at: ${process.cwd()}`);
         if (status.localHook.exists) {
-          logger.info("• To reinstall local hook:  gitguard hook install");
-          logger.info("• To remove local hook:     gitguard hook uninstall");
+          logger.info("Local hook is installed");
         } else {
-          logger.info("• To install local hook:    gitguard hook install");
+          logger.info("No local hook installed");
         }
       }
+
       if (status.globalHook.exists) {
-        logger.info("• To reinstall global hook: gitguard hook install -g");
-        logger.info("• To remove global hook:    gitguard hook uninstall -g");
+        logger.info(`\nGlobal hook detected at: ${status.globalHook.path}`);
       } else {
-        logger.info("• To install global hook:   gitguard hook install -g");
+        logger.info("\nNo global hook installed");
       }
-      return;
     }
 
-    // Interactive mode when no action is provided
-    if (!options.action) {
+    // If no action and not skipping prompts, handle interactive mode
+    if (!options.action && !options.skipHook) {
       if (status.isRepo) {
         if (status.localHook.exists) {
           if (
@@ -192,46 +174,52 @@ export async function hook(options: HookCommandOptions = {}): Promise<void> {
     }
 
     logger.success(`Git hook installed at ${targetHook.path}`);
-    logger.info("\nTo activate the hook, set GITGUARD=true:");
-    logger.info(`${chalk.cyan("GITGUARD=true git commit -m 'your message'")}"`);
 
-    logger.info(
-      `\n${chalk.yellow("💡 Pro tip:")} Create an alias to save time!`,
-    );
-    logger.info(
-      `${chalk.bold("Add one of these to your shell profile (~/.bashrc, ~/.zshrc):")}`,
-    );
+    // Skip post-install messages if skipHook is true
+    if (!options.skipHook) {
+      logger.info("\nTo activate the hook, set GITGUARD=true:");
+      logger.info(
+        `${chalk.cyan("GITGUARD=true git commit -m 'your message'")}"`,
+      );
 
-    // Option 1
-    logger.info(
-      `\n${chalk.green("# Option 1:")} ${chalk.bold("Quick alias for GitGuard commits")}`,
-    );
-    logger.info(chalk.cyan('alias gitg="GITGUARD=true git commit -m"'));
-    logger.info(chalk.dim("# Usage:"));
-    logger.info(chalk.yellow('gitg "your commit message"'));
+      logger.info(
+        `\n${chalk.yellow("💡 Pro tip:")} Create an alias to save time!`,
+      );
+      logger.info(
+        `${chalk.bold("Add one of these to your shell profile (~/.bashrc, ~/.zshrc):")}`,
+      );
 
-    // Option 2
-    logger.info(
-      `\n${chalk.green("# Option 2:")} ${chalk.bold("Always enable GitGuard")}`,
-    );
-    logger.info(chalk.cyan("export GITGUARD=true"));
-    logger.info(chalk.dim("# Then use regular git commands"));
+      // Option 1
+      logger.info(
+        `\n${chalk.green("# Option 1:")} ${chalk.bold("Quick alias for GitGuard commits")}`,
+      );
+      logger.info(chalk.cyan('alias gitg="GITGUARD=true git commit -m"'));
+      logger.info(chalk.dim("# Usage:"));
+      logger.info(chalk.yellow('gitg "your commit message"'));
 
-    // Option 3
-    logger.info(
-      `\n${chalk.green("# Option 3:")} ${chalk.bold("Function with optional GitGuard")}`,
-    );
-    logger.info(chalk.cyan("function gcommit() {"));
-    logger.info(chalk.cyan('  if [ "$1" = "-g" ]; then'));
-    logger.info(chalk.cyan("    shift"));
-    logger.info(chalk.cyan('    GITGUARD=true git commit -m "$@"'));
-    logger.info(chalk.cyan("  else"));
-    logger.info(chalk.cyan('    git commit -m "$@"'));
-    logger.info(chalk.cyan("  fi"));
-    logger.info(chalk.cyan("}"));
-    logger.info(chalk.dim("# Usage:"));
-    logger.info(chalk.yellow('gcommit "regular commit"'));
-    logger.info(chalk.yellow('gcommit -g "GitGuard commit"'));
+      // Option 2
+      logger.info(
+        `\n${chalk.green("# Option 2:")} ${chalk.bold("Always enable GitGuard")}`,
+      );
+      logger.info(chalk.cyan("export GITGUARD=true"));
+      logger.info(chalk.dim("# Then use regular git commands"));
+
+      // Option 3
+      logger.info(
+        `\n${chalk.green("# Option 3:")} ${chalk.bold("Function with optional GitGuard")}`,
+      );
+      logger.info(chalk.cyan("function gcommit() {"));
+      logger.info(chalk.cyan('  if [ "$1" = "-g" ]; then'));
+      logger.info(chalk.cyan("    shift"));
+      logger.info(chalk.cyan('    GITGUARD=true git commit -m "$@"'));
+      logger.info(chalk.cyan("  else"));
+      logger.info(chalk.cyan('    git commit -m "$@"'));
+      logger.info(chalk.cyan("  fi"));
+      logger.info(chalk.cyan("}"));
+      logger.info(chalk.dim("# Usage:"));
+      logger.info(chalk.yellow('gcommit "regular commit"'));
+      logger.info(chalk.yellow('gcommit -g "GitGuard commit"'));
+    }
   } catch (error) {
     logger.error("Failed to manage hook:", error);
     throw error;

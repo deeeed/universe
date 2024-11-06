@@ -4,6 +4,7 @@ import { runScenario } from "../tests.utils.js";
 
 const scenarios: TestScenario[] = [
   {
+    id: "secrets-detection",
     name: "Security check - AWS credentials",
     setup: {
       files: [
@@ -27,6 +28,7 @@ const scenarios: TestScenario[] = [
     },
   },
   {
+    id: "token-detection",
     name: "Security check - Environment variables",
     setup: {
       files: [
