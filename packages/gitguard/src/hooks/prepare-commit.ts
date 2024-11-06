@@ -27,6 +27,7 @@ import { Config } from "../types/config.types.js";
 import { SecurityFinding } from "../types/security.types.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
+import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 
 interface CommitHookOptions {
   messageFile: string;
@@ -303,10 +304,21 @@ async function displayAICostEstimate(params: {
   ai: AIProvider;
   git: GitService;
   logger: LoggerService;
+  message: string;
 }): Promise<void> {
-  const { ai, git, logger } = params;
-  const diff = await git.getStagedDiff();
-  const tokenUsage = ai.calculateTokenUsage({ prompt: diff });
+  const { ai, git, logger, message } = params;
+
+  // Use optimized diff format instead of raw diff
+  const files = await git.getStagedChanges();
+  const aiDiff = await git.getStagedDiffForAI();
+  const prompt = generateCommitSuggestionPrompt({
+    files,
+    message,
+    diff: aiDiff,
+    logger,
+  });
+
+  const tokenUsage = ai.calculateTokenUsage({ prompt });
 
   logger.info(
     `\n💰 ${chalk.cyan("Estimated cost for AI generation:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
@@ -719,7 +731,12 @@ export async function prepareCommit(
           logger.debug("🤖 Starting AI message generation");
 
           if (!analysis.suggestions && ai) {
-            await displayAICostEstimate({ ai, git, logger });
+            await displayAICostEstimate({
+              ai,
+              git,
+              logger,
+              message: analysis.originalMessage, // Pass the original message
+            });
 
             const shouldProceed = await promptUser({
               options: {
