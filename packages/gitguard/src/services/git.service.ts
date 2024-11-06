@@ -76,16 +76,17 @@ export class GitService extends BaseService {
   async getStagedChanges(): Promise<FileChange[]> {
     try {
       this.logger.debug("Getting staged changes");
-      const { stdout } = await execPromise("git diff --cached --numstat", {
-        cwd: this.cwd,
+      const output = await this.execGit({
+        command: "diff",
+        args: ["--cached", "--numstat"],
       });
 
-      if (!stdout.trim()) {
+      if (!output.trim()) {
         this.logger.debug("No staged changes found");
         return [];
       }
 
-      const files = stdout
+      const files = output
         .split("\n")
         .filter(Boolean)
         .map((line) => {
@@ -318,8 +319,23 @@ export class GitService extends BaseService {
         throw new Error("Git working directory not set");
       }
 
+      // Escape special characters in args
+      const escapedArgs = params.args.map((arg) => {
+        // If the argument contains spaces or special characters, wrap it in quotes
+        if (
+          arg.includes(" ") ||
+          arg.includes("(") ||
+          arg.includes(")") ||
+          arg.includes(":")
+        ) {
+          // Escape quotes within the argument and wrap in quotes
+          return `"${arg.replace(/"/g, '\\"')}"`;
+        }
+        return arg;
+      });
+
       const { stdout } = await execPromise(
-        `git ${params.command} ${params.args.join(" ")}`,
+        `git ${params.command} ${escapedArgs.join(" ")}`,
         {
           cwd: this.cwd,
         },
@@ -362,16 +378,17 @@ export class GitService extends BaseService {
   async getUnstagedChanges(): Promise<FileChange[]> {
     try {
       this.logger.debug("Getting unstaged changes");
-      const { stdout } = await execPromise("git diff --numstat", {
-        cwd: this.cwd,
+      const output = await this.execGit({
+        command: "diff",
+        args: ["--numstat"],
       });
 
-      if (!stdout.trim()) {
+      if (!output.trim()) {
         this.logger.debug("No unstaged changes found");
         return [];
       }
 
-      const files = stdout
+      const files = output
         .split("\n")
         .filter(Boolean)
         .map((line) => {
@@ -410,46 +427,18 @@ export class GitService extends BaseService {
     try {
       this.logger.debug("Getting staged diff for AI analysis");
       const stagedFiles = await this.getStagedChanges();
-
-      // Get the git root directory
-      const gitRoot = await this.execGit({
-        command: "rev-parse",
-        args: ["--show-toplevel"],
-      });
+      const gitRoot = await this.getRepositoryRoot();
 
       this.logger.debug("Git directories:", {
         gitRoot: gitRoot.trim(),
         currentCwd: this.cwd,
       });
 
-      // Update execGit to use proper paths
-      const execGitFromRoot = async (params: {
-        command: string;
-        args: string[];
-      }): Promise<string> => {
-        try {
-          const { stdout } = await execPromise(
-            `git ${params.command} ${params.args.join(" ")}`,
-            { cwd: gitRoot.trim() },
-          );
-          return stdout;
-        } catch (error) {
-          this.logger.error(`Git command failed: ${params.command}`, error);
-          throw error;
-        }
-      };
-
       // Get individual diffs and combine
       const diffs = await Promise.all(
         stagedFiles.map(async (file) => {
           try {
-            const gitCommand = `diff --cached -- "${file.path}"`;
-            this.logger.debug(`Executing git command for ${file.path}:`, {
-              command: gitCommand,
-              cwd: gitRoot.trim(),
-            });
-
-            const fileDiff = await execGitFromRoot({
+            const fileDiff = await this.execGit({
               command: "diff",
               args: ["--cached", "--", file.path],
             });
@@ -492,6 +481,20 @@ export class GitService extends BaseService {
       return combinedDiff;
     } catch (error) {
       this.logger.error("Failed to get staged diff for AI:", error);
+      throw error;
+    }
+  }
+
+  async createCommit(params: { message: string }): Promise<void> {
+    try {
+      this.logger.debug("Creating commit with message:", params.message);
+      await this.execGit({
+        command: "commit",
+        args: ["-m", params.message],
+      });
+      this.logger.debug("Commit created successfully");
+    } catch (error) {
+      this.logger.error("Failed to create commit:", error);
       throw error;
     }
   }

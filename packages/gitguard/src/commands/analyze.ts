@@ -27,6 +27,7 @@ interface AnalyzeOptions {
   unstaged?: boolean;
   all?: boolean;
   ai?: boolean;
+  commit?: boolean;
 }
 
 type AnalyzeResult = CommitAnalysisResult | PRAnalysisResult;
@@ -238,6 +239,42 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
             aiResult.suggestions.forEach((suggestion, index) => {
               logger.info(`  ${index + 1}. ${suggestion.message}`);
             });
+
+            // Add commit handling for AI suggestions
+            if (params.commit) {
+              logger.info(
+                "\n📝 Select a suggestion to commit (1-" +
+                  aiResult.suggestions.length +
+                  "):",
+              );
+              const readline = await import("readline/promises");
+              const rl = readline.createInterface({
+                input: process.stdin,
+                output: process.stdout,
+              });
+
+              const answer = await rl.question(
+                "Enter number (or press enter to skip): ",
+              );
+              rl.close();
+
+              const selection = parseInt(answer, 10);
+              if (selection > 0 && selection <= aiResult.suggestions.length) {
+                const selectedSuggestion = aiResult.suggestions[selection - 1];
+                logger.info("\n📝 Creating commit with selected message...");
+                try {
+                  await git.createCommit({
+                    message: selectedSuggestion.message,
+                  });
+                  logger.info("✅ Commit created successfully!");
+                } catch (error) {
+                  logger.error("Failed to create commit:", error);
+                  throw error;
+                }
+              } else {
+                logger.info("Skipping commit creation.");
+              }
+            }
           } else {
             logger.info("\n❌ No AI suggestions could be generated");
           }
@@ -284,6 +321,18 @@ export async function analyze(params: AnalyzeOptions): Promise<AnalyzeResult> {
         case "skip":
           logger.info("\n⏭️  Skipping AI suggestions");
           break;
+      }
+
+      // Add commit handling
+      if (params.commit && result.formattedMessage) {
+        logger.info("\n📝 Creating commit...");
+        try {
+          await git.createCommit({ message: result.formattedMessage });
+          logger.info("✅ Commit created successfully!");
+        } catch (error) {
+          logger.error("Failed to create commit:", error);
+          throw error;
+        }
       }
 
       return result;

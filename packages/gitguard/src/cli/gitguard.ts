@@ -27,6 +27,7 @@ interface AnalyzeOptions {
   staged?: boolean;
   all?: boolean;
   ai?: boolean;
+  commit?: boolean;
 }
 
 interface PackageJson {
@@ -177,6 +178,7 @@ ${chalk.blue("Examples:")}
     .option("--staged", "Include analysis of staged changes (default: true)")
     .option("--all", "Analyze both staged and unstaged changes")
     .option("--ai", "Enable AI-powered suggestions")
+    .option("--commit", "Create a commit with the analyzed message")
     .addHelpText(
       "after",
       `
@@ -185,6 +187,8 @@ ${chalk.blue("Examples:")}
   ${chalk.yellow("$")} gitguard analyze --unstaged       # Include unstaged changes
   ${chalk.yellow("$")} gitguard analyze --all            # Analyze both staged and unstaged changes
   ${chalk.yellow("$")} gitguard analyze --no-staged      # Analyze only unstaged changes (with --unstaged)
+  ${chalk.yellow("$")} gitguard analyze -m "feat: new feature" --commit    # Analyze and create commit
+  ${chalk.yellow("$")} gitguard analyze --ai --commit                      # Get AI suggestions and commit
 
 ${chalk.blue("Analysis includes:")}
   ${chalk.green("•")} Package cohesion checks
@@ -219,6 +223,7 @@ ${chalk.blue("Analysis includes:")}
           unstaged: options.unstaged,
           all: options.all,
           ai: options.ai,
+          commit: options.commit,
         });
 
         process.exit(0);
