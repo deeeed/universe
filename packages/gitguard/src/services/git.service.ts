@@ -2,8 +2,8 @@
 import { exec } from "child_process";
 import { promises as fs } from "fs";
 import { promisify } from "util";
-import { CommitInfo, FileChange } from "../types/git.types.js";
 import { GitConfig } from "../types/config.types.js";
+import { CommitInfo, FileChange } from "../types/git.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
 import { FileUtil } from "../utils/file.util.js";
@@ -552,6 +552,23 @@ export class GitService extends BaseService {
       this.logger.debug("Commit created successfully");
     } catch (error) {
       this.logger.error("Failed to create commit:", error);
+      throw error;
+    }
+  }
+
+  async getDiffForBranch(params: { branch: string }): Promise<string> {
+    try {
+      this.logger.debug(`Getting diff for branch ${params.branch}`);
+      const baseBranch = this.gitConfig.baseBranch || "main";
+
+      const output = await this.execGit({
+        command: "diff",
+        args: [`${baseBranch}...${params.branch}`],
+      });
+
+      return output;
+    } catch (error) {
+      this.logger.error("Failed to get branch diff:", error);
       throw error;
     }
   }
