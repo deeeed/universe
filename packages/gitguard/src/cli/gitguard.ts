@@ -30,6 +30,7 @@ interface BranchCommandOptions {
   title?: string;
   description?: string;
   base?: string;
+  detailed?: boolean;
 }
 
 interface PackageJson {
@@ -166,6 +167,7 @@ ${chalk.blue("Examples:")}
     .option("--title <title>", "PR title")
     .option("--description <description>", "PR description")
     .option("--base <branch>", "Base branch for PR", "main")
+    .option("--detailed", "Generate a detailed report")
     .addHelpText(
       "after",
       `
@@ -173,7 +175,8 @@ ${chalk.blue("Examples:")}
   ${chalk.yellow("$")} gitguard branch                # Analyze current branch
   ${chalk.yellow("$")} gitguard branch --ai           # Get AI suggestions for PR
   ${chalk.yellow("$")} gitguard branch --create-pr    # Create PR from current branch
-  ${chalk.yellow("$")} gitguard branch --create-pr --draft  # Create draft PR`,
+  ${chalk.yellow("$")} gitguard branch --create-pr --draft  # Create draft PR
+  ${chalk.yellow("$")} gitguard branch --detailed     # Generate a detailed report`,
     )
     .action(async (options: BranchCommandOptions) => {
       const debug = isDebugEnabled() || options.debug;
@@ -186,6 +189,7 @@ ${chalk.blue("Examples:")}
           options: {
             ...options,
             debug,
+            detailed: options.detailed,
           },
         });
         logger.debug("Branch command completed successfully");

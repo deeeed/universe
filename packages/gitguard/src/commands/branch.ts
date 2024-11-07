@@ -84,7 +84,7 @@ export async function analyzeBranch({
   options,
 }: BranchAnalyzeParams): Promise<PRAnalysisResult> {
   const logger = new LoggerService({ debug: options.debug });
-  const detailed = options.detailed ?? true;
+  const detailed = options.detailed ?? false;
   let analysisResult: PRAnalysisResult | null = null;
 
   try {
