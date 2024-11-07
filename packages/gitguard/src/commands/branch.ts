@@ -84,6 +84,7 @@ export async function analyzeBranch({
   options,
 }: BranchAnalyzeParams): Promise<PRAnalysisResult> {
   const logger = new LoggerService({ debug: options.debug });
+  const detailed = options.detailed ?? true;
   let analysisResult: PRAnalysisResult | null = null;
 
   try {
@@ -139,9 +140,7 @@ export async function analyzeBranch({
     reporter.generateReport({
       result: analysisResult,
       options: {
-        format: options.format ?? "console",
-        color: options.color,
-        detailed: options.detailed,
+        detailed,
       },
     });
 

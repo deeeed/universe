@@ -493,9 +493,7 @@ export async function analyzeCommit({
       // Generate and display the report
       reporter.generateReport({
         result,
-        options: {
-          format: options.format ?? "console",
-        },
+        options: {},
       });
 
       // Handle commit if option is set
@@ -516,9 +514,7 @@ export async function analyzeCommit({
       // Generate and display the report
       reporter.generateReport({
         result,
-        options: {
-          format: options.format ?? "console",
-        },
+        options: {},
       });
     }
 
