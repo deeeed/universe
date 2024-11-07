@@ -49,6 +49,7 @@
     "unsetup": "./uninstall-cli.sh"
   },
   "dependencies": {
+    "@octokit/rest": "^21.0.2",
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
     "inquirer": "^12.0.1",
@@ -81,11 +82,6 @@
       "types": "./dist/types/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.cjs"
-    },
-    "./hooks": {
-      "types": "./dist/types/hooks/prepare-commit.d.ts",
-      "import": "./dist/esm/hooks/prepare-commit.js",
-      "require": "./dist/cjs/hooks/prepare-commit.cjs"
     },
     "./cli": {
       "types": "./dist/types/cli/gitguard.d.ts",

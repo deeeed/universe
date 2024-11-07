@@ -15,7 +15,7 @@ export function deepMerge<T extends object>(...objects: DeepPartial<T>[]): T {
       if (isObject(pVal) && isObject(oVal)) {
         prev[k] = deepMerge(pVal, oVal) as T[keyof T];
       } else {
-        prev[k] = (oVal !== undefined ? oVal : prev[k]) as T[keyof T];
+        prev[k] = (oVal ?? prev[k]) as T[keyof T];
       }
     });
 

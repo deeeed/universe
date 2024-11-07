@@ -1,4 +1,4 @@
-Please guide me into definining the specifications to "add a new feature"
+Please guide me into definining the specifications to "suggest a PR description"
 
 While writing the detailed steps, please consider the following:
 -  the detailed steps should be written in a way that is easy to understand and follow for an AI model

@@ -3,6 +3,7 @@ import * as fs from "fs/promises";
 import { AIProvider } from "../types/ai.types.js";
 import {
   AnalysisWarning,
+  GitHubPR,
   PRAnalysisOptions,
   PRAnalysisResult,
   PRDescription,
@@ -11,7 +12,7 @@ import {
 } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
-import { SecurityFinding } from "../types/security.types.js";
+import { SecurityCheckResult } from "../types/security.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import {
   generatePRDescriptionPrompt,
@@ -19,10 +20,22 @@ import {
 } from "../utils/ai-prompt.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
+import { GitHubService } from "./github.service.js";
 import { SecurityService } from "./security.service.js";
+
+export interface CreatePRFromBranchParams {
+  branch?: string;
+  draft?: boolean;
+  labels?: string[];
+  useAI?: boolean;
+  title?: string;
+  description?: string;
+  base?: string;
+}
 
 export class PRService extends BaseService {
   private readonly git: GitService;
+  private readonly github: GitHubService;
   private readonly security?: SecurityService;
   private readonly ai?: AIProvider;
   private readonly config: Config;
@@ -31,12 +44,14 @@ export class PRService extends BaseService {
     params: ServiceOptions & {
       config: Config;
       git: GitService;
+      github: GitHubService;
       security?: SecurityService;
       ai?: AIProvider;
     },
   ) {
     super(params);
     this.git = params.git;
+    this.github = params.github;
     this.security = params.security;
     this.ai = params.ai;
     this.config = params.config;
@@ -66,16 +81,6 @@ export class PRService extends BaseService {
     };
   }
 
-  private mapSecurityToWarnings(
-    findings: SecurityFinding[],
-  ): AnalysisWarning[] {
-    return findings.map((finding) => ({
-      type: "file",
-      severity: finding.severity === "high" ? "error" : "warning",
-      message: `Security issue in ${finding.path}: ${finding.type}`,
-    }));
-  }
-
   public groupByDirectory(commits: CommitInfo[]): Record<string, string[]> {
     const filesByDir: Record<string, Set<string>> = {};
 
@@ -101,26 +106,57 @@ export class PRService extends BaseService {
     suggestedPRs: PRSplitSuggestion["suggestedPRs"];
     baseBranch: string;
   }): string[] {
-    const commands: string[] = [`# Stash current changes`, `git stash push -u`];
+    const commands: string[] = [
+      `# Save current changes`,
+      `git stash save "temp-split-changes"`,
+      ``,
+      `# Create a backup branch`,
+      `git branch backup/$(date +%Y%m%d-%H%M%S)`,
+      ``,
+    ];
 
     params.suggestedPRs.forEach((pr, index) => {
-      const branchName = `split/${index + 1}/${pr.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+      // Generate a clean branch name from title
+      const branchName = `split/${index + 1}/${pr.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")}`;
+
       commands.push(
-        ``,
-        `# Create and switch to new branch for ${pr.title}`,
+        `# ${index + 1}. Create branch for: ${pr.title}`,
         `git checkout -b ${branchName} ${params.baseBranch}`,
-        `# Cherry-pick relevant commits`,
+        ``,
+        `# Add relevant files`,
         ...pr.files.map((f) => `git checkout HEAD ${f.path}`),
         `git add .`,
-        `git commit -m "${pr.title}"`,
+        ``,
+        `# Create commit with description`,
+        `git commit -m "${pr.title}" -m "${pr.description.replace(/"/g, '\\"')}"`,
+        ``,
+        `# Push branch (optional)`,
+        `git push -u origin ${branchName}`,
+        ``,
       );
+
+      // Add dependency warning if present
+      if (pr.dependencies?.length) {
+        commands.push(
+          `# Note: This PR depends on: ${pr.dependencies.join(", ")}`,
+          ``,
+        );
+      }
     });
 
     commands.push(
-      ``,
       `# Return to original branch`,
       `git checkout -`,
+      ``,
+      `# Restore changes`,
       `git stash pop`,
+      ``,
+      `# Cleanup (optional)`,
+      `# git branch -D backup/*`,
     );
 
     return commands;
@@ -300,6 +336,27 @@ export class PRService extends BaseService {
     return warnings;
   }
 
+  private checkBranchSecurity(params: {
+    files: FileChange[];
+    diff: string;
+  }): SecurityCheckResult | undefined {
+    if (!this.security) return undefined;
+
+    const securityResult = this.security.analyzeSecurity({
+      files: params.files,
+      diff: params.diff,
+    });
+
+    if (securityResult.shouldBlock) {
+      this.logger.warn("\n⚠️ Security issues detected!");
+      securityResult.secretFindings.forEach((finding) => {
+        this.logger.warn(`  • ${finding.path}: ${finding.suggestion}`);
+      });
+    }
+
+    return securityResult;
+  }
+
   async analyze(params: PRAnalysisOptions): Promise<PRAnalysisResult> {
     try {
       const branch = params.branch || (await this.git.getCurrentBranch());
@@ -344,19 +401,23 @@ export class PRService extends BaseService {
         type: "range",
       });
 
-      const securityAnalysis =
-        params.securityResult ??
-        (this.security
-          ? this.security.analyzeSecurity({
-              files: commits.flatMap((c) => c.files),
-              diff,
-            })
-          : undefined);
+      // Run security checks
+      const securityResult = this.checkBranchSecurity({
+        files: commits.flatMap((c) => c.files),
+        diff,
+      });
 
-      // Only add security warnings if security analysis exists
-      if (securityAnalysis?.secretFindings.length) {
+      // Add security warnings to result
+      if (securityResult?.secretFindings.length) {
         warnings.push(
-          ...this.mapSecurityToWarnings(securityAnalysis.secretFindings),
+          ...securityResult.secretFindings.map((finding) => ({
+            type: "security" as const,
+            severity:
+              finding.severity === "high"
+                ? ("error" as const)
+                : ("warning" as const),
+            message: `Security issue in ${finding.path}: ${finding.suggestion}`,
+          })),
         );
       }
 
@@ -400,6 +461,7 @@ export class PRService extends BaseService {
         description,
         splitSuggestion,
         filesByDirectory,
+        securityResult,
       };
     } catch (error) {
       this.logger.error("PR validation failed:", error);
@@ -509,5 +571,104 @@ export class PRService extends BaseService {
       suggestedPRs,
       commands,
     };
+  }
+
+  public async createPRFromBranch(
+    params: CreatePRFromBranchParams,
+  ): Promise<GitHubPR | null> {
+    try {
+      // Check GitHub availability
+      if (!this.github.isGitHubEnabled()) {
+        return null;
+      }
+
+      const branch = params.branch ?? (await this.git.getCurrentBranch());
+
+      // If title and description are provided, use them directly
+      if (params.title && params.description) {
+        return this.github.createPRFromBranch({
+          branch,
+          title: params.title,
+          description: params.description,
+          draft: params.draft,
+          labels: params.labels,
+          base: params.base,
+        });
+      }
+
+      // Get branch analysis
+      const analysis = await this.analyze({
+        branch,
+        enableAI: params.useAI,
+        enablePrompts: false, // No prompts in service
+      });
+
+      // Generate PR content
+      let title = params.title;
+      let description = params.description;
+
+      if (!title || !description) {
+        if (params.useAI && analysis.description) {
+          title = title ?? analysis.description.title;
+          description = description ?? analysis.description.description;
+        } else {
+          // Generate basic PR content from commits
+          title =
+            title ??
+            this.generatePRTitle(
+              analysis.commits,
+              analysis.commits.flatMap((c) => c.files),
+            );
+          description =
+            description ??
+            this.generateBasicDescription({
+              commits: analysis.commits,
+              stats: analysis.stats,
+              template: await this.loadPRTemplate(),
+            });
+        }
+      }
+
+      // Create PR
+      return this.github.createPRFromBranch({
+        branch,
+        title,
+        description,
+        draft: params.draft,
+        labels: params.labels,
+        base: params.base,
+      });
+    } catch (error) {
+      this.logger.error("Failed to create PR from branch:", error);
+      throw error;
+    }
+  }
+
+  private generateBasicDescription(params: {
+    commits: CommitInfo[];
+    stats: PRStats;
+    template?: string;
+  }): string {
+    const sections: string[] = [];
+
+    // Add template if available
+    if (params.template) {
+      sections.push(params.template);
+    }
+
+    // Add commit list
+    sections.push("## Commits\n");
+    params.commits.forEach((commit) => {
+      sections.push(`- ${commit.message} (${commit.hash.slice(0, 7)})`);
+    });
+
+    // Add stats
+    sections.push("\n## Changes\n");
+    sections.push(`- Files changed: ${params.stats.filesChanged}`);
+    sections.push(`- Additions: +${params.stats.additions}`);
+    sections.push(`- Deletions: -${params.stats.deletions}`);
+    sections.push(`- Total commits: ${params.stats.totalCommits}`);
+
+    return sections.join("\n");
   }
 }

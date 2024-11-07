@@ -1,0 +1,1 @@
+export const DEFAULT_MAX_PROMPT_TOKENS = 32000;

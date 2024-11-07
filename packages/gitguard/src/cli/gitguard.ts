@@ -4,7 +4,8 @@ import { Command } from "commander";
 import { readFile } from "fs/promises";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
-import { analyze } from "../commands/analyze.js";
+import { analyzeBranch } from "../commands/branch.js";
+import { analyzeCommit } from "../commands/commit.js";
 import { hook } from "../commands/hook.js";
 import { init, InitOptions } from "../commands/init.js";
 import { status } from "../commands/status.js";
@@ -15,19 +16,27 @@ interface HookOptions {
   debug?: boolean;
 }
 
-interface AnalyzeOptions {
-  pr?: string | number;
-  branch?: string;
-  debug?: boolean;
+interface CommitCommandOptions {
   message?: string;
+  format?: "console" | "json" | "markdown";
+  staged?: boolean;
+  unstaged?: boolean;
+  all?: boolean;
+  ai?: boolean;
+  execute?: boolean;
+  debug?: boolean;
+  configPath?: string;
+}
+
+interface BranchCommandOptions {
+  name?: string;
+  pr?: string | number;
   format?: "console" | "json" | "markdown";
   color?: boolean;
   detailed?: boolean;
-  unstaged?: boolean;
-  staged?: boolean;
-  all?: boolean;
   ai?: boolean;
-  commit?: boolean;
+  debug?: boolean;
+  configPath?: string;
 }
 
 interface PackageJson {
@@ -107,7 +116,8 @@ async function main(): Promise<void> {
 
 ${chalk.blue("Commands:")}
   ${chalk.cyan("hook")} [options] [action]        ${chalk.gray("Manage git hooks")}
-  ${chalk.cyan("analyze")} [options]              ${chalk.gray("Analyze git changes and get suggestions")}
+  ${chalk.cyan("commit")} [options]              ${chalk.gray("Analyze and create commits with enhanced validation")}
+  ${chalk.cyan("branch")} [options]                ${chalk.gray("Analyze branch-level changes and pull requests")}
   ${chalk.cyan("status")} [options]               ${chalk.gray("Show GitGuard status (hooks and configuration)")}
   ${chalk.cyan("init")} [options]                 ${chalk.gray("Initialize GitGuard configuration")}
 
@@ -138,7 +148,7 @@ ${chalk.blue("Examples:")}
     )
     .action(async (action: string | undefined, options: HookOptions) => {
       // Default to status if no action provided
-      const hookAction = action || "status";
+      const hookAction = action ?? "status";
 
       if (!["install", "uninstall", "status"].includes(hookAction)) {
         logger.error(`Invalid action: ${hookAction}`);
@@ -159,14 +169,51 @@ ${chalk.blue("Examples:")}
       }
     });
 
-  // Analyze command
+  // Commit command
   program
-    .command("analyze")
-    .description("Analyze git changes and get suggestions")
+    .command("commit")
+    .description("Analyze and create commits with enhanced validation")
+    .option("-m, --message <text>", "Commit message")
+    .option(
+      "-f, --format <type>",
+      "Output format: console, json, markdown",
+      "console",
+    )
+    .option("--staged", "Include analysis of staged changes (default: true)")
+    .option("--unstaged", "Include analysis of unstaged changes")
+    .option("--all", "Analyze both staged and unstaged changes")
+    .option("--ai", "Enable AI-powered suggestions")
+    .option("-e, --execute", "Execute the commit")
     .option("-d, --debug", "Enable debug mode")
+    .addHelpText(
+      "after",
+      `
+${chalk.blue("Examples:")}
+  ${chalk.yellow("$")} gitguard commit                    # Analyze staged changes
+  ${chalk.yellow("$")} gitguard commit -m "feat: new"     # Analyze with message
+  ${chalk.yellow("$")} gitguard commit --ai -e            # AI suggestions and commit
+  ${chalk.yellow("$")} gitguard commit --all              # Analyze all changes`,
+    )
+    .action(async (options: CommitCommandOptions) => {
+      try {
+        await analyzeCommit({
+          options: {
+            ...options,
+            debug: isDebugEnabled() || options.debug,
+          },
+        });
+      } catch (error) {
+        logger.error("Commit command failed:", error);
+        process.exit(1);
+      }
+    });
+
+  // Branch command
+  program
+    .command("branch")
+    .description("Analyze branch-level changes and pull requests")
+    .option("-n, --name <branch>", "Branch name to analyze")
     .option("-p, --pr <number>", "PR number to analyze")
-    .option("-b, --branch <name>", "Branch to analyze")
-    .option("-m, --message <text>", "Commit message to analyze")
     .option(
       "-f, --format <type>",
       "Output format: console, json, markdown",
@@ -174,61 +221,43 @@ ${chalk.blue("Examples:")}
     )
     .option("--no-color", "Disable colored output")
     .option("--detailed", "Show detailed analysis")
-    .option("--unstaged", "Include analysis of unstaged changes")
-    .option("--staged", "Include analysis of staged changes (default: true)")
-    .option("--all", "Analyze both staged and unstaged changes")
     .option("--ai", "Enable AI-powered suggestions")
-    .option("--commit", "Create a commit with the analyzed message")
+    .option("-d, --debug", "Enable debug mode")
+    .option("--create-pr", "Create a pull request from the branch")
+    .option("--draft", "Create PR as draft (implies --create-pr)")
+    .option("--labels <labels>", "Comma-separated list of labels for the PR")
+    .option("--title <title>", "PR title")
+    .option("--description <description>", "PR description")
+    .option("--base <branch>", "Base branch for PR", "main")
     .addHelpText(
       "after",
       `
 ${chalk.blue("Examples:")}
-  ${chalk.yellow("$")} gitguard analyze                  # Analyze staged changes only
-  ${chalk.yellow("$")} gitguard analyze --unstaged       # Include unstaged changes
-  ${chalk.yellow("$")} gitguard analyze --all            # Analyze both staged and unstaged changes
-  ${chalk.yellow("$")} gitguard analyze --no-staged      # Analyze only unstaged changes (with --unstaged)
-  ${chalk.yellow("$")} gitguard analyze -m "feat: new feature" --commit    # Analyze and create commit
-  ${chalk.yellow("$")} gitguard analyze --ai --commit                      # Get AI suggestions and commit
-
-${chalk.blue("Analysis includes:")}
-  ${chalk.green("•")} Package cohesion checks
-  ${chalk.green("•")} Commit message suggestions
-  ${chalk.green("•")} Security checks
-  ${chalk.green("•")} Split recommendations
-  ${chalk.green("•")} Next steps guidance`,
+  ${chalk.yellow("$")} gitguard branch                # Analyze current branch
+  ${chalk.yellow("$")} gitguard branch -n feature-1   # Analyze specific branch
+  ${chalk.yellow("$")} gitguard branch -p 123         # Analyze pull request
+  ${chalk.yellow("$")} gitguard branch --ai           # Get AI suggestions for PR
+  ${chalk.yellow("$")} gitguard branch --create-pr    # Create PR from current branch
+  ${chalk.yellow("$")} gitguard branch --create-pr --draft  # Create draft PR`,
     )
-    .action(async (options: AnalyzeOptions) => {
+    .action(async (options: BranchCommandOptions) => {
+      const debug = isDebugEnabled() || options.debug;
+      const logger = new LoggerService({ debug });
+
+      logger.debug("Starting branch command with options:", options);
+
       try {
-        const debug = isDebugEnabled() || options.debug;
-
-        if (debug) {
-          logger.debug("Debug mode enabled");
-          logger.debug("CLI Options:", options);
-          logger.debug("Environment:", {
-            NODE_ENV: process.env.NODE_ENV,
-            GITGUARD_DEBUG: process.env.GITGUARD_DEBUG,
-          });
-        }
-
-        await analyze({
-          pr: options.pr?.toString(),
-          branch: options.branch,
-          debug,
-          configPath: program.opts().config as string | undefined,
-          message: options.message,
-          format: options.format,
-          color: options.color,
-          detailed: options.detailed,
-          staged: options.staged,
-          unstaged: options.unstaged,
-          all: options.all,
-          ai: options.ai,
-          commit: options.commit,
+        await analyzeBranch({
+          options: {
+            ...options,
+            debug,
+          },
         });
-
+        logger.debug("Branch command completed successfully");
         process.exit(0);
       } catch (error) {
-        logger.error("Analyze command failed:", error);
+        logger.error("Branch command failed:", error);
+        logger.debug("Full error details:", error);
         process.exit(1);
       }
     });

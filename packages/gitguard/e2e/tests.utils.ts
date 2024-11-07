@@ -1,10 +1,9 @@
-import { mkdir, readFile, rm, writeFile } from "fs/promises";
+import { execSync } from "child_process";
+import { mkdir, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
-import { execSync } from "child_process";
-import { prepareCommit } from "../src/hooks/prepare-commit.js";
+import { analyzeCommit } from "../src/commands/commit.js";
 import { LoggerService } from "../src/services/logger.service.js";
-import { createConfig } from "../src/utils/config.util.js";
 import { TestResult, TestScenario } from "./tests.types.js";
 
 async function setupTestRepo(
@@ -25,6 +24,7 @@ async function setupTestRepo(
     // Configure git for tests
     execSync("git config user.name 'Test User'", { cwd: testDir });
     execSync("git config user.email 'test@example.com'", { cwd: testDir });
+    execSync("git config commit.gpgsign false", { cwd: testDir }); // Disable GPG signing for tests
 
     // Create initial commit to establish HEAD
     execSync("git commit --allow-empty -m 'Initial commit'", { cwd: testDir });
@@ -47,7 +47,17 @@ async function setupTestRepo(
     await mkdir(join(testDir, ".gitguard"), { recursive: true });
     await writeFile(
       join(testDir, ".gitguard/config.json"),
-      JSON.stringify(scenario.setup.config || {}, null, 2),
+      JSON.stringify(
+        {
+          ...scenario.setup.config,
+          git: {
+            ...scenario.setup.config?.git,
+            cwd: testDir, // Set the correct working directory
+          },
+        },
+        null,
+        2,
+      ),
     );
 
     return testDir;
@@ -73,24 +83,25 @@ export async function runScenario(
     await writeFile(messageFile, scenario.input.message);
     logger.debug(`Created commit message file: ${messageFile}`);
 
-    // Run prepare-commit directly with createConfig
-    await prepareCommit({
-      messageFile,
-      config: createConfig({
+    // Run analyze commit with the correct working directory
+    const result = await analyzeCommit({
+      options: {
+        message: scenario.input.message,
+        staged: true,
+        unstaged: false,
+        debug: true,
+        execute: false,
+        configPath: join(testDir, ".gitguard/config.json"),
         cwd: testDir,
-        partial: scenario.setup.config,
-      }),
-      forceTTY: true,
-      isTest: true,
+      },
     });
-
-    // Read the updated message
-    const updatedMessage = await readFile(messageFile, "utf-8");
-    const warnings: string[] = []; // You might need to capture warnings from prepare-commit
 
     // Validate result
     const success = validateResult(
-      { message: updatedMessage.trim(), warnings },
+      {
+        message: result.formattedMessage || scenario.input.message,
+        warnings: result.warnings.map((w) => w.message),
+      },
       scenario.expected,
     );
 
@@ -99,8 +110,8 @@ export async function runScenario(
       message: success ? `✅ ${scenario.name}` : `❌ ${scenario.name}`,
       details: {
         input: scenario.input.message,
-        output: updatedMessage.trim(),
-        warnings,
+        output: result.formattedMessage || scenario.input.message,
+        warnings: result.warnings.map((w) => w.message),
       },
     };
   } catch (error) {

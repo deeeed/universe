@@ -33,29 +33,42 @@ async function loadJsonFile(path: string): Promise<Partial<Config>> {
   }
 }
 
-function getEnvConfig(): Partial<Config> {
-  const envMappings = {
-    GITGUARD_USE_AI: (val: string) => ({
-      ai: { enabled: val.toLowerCase() === "true" },
-    }),
-    AZURE_OPENAI_ENDPOINT: (val: string) => ({
-      ai: { azure: { endpoint: val } },
-    }),
-    AZURE_OPENAI_DEPLOYMENT: (val: string) => ({
-      ai: { azure: { deployment: val } },
-    }),
-    AZURE_OPENAI_API_VERSION: (val: string) => ({
-      ai: { azure: { apiVersion: val } },
-    }),
-  };
+function getEnvConfig(): DeepPartial<Config> {
+  const config: DeepPartial<Config> = {};
 
-  return Object.entries(envMappings).reduce((config, [envVar, transform]) => {
-    const value = process.env[envVar];
-    if (value) {
-      return { ...config, ...transform(value) };
-    }
-    return config;
-  }, {});
+  // AI Configuration
+  if (process.env.GITGUARD_USE_AI) {
+    config.ai = {
+      enabled: process.env.GITGUARD_USE_AI.toLowerCase() === "true",
+    };
+  }
+
+  // Azure OpenAI Configuration
+  const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT;
+  const azureApiVersion = process.env.AZURE_OPENAI_API_VERSION;
+
+  if (azureEndpoint || azureDeployment || azureApiVersion) {
+    if (!config.ai) config.ai = {};
+    config.ai.provider = "azure";
+    config.ai.azure = {
+      endpoint: azureEndpoint ?? "",
+      deployment: azureDeployment ?? "",
+      apiVersion: azureApiVersion ?? "",
+    };
+  }
+
+  // GitHub Configuration
+  const githubToken = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
+  if (githubToken) {
+    config.git = {
+      github: {
+        token: githubToken,
+      },
+    };
+  }
+
+  return config;
 }
 
 export async function getConfigStatus(): Promise<ConfigStatus> {
@@ -99,7 +112,7 @@ export const defaultConfig: Config = {
     baseBranch: "main",
     monorepoPatterns: ["packages/", "apps/", "libs/"],
     ignorePatterns: ["*.lock", "dist/*"],
-    cwd: process.cwd(),
+    cwd: isGitRepository() ? getGitRoot() : process.cwd(),
   },
   analysis: {
     maxCommitSize: 500,
@@ -115,6 +128,8 @@ export const defaultConfig: Config = {
   ai: {
     enabled: false,
     provider: null,
+    maxPromptTokens: 32000, // Default max tokens
+    maxPromptCost: 0.1, // Default max cost in USD
   },
   pr: {
     template: {

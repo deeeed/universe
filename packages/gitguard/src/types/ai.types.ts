@@ -1,3 +1,5 @@
+import { CommitComplexity, FilesByType } from "./analysis.types.js";
+
 // types/ai.types.ts
 export interface BaseAIOptions {
   temperature?: number;
@@ -26,4 +28,11 @@ export interface AIProvider {
       model?: string;
     };
   }): TokenUsage;
+}
+
+export interface CommitPromptOptions {
+  complexity: CommitComplexity;
+  filesByType: FilesByType;
+  tokenBudget?: number;
+  style?: "concise" | "detailed";
 }

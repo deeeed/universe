@@ -2,8 +2,8 @@
 import { exec } from "child_process";
 import { promises as fs } from "fs";
 import { promisify } from "util";
-import { CommitInfo, FileChange } from "../types/git.types.js";
 import { GitConfig } from "../types/config.types.js";
+import { CommitInfo, FileChange } from "../types/git.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
 import { FileUtil } from "../utils/file.util.js";
@@ -18,15 +18,15 @@ interface GetDiffParams {
 const execPromise = promisify(exec);
 
 export class GitService extends BaseService {
-  private parser: CommitParser;
+  private readonly parser: CommitParser;
   private readonly gitConfig: GitConfig;
   private readonly cwd: string;
 
-  constructor(params: ServiceOptions & { config: GitConfig }) {
+  constructor(params: ServiceOptions & { gitConfig: GitConfig }) {
     super(params);
-    this.gitConfig = params.config;
+    this.gitConfig = params.gitConfig;
     this.parser = new CommitParser();
-    this.cwd = this.gitConfig.cwd || process.cwd();
+    this.cwd = this.gitConfig.cwd ?? process.cwd();
     this.logger.debug("GitService initialized with config:", this.gitConfig);
     this.logger.debug("Working directory:", this.cwd);
   }
@@ -371,7 +371,7 @@ export class GitService extends BaseService {
         throw new Error("Git working directory not set");
       }
 
-      const workingDir = params.cwd || this.cwd;
+      const workingDir = params.cwd ?? this.cwd;
 
       // Escape special characters in args
       const escapedArgs = params.args.map((arg) => {
@@ -483,59 +483,24 @@ export class GitService extends BaseService {
   async getStagedDiffForAI(): Promise<string> {
     try {
       this.logger.debug("Getting staged diff for AI analysis");
-      const stagedFiles = await this.getStagedChanges();
-      const gitRoot = await this.getRepositoryRoot();
 
-      this.logger.debug("Git directories:", {
-        gitRoot: gitRoot.trim(),
-        currentCwd: this.cwd,
+      // Get diff in a single command instead of per file
+      const diff = await this.execGit({
+        command: "diff",
+        args: ["--cached", "--no-color"],
       });
 
-      // Get individual diffs and combine
-      const diffs = await Promise.all(
-        stagedFiles.map(async (file) => {
-          try {
-            const fileDiff = await this.execGit({
-              command: "diff",
-              args: ["--cached", "--", file.path],
-            });
+      if (!diff) {
+        this.logger.debug("No staged changes found");
+        return "";
+      }
 
-            this.logger.debug(`Diff result for ${file.path}:`, {
-              length: fileDiff.length,
-              preview: fileDiff.slice(0, 100) + "...",
-            });
-
-            return { path: file.path, diff: fileDiff };
-          } catch (error) {
-            this.logger.error(
-              `Failed to get diff for file ${file.path}:`,
-              error,
-            );
-            return { path: file.path, diff: "" };
-          }
-        }),
-      );
-
-      // Filter out empty diffs and combine
-      const combinedDiff = diffs
-        .filter((d) => d.diff.length > 0)
-        .sort((a, b) => b.diff.length - a.diff.length)
-        .slice(0, 10) // Limit to 10 most significant files
-        .map((d) => d.diff)
-        .join("\n");
-
-      this.logger.debug("Final diff statistics:", {
-        totalFiles: diffs.length,
-        filesWithDiff: diffs.filter((d) => d.diff.length > 0).length,
-        totalLength: combinedDiff.length,
-        fileStats: diffs.map((d) => ({
-          path: d.path,
-          length: d.diff.length,
-          hasContent: d.diff.length > 0,
-        })),
+      this.logger.debug("Staged diff statistics:", {
+        totalLength: diff.length,
+        hasContent: diff.length > 0,
       });
 
-      return combinedDiff;
+      return diff;
     } catch (error) {
       this.logger.error("Failed to get staged diff for AI:", error);
       throw error;
@@ -552,6 +517,109 @@ export class GitService extends BaseService {
       this.logger.debug("Commit created successfully");
     } catch (error) {
       this.logger.error("Failed to create commit:", error);
+      throw error;
+    }
+  }
+
+  async getDiffForBranch(params: { branch: string }): Promise<string> {
+    try {
+      this.logger.debug(`Getting diff for branch ${params.branch}`);
+      const baseBranch = this.gitConfig.baseBranch || "main";
+
+      const output = await this.execGit({
+        command: "diff",
+        args: [`${baseBranch}...${params.branch}`],
+      });
+
+      return output;
+    } catch (error) {
+      this.logger.error("Failed to get branch diff:", error);
+      throw error;
+    }
+  }
+
+  async renameBranch(params: { from: string; to: string }): Promise<void> {
+    try {
+      const { from, to } = params;
+      this.logger.debug(`Renaming branch from "${from}" to "${to}"`);
+
+      // Check if target branch name already exists
+      const branches = await this.execGit({
+        command: "branch",
+        args: ["--list", to],
+      });
+
+      if (branches.trim()) {
+        throw new Error(`Branch "${to}" already exists`);
+      }
+
+      // Rename the branch
+      await this.execGit({
+        command: "branch",
+        args: ["-m", from, to],
+      });
+
+      // Check if the old branch was tracked remotely
+      const remoteInfo = await this.execGit({
+        command: "config",
+        args: ["--get", `branch.${from}.remote`],
+      }).catch(() => "");
+
+      if (remoteInfo.trim()) {
+        this.logger.debug("Branch was tracked remotely, updating remote...");
+
+        // Delete the old branch from remote if it exists
+        await this.execGit({
+          command: "push",
+          args: ["origin", "--delete", from],
+        }).catch((error) => {
+          this.logger.debug("Failed to delete old remote branch:", error);
+        });
+
+        // Push the new branch and set upstream
+        await this.execGit({
+          command: "push",
+          args: ["-u", "origin", to],
+        });
+
+        this.logger.debug("Remote branch updated successfully");
+      }
+
+      this.logger.debug("Branch renamed successfully");
+    } catch (error) {
+      this.logger.error("Failed to rename branch:", error);
+      throw new Error(
+        `Failed to rename branch from "${params.from}" to "${params.to}": ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  async getBranchExists(params: { branch: string }): Promise<boolean> {
+    try {
+      const result = await this.execGit({
+        command: "branch",
+        args: ["--list", params.branch],
+      });
+      return Boolean(result.trim());
+    } catch (error) {
+      this.logger.error("Failed to check branch existence:", error);
+      return false;
+    }
+  }
+
+  async getLocalBranches(): Promise<string[]> {
+    try {
+      this.logger.debug("Getting local branches");
+      const output = await this.execGit({
+        command: "branch",
+        args: ["--format=%(refname:short)"],
+      });
+
+      const branches = output.split("\n").filter(Boolean);
+      this.logger.debug(`Found ${branches.length} local branches`);
+      return branches;
+    } catch (error) {
+      this.logger.error("Failed to get local branches:", error);
       throw error;
     }
   }
