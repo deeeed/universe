@@ -12,8 +12,19 @@ export interface AnalysisConfig {
 export interface GitConfig {
   baseBranch: string;
   monorepoPatterns: string[];
+  /**
+   * Patterns to ignore in all git operations (staging, commits, etc.)
+   * These files will be completely ignored by GitGuard
+   * Example: build outputs, node_modules, etc.
+   */
   ignorePatterns?: string[];
   cwd?: string;
+  github?: {
+    token?: string;
+    enterprise?: {
+      url: string;
+    };
+  };
 }
 
 export interface SecurityConfig {
@@ -36,6 +47,8 @@ export interface PRTemplateConfig {
 export interface AIConfig {
   enabled: boolean;
   provider: "azure" | "openai" | "ollama" | null;
+  maxPromptTokens?: number;
+  maxPromptCost?: number;
   azure?: {
     endpoint: string;
     deployment: string;
@@ -50,6 +63,11 @@ export interface AIConfig {
   ollama?: {
     host: string;
     model: string;
+  };
+  commitDetails?: {
+    enabled: boolean;
+    complexityThreshold?: number;
+    alwaysInclude?: boolean;
   };
 }
 

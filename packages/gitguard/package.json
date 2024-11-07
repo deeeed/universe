@@ -83,11 +83,6 @@
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.cjs"
     },
-    "./hooks": {
-      "types": "./dist/types/hooks/prepare-commit.d.ts",
-      "import": "./dist/esm/hooks/prepare-commit.js",
-      "require": "./dist/cjs/hooks/prepare-commit.cjs"
-    },
     "./cli": {
       "types": "./dist/types/cli/gitguard.d.ts",
       "import": "./dist/esm/cli/gitguard.js",

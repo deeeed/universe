@@ -85,23 +85,5 @@ export default defineConfig([
         outDir: "./dist/esm",
       }),
     ],
-  },
-  // Add specific build for hooks
-  {
-    input: "src/hooks/prepare-commit.ts",
-    output: {
-      file: "dist/cjs/hooks/prepare-commit.cjs",
-      format: "cjs",
-      sourcemap: true,
-      exports: "named",
-    },
-    external,
-    plugins: [
-      ...sharedPlugins,
-      typescript({
-        tsconfig: "./tsconfig.build.json",
-        outDir: "./dist/cjs",
-      }),
-    ],
-  },
+  }
 ]);

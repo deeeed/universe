@@ -18,6 +18,7 @@ import {
   SecurityFinding,
 } from "../types/security.types.js";
 import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
+import { CommitParser } from "../utils/commit-parser.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
 import { SecurityService } from "./security.service.js";
@@ -65,6 +66,7 @@ export class CommitService extends BaseService {
         return this.createEmptyResult({ branch, baseBranch });
       }
 
+      // First analyze security and structure
       const securityResult =
         params.securityResult ||
         (this.security
@@ -75,54 +77,60 @@ export class CommitService extends BaseService {
           : undefined);
 
       const warnings = this.getWarnings({ securityResult, files });
-      let formattedMessage = "";
 
-      let suggestions: CommitSuggestion[] | undefined;
-      let splitSuggestion: CommitSplitSuggestion | undefined;
-      let shouldPromptUser = false;
-
-      if (originalMessage) {
-        formattedMessage = this.formatCommitMessage({
-          message: originalMessage,
-          files,
-        });
-
-        if (params.enableAI && this.ai) {
-          [suggestions, splitSuggestion] = await Promise.all([
-            this.getSuggestions({
-              files,
-              message: originalMessage,
-              diff: await this.git.getStagedDiff(),
-            }),
-            this.getSplitSuggestion({ files, message: originalMessage }),
-          ]);
-        }
-      }
-
+      // Analyze commit cohesion FIRST
       const cohesionAnalysis = this.analyzeCommitCohesion({
         files,
-        originalMessage: params.message || "",
+        originalMessage: params.message ?? "",
       });
 
       // Add cohesion warnings to result
       warnings.push(...cohesionAnalysis.warnings);
 
-      // Add split suggestion if needed
+      let suggestions: CommitSuggestion[] | undefined;
+      let splitSuggestion: CommitSplitSuggestion | undefined;
+      let shouldPromptUser = false;
+
+      // Only set splitSuggestion if needed
       if (cohesionAnalysis.shouldSplit) {
         splitSuggestion = cohesionAnalysis.splitSuggestion;
         shouldPromptUser = true;
       }
 
+      // Only prepare for AI if no structural issues need addressing first
+      if (
+        params.enableAI &&
+        this.ai &&
+        !cohesionAnalysis.shouldSplit &&
+        !securityResult?.shouldBlock
+      ) {
+        shouldPromptUser = true;
+      }
+
+      const parser = new CommitParser();
+      const complexity = parser.analyzeCommitComplexity({
+        files: files,
+      });
+
+      // Format the message if provided
+      const formattedMessage = params.message
+        ? this.formatCommitMessage({
+            message: params.message,
+            files,
+          })
+        : "";
+
       return {
         branch,
         baseBranch,
         originalMessage,
-        formattedMessage,
+        formattedMessage, // Include the formatted message
         stats: this.calculateStats(files),
         warnings,
         suggestions,
         splitSuggestion,
         shouldPromptUser,
+        complexity,
       };
     } catch (error) {
       this.logger.error("Failed to analyze commit", error);
@@ -209,25 +217,39 @@ export class CommitService extends BaseService {
       return undefined;
     }
 
-    const detectedScope = this.detectScope(params.files);
-
-    this.logger.debug("Generating AI suggestions for files:", {
-      fileCount: params.files.length,
-      diffLength: params.diff.length,
-      message: params.message,
-      aiProvider: this.ai.constructor.name,
-      detectedScope,
-    });
-
-    const prompt = generateCommitSuggestionPrompt({
-      files: params.files,
-      message: params.message,
-      diff: params.diff,
-      logger: this.logger,
-      scope: detectedScope,
-    });
-
     try {
+      const detectedScope = this.detectScope(params.files);
+      const parser = new CommitParser();
+      const complexity = parser.analyzeCommitComplexity({
+        files: params.files,
+      });
+
+      // Prepare the most relevant diff content
+      const prioritizedDiffs = this.getPrioritizedDiffs({
+        files: params.files,
+        diff: params.diff,
+        maxLength: 4000,
+      });
+
+      this.logger.debug("Generating AI suggestions for files:", {
+        fileCount: params.files.length,
+        diffLength: params.diff.length,
+        prioritizedDiffLength: prioritizedDiffs.length,
+        message: params.message,
+        aiProvider: this.ai.constructor.name,
+        detectedScope,
+        complexity,
+      });
+
+      const prompt = generateCommitSuggestionPrompt({
+        files: params.files,
+        message: params.message,
+        diff: prioritizedDiffs,
+        scope: detectedScope,
+        complexity,
+        logger: this.logger,
+      });
+
       const suggestions = await this.ai.generateCompletion<{
         suggestions: CommitSuggestion[];
       }>({
@@ -235,23 +257,83 @@ export class CommitService extends BaseService {
         options: {
           requireJson: true,
           temperature: 0.7,
-          systemPrompt:
-            "You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. Only use the provided scope if one is specified.",
+          systemPrompt: `You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. 
+            ${complexity.needsStructure ? "Include detailed message for complex changes." : "Keep suggestions concise with title only."}
+            Only use the provided scope if one is specified.`,
         },
       });
 
       this.logger.debug("AI response:", suggestions);
 
       if (!suggestions?.suggestions?.length) {
-        this.logger.debug("No suggestions received from AI service");
+        this.logger.warn("No suggestions received from AI service");
+        this.logger.debug("Raw AI response:", suggestions);
         return undefined;
       }
 
-      return suggestions.suggestions.slice(0, 3);
+      // Add scope to suggestions if detected
+      return suggestions.suggestions.map((suggestion) => ({
+        ...suggestion,
+        scope: detectedScope,
+      }));
     } catch (error) {
       this.logger.error("Failed to generate AI suggestions:", error);
+      this.logger.debug("Error details:", {
+        files: params.files.map((f) => f.path),
+        messageLength: params.message.length,
+        diffLength: params.diff.length,
+        error: error instanceof Error ? error.message : error,
+      });
       return undefined;
     }
+  }
+
+  private getPrioritizedDiffs(params: {
+    files: FileChange[];
+    diff: string;
+    maxLength: number;
+  }): string {
+    const { files, diff, maxLength } = params;
+    const diffs: Array<{ path: string; diff: string; significance: number }> =
+      [];
+
+    // Sort files by significance
+    const sortedFiles = [...files].sort((a, b) => {
+      const aChanges = a.additions + a.deletions;
+      const bChanges = b.additions + b.deletions;
+      return bChanges - aChanges;
+    });
+
+    // Extract diffs for each file
+    for (const file of sortedFiles) {
+      const diffStart = diff.indexOf(`diff --git a/${file.path}`);
+      if (diffStart === -1) continue;
+
+      const nextDiffStart = diff.indexOf("diff --git", diffStart + 1);
+      const diffEnd = nextDiffStart === -1 ? diff.length : nextDiffStart;
+      const fileDiff = diff.slice(diffStart, diffEnd);
+
+      diffs.push({
+        path: file.path,
+        diff: fileDiff,
+        significance: file.additions + file.deletions,
+      });
+    }
+
+    // Combine diffs within maxLength limit
+    let result = "";
+    let currentLength = 0;
+
+    for (const { diff: fileDiff } of diffs) {
+      if (currentLength + fileDiff.length <= maxLength) {
+        result += fileDiff + "\n";
+        currentLength += fileDiff.length + 1;
+      } else {
+        break;
+      }
+    }
+
+    return result;
   }
 
   public getSplitSuggestion(params: {
@@ -315,10 +397,15 @@ export class CommitService extends BaseService {
         deletions: 0,
       },
       warnings: [],
+      complexity: {
+        score: 0,
+        reasons: [],
+        needsStructure: false,
+      },
     };
   }
 
-  private formatCommitMessage(params: {
+  public formatCommitMessage(params: {
     message: string;
     files: FileChange[];
   }): string {
@@ -449,9 +536,10 @@ export class CommitService extends BaseService {
     }
 
     // Find primary scope (with most changes)
-    const primaryScope = Array.from(filesByScope.entries()).reduce((a, b) =>
-      a[1].length > b[1].length ? a : b,
-    )[0];
+    const primaryScope =
+      Array.from(filesByScope.entries()).sort(
+        (a, b) => b[1].length - a[1].length,
+      )[0]?.[0] || "root";
 
     warnings.push({
       type: "structure",

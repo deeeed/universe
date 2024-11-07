@@ -1,4 +1,4 @@
-import { PRStats } from "../types/analysis.types.js";
+import { CommitComplexity, PRStats } from "../types/analysis.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
 
@@ -17,6 +17,8 @@ export function buildCommitPrompt(params: {
   diff: string;
   logger: Logger;
   scope?: string;
+  complexity?: CommitComplexity;
+  includeDetails?: boolean;
 }): string {
   const fileChanges = formatFileChanges({ files: params.files });
   const packageSummary = formatPackageSummary({
@@ -31,6 +33,17 @@ export function buildCommitPrompt(params: {
     ? `\nValid scope: "${params.scope}"\n`
     : "\nNo specific scope detected\n";
 
+  const detailsGuideline = params.includeDetails
+    ? `\nPlease provide a high-level summary in the details field that includes:
+- Main architectural or structural changes
+- Key features added or removed
+- Important refactoring decisions
+- Breaking changes (if any)
+- Impact on existing functionality
+
+Avoid implementation details like line numbers or minor code changes.`
+    : "\nDetails field is optional for this commit";
+
   return `Analyze these git changes and suggest commit messages following conventional commits format.
 
 Files Changed:
@@ -40,6 +53,11 @@ Package Changes:
 ${packageSummary}
 ${scopeGuideline}
 Original message: "${params.originalMessage}"
+
+Complexity Analysis:
+- Score: ${params.complexity?.score ?? "N/A"}
+- Reasons: ${params.complexity?.reasons.join(", ") ?? "None"}
+${detailsGuideline}
 
 Git diff (truncated):
 \`\`\`diff
@@ -54,7 +72,9 @@ Guidelines:
 2. Be specific about the changes
 3. Keep descriptions concise but informative
 4. Only use the provided scope if one is specified
-5. Use appropriate type based on the changes`;
+5. Use appropriate type based on the changes
+6. ${params.includeDetails ? "Include detailed commit information in the details field" : "Details field is optional"}
+7. The "title" field should contain only the description without type or scope`;
 }
 
 // Helper functions to keep the code DRY
@@ -82,11 +102,9 @@ function getCommitSuggestionFormat(): string {
   return `{
     "suggestions": [
         {
-            "message": "complete conventional commit message",
-            "explanation": "detailed reasoning for the suggestion",
-            "type": "commit type (feat|fix|docs|style|refactor|test|chore)",
-            "scope": "affected package or component",
-            "description": "clear description of changes"
+            "title": "short descriptive title without scope or type",
+            "message": "detailed explanation of the changes",
+            "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
         }
     ]
 }`;
@@ -102,10 +120,11 @@ function truncateDiff(params: {
   if (diff.length <= maxLength) return diff;
 
   // Split by file sections and take most important ones
-  const sections = diff.split("diff --git");
+  const sections = diff.split("diff --git").filter(Boolean);
   const truncatedSections = sections
     .slice(0, 5) // Take first 5 files
-    .join("diff --git");
+    .map((section) => `diff --git${section}`) // Add back the "diff --git" prefix
+    .join("\n");
 
   logger.debug("Truncating diff:", {
     originalLength: diff.length,
@@ -113,49 +132,63 @@ function truncateDiff(params: {
     truncatedLength: truncatedSections.length,
   });
 
-  return (
-    truncatedSections.slice(0, maxLength) +
-    `\n\n... (truncated ${sections.length - 5} more files)`
-  );
+  return truncatedSections.length > maxLength
+    ? truncatedSections.slice(0, maxLength) +
+        `\n\n... (truncated ${sections.length - 5} more files)`
+    : truncatedSections +
+        `\n\n... (truncated ${sections.length - 5} more files)`;
 }
 
-interface PromptParams {
+export interface CommitSuggestionPromptParams {
   files: FileChange[];
   message: string;
   diff: string;
   logger: Logger;
   scope?: string;
+  complexity: CommitComplexity;
 }
 
-export function generateCommitSuggestionPrompt(params: PromptParams): string {
-  const { files, message, diff, logger, scope } = params;
+export function generateCommitSuggestionPrompt(
+  params: CommitSuggestionPromptParams,
+): string {
+  const fileChanges = params.files
+    .map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`)
+    .join("\n");
 
-  // Group files by package for summary
-  const packages: Record<string, FileChange[]> = {};
-  files.forEach((file) => {
-    const parts = file.path.split("/");
-    const pkg = parts.length >= 2 ? parts[1] : "root";
-    if (!packages[pkg]) packages[pkg] = [];
-    packages[pkg].push(file);
-  });
+  return `Analyze these git changes and suggest commit messages following conventional commits format.
 
-  logger.debug("Generating commit suggestion prompt:", {
-    filesCount: files.length,
-    originalDiffLength: diff.length,
-    truncatedDiffLength: truncateDiff({ diff, logger }).length,
-    message,
-    scope,
-    packages: Object.keys(packages),
-  });
+Files Changed:
+${fileChanges}
 
-  return buildCommitPrompt({
-    files,
-    packages,
-    originalMessage: message,
-    diff,
-    logger,
-    scope,
-  });
+Key Changes:
+${params.diff}
+
+Original message: "${params.message}"
+
+Complexity Analysis:
+- Score: ${params.complexity.score}
+- Reasons: ${params.complexity.reasons.join(", ") || "None"}
+- Needs detailed structure: ${params.complexity.needsStructure}
+${params.scope ? `\nValid scope: "${params.scope}"` : ""}
+
+Please provide suggestions in this JSON format:
+{
+  "suggestions": [
+    {
+      "title": "short descriptive title without scope or type",
+      "message": "${params.complexity.needsStructure ? "detailed explanation of changes" : "optional details"}",
+      "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
+    }
+  ]
+}
+
+Guidelines:
+1. Follow conventional commits format: type(scope): description
+2. Be specific about the changes
+3. Keep descriptions concise but informative
+4. Only use the provided scope if one is specified
+5. Use appropriate type based on the changes
+6. ${params.complexity.needsStructure ? "Include detailed commit information in the message field" : "Message field is optional"}`;
 }
 
 export function generateSplitSuggestionPrompt(params: {
@@ -288,4 +321,38 @@ Guidelines:
 4. Maintain dependency order
 5. Follow conventional commit format for titles
 6. Include clear git commands for implementation`;
+}
+
+export function getPriorityDiffs(params: {
+  files: FileChange[];
+  diff: string;
+  maxLength?: number;
+}): string {
+  const maxLength = params.maxLength ?? 4000;
+
+  // Split diff into file sections
+  const fileDiffs = params.diff.split("diff --git").filter(Boolean);
+
+  // Sort files by significance and take top 5
+  const significantDiffs = fileDiffs
+    .map((diff) => {
+      const additions = (diff.match(/^\+(?!\+\+)/gm) || []).length;
+      const deletions = (diff.match(/^-(?!--)/gm) || []).length;
+      return { diff, significance: additions + deletions };
+    })
+    .sort((a, b) => b.significance - a.significance)
+    .slice(0, 5)
+    .map(({ diff }) => "diff --git" + diff);
+
+  // Combine diffs within maxLength
+  let result = "";
+  for (const diff of significantDiffs) {
+    if (result.length + diff.length <= maxLength) {
+      result += diff;
+    } else {
+      break;
+    }
+  }
+
+  return result;
 }

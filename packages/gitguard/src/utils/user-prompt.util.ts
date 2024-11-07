@@ -1,7 +1,7 @@
+import { closeSync, openSync } from "fs";
+import { ReadStream, WriteStream } from "tty";
 import { Config } from "../types/config.types.js";
 import { Logger } from "../types/logger.types.js";
-import { ReadStream, WriteStream } from "tty";
-import { openSync, closeSync } from "fs";
 
 // Common patterns helpers
 export async function displaySuggestions(params: {
@@ -234,13 +234,14 @@ export async function promptChoice<T extends string>(params: {
   return choice.value;
 }
 
-// Add new types and prompts for init command
+export type AIProviderName = "azure" | "openai" | "ollama";
+
 interface InitPromptResponses {
   baseBranch: string;
   conventionalCommits: boolean;
   security: boolean;
   enableAI: boolean;
-  aiProvider?: "azure" | "openai" | "ollama";
+  aiProvider?: AIProviderName;
   aiEndpoint?: string;
   aiDeployment?: string;
   prTemplate: boolean;
@@ -301,12 +302,12 @@ export async function promptForInit(params: {
           logger,
           allowEmpty: true,
           defaultValue: currentConfig?.hook?.timeoutSeconds?.toString() ?? "90",
-        })) || "90",
+        })) ?? "90",
       ),
     },
   };
   if (responses.enableAI) {
-    responses.aiProvider = await promptChoice<"azure" | "openai" | "ollama">({
+    responses.aiProvider = await promptChoice<AIProviderName>({
       message: "Select AI provider:",
       choices: [
         { label: "Azure OpenAI", value: "azure" },
@@ -351,7 +352,7 @@ export async function promptInput(params: {
     const onData = (buffer: Buffer): void => {
       const response = buffer.toString().trim();
       process.stdin.removeListener("data", onData);
-      resolve(response || defaultValue || "");
+      resolve((response || defaultValue) ?? "");
     };
     process.stdin.once("data", onData);
   });
@@ -359,32 +360,32 @@ export async function promptInput(params: {
 
 // Helper functions for AI defaults
 function getDefaultEndpoint(
-  provider: "azure" | "openai" | "ollama",
+  provider: AIProviderName,
   config: Partial<Config> | null,
 ): string {
   if (provider === "azure") {
     return (
-      config?.ai?.azure?.endpoint || "https://your-resource.openai.azure.com/"
+      config?.ai?.azure?.endpoint ?? "https://your-resource.openai.azure.com/"
     );
   }
   if (provider === "ollama") {
-    return config?.ai?.ollama?.host || "http://localhost:11434";
+    return config?.ai?.ollama?.host ?? "http://localhost:11434";
   }
   return "";
 }
 
 export function getDefaultDeployment(
-  provider: "azure" | "openai" | "ollama",
+  provider: AIProviderName,
   config: Partial<Config> | null,
 ): string {
   if (provider === "azure") {
-    return config?.ai?.azure?.deployment || "gpt-4";
+    return config?.ai?.azure?.deployment ?? "gpt-4";
   }
   if (provider === "ollama") {
-    return config?.ai?.ollama?.model || "codellama";
+    return config?.ai?.ollama?.model ?? "codellama";
   }
   if (provider === "openai") {
-    return config?.ai?.openai?.model || "gpt-4";
+    return config?.ai?.openai?.model ?? "gpt-4";
   }
   return "";
 }
@@ -411,8 +412,8 @@ export function getAIConfig(responses: InitPromptResponses): Config["ai"] {
         enabled: true,
         provider: "azure",
         azure: {
-          endpoint: responses.aiEndpoint || "",
-          deployment: responses.aiDeployment || "",
+          endpoint: responses.aiEndpoint ?? "",
+          deployment: responses.aiDeployment ?? "",
           apiVersion: "2024-02-15-preview",
         },
       };
@@ -421,8 +422,8 @@ export function getAIConfig(responses: InitPromptResponses): Config["ai"] {
         enabled: true,
         provider: "ollama",
         ollama: {
-          host: responses.aiEndpoint || "",
-          model: responses.aiDeployment || "",
+          host: responses.aiEndpoint ?? "",
+          model: responses.aiDeployment ?? "",
         },
       };
     case "openai":
@@ -430,7 +431,7 @@ export function getAIConfig(responses: InitPromptResponses): Config["ai"] {
         enabled: true,
         provider: "openai",
         openai: {
-          model: responses.aiDeployment || "",
+          model: responses.aiDeployment ?? "",
         },
       };
     default:
@@ -473,7 +474,7 @@ export async function promptUser(
     defaultValue,
   });
 
-  return result || "";
+  return result ?? "";
 }
 
 // Add new interface and function for AI prompts

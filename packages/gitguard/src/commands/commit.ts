@@ -1,12 +1,17 @@
 import chalk from "chalk";
+import { DEFAULT_MAX_PROMPT_TOKENS } from "../constants.js";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
 import { LoggerService } from "../services/logger.service.js";
 import { ReporterService } from "../services/reporter.service.js";
 import { SecurityService } from "../services/security.service.js";
-import { CommitAnalysisResult } from "../types/analysis.types.js";
+import {
+  CommitAnalysisResult,
+  CommitSuggestion,
+} from "../types/analysis.types.js";
 import { FileChange } from "../types/git.types.js";
+import { Logger } from "../types/logger.types.js";
 import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
@@ -16,8 +21,6 @@ interface CommitAnalyzeParams {
   options: {
     message?: string;
     format?: "console" | "json" | "markdown";
-    color?: boolean;
-    detailed?: boolean;
     staged?: boolean;
     unstaged?: boolean;
     all?: boolean;
@@ -25,7 +28,81 @@ interface CommitAnalyzeParams {
     execute?: boolean;
     debug?: boolean;
     configPath?: string;
+    cwd?: string;
   };
+}
+
+// Extract AI suggestion display logic
+function displayAISuggestions(params: {
+  suggestions: CommitSuggestion[];
+  detectedScope?: string;
+  logger: Logger;
+}): void {
+  const { suggestions, detectedScope, logger } = params;
+  const scopeDisplay = detectedScope ? `(${detectedScope})` : "";
+
+  logger.info("\n🤖 AI Suggestions:");
+  suggestions.forEach((suggestion, index) => {
+    const formattedTitle = `${suggestion.type}${scopeDisplay}: ${suggestion.title}`;
+
+    logger.info(
+      `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(formattedTitle)}`,
+    );
+    if (suggestion.message) {
+      logger.info(`\n   ${chalk.dim("Details:")}`);
+      suggestion.message.split("\n").forEach((paragraph) => {
+        logger.info(`   ${chalk.gray(paragraph)}`);
+      });
+    }
+  });
+}
+
+// Extract commit execution logic
+async function executeCommit(params: {
+  suggestion: CommitSuggestion;
+  detectedScope?: string;
+  git: GitService;
+  logger: Logger;
+}): Promise<void> {
+  const { suggestion, detectedScope, git, logger } = params;
+  const scopeDisplay = detectedScope ? `(${detectedScope})` : "";
+  const commitMessage = `${suggestion.type}${scopeDisplay}: ${suggestion.title}${
+    suggestion.message ? `\n\n${suggestion.message}` : ""
+  }`;
+
+  logger.info("\n📝 Creating commit with selected message...");
+  try {
+    await git.createCommit({ message: commitMessage });
+    logger.info(chalk.green("✅ Commit created successfully!"));
+  } catch (error) {
+    logger.error(chalk.red("❌ Failed to create commit:"), error);
+    throw error;
+  }
+}
+
+// Extract suggestion selection logic
+async function selectAISuggestion(params: {
+  suggestions: CommitSuggestion[];
+  logger: Logger;
+}): Promise<CommitSuggestion | undefined> {
+  const { suggestions, logger } = params;
+  const readline = await import("readline/promises");
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  logger.info(
+    `\n📝 ${chalk.yellow("Select a suggestion to commit")} (${chalk.cyan(`1-${suggestions.length}`)}):`,
+  );
+
+  const answer = await rl.question("Enter number (or press enter to skip): ");
+  rl.close();
+
+  const selection = parseInt(answer, 10);
+  return selection > 0 && selection <= suggestions.length
+    ? suggestions[selection - 1]
+    : undefined;
 }
 
 export async function analyzeCommit({
@@ -36,10 +113,16 @@ export async function analyzeCommit({
 
   try {
     const config = await loadConfig({ configPath: options.configPath });
+
+    // Override config cwd if provided in options
+    if (options.cwd) {
+      config.git.cwd = options.cwd;
+    }
+
     const git = new GitService({
-      config: {
+      gitConfig: {
         ...config.git,
-        baseBranch: config.git?.baseBranch || "main",
+        baseBranch: config.git?.baseBranch ?? "main",
       },
       logger,
     });
@@ -105,6 +188,11 @@ export async function analyzeCommit({
           deletions: 0,
         },
         warnings: [],
+        complexity: {
+          score: 0,
+          reasons: [],
+          needsStructure: false,
+        },
       };
     }
 
@@ -129,11 +217,123 @@ export async function analyzeCommit({
     // Initial analysis
     let result = await commitService.analyze({
       files: filesToAnalyze,
-      message: options.message || "",
-      enableAI: false,
+      message: options.message ?? "",
+      enableAI: options.ai ?? false,
       enablePrompts: true,
       securityResult,
     });
+
+    // Handle AI suggestions if enabled
+    if (options.ai && ai) {
+      logger.info("\n🤖 Preparing AI suggestions...");
+      const aiDiff = await git.getStagedDiffForAI();
+
+      const prompt = generateCommitSuggestionPrompt({
+        files: filesToAnalyze,
+        message: options.message ?? "",
+        diff: aiDiff,
+        logger,
+        complexity: result.complexity,
+      });
+
+      const tokenUsage = ai.calculateTokenUsage({ prompt });
+
+      logger.info(
+        `\n💰 ${chalk.cyan("Estimated cost:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
+      );
+      logger.info(
+        `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}/${chalk.dim(
+          config.ai.maxPromptTokens,
+        )}`,
+      );
+      logger.info(
+        `📝 ${chalk.cyan("Prompt size:")} ${chalk.bold(
+          Math.round(prompt.length / 1024),
+        )}KB`,
+      );
+
+      // Add token limit check BEFORE any AI calls
+      if (
+        tokenUsage.count >
+          (config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS) ||
+        parseFloat(tokenUsage.estimatedCost) > (config.ai.maxPromptCost ?? 1.0)
+      ) {
+        logger.warn(
+          "\n⚠️  This analysis would exceed configured limits. Please reduce the scope or adjust limits in config.",
+        );
+        return result;
+      }
+
+      const aiPromptResult = await promptAIAction({
+        logger,
+        tokenUsage,
+      });
+
+      // Only proceed with AI operations if within limits
+      switch (aiPromptResult.action) {
+        case "generate": {
+          logger.info("\nGenerating AI suggestions...");
+          result = await commitService.analyze({
+            files: filesToAnalyze,
+            message: options.message ?? "",
+            enableAI: true,
+            enablePrompts: true,
+            securityResult,
+          });
+
+          if (!result.suggestions?.length) {
+            logger.warn("\n⚠️  No AI suggestions could be generated.");
+            return result;
+          }
+
+          const detectedScope = commitService.detectScope(filesToAnalyze);
+          displayAISuggestions({
+            suggestions: result.suggestions,
+            detectedScope,
+            logger,
+          });
+
+          if (options.execute) {
+            const selectedSuggestion = await selectAISuggestion({
+              suggestions: result.suggestions,
+              logger,
+            });
+
+            if (selectedSuggestion) {
+              await executeCommit({
+                suggestion: selectedSuggestion,
+                detectedScope,
+                git,
+                logger,
+              });
+            }
+          }
+          return result;
+        }
+
+        case "copy": {
+          const prompt = generateCommitSuggestionPrompt({
+            files: filesToAnalyze,
+            message: options.message ?? "",
+            diff: aiDiff,
+            logger,
+            complexity: result.complexity,
+          });
+
+          await copyToClipboard({
+            text: prompt,
+            logger,
+          });
+
+          logger.info("\n✅ AI prompt copied to clipboard!");
+          break;
+        }
+
+        case "skip":
+          logger.info("\n⏭️  Skipping AI suggestions");
+          break;
+      }
+    }
 
     // Handle split suggestions
     if (result.splitSuggestion) {
@@ -252,117 +452,11 @@ export async function analyzeCommit({
       reporter.generateReport({
         result,
         options: {
-          format: options.format || "console",
-          color: options.color,
-          detailed: options.detailed,
+          format: options.format ?? "console",
         },
       });
 
       // Handle commit if option is set
-    }
-
-    // Handle AI suggestions if enabled
-    if (options.ai && ai) {
-      logger.info("\n🤖 Preparing AI suggestions...");
-      const aiDiff = await git.getStagedDiffForAI();
-      const prompt = generateCommitSuggestionPrompt({
-        files: filesToAnalyze,
-        message: options.message || "",
-        diff: aiDiff,
-        logger,
-      });
-
-      const tokenUsage = ai.calculateTokenUsage({ prompt });
-      logger.info(
-        `\n💰 ${chalk.cyan("Estimated cost for AI generation:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
-      );
-      logger.info(
-        `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}`,
-      );
-
-      const aiPromptResult = await promptAIAction({
-        logger,
-        tokenUsage,
-      });
-
-      switch (aiPromptResult.action) {
-        case "generate": {
-          logger.info("\nGenerating AI suggestions...");
-          const aiResult = await commitService.analyze({
-            files: filesToAnalyze,
-            message: options.message || "",
-            enableAI: true,
-            enablePrompts: true,
-            securityResult,
-          });
-
-          if (aiResult.suggestions?.length) {
-            logger.info("\n🤖 AI Suggestions:");
-            aiResult.suggestions.forEach((suggestion, index) => {
-              logger.info(
-                `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(suggestion.message)}`,
-              );
-              logger.info(
-                `   ${chalk.dim("Explanation:")} ${suggestion.explanation}`,
-              );
-            });
-
-            if (options.execute) {
-              logger.info(
-                `\n📝 ${chalk.yellow("Select a suggestion to commit")} (${chalk.cyan(`1-${aiResult.suggestions.length}`)}):`,
-              );
-              const readline = await import("readline/promises");
-              const rl = readline.createInterface({
-                input: process.stdin,
-                output: process.stdout,
-              });
-
-              const answer = await rl.question(
-                "Enter number (or press enter to skip): ",
-              );
-              rl.close();
-
-              const selection = parseInt(answer, 10);
-              if (selection > 0 && selection <= aiResult.suggestions.length) {
-                const selectedSuggestion = aiResult.suggestions[selection - 1];
-                logger.info("\n📝 Creating commit with selected message...");
-                try {
-                  await git.createCommit({
-                    message: selectedSuggestion.message,
-                  });
-                  logger.info(chalk.green("✅ Commit created successfully!"));
-                  return aiResult;
-                } catch (error) {
-                  logger.error(chalk.red("❌ Failed to create commit:"), error);
-                  throw error;
-                }
-              }
-            }
-          }
-          return aiResult;
-        }
-
-        case "copy": {
-          const prompt = generateCommitSuggestionPrompt({
-            files: filesToAnalyze,
-            message: options.message || "",
-            diff: aiDiff,
-            logger,
-          });
-
-          await copyToClipboard({
-            text: prompt,
-            logger,
-          });
-
-          logger.info("\n✅ AI prompt copied to clipboard!");
-          break;
-        }
-
-        case "skip":
-          logger.info("\n⏭️  Skipping AI suggestions");
-          break;
-      }
     }
 
     // Show analysis results if not already shown
@@ -381,9 +475,7 @@ export async function analyzeCommit({
       reporter.generateReport({
         result,
         options: {
-          format: options.format || "console",
-          color: options.color,
-          detailed: options.detailed,
+          format: options.format ?? "console",
         },
       });
     }

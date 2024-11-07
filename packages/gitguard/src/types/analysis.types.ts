@@ -12,12 +12,23 @@ export interface CommitAnalysisResult {
   suggestions?: CommitSuggestion[];
   splitSuggestion?: CommitSplitSuggestion;
   shouldPromptUser?: boolean;
+  complexity: CommitComplexity;
 }
 
 export interface CommitStats {
   filesChanged: number;
   additions: number;
   deletions: number;
+}
+
+export interface CommitComplexity {
+  score: number;
+  reasons: string[];
+  needsStructure: boolean;
+}
+
+export interface FilesByType {
+  [key: string]: string[];
 }
 
 export interface CommitSplitSuggestion {
@@ -75,11 +86,10 @@ export interface PRStats {
 }
 
 export interface CommitSuggestion {
-  message: string;
-  explanation: string;
-  type: string;
-  scope?: string;
-  description: string;
+  title: string; // Short descriptive title without scope or type
+  type: string; // Commit type (feat|fix|docs|style|refactor|test|chore)
+  scope?: string; // Optional scope (detected from files)
+  message?: string; // Optional detailed explanation for complex changes
 }
 
 export interface CommitSuggestionOptions extends BaseAIOptions {
@@ -102,6 +112,25 @@ export interface PRDescription {
 }
 
 export interface PRDescriptionOptions extends BaseAIOptions {}
+
+import type { Octokit } from "@octokit/rest";
+import type { RestEndpointMethodTypes } from "@octokit/plugin-rest-endpoint-methods";
+
+export type PullsListResponse =
+  RestEndpointMethodTypes["pulls"]["list"]["response"];
+export type PullsCreateResponse =
+  RestEndpointMethodTypes["pulls"]["create"]["response"];
+export type PullsUpdateResponse =
+  RestEndpointMethodTypes["pulls"]["update"]["response"];
+
+export interface GitHubPR {
+  url: string;
+  number: number;
+  title: string;
+  description: string;
+}
+
+export type OctokitInstance = InstanceType<typeof Octokit>;
 
 export interface PRSplitSuggestion {
   reason: string;
@@ -135,4 +164,42 @@ export interface CommitCohesionAnalysis {
   primaryScope?: string;
   splitSuggestion?: CommitSplitSuggestion;
   warnings: AnalysisWarning[];
+}
+
+export interface ComplexityOptions {
+  thresholds: {
+    largeFile: number;
+    veryLargeFile: number;
+    hugeFile: number;
+    multipleFiles: number;
+    manyFiles: number;
+  };
+  scoring: {
+    baseFileScore: number;
+    largeFileScore: number;
+    veryLargeFileScore: number;
+    hugeFileScore: number;
+    sourceFileScore: number;
+    testFileScore: number;
+    configFileScore: number;
+    apiFileScore: number;
+    migrationFileScore: number;
+    componentFileScore: number;
+    hookFileScore: number;
+    utilityFileScore: number;
+    criticalFileScore: number;
+  };
+  patterns: {
+    sourceFiles: string[];
+    apiFiles: string[];
+    migrationFiles: string[];
+    componentFiles: string[];
+    hookFiles: string[];
+    utilityFiles: string[];
+    criticalFiles: string[];
+  };
+  structureThresholds: {
+    scoreThreshold: number;
+    reasonsThreshold: number;
+  };
 }

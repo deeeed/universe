@@ -167,7 +167,7 @@ export class ReporterService extends BaseService {
       Array.from(filesByDir.entries()).forEach(([dir, dirFiles]) => {
         this.logger.info(`  ${dir}/`);
         dirFiles.forEach((file) => {
-          const fileName = file.path.split("/").pop() || file.path;
+          const fileName = file.path.split("/").pop() ?? file.path;
           this.logger.info(
             `    • ${fileName} (+${file.additions} -${file.deletions})`,
             { color: options.color },

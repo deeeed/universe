@@ -79,16 +79,16 @@ export class SecurityService extends BaseService {
       if (!line.startsWith("+")) continue;
 
       for (const pattern of SECRET_PATTERNS) {
-        const match = line.match(pattern.pattern);
+        const match = pattern.pattern.exec(line);
         if (match) {
-          const secretKey = `${currentFile || "unknown"}-${match[0]}`;
+          const secretKey = `${currentFile ?? "unknown"}-${match[0]}`;
           if (foundSecrets.has(secretKey)) continue;
 
           foundSecrets.add(secretKey);
           findings.push({
             type: "secret",
             severity: pattern.severity,
-            path: currentFile || ".env", // Default to .env if unknown
+            path: currentFile ?? ".env", // Default to .env if unknown
             line: i + 1,
             content: this.maskSecret(line.substring(1)),
             match: pattern.name,
@@ -124,8 +124,8 @@ export class SecurityService extends BaseService {
 
     for (const line of lines) {
       for (const pattern of patterns) {
-        const match = line.match(pattern);
-        if (match && match[1]) {
+        const match = pattern.exec(line);
+        if (match && match.length > 1) {
           return match[1];
         }
       }
@@ -175,7 +175,7 @@ export class SecurityService extends BaseService {
       return null;
     }
 
-    const match = params.line.substring(1).match(params.pattern.pattern);
+    const match = params.pattern.pattern.exec(params.line.substring(1));
     if (!match) return null;
 
     return {

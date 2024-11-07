@@ -1,15 +1,17 @@
 import chalk from "chalk";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
+import { GitHubService } from "../services/github.service.js";
 import { LoggerService } from "../services/logger.service.js";
 import { PRService } from "../services/pr.service.js";
-import { ReporterService } from "../services/reporter.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { PRAnalysisResult } from "../types/analysis.types.js";
-import { generatePRDescriptionPrompt } from "../utils/ai-prompt.util.js";
-import { loadConfig } from "../utils/config.util.js";
-import { promptNumeric, promptYesNo } from "../utils/user-prompt.util.js";
+import { GitConfig } from "../types/config.types.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
+import { loadConfig } from "../utils/config.util.js";
+import { checkGitHubToken } from "../utils/github.util.js";
+import { promptInput, promptYesNo } from "../utils/user-prompt.util.js";
+import { ReporterService } from "../services/reporter.service.js";
 
 interface BranchAnalyzeParams {
   options: {
@@ -21,57 +23,103 @@ interface BranchAnalyzeParams {
     ai?: boolean;
     debug?: boolean;
     configPath?: string;
+    createPR?: boolean;
+    draft?: boolean;
+    labels?: string[];
+    title?: string;
+    description?: string;
+    base?: string;
+    security?: boolean;
   };
+}
+
+async function ensureRemoteBranch(params: {
+  branch: string;
+  git: GitService;
+  github: GitHubService;
+  logger: LoggerService;
+}): Promise<boolean> {
+  const { branch, git, github, logger } = params;
+
+  try {
+    await github.getBranch({ branch });
+    return true;
+  } catch (error) {
+    logger.info(`\n⚠️ Branch '${branch}' not found on remote`);
+
+    try {
+      // Check if branch exists locally
+      const localBranches = await git.getLocalBranches();
+      if (!localBranches.includes(branch)) {
+        logger.error(`\n❌ Branch '${branch}' not found locally either`);
+        return false;
+      }
+
+      // Ask user if they want to push the branch
+      const shouldPush = await promptYesNo({
+        message: "\nWould you like to push this branch to remote?",
+        logger,
+        defaultValue: true,
+      });
+
+      if (shouldPush) {
+        logger.info("\n📤 Pushing branch to remote...");
+        await git.execGit({
+          command: "push",
+          args: ["-u", "origin", branch],
+        });
+        logger.info("✅ Branch pushed successfully!");
+        return true;
+      }
+
+      return false;
+    } catch (innerError) {
+      logger.error("\n❌ Failed to check local branches:", innerError);
+      return false;
+    }
+  }
 }
 
 export async function analyzeBranch({
   options,
 }: BranchAnalyzeParams): Promise<PRAnalysisResult> {
   const logger = new LoggerService({ debug: options.debug });
-  const reporter = new ReporterService({ logger });
+  let analysisResult: PRAnalysisResult | null = null;
 
   try {
-    logger.debug("Starting branch analysis with options:", options);
     const config = await loadConfig({ configPath: options.configPath });
-    logger.debug("Loaded config:", config);
+    const gitConfig: GitConfig = {
+      ...config.git,
+      github: config.git.github,
+      baseBranch: config.git.baseBranch || "main",
+      monorepoPatterns: config.git.monorepoPatterns || [],
+    };
 
-    const git = new GitService({
-      config: {
-        ...config.git,
-        baseBranch: config.git?.baseBranch || "main",
-      },
-      logger,
-    });
+    const git = new GitService({ gitConfig, logger });
 
-    const security = new SecurityService({ config, logger });
-    const ai =
-      (options.ai ?? config.ai?.enabled)
-        ? AIFactory.create({
-            config: {
-              ...config,
-            },
-            logger,
-          })
-        : undefined;
+    // Initialize GitHub service first
+    const github = new GitHubService({ config, logger, git });
 
-    logger.debug("Initialized services:", {
-      git: !!git,
-      security: !!security,
-      ai: !!ai,
-    });
+    // Initialize other services
+    const security = options.security
+      ? new SecurityService({ config, logger })
+      : undefined;
+    const ai = options.ai ? AIFactory.create({ config, logger }) : undefined;
 
+    // Initialize PR service with GitHub service
     const prService = new PRService({
       config,
+      logger,
       git,
+      github,
       security,
       ai,
-      logger,
     });
 
     // Get branch to analyze
     const currentBranch = await git.getCurrentBranch();
-    const branchToAnalyze = options.name || currentBranch;
-    const baseBranch = git.config.baseBranch;
+    const branchToAnalyze = options.name ?? currentBranch;
+    const baseBranch = gitConfig.baseBranch;
 
     logger.debug("Branch analysis context:", {
       currentBranch,
@@ -80,223 +128,153 @@ export async function analyzeBranch({
     });
 
     // Get branch analysis
-    let result = await prService.analyze({
+    analysisResult = await prService.analyze({
       branch: branchToAnalyze,
       enableAI: Boolean(options.ai),
       enablePrompts: true,
     });
 
-    // Show analysis results
-    if (result.warnings.length > 0) {
-      logger.info(`\n${chalk.yellow("⚠️")} Analysis found some concerns:`);
-      result.warnings.forEach((warning) => {
-        logger.info(`  ${chalk.dim("•")} ${chalk.yellow(warning.message)}`);
-      });
-    } else {
-      logger.info("\n✅ Analysis completed successfully!");
-      logger.info(chalk.green("No issues detected."));
-    }
-
-    // Show branch stats
-    logger.info("\n📈 Branch Statistics:");
-    logger.info(
-      `  ${chalk.dim("•")} Commits: ${chalk.cyan(result.stats.totalCommits)}`,
-    );
-    logger.info(
-      `  ${chalk.dim("•")} Files Changed: ${chalk.cyan(result.stats.filesChanged)}`,
-    );
-    logger.info(
-      `  ${chalk.dim("•")} Additions: ${chalk.green(`+${result.stats.additions}`)}`,
-    );
-    logger.info(
-      `  ${chalk.dim("•")} Deletions: ${chalk.red(`-${result.stats.deletions}`)}`,
-    );
-    logger.info(
-      `  ${chalk.dim("•")} Authors: ${chalk.cyan(result.stats.authors.join(", "))}`,
-    );
-
-    // Show files by directory if detailed
-    if (options.detailed && Object.keys(result.filesByDirectory).length > 0) {
-      logger.info("\n📁 Files by Directory:");
-      Object.entries(result.filesByDirectory).forEach(([directory, files]) => {
-        logger.info(`  ${chalk.cyan(directory)}:`);
-        files.forEach((file) => {
-          logger.info(`    ${chalk.dim("•")} ${file}`);
-        });
-      });
-    }
-
-    // Generate and display the report
+    // Initialize report service and show analysis results
+    const reporter = new ReporterService({ logger });
     reporter.generateReport({
-      result,
+      result: analysisResult,
       options: {
-        format: options.format || "console",
+        format: options.format ?? "console",
         color: options.color,
         detailed: options.detailed,
       },
     });
 
-    // Show split suggestions if any
-    if (result.splitSuggestion) {
-      logger.info(`\n${chalk.yellow("📦")} Branch Split Suggestion:`);
-      logger.info(chalk.yellow(result.splitSuggestion.reason));
+    // Add PR creation logic after analysis
+    if (options.createPR || options.draft) {
+      try {
+        logger.info("\n🚀 Preparing to create Pull Request...");
 
-      result.splitSuggestion.suggestedPRs.forEach((pr, index) => {
-        logger.info(
-          `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(pr.title)}`,
-        );
-        logger.info(`   ${chalk.dim("Description:")} ${pr.description}`);
-        logger.info(`   ${chalk.dim("Files:")}`);
-        pr.files.forEach((file) => {
-          logger.info(`     ${chalk.dim("•")} ${chalk.gray(file.path)}`);
-        });
-      });
+        // Check GitHub token first
+        if (!checkGitHubToken({ config, logger })) {
+          logger.info("\n❌ Cannot create PR without GitHub token");
+          return analysisResult;
+        }
 
-      logger.info("\n📋 Commands to split branch:");
-      result.splitSuggestion.commands.forEach((command) => {
-        logger.info(`  ${chalk.dim("•")} ${chalk.cyan(command)}`);
-      });
-    }
+        // Check if PR already exists
+        const githubInfo = await github.getGitHubInfo();
+        if (!githubInfo) {
+          logger.error("\n❌ Unable to get GitHub repository information");
+          return analysisResult;
+        }
 
-    // Handle AI suggestions if enabled
-    if (options.ai && ai) {
-      logger.debug("Starting AI suggestion flow");
-      logger.info("\n🤖 AI Assistant Options:");
-      logger.info("1. Generate PR title and description");
-      logger.info("2. Suggest branch name improvements");
-      logger.info("3. Review changes and suggest improvements");
-      logger.info("4. Skip AI assistance");
-
-      const answer = await promptNumeric({
-        message: "\nChoose an option (1-4):",
-        allowEmpty: false,
-        logger,
-      });
-
-      const choice = parseInt(answer ?? "0", 10);
-      logger.debug("User selected AI option:", choice);
-
-      // Early return if user chooses to skip
-      if (choice === 4 || choice < 1 || choice > 4) {
-        logger.debug("User chose to skip AI suggestions");
-        logger.info("\n⏭️  Skipping AI suggestions");
-        return result;
-      }
-
-      const prompt = generatePRDescriptionPrompt({
-        commits: result.commits,
-        stats: result.stats,
-        files: result.commits.flatMap((c) => c.files),
-        baseBranch,
-        template: "",
-      });
-
-      const tokenUsage = ai.calculateTokenUsage({ prompt });
-      logger.info(
-        `\n💰 ${chalk.cyan("Estimated cost for AI generation:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
-      );
-      logger.info(
-        `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}`,
-      );
-
-      const shouldProceed = await promptYesNo({
-        message: "Would you like to proceed with AI generation?",
-        logger,
-        defaultValue: true,
-      });
-
-      if (!shouldProceed) {
-        logger.debug("User chose not to proceed with AI generation");
-        logger.info("\n⏭️  Skipping AI suggestions");
-        return result;
-      }
-
-      logger.info("\nGenerating AI suggestions...");
-      result = await prService.analyze({
-        branch: branchToAnalyze,
-        enableAI: true,
-        enablePrompts: true,
-        aiMode: choice === 1 ? "pr" : choice === 2 ? "branch" : "review",
-      });
-
-      // Display AI suggestions based on mode
-      if (choice === 1 && result.description) {
-        // PR title and description mode
-        logger.info("\n🤖 Generated PR Description:");
-        logger.info(`\n${chalk.bold("Title:")} ${result.description.title}`);
-        logger.info(
-          `\n${chalk.dim("Description:")}\n${result.description.description}`,
-        );
-
-        // Offer to copy to clipboard
-        const shouldCopy = await promptYesNo({
-          message: "\nWould you like to copy this to clipboard?",
+        // Ensure branch exists on remote
+        const branchExists = await ensureRemoteBranch({
+          branch: branchToAnalyze,
+          git,
+          github,
           logger,
-          defaultValue: true,
         });
 
-        if (shouldCopy) {
-          await copyToClipboard({
-            text: `${result.description.title}\n\n${result.description.description}`,
+        if (!branchExists) {
+          logger.info("\n📝 Next steps:");
+          logger.info(
+            [
+              "1. Push your branch to remote using:",
+              `git push -u origin ${branchToAnalyze}`,
+            ].join(" "),
+          );
+          logger.info("2. Run this command again to create the PR");
+          return analysisResult;
+        }
+
+        // Get PR content
+        let title = options.title;
+        let description = options.description;
+
+        if (!title || !description) {
+          if (options.ai && analysisResult.description) {
+            logger.info("\n📝 AI generated a PR description:");
+            logger.info(`\nTitle: ${analysisResult.description.title}`);
+            logger.info(
+              `\nDescription:\n${analysisResult.description.description}`,
+            );
+
+            const useAIContent = await promptYesNo({
+              message: "\nWould you like to use this AI-generated content?",
+              logger,
+              defaultValue: true,
+            });
+
+            if (useAIContent) {
+              title = analysisResult.description.title;
+              description = analysisResult.description.description;
+            }
+          }
+
+          // If still missing title/description, prompt user
+          if (!title) {
+            title = await promptInput({
+              message: "\nEnter PR title:",
+              logger,
+              defaultValue: branchToAnalyze,
+            });
+          }
+
+          if (!description) {
+            description = await promptInput({
+              message: "\nEnter PR description:",
+              logger,
+              defaultValue: "",
+            });
+          }
+        }
+
+        const pr = await prService.createPRFromBranch({
+          branch: branchToAnalyze,
+          draft: options.draft,
+          labels: options.labels,
+          useAI: options.ai,
+          title,
+          description,
+          base: options.base,
+        });
+
+        if (pr) {
+          logger.info(`\n✅ Pull Request created successfully!`);
+          logger.info(`🔗 ${chalk.cyan(pr.url)}`);
+
+          const shouldCopy = await promptYesNo({
+            message: "\nWould you like to copy the PR URL to clipboard?",
             logger,
+            defaultValue: true,
           });
-          logger.info("\n✅ Copied to clipboard!");
-        }
-      } else if (choice === 2 && result.suggestedTitle) {
-        // Branch name improvement mode
-        logger.info("\n🤖 Branch Name Suggestion:");
-        logger.info(`${chalk.bold("Current:")} ${branchToAnalyze}`);
-        logger.info(`${chalk.bold("Suggested:")} ${result.suggestedTitle}`);
 
-        if (result.description?.explanation) {
-          logger.info(
-            `\n${chalk.dim("Explanation:")} ${result.description.explanation}`,
-          );
-        }
-
-        const shouldRename = await promptYesNo({
-          message: `\nWould you like to rename the branch to "${result.suggestedTitle}"?`,
-          logger,
-          defaultValue: false,
-        });
-
-        if (shouldRename) {
-          await git.renameBranch({
-            from: branchToAnalyze,
-            to: result.suggestedTitle,
-          });
-          logger.info(
-            `\n✅ Branch renamed to: ${chalk.cyan(result.suggestedTitle)}`,
-          );
-        }
-      } else if (choice === 3 && result.aiSuggestions?.length) {
-        // Review mode
-        logger.info("\n🤖 AI Review Suggestions:");
-        result.aiSuggestions.forEach((suggestion, index) => {
-          logger.info(
-            `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(suggestion.title)}`,
-          );
-          if (suggestion.description) {
-            logger.info(
-              `   ${chalk.dim("Description:")} ${suggestion.description}`,
-            );
+          if (shouldCopy) {
+            await copyToClipboard({
+              text: pr.url,
+              logger,
+            });
+            logger.info("\n✅ Copied to clipboard!");
           }
-          if (suggestion.explanation) {
-            logger.info(
-              `   ${chalk.dim("Explanation:")} ${suggestion.explanation}`,
-            );
-          }
-        });
-      } else {
-        logger.info("\n❌ No AI suggestions were generated.");
+
+          logger.info("\n📝 Next steps:");
+          logger.info(
+            "1. Review the PR description and make any necessary edits",
+          );
+          logger.info("2. Request reviewers for your PR");
+          logger.info("3. Address any automated checks or CI feedback");
+        }
+      } catch (error) {
+        logger.error(
+          `\n${chalk.red("❌")} Pull Request creation failed:`,
+          error,
+        );
+        logger.debug("Full PR creation error details:", error);
+        // Don't throw here, as the analysis was successful
       }
     }
 
     logger.debug("Branch analysis completed successfully");
-    return result;
+    return analysisResult;
   } catch (error) {
     logger.error(`\n${chalk.red("❌")} Branch analysis failed:`, error);
-    logger.debug("Full error details:", error);
+    logger.debug("Full analysis error details:", error);
     throw error;
   }
 }

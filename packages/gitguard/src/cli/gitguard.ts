@@ -19,8 +19,6 @@ interface HookOptions {
 interface CommitCommandOptions {
   message?: string;
   format?: "console" | "json" | "markdown";
-  color?: boolean;
-  detailed?: boolean;
   staged?: boolean;
   unstaged?: boolean;
   all?: boolean;
@@ -150,7 +148,7 @@ ${chalk.blue("Examples:")}
     )
     .action(async (action: string | undefined, options: HookOptions) => {
       // Default to status if no action provided
-      const hookAction = action || "status";
+      const hookAction = action ?? "status";
 
       if (!["install", "uninstall", "status"].includes(hookAction)) {
         logger.error(`Invalid action: ${hookAction}`);
@@ -181,13 +179,12 @@ ${chalk.blue("Examples:")}
       "Output format: console, json, markdown",
       "console",
     )
-    .option("--no-color", "Disable colored output")
-    .option("--detailed", "Show detailed analysis")
-    .option("--unstaged", "Include analysis of unstaged changes")
     .option("--staged", "Include analysis of staged changes (default: true)")
+    .option("--unstaged", "Include analysis of unstaged changes")
     .option("--all", "Analyze both staged and unstaged changes")
     .option("--ai", "Enable AI-powered suggestions")
     .option("-e, --execute", "Execute the commit")
+    .option("-d, --debug", "Enable debug mode")
     .addHelpText(
       "after",
       `
@@ -226,6 +223,12 @@ ${chalk.blue("Examples:")}
     .option("--detailed", "Show detailed analysis")
     .option("--ai", "Enable AI-powered suggestions")
     .option("-d, --debug", "Enable debug mode")
+    .option("--create-pr", "Create a pull request from the branch")
+    .option("--draft", "Create PR as draft (implies --create-pr)")
+    .option("--labels <labels>", "Comma-separated list of labels for the PR")
+    .option("--title <title>", "PR title")
+    .option("--description <description>", "PR description")
+    .option("--base <branch>", "Base branch for PR", "main")
     .addHelpText(
       "after",
       `
@@ -234,7 +237,8 @@ ${chalk.blue("Examples:")}
   ${chalk.yellow("$")} gitguard branch -n feature-1   # Analyze specific branch
   ${chalk.yellow("$")} gitguard branch -p 123         # Analyze pull request
   ${chalk.yellow("$")} gitguard branch --ai           # Get AI suggestions for PR
-  ${chalk.yellow("$")} gitguard branch --ai -d        # Get AI suggestions with debug logs`,
+  ${chalk.yellow("$")} gitguard branch --create-pr    # Create PR from current branch
+  ${chalk.yellow("$")} gitguard branch --create-pr --draft  # Create draft PR`,
     )
     .action(async (options: BranchCommandOptions) => {
       const debug = isDebugEnabled() || options.debug;

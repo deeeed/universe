@@ -3,6 +3,7 @@ import * as fs from "fs/promises";
 import { AIProvider } from "../types/ai.types.js";
 import {
   AnalysisWarning,
+  GitHubPR,
   PRAnalysisOptions,
   PRAnalysisResult,
   PRDescription,
@@ -19,10 +20,22 @@ import {
 } from "../utils/ai-prompt.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
+import { GitHubService } from "./github.service.js";
 import { SecurityService } from "./security.service.js";
+
+export interface CreatePRFromBranchParams {
+  branch?: string;
+  draft?: boolean;
+  labels?: string[];
+  useAI?: boolean;
+  title?: string;
+  description?: string;
+  base?: string;
+}
 
 export class PRService extends BaseService {
   private readonly git: GitService;
+  private readonly github: GitHubService;
   private readonly security?: SecurityService;
   private readonly ai?: AIProvider;
   private readonly config: Config;
@@ -31,12 +44,14 @@ export class PRService extends BaseService {
     params: ServiceOptions & {
       config: Config;
       git: GitService;
+      github: GitHubService;
       security?: SecurityService;
       ai?: AIProvider;
     },
   ) {
     super(params);
     this.git = params.git;
+    this.github = params.github;
     this.security = params.security;
     this.ai = params.ai;
     this.config = params.config;
@@ -556,5 +571,104 @@ export class PRService extends BaseService {
       suggestedPRs,
       commands,
     };
+  }
+
+  public async createPRFromBranch(
+    params: CreatePRFromBranchParams,
+  ): Promise<GitHubPR | null> {
+    try {
+      // Check GitHub availability
+      if (!this.github.isGitHubEnabled()) {
+        return null;
+      }
+
+      const branch = params.branch ?? (await this.git.getCurrentBranch());
+
+      // If title and description are provided, use them directly
+      if (params.title && params.description) {
+        return this.github.createPRFromBranch({
+          branch,
+          title: params.title,
+          description: params.description,
+          draft: params.draft,
+          labels: params.labels,
+          base: params.base,
+        });
+      }
+
+      // Get branch analysis
+      const analysis = await this.analyze({
+        branch,
+        enableAI: params.useAI,
+        enablePrompts: false, // No prompts in service
+      });
+
+      // Generate PR content
+      let title = params.title;
+      let description = params.description;
+
+      if (!title || !description) {
+        if (params.useAI && analysis.description) {
+          title = title ?? analysis.description.title;
+          description = description ?? analysis.description.description;
+        } else {
+          // Generate basic PR content from commits
+          title =
+            title ??
+            this.generatePRTitle(
+              analysis.commits,
+              analysis.commits.flatMap((c) => c.files),
+            );
+          description =
+            description ??
+            this.generateBasicDescription({
+              commits: analysis.commits,
+              stats: analysis.stats,
+              template: await this.loadPRTemplate(),
+            });
+        }
+      }
+
+      // Create PR
+      return this.github.createPRFromBranch({
+        branch,
+        title,
+        description,
+        draft: params.draft,
+        labels: params.labels,
+        base: params.base,
+      });
+    } catch (error) {
+      this.logger.error("Failed to create PR from branch:", error);
+      throw error;
+    }
+  }
+
+  private generateBasicDescription(params: {
+    commits: CommitInfo[];
+    stats: PRStats;
+    template?: string;
+  }): string {
+    const sections: string[] = [];
+
+    // Add template if available
+    if (params.template) {
+      sections.push(params.template);
+    }
+
+    // Add commit list
+    sections.push("## Commits\n");
+    params.commits.forEach((commit) => {
+      sections.push(`- ${commit.message} (${commit.hash.slice(0, 7)})`);
+    });
+
+    // Add stats
+    sections.push("\n## Changes\n");
+    sections.push(`- Files changed: ${params.stats.filesChanged}`);
+    sections.push(`- Additions: +${params.stats.additions}`);
+    sections.push(`- Deletions: -${params.stats.deletions}`);
+    sections.push(`- Total commits: ${params.stats.totalCommits}`);
+
+    return sections.join("\n");
   }
 }
