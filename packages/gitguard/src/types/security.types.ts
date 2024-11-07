@@ -1,7 +1,9 @@
 // types/security.types.ts
+
+export type Severity = "high" | "medium" | "low";
 export interface SecurityFinding {
   type: "secret" | "sensitive_file";
-  severity: "high" | "medium" | "low";
+  severity: Severity;
   path: string;
   line?: number;
   match?: string;
@@ -18,13 +20,13 @@ export interface SecurityAnalysis {
 export interface SecurityPattern {
   name: string;
   pattern: RegExp;
-  severity: "high" | "medium" | "low";
+  severity: Severity;
 }
 
 export interface ProblematicFilePattern {
   category: string;
   patterns: RegExp[];
-  severity: "high" | "medium" | "low";
+  severity: Severity;
 }
 
 export interface SecurityCheckResult {
@@ -49,7 +51,7 @@ export const SECRET_PATTERNS: SecurityPattern[] = [
   },
   {
     name: "Google OAuth",
-    pattern: /[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com/,
+    pattern: /\d+-\w{32}\.apps\.googleusercontent\.com/,
     severity: "high",
   },
   {

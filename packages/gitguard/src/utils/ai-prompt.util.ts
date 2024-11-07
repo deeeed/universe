@@ -145,7 +145,7 @@ export interface CommitSuggestionPromptParams {
   diff: string;
   logger: Logger;
   scope?: string;
-  complexity: CommitComplexity;
+  needsDetailedMessage?: boolean;
 }
 
 export function generateCommitSuggestionPrompt(
@@ -165,18 +165,12 @@ ${params.diff}
 
 Original message: "${params.message}"
 
-Complexity Analysis:
-- Score: ${params.complexity.score}
-- Reasons: ${params.complexity.reasons.join(", ") || "None"}
-- Needs detailed structure: ${params.complexity.needsStructure}
-${params.scope ? `\nValid scope: "${params.scope}"` : ""}
-
 Please provide suggestions in this JSON format:
 {
   "suggestions": [
     {
       "title": "short descriptive title without scope or type",
-      "message": "${params.complexity.needsStructure ? "detailed explanation of changes" : "optional details"}",
+      "message": "${params.needsDetailedMessage ? "detailed explanation of changes" : "optional details"}",
       "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
     }
   ]
@@ -188,7 +182,7 @@ Guidelines:
 3. Keep descriptions concise but informative
 4. Only use the provided scope if one is specified
 5. Use appropriate type based on the changes
-6. ${params.complexity.needsStructure ? "Include detailed commit information in the message field" : "Message field is optional"}`;
+6. ${params.needsDetailedMessage ? "Include detailed commit information in the message field" : "Message field is optional"}`;
 }
 
 export function generateSplitSuggestionPrompt(params: {

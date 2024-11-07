@@ -226,14 +226,57 @@ export async function analyzeCommit({
     // Handle AI suggestions if enabled
     if (options.ai && ai) {
       logger.info("\n🤖 Preparing AI suggestions...");
-      const aiDiff = await git.getStagedDiffForAI();
+
+      // Compare different diff strategies
+      const stagedAiDiff = await git.getStagedDiffForAI();
+      const prioritizedDiffs = commitService.getPrioritizedDiffs({
+        files: filesToAnalyze,
+        diff: stagedAiDiff,
+        maxLength: 4000,
+      });
+
+      // Compare and select the best diff strategy
+      const diffs = [
+        {
+          name: "staged",
+          content: stagedAiDiff,
+          score: stagedAiDiff.length > 4000 ? 0 : 1, // Penalize if too long
+        },
+        {
+          name: "prioritized",
+          content: prioritizedDiffs,
+          score: prioritizedDiffs.length > 0 ? 2 : 0, // Prefer prioritized if available
+        },
+        {
+          name: "files",
+          content: filesToAnalyze
+            .map((f) => `${f.path} (+${f.additions}/-${f.deletions})`)
+            .join("\n"),
+          score: 0, // Last resort
+        },
+      ];
+
+      // Select the best strategy based on score and length
+      const bestDiff = diffs.reduce((best, current) => {
+        if (current.score > best.score) return current;
+        if (
+          current.score === best.score &&
+          current.content.length < best.content.length
+        )
+          return current;
+        return best;
+      }, diffs[0]);
+
+      logger.info(
+        `Using ${chalk.cyan(bestDiff.name)} diff strategy (${chalk.bold(bestDiff.content.length)} chars)`,
+      );
 
       const prompt = generateCommitSuggestionPrompt({
         files: filesToAnalyze,
         message: options.message ?? "",
-        diff: aiDiff,
+        diff: bestDiff.content,
         logger,
-        complexity: result.complexity,
+        needsDetailedMessage: result.complexity.needsStructure,
       });
 
       const tokenUsage = ai.calculateTokenUsage({ prompt });
@@ -249,7 +292,7 @@ export async function analyzeCommit({
       logger.info(
         `📝 ${chalk.cyan("Prompt size:")} ${chalk.bold(
           Math.round(prompt.length / 1024),
-        )}KB`,
+        )}KB (${chalk.bold(prompt.length)} chars)`,
       );
 
       // Add token limit check BEFORE any AI calls
@@ -273,29 +316,29 @@ export async function analyzeCommit({
       switch (aiPromptResult.action) {
         case "generate": {
           logger.info("\nGenerating AI suggestions...");
-          result = await commitService.analyze({
+
+          const suggestions = await commitService.generateAISuggestions({
             files: filesToAnalyze,
             message: options.message ?? "",
-            enableAI: true,
-            enablePrompts: true,
-            securityResult,
+            diff: bestDiff.content,
+            needsDetailedMessage: result.complexity.needsStructure,
           });
 
-          if (!result.suggestions?.length) {
+          if (!suggestions?.length) {
             logger.warn("\n⚠️  No AI suggestions could be generated.");
             return result;
           }
 
           const detectedScope = commitService.detectScope(filesToAnalyze);
           displayAISuggestions({
-            suggestions: result.suggestions,
+            suggestions,
             detectedScope,
             logger,
           });
 
           if (options.execute) {
             const selectedSuggestion = await selectAISuggestion({
-              suggestions: result.suggestions,
+              suggestions,
               logger,
             });
 
@@ -315,9 +358,9 @@ export async function analyzeCommit({
           const prompt = generateCommitSuggestionPrompt({
             files: filesToAnalyze,
             message: options.message ?? "",
-            diff: aiDiff,
+            diff: bestDiff.content,
             logger,
-            complexity: result.complexity,
+            needsDetailedMessage: result.complexity.needsStructure,
           });
 
           await copyToClipboard({
