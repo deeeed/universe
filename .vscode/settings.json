@@ -19,4 +19,8 @@
   },
   "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
   "typescript.tsdk": "node_modules/typescript/lib",
+  "sonarlint.connectedMode.project": {
+    "connectionId": "siteed",
+    "projectKey": "deeeed_universe"
+  },
 }
