@@ -155,6 +155,20 @@ export function generateCommitSuggestionPrompt(
     .map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`)
     .join("\n");
 
+  const messageGuideline = params.needsDetailedMessage
+    ? `\nFor the message field, include:
+- High-level overview of architectural changes
+- New features or removed functionality
+- Breaking changes and their impact
+- Major refactoring decisions
+- Dependencies affected
+
+Do not include:
+- Number of lines changed
+- Implementation details
+- File paths or specific code changes`
+    : "\nMessage field is optional for simple changes";
+
   return `Analyze these git changes and suggest commit messages following conventional commits format.
 
 Files Changed:
@@ -164,25 +178,25 @@ Key Changes:
 ${params.diff}
 
 Original message: "${params.message}"
+${messageGuideline}
 
 Please provide suggestions in this JSON format:
 {
   "suggestions": [
     {
-      "title": "short descriptive title without scope or type",
-      "message": "${params.needsDetailedMessage ? "detailed explanation of changes" : "optional details"}",
+      "title": "descriptive message without type or scope",
+      "message": "${params.needsDetailedMessage ? "high-level overview of changes" : "optional details"}",
       "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
     }
   ]
 }
 
 Guidelines:
-1. Follow conventional commits format: type(scope): description
+1. The title field must not include type or scope
 2. Be specific about the changes
 3. Keep descriptions concise but informative
-4. Only use the provided scope if one is specified
-5. Use appropriate type based on the changes
-6. ${params.needsDetailedMessage ? "Include detailed commit information in the message field" : "Message field is optional"}`;
+4. Use appropriate type based on the changes
+5. ${params.needsDetailedMessage ? "Include high-level overview in message field" : "Message field is optional"}`;
 }
 
 export function generateSplitSuggestionPrompt(params: {

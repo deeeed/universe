@@ -49,7 +49,6 @@ function displayAISuggestions(params: {
       `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(formattedTitle)}`,
     );
     if (suggestion.message) {
-      logger.info(`\n   ${chalk.dim("Details:")}`);
       suggestion.message.split("\n").forEach((paragraph) => {
         logger.info(`   ${chalk.gray(paragraph)}`);
       });

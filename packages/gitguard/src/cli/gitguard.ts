@@ -6,19 +6,12 @@ import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import { analyzeBranch } from "../commands/branch.js";
 import { analyzeCommit } from "../commands/commit.js";
-import { hook } from "../commands/hook.js";
 import { init, InitOptions } from "../commands/init.js";
 import { status } from "../commands/status.js";
 import { LoggerService } from "../services/logger.service.js";
 
-interface HookOptions {
-  global?: boolean;
-  debug?: boolean;
-}
-
 interface CommitCommandOptions {
   message?: string;
-  format?: "console" | "json" | "markdown";
   staged?: boolean;
   unstaged?: boolean;
   all?: boolean;
@@ -29,14 +22,14 @@ interface CommitCommandOptions {
 }
 
 interface BranchCommandOptions {
-  name?: string;
-  pr?: string | number;
-  format?: "console" | "json" | "markdown";
-  color?: boolean;
-  detailed?: boolean;
   ai?: boolean;
   debug?: boolean;
   configPath?: string;
+  createPR?: boolean;
+  draft?: boolean;
+  title?: string;
+  description?: string;
+  base?: string;
 }
 
 interface PackageJson {
@@ -111,11 +104,9 @@ async function main(): Promise<void> {
   ${chalk.green("•")} AI-powered suggestions
   ${chalk.green("•")} Security checks for secrets and sensitive files
   ${chalk.green("•")} PR template validation
-  ${chalk.green("•")} Customizable Git hooks
   ${chalk.green("•")} Local and global configuration
 
 ${chalk.blue("Commands:")}
-  ${chalk.cyan("hook")} [options] [action]        ${chalk.gray("Manage git hooks")}
   ${chalk.cyan("commit")} [options]              ${chalk.gray("Analyze and create commits with enhanced validation")}
   ${chalk.cyan("branch")} [options]                ${chalk.gray("Analyze branch-level changes and pull requests")}
   ${chalk.cyan("status")} [options]               ${chalk.gray("Show GitGuard status (hooks and configuration)")}
@@ -130,55 +121,11 @@ ${chalk.blue("Options:")}
     .option(`${chalk.yellow("-d, --debug")}`, "Enable debug mode")
     .option(`${chalk.yellow("-c, --config <path>")}`, "Path to config file");
 
-  // Hook command
-  program
-    .command("hook")
-    .description("Manage git hooks")
-    .argument("[action]", "Action to perform: install, uninstall, or status")
-    .option("-g, --global", "Apply globally")
-    .addHelpText(
-      "after",
-      `
-${chalk.blue("Examples:")}
-  ${chalk.yellow("$")} gitguard hook                  # Show hook status
-  ${chalk.yellow("$")} gitguard hook status          # Show hook status
-  ${chalk.yellow("$")} gitguard hook install         # Install hook in current repository
-  ${chalk.yellow("$")} gitguard hook install -g      # Install hook globally
-  ${chalk.yellow("$")} gitguard hook uninstall       # Remove hook from current repository`,
-    )
-    .action(async (action: string | undefined, options: HookOptions) => {
-      // Default to status if no action provided
-      const hookAction = action ?? "status";
-
-      if (!["install", "uninstall", "status"].includes(hookAction)) {
-        logger.error(`Invalid action: ${hookAction}`);
-        logger.info("\nValid actions are: install, uninstall, status");
-        process.exit(1);
-      }
-
-      try {
-        await hook({
-          action: hookAction as "install" | "uninstall" | "status",
-          global: !!options.global,
-          debug: !!program.opts().debug,
-          skipHook: !!process.env.SKIP_GITGUARD,
-        });
-      } catch (error) {
-        logger.error("Hook command failed:", error);
-        process.exit(1);
-      }
-    });
-
   // Commit command
   program
     .command("commit")
     .description("Analyze and create commits with enhanced validation")
     .option("-m, --message <text>", "Commit message")
-    .option(
-      "-f, --format <type>",
-      "Output format: console, json, markdown",
-      "console",
-    )
     .option("--staged", "Include analysis of staged changes (default: true)")
     .option("--unstaged", "Include analysis of unstaged changes")
     .option("--all", "Analyze both staged and unstaged changes")
@@ -212,20 +159,10 @@ ${chalk.blue("Examples:")}
   program
     .command("branch")
     .description("Analyze branch-level changes and pull requests")
-    .option("-n, --name <branch>", "Branch name to analyze")
-    .option("-p, --pr <number>", "PR number to analyze")
-    .option(
-      "-f, --format <type>",
-      "Output format: console, json, markdown",
-      "console",
-    )
-    .option("--no-color", "Disable colored output")
-    .option("--detailed", "Show detailed analysis")
     .option("--ai", "Enable AI-powered suggestions")
     .option("-d, --debug", "Enable debug mode")
     .option("--create-pr", "Create a pull request from the branch")
     .option("--draft", "Create PR as draft (implies --create-pr)")
-    .option("--labels <labels>", "Comma-separated list of labels for the PR")
     .option("--title <title>", "PR title")
     .option("--description <description>", "PR description")
     .option("--base <branch>", "Base branch for PR", "main")
@@ -234,8 +171,6 @@ ${chalk.blue("Examples:")}
       `
 ${chalk.blue("Examples:")}
   ${chalk.yellow("$")} gitguard branch                # Analyze current branch
-  ${chalk.yellow("$")} gitguard branch -n feature-1   # Analyze specific branch
-  ${chalk.yellow("$")} gitguard branch -p 123         # Analyze pull request
   ${chalk.yellow("$")} gitguard branch --ai           # Get AI suggestions for PR
   ${chalk.yellow("$")} gitguard branch --create-pr    # Create PR from current branch
   ${chalk.yellow("$")} gitguard branch --create-pr --draft  # Create draft PR`,
@@ -265,23 +200,18 @@ ${chalk.blue("Examples:")}
   // Status command
   program
     .command("status")
-    .description("Show GitGuard status (hooks and configuration)")
-    .option("-c, --config-only", "Show only configuration status")
-    .option("-h, --hooks-only", "Show only hooks status")
+    .description("Show GitGuard status")
     .addHelpText(
       "after",
       `
 Examples:
-  $ gitguard status           # Show all status information
-  $ gitguard status -c        # Show only configuration status
-  $ gitguard status -h        # Show only hooks status`,
+  $ gitguard status           # Show status information`,
     )
-    .action(async (options: { configOnly?: boolean; hooksOnly?: boolean }) => {
+    .action(async (options: { configOnly?: boolean }) => {
       try {
         await status({
           debug: isDebug || !!program.opts().debug, // Check both sources
           configOnly: options.configOnly,
-          hooksOnly: options.hooksOnly,
         });
       } catch (error) {
         logger.error(chalk.red("Failed to get status:"), error);

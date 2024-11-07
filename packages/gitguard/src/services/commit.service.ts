@@ -260,11 +260,7 @@ export class CommitService extends BaseService {
         return undefined;
       }
 
-      // Add scope to suggestions if detected
-      return suggestions.suggestions.map((suggestion) => ({
-        ...suggestion,
-        scope: detectedScope,
-      }));
+      return suggestions.suggestions;
     } catch (error) {
       this.logger.error("Failed to generate AI suggestions:", error);
       this.logger.debug("Error details:", {

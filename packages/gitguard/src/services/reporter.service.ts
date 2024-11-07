@@ -56,6 +56,20 @@ export class ReporterService extends BaseService {
     report += `- Branch: \`${result.branch}\`\n`;
     report += `- Base: \`${result.baseBranch}\`\n`;
 
+    if ("complexity" in result) {
+      report += `\n## Complexity Analysis\n\n`;
+      report += `- Complexity Score: ${result.complexity.score}\n`;
+      report += `- Needs Structure: ${result.complexity.needsStructure ? "Yes" : "No"}\n`;
+
+      if (result.complexity.reasons.length > 0) {
+        report += `\n### Complexity Factors\n\n`;
+        result.complexity.reasons.forEach((reason) => {
+          report += `- ${reason}\n`;
+        });
+      }
+      report += "\n";
+    }
+
     if (this.isPRResult(result)) {
       report += `- Total Commits: ${result.stats.totalCommits}\n`;
       report += `- Files Changed: ${result.stats.filesChanged}\n`;
@@ -105,6 +119,24 @@ export class ReporterService extends BaseService {
     this.logger.info(`Branch: ${result.branch}`);
     this.logger.info(`Base branch: ${result.baseBranch}`);
     this.logger.newLine();
+
+    if ("complexity" in result) {
+      this.logger.info("Complexity Analysis:");
+      this.logger.table([
+        {
+          "Complexity Score": result.complexity.score,
+          "Needs Structure": result.complexity.needsStructure ? "Yes" : "No",
+        },
+      ]);
+
+      if (result.complexity.reasons.length > 0) {
+        this.logger.info("\nComplexity Factors:");
+        result.complexity.reasons.forEach((reason) => {
+          this.logger.info(`  • ${reason}`);
+        });
+        this.logger.newLine();
+      }
+    }
 
     this.logger.info("Changes Summary:");
     if (this.isPRResult(result)) {
