@@ -12,8 +12,11 @@ import {
 import { BaseService } from "./base.service.js";
 
 export class SecurityService extends BaseService {
+  private readonly config: Config;
+
   constructor(params: { logger: Logger; config: Config }) {
     super(params);
+    this.config = params.config;
   }
 
   analyzeSecurity(params: {
@@ -22,15 +25,18 @@ export class SecurityService extends BaseService {
   }): SecurityCheckResult {
     this.logger.debug("Running security analysis...");
 
-    const secretFindings = params.diff
-      ? this.detectSecrets({ diff: params.diff })
-      : [];
+    const secretFindings =
+      params.diff && this.config.security.rules.secrets.enabled
+        ? this.detectSecrets({ diff: params.diff })
+        : [];
 
     this.logger.debug(`Found ${secretFindings.length} secret findings`);
 
-    const fileFindings = this.detectProblematicFiles({
-      files: params.files,
-    });
+    const fileFindings = this.config.security.rules.files.enabled
+      ? this.detectProblematicFiles({
+          files: params.files,
+        })
+      : [];
 
     this.logger.debug(`Found ${fileFindings.length} problematic files`);
 
@@ -38,13 +44,18 @@ export class SecurityService extends BaseService {
       (f) => f.path,
     );
 
+    const shouldBlock = [...secretFindings, ...fileFindings].some(
+      (f) =>
+        f.severity === "high" &&
+        ((f.type === "secret" && this.config.security.rules.secrets.blockPR) ||
+          f.type === "sensitive_file"),
+    );
+
     return {
       secretFindings,
       fileFindings,
       filesToUnstage,
-      shouldBlock: [...secretFindings, ...fileFindings].some(
-        (f) => f.severity === "high",
-      ),
+      shouldBlock,
       commands: this.generateCommands({
         findings: [...secretFindings, ...fileFindings],
       }),
@@ -57,13 +68,17 @@ export class SecurityService extends BaseService {
     const foundSecrets = new Set<string>();
     let currentFile: string | undefined;
 
+    // Debug log the diff content
+    this.logger.debug("Analyzing diff content:", params.diff);
+
     // First pass: find all file paths
     const filePathMap = new Map<number, string>();
-    lines.forEach((_, index) => {
+    lines.forEach((_line, index) => {
       const filePath = this.extractFilePath(params.diff, index);
       if (filePath) {
         filePathMap.set(index, filePath);
         currentFile = filePath;
+        this.logger.debug(`Found file path at line ${index}: ${filePath}`);
       }
     });
 
@@ -76,28 +91,67 @@ export class SecurityService extends BaseService {
         currentFile = filePathMap.get(i);
       }
 
+      // Only check added or modified lines
       if (!line.startsWith("+")) continue;
 
+      // Remove the '+' prefix for pattern matching
+      const contentLine = line.substring(1);
+      this.logger.debug(
+        `Checking line ${i + 1}: ${this.maskSecret(contentLine)}`,
+      );
+
+      // Check custom patterns first
+      const customPatterns = this.config.security.rules.secrets.patterns || [];
+      for (const pattern of customPatterns) {
+        try {
+          const regex = new RegExp(pattern);
+          const match = regex.exec(contentLine);
+          if (match) {
+            const secretKey = `${currentFile ?? "unknown"}-${match[0]}`;
+            if (!foundSecrets.has(secretKey)) {
+              foundSecrets.add(secretKey);
+              findings.push({
+                type: "secret",
+                severity: this.config.security.rules.secrets.severity,
+                path: currentFile ?? ".env",
+                line: i + 1,
+                content: this.maskSecret(contentLine),
+                match: "Custom Pattern Match",
+                suggestion:
+                  "Custom pattern detected. Consider using environment variables or a secret manager.",
+              });
+            }
+          }
+        } catch (error) {
+          this.logger.error(`Invalid custom pattern: ${pattern}`, error);
+        }
+      }
+
+      // Check built-in patterns
       for (const pattern of SECRET_PATTERNS) {
-        const match = pattern.pattern.exec(line);
+        const match = pattern.pattern.exec(contentLine);
         if (match) {
           const secretKey = `${currentFile ?? "unknown"}-${match[0]}`;
-          if (foundSecrets.has(secretKey)) continue;
-
-          foundSecrets.add(secretKey);
-          findings.push({
-            type: "secret",
-            severity: pattern.severity,
-            path: currentFile ?? ".env", // Default to .env if unknown
-            line: i + 1,
-            content: this.maskSecret(line.substring(1)),
-            match: pattern.name,
-            suggestion: `Detected ${pattern.name}. Consider using environment variables or a secret manager.`,
-          });
+          if (!foundSecrets.has(secretKey)) {
+            foundSecrets.add(secretKey);
+            this.logger.debug(
+              `Found secret: ${pattern.name} in ${currentFile}`,
+            );
+            findings.push({
+              type: "secret",
+              severity: pattern.severity,
+              path: currentFile ?? ".env",
+              line: i + 1,
+              content: this.maskSecret(contentLine),
+              match: pattern.name,
+              suggestion: `Detected ${pattern.name}. Consider using environment variables or a secret manager.`,
+            });
+          }
         }
       }
     }
 
+    this.logger.debug(`Total secrets found: ${findings.length}`);
     return findings;
   }
 
@@ -118,14 +172,20 @@ export class SecurityService extends BaseService {
     // Try different git diff formats
     const patterns = [
       /^\+\+\+ b\/(.+)$/,
+      /^\+\+\+ (.+)$/,
       /^diff --git a\/(.+) b\/.+$/,
       /^diff --git a\/(.+) b\/\1$/,
+      /^--- a\/(.+)$/,
+      /^--- (.+)$/,
     ];
 
     for (const line of lines) {
       for (const pattern of patterns) {
         const match = pattern.exec(line);
-        if (match && match.length > 1) {
+        if (match && match[1]) {
+          this.logger.debug(
+            `Extracted file path: ${match[1]} from line: ${line}`,
+          );
           return match[1];
         }
       }
@@ -142,12 +202,20 @@ export class SecurityService extends BaseService {
     const patterns = params.patterns || PROBLEMATIC_FILE_PATTERNS;
     const foundFiles = new Set<string>();
 
+    this.logger.debug(
+      `Checking ${params.files.length} files for sensitive content`,
+    );
+
     for (const file of params.files) {
+      this.logger.debug(`Checking file: ${file.path}`);
       if (foundFiles.has(file.path)) continue;
 
       for (const category of patterns) {
         if (category.patterns.some((pattern) => pattern.test(file.path))) {
           foundFiles.add(file.path);
+          this.logger.debug(
+            `Found sensitive file: ${file.path} (${category.category})`,
+          );
           findings.push({
             type: "sensitive_file",
             severity: category.severity,

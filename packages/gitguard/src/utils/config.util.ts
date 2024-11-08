@@ -4,6 +4,7 @@ import { join } from "path";
 import { Config, DeepPartial } from "../types/config.types.js";
 import { getGitRoot, isGitRepository } from "./git.util.js";
 import { deepMerge } from "./deep-merge.js";
+import { Severity } from "../types/security.types.js";
 
 export interface ConfigStatus {
   global: {
@@ -68,6 +69,29 @@ function getEnvConfig(): DeepPartial<Config> {
     };
   }
 
+  // Security Configuration
+  if (process.env.GITGUARD_SECURITY_ENABLED) {
+    config.security = {
+      enabled: process.env.GITGUARD_SECURITY_ENABLED.toLowerCase() === "true",
+      rules: {
+        secrets: {
+          enabled:
+            process.env.GITGUARD_SECURITY_SECRETS?.toLowerCase() === "true",
+          severity:
+            (process.env.GITGUARD_SECURITY_SECRETS_SEVERITY as Severity) ||
+            "high",
+        },
+        files: {
+          enabled:
+            process.env.GITGUARD_SECURITY_FILES?.toLowerCase() === "true",
+          severity:
+            (process.env.GITGUARD_SECURITY_FILES_SEVERITY as Severity) ||
+            "high",
+        },
+      },
+    };
+  }
+
   return config;
 }
 
@@ -122,8 +146,19 @@ export const defaultConfig: Config = {
   debug: false,
   security: {
     enabled: true,
-    checkSecrets: true,
-    checkFiles: true,
+    rules: {
+      secrets: {
+        enabled: true,
+        severity: "high",
+        blockPR: true,
+        patterns: [], // Will use default patterns if empty
+      },
+      files: {
+        enabled: true,
+        severity: "high",
+        patterns: [], // Will use default patterns if empty
+      },
+    },
   },
   ai: {
     enabled: false,

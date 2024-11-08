@@ -34,6 +34,7 @@
     "test:e2e:commit:multi": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=commit-message --scenario=multi-package",
     "test:e2e:security:secrets": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=security --scenario=secrets-detection",
     "test:e2e:security:tokens": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=security --scenario=token-detection",
+    "test:e2e:security:branch": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=security --scenario=branch-security",
     "test:e2e:ai:basic": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=basic-suggestions",
     "test:e2e:ai:complex": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=complex-suggestions",
     "test:e2e:large:size": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=large-commits --scenario=size-detection",

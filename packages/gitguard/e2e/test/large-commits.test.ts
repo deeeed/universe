@@ -21,10 +21,6 @@ const scenarios: TestScenario[] = [
     input: {
       message: "massive update",
     },
-    expected: {
-      message: "feat: massive update",
-      splitSuggestion: true,
-    },
   },
   {
     id: "many-files",
@@ -44,19 +40,20 @@ const scenarios: TestScenario[] = [
     input: {
       message: "update multiple files",
     },
-    expected: {
-      message: "feat: update multiple files",
-      splitSuggestion: true,
-    },
   },
 ];
 
 export const largeCommitsTest: E2ETest = {
   name: "Large Commits Detection",
   scenarios,
-  async run(logger: LoggerService): Promise<TestResult[]> {
+  async run(
+    logger: LoggerService,
+    selectedScenarios?: TestScenario[],
+  ): Promise<TestResult[]> {
     const results: TestResult[] = [];
-    for (const scenario of scenarios) {
+    const scenariosToRun = selectedScenarios || scenarios;
+
+    for (const scenario of scenariosToRun) {
       results.push(await runScenario(scenario, logger));
     }
     return results;

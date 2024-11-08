@@ -1,6 +1,5 @@
 import chalk from "chalk";
-import { closeSync, openSync } from "fs";
-import { ReadStream, WriteStream } from "tty";
+import readline from "readline/promises";
 import { AIProvider } from "../types/ai.types.js";
 import { CommitSuggestion } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
@@ -70,56 +69,24 @@ export async function promptYesNo(params: {
   defaultValue?: boolean;
   forceTTY?: boolean;
 }): Promise<boolean> {
-  const { message, logger, defaultValue = false, forceTTY } = params;
+  const { message, logger, defaultValue = false } = params;
+  const rl = createReadlineInterface();
 
-  if (forceTTY) {
-    try {
-      const { input, output, cleanup } = createTTYStreams();
-      output.write(`${message} [${defaultValue ? "Y/n" : "y/N"}] `);
+  try {
+    const answer = await rl.question(
+      `${message} [${defaultValue ? "Y/n" : "y/N"}] `,
+    );
+    const response = answer.trim().toLowerCase();
 
-      return new Promise<boolean>((resolve) => {
-        input.once("data", (key: string) => {
-          cleanup();
-          const keyStr = key.toLowerCase();
-
-          if (keyStr === "\r" || keyStr === "\n" || keyStr === "") {
-            resolve(defaultValue);
-            return;
-          }
-          if (keyStr === "y") {
-            resolve(true);
-            return;
-          }
-          if (keyStr === "n") {
-            resolve(false);
-            return;
-          }
-          logger.info("\nInvalid input. Please enter 'y' or 'n'.");
-          resolve(promptYesNo(params));
-        });
-      });
-    } catch {
-      logger.info(
-        "\nNon-interactive environment detected, using default value.",
-      );
+    if (response === "") {
       return defaultValue;
     }
-  } else {
-    process.stdout.write(`${message} [${defaultValue ? "Y/n" : "y/N"}] `);
-
-    return new Promise<boolean>((resolve) => {
-      const onData = (buffer: Buffer): void => {
-        const response = buffer.toString().trim().toLowerCase();
-        process.stdin.removeListener("data", onData);
-
-        if (response === "") {
-          resolve(defaultValue);
-        } else {
-          resolve(response === "y" || response === "yes");
-        }
-      };
-      process.stdin.once("data", onData);
-    });
+    return response === "y" || response === "yes";
+  } catch (error) {
+    logger.info("\nNon-interactive environment detected, using default value.");
+    return defaultValue;
+  } finally {
+    rl.close();
   }
 }
 
@@ -131,72 +98,41 @@ export async function promptNumeric(params: {
   forceTTY?: boolean;
   maxValue?: number;
 }): Promise<string | undefined> {
-  const {
-    message,
-    logger,
-    allowEmpty = true,
-    defaultValue,
-    forceTTY,
-    maxValue,
-  } = params;
+  const { message, logger, allowEmpty = true, defaultValue, maxValue } = params;
+  const rl = createReadlineInterface();
 
-  if (forceTTY) {
-    try {
-      const { input, output, cleanup } = createTTYStreams();
-      output.write(`${message} `);
+  try {
+    const answer = await rl.question(`${message} `);
+    const response = answer.trim();
 
-      return new Promise<string | undefined>((resolve) => {
-        input.once("data", (key: string) => {
-          cleanup();
-          const keyStr = key.trim();
-
-          // Handle cancellation
-          if (keyStr.toLowerCase() === "c") {
-            logger.info("\nCommit cancelled by user.");
-            process.exit(1);
-          }
-
-          // Validate numeric input
-          const num = parseInt(keyStr, 10);
-          if (!isNaN(num) && (!maxValue || (num >= 1 && num <= maxValue))) {
-            resolve(String(num));
-            return;
-          }
-
-          logger.info("\nInvalid input. Please enter a valid number.");
-          resolve(promptNumeric(params));
-        });
-      });
-    } catch {
-      logger.info(
-        "\nNon-interactive environment detected, using default value.",
-      );
-      return defaultValue;
+    // Handle empty input
+    if (response === "") {
+      if (allowEmpty) {
+        return defaultValue;
+      }
+      logger.error("Please enter a value.");
+      return promptNumeric(params);
     }
-  } else {
-    process.stdout.write(`${message} `);
 
-    return new Promise<string | undefined>((resolve) => {
-      const onData = (buffer: Buffer): void => {
-        const response = buffer.toString().trim();
-        process.stdin.removeListener("data", onData);
+    // Handle cancellation
+    if (response.toLowerCase() === "c") {
+      logger.info("\nCommit cancelled by user.");
+      process.exit(1);
+    }
 
-        if (allowEmpty && response === "") {
-          resolve(defaultValue);
-          return;
-        }
+    // Validate numeric input
+    const num = parseInt(response, 10);
+    if (isNaN(num) || (maxValue !== undefined && (num < 0 || num > maxValue))) {
+      logger.error("Please enter a valid number.");
+      return promptNumeric(params);
+    }
 
-        const num = parseInt(response);
-        if (isNaN(num) || (maxValue && (num < 1 || num > maxValue))) {
-          logger.error("Please enter a valid number.");
-          resolve(promptNumeric(params));
-          return;
-        }
-
-        resolve(response);
-      };
-      process.stdin.once("data", onData);
-    });
+    return String(num);
+  } catch (error) {
+    logger.info("\nNon-interactive environment detected, using default value.");
+    return defaultValue;
+  } finally {
+    rl.close();
   }
 }
 
@@ -342,23 +278,21 @@ export async function promptForInit(params: {
   return responses;
 }
 
-// Add new helper for text input
 export async function promptInput(params: {
   message: string;
   logger: Logger;
   defaultValue?: string;
 }): Promise<string> {
-  const { message, logger, defaultValue } = params;
-  logger.info(`${message}${defaultValue ? ` (${defaultValue})` : ""}`);
+  const { message, defaultValue } = params;
+  const rl = createReadlineInterface();
 
-  return new Promise((resolve) => {
-    const onData = (buffer: Buffer): void => {
-      const response = buffer.toString().trim();
-      process.stdin.removeListener("data", onData);
-      resolve((response || defaultValue) ?? "");
-    };
-    process.stdin.once("data", onData);
-  });
+  try {
+    const prompt = `${message}${defaultValue ? ` (${defaultValue})` : ""}\n`;
+    const response = await rl.question(prompt);
+    return (response.trim() || defaultValue) ?? "";
+  } finally {
+    rl.close();
+  }
 }
 
 // Helper functions for AI defaults
@@ -517,29 +451,12 @@ export async function promptAIAction(params: {
   }
 }
 
-export interface TTYStreams {
-  input: ReadStream;
-  output: WriteStream;
-  fd: number;
-  cleanup: () => void;
-}
-
-export function createTTYStreams(): TTYStreams {
-  const fd = openSync("/dev/tty", "r+");
-  const input = new ReadStream(fd);
-  const output = new WriteStream(fd);
-
-  input.setRawMode(true);
-  input.setEncoding("utf-8");
-  input.resume();
-
-  function cleanup(): void {
-    input.setRawMode(false);
-    input.pause();
-    closeSync(fd);
-  }
-
-  return { input, output, fd, cleanup };
+// Add new helper function for creating readline interface
+function createReadlineInterface(): readline.Interface {
+  return readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
 }
 
 interface AICostConfirmationParams {

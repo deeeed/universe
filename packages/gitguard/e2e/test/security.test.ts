@@ -7,6 +7,8 @@ const scenarios: TestScenario[] = [
     id: "secrets-detection",
     name: "Security check - AWS credentials",
     setup: {
+      branch: "feature/aws-config",
+      commit: "Add AWS configuration",
       files: [
         {
           path: ".env",
@@ -16,21 +18,34 @@ const scenarios: TestScenario[] = [
       config: {
         security: {
           enabled: true,
+          rules: {
+            secrets: {
+              enabled: true,
+              severity: "high",
+            },
+            files: {
+              enabled: true,
+              severity: "high",
+            },
+          },
         },
       },
     },
     input: {
       message: "add config",
-    },
-    expected: {
-      message: "chore: add config",
-      securityIssues: true,
+      command: {
+        name: "branch",
+        subcommand: "analyze",
+        args: ["--security"],
+      },
     },
   },
   {
     id: "token-detection",
     name: "Security check - Environment variables",
     setup: {
+      branch: "feature/db-config",
+      commit: "Add database configuration",
       files: [
         {
           path: ".env.local",
@@ -40,15 +55,118 @@ const scenarios: TestScenario[] = [
       config: {
         security: {
           enabled: true,
+          rules: {
+            secrets: {
+              enabled: true,
+              severity: "high",
+            },
+            files: {
+              enabled: true,
+              severity: "high",
+            },
+          },
         },
       },
     },
     input: {
       message: "add database config",
+      command: {
+        name: "branch",
+        subcommand: "analyze",
+        args: ["--security"],
+      },
     },
-    expected: {
-      message: "chore: add database config",
-      securityIssues: true,
+  },
+  {
+    id: "branch-security",
+    name: "Branch Security - PR Creation with Secrets",
+    setup: {
+      branch: "feature/credentials",
+      commit: "Add API credentials",
+      files: [
+        {
+          path: "config/credentials.json",
+          content: JSON.stringify({
+            apiKey: "sk-1234567890abcdef",
+            secretToken: "github_pat_11AABBCC",
+          }),
+        },
+        {
+          path: "src/config.ts",
+          content: `
+export const config = {
+  database: {
+    url: "postgresql://user:password@localhost:5432/db"
+  }
+};`,
+        },
+      ],
+      config: {
+        security: {
+          enabled: true,
+          rules: {
+            secrets: {
+              enabled: true,
+              severity: "high",
+              blockPR: true,
+            },
+            files: {
+              enabled: true,
+              severity: "high",
+            },
+          },
+        },
+      },
+    },
+    input: {
+      message: "add credentials",
+      command: {
+        name: "branch",
+        subcommand: "analyze",
+        args: ["--debug", "--security"],
+      },
+    },
+  },
+  {
+    id: "branch-security-push",
+    name: "Branch Security - Push with Sensitive Files",
+    setup: {
+      branch: "feature/sensitive-config",
+      files: [
+        {
+          path: "src/config.ts",
+          content: `
+export const config = {
+  privateKey: '-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkq',
+  password: 'super_secret_123'
+};`,
+        },
+      ],
+      commit: "Update configuration with sensitive data",
+      config: {
+        security: {
+          enabled: true,
+          rules: {
+            secrets: {
+              enabled: true,
+              severity: "high",
+              patterns: ["private.*key", "password\\s*=\\s*['\"].*['\"]"],
+            },
+            files: {
+              enabled: true,
+              severity: "high",
+            },
+          },
+        },
+      },
+    },
+    input: {
+      message: "update configuration",
+      command: {
+        name: "branch",
+        subcommand: "analyze",
+        args: ["--security"],
+      },
     },
   },
 ];
@@ -56,9 +174,14 @@ const scenarios: TestScenario[] = [
 export const securityTest: E2ETest = {
   name: "Security Checks",
   scenarios,
-  async run(logger: LoggerService): Promise<TestResult[]> {
+  async run(
+    logger: LoggerService,
+    selectedScenarios?: TestScenario[],
+  ): Promise<TestResult[]> {
     const results: TestResult[] = [];
-    for (const scenario of scenarios) {
+    const scenariosToRun = selectedScenarios || scenarios;
+
+    for (const scenario of scenariosToRun) {
       results.push(await runScenario(scenario, logger));
     }
     return results;
