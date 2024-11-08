@@ -11,7 +11,7 @@
     "validateBuildArtifacts": true
   },
   "git": {
-    "tagPrefix": "gitguard@",
+    "tagPrefix": "",
     "requireCleanWorkingDirectory": true,
     "requireUpToDate": true,
     "requireUpstreamTracking": true,
