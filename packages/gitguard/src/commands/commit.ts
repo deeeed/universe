@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import { DEFAULT_MAX_PROMPT_TOKENS } from "../constants.js";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
@@ -12,6 +11,7 @@ import {
 } from "../types/analysis.types.js";
 import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
+import { checkAILimits } from "../utils/ai-limits.util.js";
 import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
@@ -294,15 +294,8 @@ export async function analyzeCommit({
         )}KB (${chalk.bold(prompt.length)} chars)`,
       );
 
-      // Add token limit check BEFORE any AI calls
-      if (
-        tokenUsage.count >
-          (config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS) ||
-        parseFloat(tokenUsage.estimatedCost) > (config.ai.maxPromptCost ?? 1.0)
-      ) {
-        logger.warn(
-          "\n⚠️  This analysis would exceed configured limits. Please reduce the scope or adjust limits in config.",
-        );
+      // Replace the existing token limit check with the new utility
+      if (!checkAILimits({ tokenUsage, config, logger })) {
         return result;
       }
 

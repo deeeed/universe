@@ -13,6 +13,7 @@ export interface TokenUsage {
 
 // Main AI Provider Interface
 export interface AIProvider {
+  getName(): string;
   generateCompletion<T>(params: {
     prompt: string;
     options?: {

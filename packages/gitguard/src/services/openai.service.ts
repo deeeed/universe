@@ -52,6 +52,10 @@ export class OpenAIService extends BaseService implements AIProvider {
     this.client = this.createClient();
   }
 
+  public getName(): string {
+    return `OpenAI / Azure OpenAI [ ${this.getModel()} ]`;
+  }
+
   private createClient(): OpenAI | AzureOpenAI {
     if (this.config.type === "azure") {
       if (!this.config.azure) {

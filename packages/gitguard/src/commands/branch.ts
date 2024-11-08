@@ -4,14 +4,20 @@ import { GitService } from "../services/git.service.js";
 import { GitHubService } from "../services/github.service.js";
 import { LoggerService } from "../services/logger.service.js";
 import { PRService } from "../services/pr.service.js";
+import { ReporterService } from "../services/reporter.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { PRAnalysisResult } from "../types/analysis.types.js";
 import { GitConfig } from "../types/config.types.js";
+import { generatePRDescriptionPrompt } from "../utils/ai-prompt.util.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
 import { checkGitHubToken } from "../utils/github.util.js";
-import { promptInput, promptYesNo } from "../utils/user-prompt.util.js";
-import { ReporterService } from "../services/reporter.service.js";
+import {
+  promptAIAction,
+  promptInput,
+  promptYesNo,
+} from "../utils/user-prompt.util.js";
+import { checkAILimits } from "../utils/ai-limits.util.js";
 
 interface BranchAnalyzeParams {
   options: {
@@ -266,6 +272,67 @@ export async function analyzeBranch({
         );
         logger.debug("Full PR creation error details:", error);
         // Don't throw here, as the analysis was successful
+      }
+    } else if (options.ai && ai) {
+      const prompt = generatePRDescriptionPrompt({
+        commits: analysisResult.commits,
+        files: analysisResult.files,
+        baseBranch,
+        template: await prService.loadPRTemplate(),
+        diff: analysisResult.diff,
+        logger,
+        options: {
+          includeTesting: config.pr?.template?.sections?.testing,
+          includeChecklist: config.pr?.template?.sections?.checklist,
+        },
+      });
+
+      const tokenUsage = ai.calculateTokenUsage({ prompt });
+
+      logger.info(
+        `\n💰 ${chalk.cyan("Estimated cost:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
+      );
+      logger.info(
+        `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}/${chalk.dim(
+          config.ai.maxPromptTokens,
+        )}`,
+      );
+
+      // Check AI limits before proceeding
+      if (!checkAILimits({ tokenUsage, config, logger })) {
+        return analysisResult;
+      }
+
+      const aiPromptResult = await promptAIAction({
+        logger,
+        tokenUsage,
+      });
+
+      switch (aiPromptResult.action) {
+        case "generate": {
+          logger.info("\nGenerating PR description...");
+          const description = await prService.generateAIDescription({
+            commits: analysisResult.commits,
+            files: analysisResult.files,
+            baseBranch,
+            prompt,
+          });
+
+          if (description) {
+            analysisResult.description = description;
+          } else {
+            logger.warn("\n⚠️  No AI description could be generated.");
+          }
+          break;
+        }
+        case "copy": {
+          await copyToClipboard({ text: prompt, logger });
+          logger.info("\n✅ AI prompt copied to clipboard!");
+          break;
+        }
+        case "skip":
+          logger.info("\n⏭️  Skipping AI suggestions");
+          break;
       }
     }
 

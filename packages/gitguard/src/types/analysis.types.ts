@@ -70,6 +70,8 @@ export interface PRAnalysisResult {
     explanation: string;
   }>;
   suggestedTitle?: string;
+  files: FileChange[];
+  diff: string;
 }
 
 export interface PRStats {
