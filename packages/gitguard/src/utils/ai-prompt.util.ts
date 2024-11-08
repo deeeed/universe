@@ -42,13 +42,14 @@ export function buildCommitPrompt(params: {
     : "\nNo specific scope detected\n";
 
   const detailsGuideline = params.includeDetails
-    ? `\nPlease provide a high-level summary in the details field that includes:
-- Main architectural or structural changes
-- Key features added or removed
-- Important refactoring decisions
-- Breaking changes (if any)
-- Impact on existing functionality
+    ? `\nPlease provide a bullet-point summary in the details field that includes:
+• Main architectural/structural changes
+• Key features added/removed
+• Important refactoring decisions
+• Breaking changes (if any)
+• Impact on existing functionality
 
+Format each point with a bullet (•) and keep points concise.
 Avoid implementation details like line numbers or minor code changes.`
     : "\nDetails field is optional for this commit";
 
@@ -135,17 +136,22 @@ export function generateCommitSuggestionPrompt(
     .join("\n");
 
   const messageGuideline = params.needsDetailedMessage
-    ? `\nFor the message field, include:
-- High-level overview of architectural changes
-- New features or removed functionality
-- Breaking changes and their impact
-- Major refactoring decisions
-- Dependencies affected
+    ? `\nFor the message field, provide bullet points covering:
+• High-level architectural changes
+• New features or removed functionality
+• Breaking changes and impact
+• Major refactoring decisions
+• Dependencies affected
+
+Format:
+• Use bullet points (•)
+• Keep each point concise
+• Focus on impact and changes
 
 Do not include:
-- Number of lines changed
-- Implementation details
-- File paths or specific code changes`
+• Number of lines changed
+• Implementation details
+• File paths or specific code changes`
     : "\nMessage field is optional for simple changes";
 
   return `Analyze these git changes and suggest commit messages following conventional commits format.
