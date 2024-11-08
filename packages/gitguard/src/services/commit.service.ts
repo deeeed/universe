@@ -247,6 +247,11 @@ export class CommitService extends BaseService {
           requireJson: true,
           temperature: 0.7,
           systemPrompt: `You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. 
+            Each suggestion must include:
+            - title: the description without type/scope
+            - message: optional detailed explanation (${params.needsDetailedMessage ? "required" : "optional"} for this commit)
+            - type: conventional commit type
+
             ${params.needsDetailedMessage ? "Include detailed message for complex changes." : "Keep suggestions concise with title only."}
             Only use the provided scope if one is specified.`,
         },

@@ -7,6 +7,7 @@ import {
 import { FileChange } from "../types/git.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import { BaseService } from "./base.service.js";
+import chalk from "chalk";
 
 export interface ReportOptions {
   format?: "console";
@@ -35,16 +36,16 @@ export class ReporterService extends BaseService {
   }): void {
     const { result, options } = params;
 
-    this.logger.info("\n📊 Analysis Report");
-    this.logger.info(`Branch: ${result.branch}`);
-    this.logger.info(`Base branch: ${result.baseBranch}`);
+    this.logger.info("\n📊 " + chalk.bold("Analysis Report"));
+    this.logger.info(`Branch: ${chalk.cyan(result.branch)}`);
+    this.logger.info(`Base branch: ${chalk.cyan(result.baseBranch)}`);
     this.logger.newLine();
 
     if (this.isPRResult(result) && options.detailed) {
       this.logger.info("Commits:");
       result.commits.forEach((commit) => {
-        this.logger.info(`\n  ${commit.hash.slice(0, 7)}`);
-        this.logger.info(`  Author: ${commit.author}`);
+        this.logger.info(`\n  ${chalk.yellow(commit.hash.slice(0, 7))}`);
+        this.logger.info(`  Author: ${chalk.cyan(commit.author)}`);
         this.logger.info(`  Date: ${commit.date.toISOString()}`);
         this.logger.info(`  Message: ${commit.message}`);
 
@@ -52,7 +53,7 @@ export class ReporterService extends BaseService {
           this.logger.info("  Changed files:");
           commit.files.forEach((file) => {
             this.logger.info(
-              `    • ${file.path} (+${file.additions} -${file.deletions})`,
+              `    • ${chalk.cyan(file.path)} (+${chalk.green(file.additions)} -${chalk.red(file.deletions)})`,
             );
           });
         }
@@ -72,7 +73,7 @@ export class ReporterService extends BaseService {
       if (result.complexity.reasons.length > 0) {
         this.logger.info("\nComplexity Factors:");
         result.complexity.reasons.forEach((reason) => {
-          this.logger.info(`  • ${reason}`);
+          this.logger.info(`  • ${chalk.yellow(reason)}`);
         });
         this.logger.newLine();
       }
@@ -84,8 +85,8 @@ export class ReporterService extends BaseService {
         {
           "Total Commits": result.stats.totalCommits,
           "Files Changed": result.stats.filesChanged,
-          "Lines Added": `+${result.stats.additions}`,
-          "Lines Removed": `-${result.stats.deletions}`,
+          "Lines Added": `+${chalk.green(result.stats.additions)}`,
+          "Lines Removed": `-${chalk.red(result.stats.deletions)}`,
         },
       ]);
 
@@ -95,7 +96,7 @@ export class ReporterService extends BaseService {
         result.commits.forEach((commit) => {
           commit.files.forEach((file: FileChange) => {
             this.logger.info(
-              `  • ${file.path} (+${file.additions} -${file.deletions})`,
+              `  • ${chalk.cyan(file.path)} (+${chalk.green(file.additions)} -${chalk.red(file.deletions)})`,
             );
           });
         });
@@ -104,8 +105,8 @@ export class ReporterService extends BaseService {
       this.logger.table([
         {
           "Files Changed": result.stats.filesChanged,
-          "Lines Added": `+${result.stats.additions}`,
-          "Lines Removed": `-${result.stats.deletions}`,
+          "Lines Added": `+${chalk.green(result.stats.additions)}`,
+          "Lines Removed": `-${chalk.red(result.stats.deletions)}`,
         },
       ]);
 
@@ -115,42 +116,19 @@ export class ReporterService extends BaseService {
         this.logger.info(`Original: ${result.originalMessage}`);
         this.logger.info(`Formatted: ${result.formattedMessage}`);
       }
-
-      const files = (result as CommitAnalysisResult & { files?: FileChange[] })
-        .files;
-      if (!files?.length) {
-        return;
-      }
-
-      const filesByDir = files.reduce((acc, file) => {
-        const dir = file.path.split("/").slice(0, -1).join("/") || ".";
-        if (!acc.has(dir)) {
-          acc.set(dir, []);
-        }
-        acc.get(dir)?.push(file);
-        return acc;
-      }, new Map<string, FileChange[]>());
-
-      Array.from(filesByDir.entries()).forEach(([dir, dirFiles]) => {
-        this.logger.info(`  ${dir}/`);
-        dirFiles.forEach((file) => {
-          const fileName = file.path.split("/").pop() ?? file.path;
-          this.logger.info(
-            `    • ${fileName} (+${file.additions} -${file.deletions})`,
-          );
-        });
-      });
     }
 
     if (result.warnings.length > 0) {
       this.logger.newLine();
       this.logger.warning(`⚠️  Found ${result.warnings.length} warnings:`);
       result.warnings.forEach((warning: AnalysisWarning) => {
-        this.logger.warning(`  • [${warning.type}] ${warning.message}`);
+        this.logger.warning(
+          `  • ${chalk.yellow(`[${warning.type}] ${warning.message}`)}`,
+        );
       });
     } else {
       this.logger.newLine();
-      this.logger.info("✅ No issues detected");
+      this.logger.info("✅ " + chalk.green("No issues detected"));
     }
   }
 
