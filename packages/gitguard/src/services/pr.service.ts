@@ -76,6 +76,8 @@ export class PRService extends BaseService {
           lastCommit: new Date(),
         },
       },
+      diff: "",
+      files: [],
       warnings: [],
       filesByDirectory: {},
     };
@@ -118,10 +120,10 @@ export class PRService extends BaseService {
     params.suggestedPRs.forEach((pr, index) => {
       // Generate a clean branch name from title
       const branchName = `split/${index + 1}/${pr.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "")}`;
+        .toLowerCase() // Convert to lowercase first
+        .replace(/[^a-z0-9]+/g, "-") // Replace any non-alphanumeric chars with single dash
+        .replace(/(-)+/g, "-") // Replace multiple consecutive dashes with single dash
+        .replace(/(^-)|(-$)/g, "")}`; // Remove any leading or trailing dashes
 
       commands.push(
         `# ${index + 1}. Create branch for: ${pr.title}`,
@@ -228,7 +230,7 @@ export class PRService extends BaseService {
     return false;
   }
 
-  private async loadPRTemplate(): Promise<string | undefined> {
+  public async loadPRTemplate(): Promise<string | undefined> {
     const templatePath =
       this.config.pr?.template?.path || ".github/pull_request_template.md";
     try {
@@ -238,23 +240,23 @@ export class PRService extends BaseService {
     }
   }
 
-  private async generateAIDescription(params: {
+  public async generateAIDescription(params: {
     commits: CommitInfo[];
-    stats: PRStats;
     files: FileChange[];
     baseBranch: string;
+    prompt?: string;
   }): Promise<PRDescription | undefined> {
     if (!this.ai) return undefined;
 
-    const template = await this.loadPRTemplate();
-
-    const prompt = generatePRDescriptionPrompt({
-      commits: params.commits,
-      stats: params.stats,
-      files: params.files,
-      template,
-      baseBranch: params.baseBranch,
-    });
+    const prompt =
+      params.prompt ??
+      generatePRDescriptionPrompt({
+        commits: params.commits,
+        files: params.files,
+        baseBranch: params.baseBranch,
+        template: await this.loadPRTemplate(),
+        logger: this.logger,
+      });
 
     try {
       return await this.ai.generateCompletion<PRDescription>({
@@ -286,6 +288,7 @@ export class PRService extends BaseService {
       files: params.files,
       stats,
       baseBranch: params.baseBranch,
+      logger: this.logger,
     });
 
     try {
@@ -373,6 +376,13 @@ export class PRService extends BaseService {
         return this.createEmptyResult(branch, baseBranch);
       }
 
+      // Get diff once and reuse it
+      const diff = await this.git.getDiff({
+        from: baseBranch,
+        to: branch,
+        type: "range",
+      });
+
       // Calculate stats
       const stats = this.calculateStats({ commits });
 
@@ -395,13 +405,6 @@ export class PRService extends BaseService {
       }
 
       // Security checks - only if security service is available
-      const diff = await this.git.getDiff({
-        from: baseBranch,
-        to: branch,
-        type: "range",
-      });
-
-      // Run security checks
       const securityResult = this.checkBranchSecurity({
         files: commits.flatMap((c) => c.files),
         diff,
@@ -431,7 +434,6 @@ export class PRService extends BaseService {
       if (params.enableAI && this.ai) {
         description = await this.generateAIDescription({
           commits,
-          stats,
           files: commits.flatMap((c) => c.files),
           baseBranch,
         });
@@ -462,6 +464,8 @@ export class PRService extends BaseService {
         splitSuggestion,
         filesByDirectory,
         securityResult,
+        files: commits.flatMap((c) => c.files),
+        diff,
       };
     } catch (error) {
       this.logger.error("PR validation failed:", error);

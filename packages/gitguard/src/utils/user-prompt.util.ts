@@ -2,6 +2,7 @@ import { closeSync, openSync } from "fs";
 import { ReadStream, WriteStream } from "tty";
 import { Config } from "../types/config.types.js";
 import { Logger } from "../types/logger.types.js";
+import { AIProvider } from "../types/ai.types.js";
 
 // Common patterns helpers
 export async function displaySuggestions(params: {
@@ -537,4 +538,29 @@ export function createTTYStreams(): TTYStreams {
   }
 
   return { input, output, fd, cleanup };
+}
+
+interface AICostConfirmationParams {
+  logger: Logger;
+  provider: AIProvider;
+  promptTokens: number;
+  estimatedCost: string;
+  action: string;
+}
+
+export async function confirmAIUsage(
+  params: AICostConfirmationParams,
+): Promise<boolean> {
+  const { logger, provider, promptTokens, estimatedCost, action } = params;
+
+  logger.info("\n📊 AI Usage Details:");
+  logger.info(`Provider: ${provider.getName()}`);
+  logger.info(`Estimated tokens: ${promptTokens}`);
+  logger.info(`Estimated cost: ${estimatedCost}`);
+
+  return promptYesNo({
+    message: `\nWould you like to proceed with ${action} using AI?`,
+    logger,
+    defaultValue: true,
+  });
 }

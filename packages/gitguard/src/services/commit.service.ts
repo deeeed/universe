@@ -207,10 +207,11 @@ export class CommitService extends BaseService {
     return Array.from(scopes);
   }
 
-  public async getSuggestions(params: {
+  public async generateAISuggestions(params: {
     files: FileChange[];
     message: string;
     diff: string;
+    needsDetailedMessage?: boolean;
   }): Promise<CommitSuggestion[] | undefined> {
     if (!this.ai) {
       this.logger.debug("AI service not configured");
@@ -219,34 +220,22 @@ export class CommitService extends BaseService {
 
     try {
       const detectedScope = this.detectScope(params.files);
-      const parser = new CommitParser();
-      const complexity = parser.analyzeCommitComplexity({
-        files: params.files,
-      });
-
-      // Prepare the most relevant diff content
-      const prioritizedDiffs = this.getPrioritizedDiffs({
-        files: params.files,
-        diff: params.diff,
-        maxLength: 4000,
-      });
 
       this.logger.debug("Generating AI suggestions for files:", {
         fileCount: params.files.length,
         diffLength: params.diff.length,
-        prioritizedDiffLength: prioritizedDiffs.length,
         message: params.message,
         aiProvider: this.ai.constructor.name,
         detectedScope,
-        complexity,
+        needsDetailedMessage: params.needsDetailedMessage ?? false,
       });
 
       const prompt = generateCommitSuggestionPrompt({
         files: params.files,
         message: params.message,
-        diff: prioritizedDiffs,
+        diff: params.diff,
         scope: detectedScope,
-        complexity,
+        needsDetailedMessage: params.needsDetailedMessage ?? false,
         logger: this.logger,
       });
 
@@ -258,7 +247,12 @@ export class CommitService extends BaseService {
           requireJson: true,
           temperature: 0.7,
           systemPrompt: `You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. 
-            ${complexity.needsStructure ? "Include detailed message for complex changes." : "Keep suggestions concise with title only."}
+            Each suggestion must include:
+            - title: the description without type/scope
+            - message: optional detailed explanation (${params.needsDetailedMessage ? "required" : "optional"} for this commit)
+            - type: conventional commit type
+
+            ${params.needsDetailedMessage ? "Include detailed message for complex changes." : "Keep suggestions concise with title only."}
             Only use the provided scope if one is specified.`,
         },
       });
@@ -271,11 +265,7 @@ export class CommitService extends BaseService {
         return undefined;
       }
 
-      // Add scope to suggestions if detected
-      return suggestions.suggestions.map((suggestion) => ({
-        ...suggestion,
-        scope: detectedScope,
-      }));
+      return suggestions.suggestions;
     } catch (error) {
       this.logger.error("Failed to generate AI suggestions:", error);
       this.logger.debug("Error details:", {
@@ -288,7 +278,7 @@ export class CommitService extends BaseService {
     }
   }
 
-  private getPrioritizedDiffs(params: {
+  public getPrioritizedDiffs(params: {
     files: FileChange[];
     diff: string;
     maxLength: number;
@@ -297,41 +287,95 @@ export class CommitService extends BaseService {
     const diffs: Array<{ path: string; diff: string; significance: number }> =
       [];
 
-    // Sort files by significance
-    const sortedFiles = [...files].sort((a, b) => {
-      const aChanges = a.additions + a.deletions;
-      const bChanges = b.additions + b.deletions;
-      return bChanges - aChanges;
+    // Debug input
+    this.logger.debug("getPrioritizedDiffs input:", {
+      filesCount: files.length,
+      diffLength: diff.length,
+      maxLength,
+      files: files.map((f) => f.path),
     });
 
-    // Extract diffs for each file
-    for (const file of sortedFiles) {
-      const diffStart = diff.indexOf(`diff --git a/${file.path}`);
-      if (diffStart === -1) continue;
+    // Split the diff into individual file diffs
+    const diffParts = diff.split("diff --git ").filter(Boolean);
 
-      const nextDiffStart = diff.indexOf("diff --git", diffStart + 1);
-      const diffEnd = nextDiffStart === -1 ? diff.length : nextDiffStart;
-      const fileDiff = diff.slice(diffStart, diffEnd);
+    this.logger.debug("Split diff parts:", {
+      partsCount: diffParts.length,
+      firstPartPreview: diffParts[0]?.substring(0, 100),
+      // Add this to see the actual diff content
+      allParts: diffParts.map((p) => p.substring(0, 200)),
+    });
 
-      diffs.push({
-        path: file.path,
-        diff: fileDiff,
-        significance: file.additions + file.deletions,
+    // Extract diffs for each file and calculate significance
+    for (const file of files) {
+      const fileDiff = diffParts.find((part) => {
+        // More flexible path matching
+        const normalizedPath = file.path.replace(/^\/+/, "");
+        const matches = part.includes(normalizedPath);
+        this.logger.debug(`Checking file ${file.path}:`, {
+          normalizedPath,
+          found: matches,
+          partPreview: part.substring(0, 100),
+        });
+        return matches;
       });
+
+      if (fileDiff) {
+        diffs.push({
+          path: file.path,
+          diff: `diff --git ${fileDiff}`,
+          significance: file.additions + file.deletions,
+        });
+        this.logger.debug(`Found diff for file: ${file.path}`, {
+          diffLength: fileDiff.length,
+          significance: file.additions + file.deletions,
+        });
+      } else {
+        this.logger.debug(`No diff found for file: ${file.path}`);
+      }
     }
 
-    // Combine diffs within maxLength limit
+    // Sort by significance
+    diffs.sort((a, b) => b.significance - a.significance);
+
+    this.logger.debug("Sorted diffs:", {
+      diffsFound: diffs.length,
+      diffs: diffs.map((d) => ({
+        path: d.path,
+        significance: d.significance,
+        length: d.diff.length,
+      })),
+    });
+
+    // Combine diffs within maxLength limit, starting with most significant
     let result = "";
     let currentLength = 0;
 
     for (const { diff: fileDiff } of diffs) {
-      if (currentLength + fileDiff.length <= maxLength) {
-        result += fileDiff + "\n";
-        currentLength += fileDiff.length + 1;
+      const newLength = currentLength + fileDiff.length;
+      if (newLength <= maxLength) {
+        result += fileDiff;
+        currentLength = newLength;
       } else {
+        this.logger.debug(
+          `Skipping diff due to length limit: current=${currentLength}, adding=${fileDiff.length}, max=${maxLength}`,
+        );
         break;
       }
     }
+
+    // If we couldn't include any diffs within the limit, take the most significant one
+    // and truncate it
+    if (result.length === 0 && diffs.length > 0) {
+      result = diffs[0].diff.substring(0, maxLength);
+      this.logger.debug("Using truncated version of most significant diff");
+    }
+
+    this.logger.debug("Final prioritized diffs:", {
+      originalLength: diff.length,
+      resultLength: result.length,
+      fileCount: diffs.length,
+      includedFiles: diffs.map((d) => d.path),
+    });
 
     return result;
   }

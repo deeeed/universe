@@ -3,8 +3,8 @@ import chalk from "chalk";
 import { Logger, LogLevel, LoggerOptions } from "../types/logger.types.js";
 
 export class LoggerService implements Logger {
-  private level: LogLevel;
-  private silent: boolean;
+  private readonly level: LogLevel;
+  private readonly silent: boolean;
 
   constructor(options: LoggerOptions = {}) {
     this.silent = options.silent ?? this.getSilentFromEnv() ?? false;

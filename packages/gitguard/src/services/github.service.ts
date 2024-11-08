@@ -325,4 +325,68 @@ export class GitHubService extends BaseService {
 
     return response.data;
   }
+
+  public async getPRForBranch(params: {
+    branch: string;
+  }): Promise<GitHubPR | null> {
+    if (!this.isEnabled || !this.octokit) {
+      throw new Error("GitHub integration is not enabled");
+    }
+
+    try {
+      const info = await this.getGitHubInfo();
+      const response = await this.octokit.pulls.list({
+        owner: info.owner,
+        repo: info.repo,
+        head: `${info.owner}:${params.branch}`,
+        state: "all",
+      });
+
+      const pr = response.data[0] as PullRequestResponse;
+      return pr ? this.transformPullRequest(pr) : null;
+    } catch (error) {
+      this.logger.error("Failed to get PR for branch:", error);
+      return null;
+    }
+  }
+
+  public async updatePR(params: {
+    owner: string;
+    repo: string;
+    number: number;
+    title?: string;
+    description?: string;
+  }): Promise<GitHubPR> {
+    if (!this.isEnabled || !this.octokit) {
+      throw new Error("GitHub integration is not enabled");
+    }
+
+    try {
+      const response = await this.octokit.pulls.update({
+        owner: params.owner,
+        repo: params.repo,
+        pull_number: params.number,
+        ...(params.title && { title: params.title }),
+        ...(params.description && { body: params.description }),
+      });
+
+      return this.transformPullRequest(response.data);
+    } catch (error) {
+      this.logger.error("Failed to update PR:", error);
+      throw error;
+    }
+  }
+
+  public async updatePRFromBranch(params: {
+    number: number;
+    title?: string;
+    description?: string;
+  }): Promise<GitHubPR> {
+    const info = await this.getGitHubInfo();
+    return this.updatePR({
+      owner: info.owner,
+      repo: info.repo,
+      ...params,
+    });
+  }
 }

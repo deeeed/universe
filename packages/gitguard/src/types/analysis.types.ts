@@ -70,6 +70,9 @@ export interface PRAnalysisResult {
     explanation: string;
   }>;
   suggestedTitle?: string;
+  files: FileChange[];
+  diff: string;
+  existingPR?: GitHubPR | null;
 }
 
 export interface PRStats {
@@ -150,6 +153,7 @@ export interface PRAnalysisOptions {
   enableAI?: boolean;
   enablePrompts?: boolean;
   aiMode?: "pr" | "branch" | "review";
+  existingPR?: GitHubPR | null;
 }
 
 // Shared only where absolutely necessary

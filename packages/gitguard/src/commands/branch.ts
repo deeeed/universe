@@ -4,14 +4,20 @@ import { GitService } from "../services/git.service.js";
 import { GitHubService } from "../services/github.service.js";
 import { LoggerService } from "../services/logger.service.js";
 import { PRService } from "../services/pr.service.js";
+import { ReporterService } from "../services/reporter.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { PRAnalysisResult } from "../types/analysis.types.js";
 import { GitConfig } from "../types/config.types.js";
+import { generatePRDescriptionPrompt } from "../utils/ai-prompt.util.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
 import { checkGitHubToken } from "../utils/github.util.js";
-import { promptInput, promptYesNo } from "../utils/user-prompt.util.js";
-import { ReporterService } from "../services/reporter.service.js";
+import {
+  promptAIAction,
+  promptInput,
+  promptYesNo,
+} from "../utils/user-prompt.util.js";
+import { checkAILimits } from "../utils/ai-limits.util.js";
 
 interface BranchAnalyzeParams {
   options: {
@@ -30,60 +36,15 @@ interface BranchAnalyzeParams {
     description?: string;
     base?: string;
     security?: boolean;
+    edit?: boolean;
   };
-}
-
-async function ensureRemoteBranch(params: {
-  branch: string;
-  git: GitService;
-  github: GitHubService;
-  logger: LoggerService;
-}): Promise<boolean> {
-  const { branch, git, github, logger } = params;
-
-  try {
-    await github.getBranch({ branch });
-    return true;
-  } catch (error) {
-    logger.info(`\n⚠️ Branch '${branch}' not found on remote`);
-
-    try {
-      // Check if branch exists locally
-      const localBranches = await git.getLocalBranches();
-      if (!localBranches.includes(branch)) {
-        logger.error(`\n❌ Branch '${branch}' not found locally either`);
-        return false;
-      }
-
-      // Ask user if they want to push the branch
-      const shouldPush = await promptYesNo({
-        message: "\nWould you like to push this branch to remote?",
-        logger,
-        defaultValue: true,
-      });
-
-      if (shouldPush) {
-        logger.info("\n📤 Pushing branch to remote...");
-        await git.execGit({
-          command: "push",
-          args: ["-u", "origin", branch],
-        });
-        logger.info("✅ Branch pushed successfully!");
-        return true;
-      }
-
-      return false;
-    } catch (innerError) {
-      logger.error("\n❌ Failed to check local branches:", innerError);
-      return false;
-    }
-  }
 }
 
 export async function analyzeBranch({
   options,
 }: BranchAnalyzeParams): Promise<PRAnalysisResult> {
   const logger = new LoggerService({ debug: options.debug });
+  const detailed = options.detailed ?? false;
   let analysisResult: PRAnalysisResult | null = null;
 
   try {
@@ -139,9 +100,7 @@ export async function analyzeBranch({
     reporter.generateReport({
       result: analysisResult,
       options: {
-        format: options.format ?? "console",
-        color: options.color,
-        detailed: options.detailed,
+        detailed,
       },
     });
 
@@ -163,24 +122,45 @@ export async function analyzeBranch({
           return analysisResult;
         }
 
-        // Ensure branch exists on remote
-        const branchExists = await ensureRemoteBranch({
-          branch: branchToAnalyze,
-          git,
-          github,
-          logger,
-        });
+        // Check remote branch using GitHubService directly
+        try {
+          await github.getBranch({ branch: branchToAnalyze });
+        } catch (error) {
+          logger.info(`\n⚠️ Branch '${branchToAnalyze}' not found on remote`);
 
-        if (!branchExists) {
-          logger.info("\n📝 Next steps:");
-          logger.info(
-            [
-              "1. Push your branch to remote using:",
-              `git push -u origin ${branchToAnalyze}`,
-            ].join(" "),
-          );
-          logger.info("2. Run this command again to create the PR");
-          return analysisResult;
+          // Check if branch exists locally using GitService
+          const localBranches = await git.getLocalBranches();
+          if (!localBranches.includes(branchToAnalyze)) {
+            logger.error(
+              `\n❌ Branch '${branchToAnalyze}' not found locally either`,
+            );
+            return analysisResult;
+          }
+
+          const shouldPush = await promptYesNo({
+            message: "\nWould you like to push this branch to remote?",
+            logger,
+            defaultValue: true,
+          });
+
+          if (shouldPush) {
+            logger.info("\n📤 Pushing branch to remote...");
+            await git.execGit({
+              command: "push",
+              args: ["-u", "origin", branchToAnalyze],
+            });
+            logger.info("✅ Branch pushed successfully!");
+          } else {
+            logger.info("\n📝 Next steps:");
+            logger.info(
+              [
+                "1. Push your branch to remote using:",
+                `git push -u origin ${branchToAnalyze}`,
+              ].join(" "),
+            );
+            logger.info("2. Run this command again to create the PR");
+            return analysisResult;
+          }
         }
 
         // Get PR content
@@ -204,19 +184,28 @@ export async function analyzeBranch({
             if (useAIContent) {
               title = analysisResult.description.title;
               description = analysisResult.description.description;
-            }
-          }
+            } else {
+              // If user declines AI content, prompt for manual input
+              title = await promptInput({
+                message: "\nEnter PR title:",
+                logger,
+                defaultValue: branchToAnalyze,
+              });
 
-          // If still missing title/description, prompt user
-          if (!title) {
+              description = await promptInput({
+                message: "\nEnter PR description:",
+                logger,
+                defaultValue: "",
+              });
+            }
+          } else {
+            // If no AI content available, prompt for manual input
             title = await promptInput({
               message: "\nEnter PR title:",
               logger,
               defaultValue: branchToAnalyze,
             });
-          }
 
-          if (!description) {
             description = await promptInput({
               message: "\nEnter PR description:",
               logger,
@@ -267,6 +256,175 @@ export async function analyzeBranch({
         );
         logger.debug("Full PR creation error details:", error);
         // Don't throw here, as the analysis was successful
+      }
+    } else if (options.ai && ai) {
+      // After the initial analysis and before any AI operations
+      const existingPR = await github.getPRForBranch({
+        branch: branchToAnalyze,
+      });
+      if (existingPR) {
+        logger.info(`\n🔍 Found existing PR: ${chalk.cyan(existingPR.url)}`);
+
+        if (options.edit && options.ai) {
+          // Handle PR edit with AI
+          const prompt = generatePRDescriptionPrompt({
+            commits: analysisResult.commits,
+            files: analysisResult.files,
+            baseBranch,
+            template: await prService.loadPRTemplate(),
+            diff: analysisResult.diff,
+            logger,
+            options: {
+              includeTesting: config.pr?.template?.sections?.testing,
+              includeChecklist: config.pr?.template?.sections?.checklist,
+            },
+          });
+
+          const tokenUsage = ai.calculateTokenUsage({ prompt });
+          logger.info(
+            `\n💰 ${chalk.cyan("Estimated cost:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
+          );
+          logger.info(
+            `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}/${chalk.dim(
+              config.ai.maxPromptTokens,
+            )}`,
+          );
+
+          if (!checkAILimits({ tokenUsage, config, logger })) {
+            return analysisResult;
+          }
+
+          const aiPromptResult = await promptAIAction({
+            logger,
+            tokenUsage,
+          });
+
+          switch (aiPromptResult.action) {
+            case "generate": {
+              logger.info("\nGenerating PR description...");
+              const aiDescription = await prService.generateAIDescription({
+                commits: analysisResult.commits,
+                files: analysisResult.files,
+                baseBranch,
+                prompt,
+              });
+
+              if (aiDescription) {
+                logger.info("\n📝 AI generated a PR description:");
+                logger.info(`\nTitle: ${aiDescription.title}`);
+                logger.info(`\nDescription:\n${aiDescription.description}`);
+
+                const useAIContent = await promptYesNo({
+                  message: "\nWould you like to use this AI-generated content?",
+                  logger,
+                  forceTTY: true,
+                  defaultValue: true,
+                });
+
+                if (useAIContent) {
+                  await github.updatePRFromBranch({
+                    number: existingPR.number,
+                    title: aiDescription.title,
+                    description: aiDescription.description,
+                  });
+                  logger.info(
+                    "\n✅ PR updated successfully with AI-generated content!",
+                  );
+                }
+              }
+              break;
+            }
+            case "copy": {
+              await copyToClipboard({ text: prompt, logger });
+              logger.info("\n✅ AI prompt copied to clipboard!");
+              break;
+            }
+            case "skip":
+              logger.info("\n⏭️  Skipping AI suggestions");
+              break;
+          }
+          return analysisResult;
+        }
+      }
+
+      // Then handle the regular AI flow for non-edit cases
+      const prompt = generatePRDescriptionPrompt({
+        commits: analysisResult.commits,
+        files: analysisResult.files,
+        baseBranch,
+        template: await prService.loadPRTemplate(),
+        diff: analysisResult.diff,
+        logger,
+        options: {
+          includeTesting: config.pr?.template?.sections?.testing,
+          includeChecklist: config.pr?.template?.sections?.checklist,
+        },
+      });
+
+      const tokenUsage = ai.calculateTokenUsage({ prompt });
+
+      logger.info(
+        `\n💰 ${chalk.cyan("Estimated cost:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
+      );
+      logger.info(
+        `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}/${chalk.dim(
+          config.ai.maxPromptTokens,
+        )}`,
+      );
+
+      // Check AI limits before proceeding
+      if (!checkAILimits({ tokenUsage, config, logger })) {
+        return analysisResult;
+      }
+
+      const aiPromptResult = await promptAIAction({
+        logger,
+        tokenUsage,
+      });
+
+      switch (aiPromptResult.action) {
+        case "generate": {
+          logger.info("\nGenerating PR description...");
+          const description = await prService.generateAIDescription({
+            commits: analysisResult.commits,
+            files: analysisResult.files,
+            baseBranch,
+            prompt,
+          });
+
+          if (description) {
+            logger.info("\n📝 AI generated a PR description:");
+            logger.info(`\nTitle: ${description.title}`);
+            logger.info(`\nDescription:\n${description.description}`);
+
+            const useAIContent = await promptYesNo({
+              message: "\nWould you like to use this AI-generated content?",
+              logger,
+              defaultValue: true,
+            });
+
+            if (useAIContent) {
+              analysisResult.description = description;
+              logger.info("\n✅ PR description updated successfully!");
+            } else {
+              logger.info("\n⏭️  Skipping AI-generated content");
+            }
+
+            // Add return statement after handling the prompt
+            return analysisResult;
+          } else {
+            logger.warn("\n⚠️  No AI description could be generated.");
+            return analysisResult;
+          }
+        }
+        case "copy": {
+          await copyToClipboard({ text: prompt, logger });
+          logger.info("\n✅ AI prompt copied to clipboard!");
+          return analysisResult;
+        }
+        case "skip":
+          logger.info("\n⏭️  Skipping AI suggestions");
+          return analysisResult;
       }
     }
 

@@ -2,14 +2,11 @@ import chalk from "chalk";
 import { LoggerService } from "../services/logger.service.js";
 import { Config } from "../types/config.types.js";
 import { getConfigStatus } from "../utils/config.util.js";
-import { getGitRoot } from "../utils/git.util.js";
-import { getHookStatus } from "../utils/hook.util.js";
 
 export interface StatusOptions {
   debug?: boolean;
   configPath?: string;
   configOnly?: boolean;
-  hooksOnly?: boolean;
 }
 
 function formatEnabled(enabled: boolean): string {
@@ -109,28 +106,7 @@ function displayConfigFeatures(config: Partial<Config> | null): string[] {
   output.push("\nDebug Mode:");
   output.push(`  Status: ${formatEnabled(config?.debug ?? false)}`);
 
-  // Add Hook Configuration section
-  output.push("\nHook Configuration:");
-  output.push(
-    `  Default Action: ${formatHookChoice(config?.hook?.defaultChoice)}`,
-  );
-  output.push(
-    `  Timeout: ${formatConfigValue(config?.hook?.timeoutSeconds ?? 90)} seconds`,
-  );
-
   return output;
-}
-
-// Add helper function to format hook choice
-function formatHookChoice(choice?: string): string {
-  const choices = {
-    keep: "Keep original message",
-    ai: "Generate with AI",
-    format: "Use formatted message",
-  };
-
-  if (!choice) return chalk.gray("Not configured (defaults to keep)");
-  return chalk.cyan(choices[choice as keyof typeof choices] || choice);
 }
 
 export async function status(options: StatusOptions): Promise<void> {
@@ -146,94 +122,57 @@ export async function status(options: StatusOptions): Promise<void> {
       JSON.stringify(status.global.config, null, 2),
     );
 
-    if (!options.hooksOnly) {
-      logger.info(chalk.blue("\n📝 Configuration Status:"));
+    logger.info(chalk.blue("\n📝 Configuration Status:"));
 
-      if (status.global.exists) {
-        logger.info(
-          `\nGlobal config found at: ${chalk.cyan(status.global.path)}`,
-        );
-
-        if (!status.global.config) {
-          logger.info(
-            chalk.yellow(
-              "Global config file exists but no configuration was loaded",
-            ),
-          );
-          logger.info(
-            chalk.gray(
-              "Try running 'gitguard init -g' to create a new configuration",
-            ),
-          );
-        } else {
-          logger.info(chalk.yellow("\nGlobal Settings:"));
-          const globalFeatures = displayConfigFeatures(status.global.config);
-          globalFeatures.forEach((line) => logger.info(line));
-        }
-      } else {
-        logger.info(chalk.yellow("\nNo global config found"));
-      }
-
-      if (status.local.exists) {
-        logger.info(
-          `\nLocal config found at: ${chalk.cyan(status.local.path)}`,
-        );
-        logger.info(chalk.yellow("\nLocal Settings (overrides global):"));
-        const localFeatures = displayConfigFeatures(status.local.config);
-        if (localFeatures.length > 0) {
-          localFeatures.forEach((line) => logger.info(line));
-        } else {
-          logger.info(chalk.gray("No features configured"));
-        }
-      } else {
-        logger.info(chalk.yellow("\nNo local config found"));
-      }
-
-      if (status.effective && status.local.exists) {
-        logger.info(chalk.blue("\n⚡ Effective Configuration:"));
-        displayConfigFeatures(status.effective).forEach((line) =>
-          logger.info(line),
-        );
-      }
-    }
-
-    // Hook Status
-    logger.info(chalk.blue("\n🔗 Git Hooks Status:"));
-    const hookStatus = await getHookStatus();
-
-    if (hookStatus.isRepo) {
-      logger.info(`Local repository detected at: ${chalk.cyan(getGitRoot())}`);
-
-      if (hookStatus.localHook.exists) {
-        logger.info(chalk.green("• Local hook installed"));
-        logger.info(`  Path: ${chalk.cyan(hookStatus.localHook.path)}`);
-        logger.info(
-          `  Hooks Directory: ${chalk.cyan(hookStatus.localHook.hooksPath)}`,
-        );
-      } else {
-        logger.info(chalk.yellow("• No local hook installed"));
-      }
-    } else {
-      logger.info(chalk.yellow("Not in a git repository"));
-    }
-
-    if (hookStatus.globalHook.exists) {
-      logger.info(chalk.green("\n• Global hook installed"));
-      logger.info(`  Path: ${chalk.cyan(hookStatus.globalHook.path)}`);
+    if (status.global.exists) {
       logger.info(
-        `  Hooks Directory: ${chalk.cyan(hookStatus.globalHook.hooksPath)}`,
+        `\nGlobal config found at: ${chalk.cyan(status.global.path)}`,
       );
+
+      if (!status.global.config) {
+        logger.info(
+          chalk.yellow(
+            "Global config file exists but no configuration was loaded",
+          ),
+        );
+        logger.info(
+          chalk.gray(
+            "Try running 'gitguard init -g' to create a new configuration",
+          ),
+        );
+      } else {
+        logger.info(chalk.yellow("\nGlobal Settings:"));
+        const globalFeatures = displayConfigFeatures(status.global.config);
+        globalFeatures.forEach((line) => logger.info(line));
+      }
     } else {
-      logger.info(chalk.yellow("\nNo global hook installed"));
+      logger.info(chalk.yellow("\nNo global config found"));
     }
 
-    // Quick Actions
+    if (status.local.exists) {
+      logger.info(`\nLocal config found at: ${chalk.cyan(status.local.path)}`);
+      logger.info(chalk.yellow("\nLocal Settings (overrides global):"));
+      const localFeatures = displayConfigFeatures(status.local.config);
+      if (localFeatures.length > 0) {
+        localFeatures.forEach((line) => logger.info(line));
+      } else {
+        logger.info(chalk.gray("No features configured"));
+      }
+    } else {
+      logger.info(chalk.yellow("\nNo local config found"));
+    }
+
+    if (status.effective && status.local.exists) {
+      logger.info(chalk.blue("\n⚡ Effective Configuration:"));
+      displayConfigFeatures(status.effective).forEach((line) =>
+        logger.info(line),
+      );
+    }
+
     logger.info(chalk.blue("\n💡 Quick Actions"));
     logger.info("---------------");
-    logger.info("• Install hooks:        gitguard hook install [-g]");
     logger.info("• Configure settings:   gitguard init [-g]");
     logger.info("• Enable debug:         GITGUARD_DEBUG=true");
-    logger.info("• Skip hook:           SKIP_GITGUARD=true git commit");
   } catch (error) {
     logger.error("Failed to get status:", error);
     throw error;

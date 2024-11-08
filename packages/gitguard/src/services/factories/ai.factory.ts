@@ -26,7 +26,7 @@ export class AIFactory {
         }
 
         azureApiKey =
-          config.ai.azure.apiKey || process.env.AZURE_OPENAI_API_KEY;
+          config.ai.azure.apiKey ?? process.env.AZURE_OPENAI_API_KEY;
         if (!azureApiKey) {
           return undefined;
         }
@@ -37,9 +37,9 @@ export class AIFactory {
             type: "azure",
             azure: {
               apiKey: azureApiKey,
-              endpoint: config.ai.azure.endpoint || "",
-              deployment: config.ai.azure.deployment || "gpt-4",
-              apiVersion: config.ai.azure.apiVersion || "2024-02-15-preview",
+              endpoint: config.ai.azure.endpoint ?? "",
+              deployment: config.ai.azure.deployment ?? "gpt-4",
+              apiVersion: config.ai.azure.apiVersion ?? "2024-02-15-preview",
             },
           },
         });
@@ -49,7 +49,7 @@ export class AIFactory {
           return undefined;
         }
 
-        openaiApiKey = config.ai.openai.apiKey || process.env.OPENAI_API_KEY;
+        openaiApiKey = config.ai.openai.apiKey ?? process.env.OPENAI_API_KEY;
         if (!openaiApiKey) {
           return undefined;
         }
@@ -62,7 +62,7 @@ export class AIFactory {
               apiKey: openaiApiKey,
               model: config.ai.openai.model || "gpt-4",
               organization:
-                config.ai.openai.organization || process.env.OPENAI_ORG_ID,
+                config.ai.openai.organization ?? process.env.OPENAI_ORG_ID,
             },
           },
         });

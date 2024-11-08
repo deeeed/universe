@@ -326,37 +326,60 @@ export class GitService extends BaseService {
       this.logger.debug(
         `Attaching file changes for ${params.commits.length} commits`,
       );
-      const commitsWithFiles: Promise<CommitInfo>[] = params.commits.map(
-        async (commit) => ({
-          ...commit,
-          files: await this.getFileChanges({ commit: commit.hash }),
-        }),
-      );
-      return Promise.all(commitsWithFiles);
-    } catch (error) {
-      this.logger.error("Failed to attach file changes:", error);
-      throw error;
-    }
-  }
 
-  private async getFileChanges(params: {
-    commit: string;
-  }): Promise<FileChange[]> {
-    try {
+      // Get all commit hashes
+      const hashes = params.commits.map((commit) => commit.hash);
+
+      // Get file changes for all commits in a single command
       const output = await this.execGit({
         command: "show",
-        args: ["--numstat", "--format=", params.commit],
+        args: [
+          "--numstat",
+          "--format=%H", // Include commit hash as delimiter
+          ...hashes,
+        ],
       });
 
-      const changes: FileChange[] = this.parser.parseFileChanges({
-        numstat: output,
+      // Split output by commit hash and parse changes
+      const changesByCommit = new Map<string, FileChange[]>();
+      let currentHash = "";
+      let currentChanges: string[] = [];
+
+      output.split("\n").forEach((line) => {
+        if (line.match(/^[0-9a-f]{40}$/)) {
+          // This is a commit hash line
+          if (currentHash && currentChanges.length) {
+            changesByCommit.set(
+              currentHash,
+              this.parser.parseFileChanges({
+                numstat: currentChanges.join("\n"),
+              }),
+            );
+          }
+          currentHash = line;
+          currentChanges = [];
+        } else if (line.trim()) {
+          currentChanges.push(line);
+        }
       });
-      return changes;
+
+      // Handle last commit
+      if (currentHash && currentChanges.length) {
+        changesByCommit.set(
+          currentHash,
+          this.parser.parseFileChanges({
+            numstat: currentChanges.join("\n"),
+          }),
+        );
+      }
+
+      // Map the changes back to commits
+      return params.commits.map((commit) => ({
+        ...commit,
+        files: changesByCommit.get(commit.hash) || [],
+      }));
     } catch (error) {
-      this.logger.error(
-        `Failed to get file changes for commit ${params.commit}:`,
-        error,
-      );
+      this.logger.error("Failed to attach file changes:", error);
       throw error;
     }
   }

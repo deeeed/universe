@@ -1,13 +1,20 @@
 import { CommitComplexity, PRStats } from "../types/analysis.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
+import { formatDiffForAI } from "./diff.util.js";
 
 export interface PRPromptParams {
   commits: CommitInfo[];
-  stats: PRStats;
   files: FileChange[];
   template?: string;
   baseBranch: string;
+  diff?: string;
+  stats?: PRStats;
+  logger: Logger;
+  options?: {
+    includeTesting?: boolean;
+    includeChecklist?: boolean;
+  };
 }
 
 export function buildCommitPrompt(params: {
@@ -24,7 +31,8 @@ export function buildCommitPrompt(params: {
   const packageSummary = formatPackageSummary({
     packages: params.packages,
   });
-  const truncatedDiff = truncateDiff({
+  const formattedDiff = formatDiffForAI({
+    files: params.files,
     diff: params.diff,
     logger: params.logger,
   });
@@ -34,13 +42,14 @@ export function buildCommitPrompt(params: {
     : "\nNo specific scope detected\n";
 
   const detailsGuideline = params.includeDetails
-    ? `\nPlease provide a high-level summary in the details field that includes:
-- Main architectural or structural changes
-- Key features added or removed
-- Important refactoring decisions
-- Breaking changes (if any)
-- Impact on existing functionality
+    ? `\nPlease provide a bullet-point summary in the details field that includes:
+• Main architectural/structural changes
+• Key features added/removed
+• Important refactoring decisions
+• Breaking changes (if any)
+• Impact on existing functionality
 
+Format each point with a bullet (•) and keep points concise.
 Avoid implementation details like line numbers or minor code changes.`
     : "\nDetails field is optional for this commit";
 
@@ -59,9 +68,9 @@ Complexity Analysis:
 - Reasons: ${params.complexity?.reasons.join(", ") ?? "None"}
 ${detailsGuideline}
 
-Git diff (truncated):
+Git diff:
 \`\`\`diff
-${truncatedDiff}
+${formattedDiff}
 \`\`\`
 
 Please provide suggestions in this JSON format:
@@ -110,42 +119,13 @@ function getCommitSuggestionFormat(): string {
 }`;
 }
 
-function truncateDiff(params: {
-  diff: string;
-  maxLength?: number;
-  logger: Logger;
-}): string {
-  const { diff, maxLength = 8000, logger } = params;
-
-  if (diff.length <= maxLength) return diff;
-
-  // Split by file sections and take most important ones
-  const sections = diff.split("diff --git").filter(Boolean);
-  const truncatedSections = sections
-    .slice(0, 5) // Take first 5 files
-    .map((section) => `diff --git${section}`) // Add back the "diff --git" prefix
-    .join("\n");
-
-  logger.debug("Truncating diff:", {
-    originalLength: diff.length,
-    sectionsCount: sections.length,
-    truncatedLength: truncatedSections.length,
-  });
-
-  return truncatedSections.length > maxLength
-    ? truncatedSections.slice(0, maxLength) +
-        `\n\n... (truncated ${sections.length - 5} more files)`
-    : truncatedSections +
-        `\n\n... (truncated ${sections.length - 5} more files)`;
-}
-
 export interface CommitSuggestionPromptParams {
   files: FileChange[];
   message: string;
   diff: string;
   logger: Logger;
   scope?: string;
-  complexity: CommitComplexity;
+  needsDetailedMessage?: boolean;
 }
 
 export function generateCommitSuggestionPrompt(
@@ -154,6 +134,25 @@ export function generateCommitSuggestionPrompt(
   const fileChanges = params.files
     .map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`)
     .join("\n");
+
+  const messageGuideline = params.needsDetailedMessage
+    ? `\nFor the message field, provide bullet points covering:
+• High-level architectural changes
+• New features or removed functionality
+• Breaking changes and impact
+• Major refactoring decisions
+• Dependencies affected
+
+Format:
+• Use bullet points (•)
+• Keep each point concise
+• Focus on impact and changes
+
+Do not include:
+• Number of lines changed
+• Implementation details
+• File paths or specific code changes`
+    : "\nMessage field is optional for simple changes";
 
   return `Analyze these git changes and suggest commit messages following conventional commits format.
 
@@ -164,31 +163,25 @@ Key Changes:
 ${params.diff}
 
 Original message: "${params.message}"
-
-Complexity Analysis:
-- Score: ${params.complexity.score}
-- Reasons: ${params.complexity.reasons.join(", ") || "None"}
-- Needs detailed structure: ${params.complexity.needsStructure}
-${params.scope ? `\nValid scope: "${params.scope}"` : ""}
+${messageGuideline}
 
 Please provide suggestions in this JSON format:
 {
   "suggestions": [
     {
-      "title": "short descriptive title without scope or type",
-      "message": "${params.complexity.needsStructure ? "detailed explanation of changes" : "optional details"}",
+      "title": "descriptive message without type or scope",
+      "message": "${params.needsDetailedMessage ? "high-level overview of changes" : "optional details"}",
       "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
     }
   ]
 }
 
 Guidelines:
-1. Follow conventional commits format: type(scope): description
+1. The title field must not include type or scope
 2. Be specific about the changes
 3. Keep descriptions concise but informative
-4. Only use the provided scope if one is specified
-5. Use appropriate type based on the changes
-6. ${params.complexity.needsStructure ? "Include detailed commit information in the message field" : "Message field is optional"}`;
+4. Use appropriate type based on the changes
+5. ${params.needsDetailedMessage ? "Include high-level overview in message field" : "Message field is optional"}`;
 }
 
 export function generateSplitSuggestionPrompt(params: {
@@ -234,44 +227,61 @@ export function generatePRDescriptionPrompt(params: PRPromptParams): string {
     .join("\n");
 
   const fileChanges = formatFileChanges({ files: params.files });
+
   const templateInstructions = params.template
     ? `\nFollow this PR template structure:\n${params.template}`
     : "";
 
-  return `Generate a Pull Request title and description based on these changes:
+  const diffSection = params.diff
+    ? `\nKey Changes:
+\`\`\`diff
+${formatDiffForAI({
+  files: params.files,
+  diff: params.diff,
+  logger: params.logger,
+})}
+\`\`\`\n`
+    : "";
+
+  const jsonFormat = {
+    title: "concise and descriptive PR title",
+    description:
+      "detailed description explaining the changes, their purpose, and impact",
+    breaking: "boolean",
+    ...(params.options?.includeTesting && {
+      testing: "specific testing scenarios and instructions",
+    }),
+    ...(params.options?.includeChecklist && {
+      checklist: [
+        "implementation tasks",
+        "testing requirements",
+        "documentation needs",
+      ],
+    }),
+  };
+
+  return `Generate a Pull Request description that clearly explains these changes:
 
 Base Branch: ${params.baseBranch}
 
 Commits:
 ${commitMessages}
 
-Files Changed:
-${fileChanges}
+Changed Files:
+${fileChanges}${diffSection}${templateInstructions}
 
-Stats:
-- Total Commits: ${params.stats.totalCommits}
-- Files Changed: ${params.stats.filesChanged}
-- Additions: ${params.stats.additions}
-- Deletions: ${params.stats.deletions}
-- Authors: ${params.stats.authors.join(", ")}
-${templateInstructions}
-
-Please provide a PR title and description in this JSON format:
-{
-  "title": "concise and descriptive PR title",
-  "description": "detailed PR description following template if provided",
-  "breaking": boolean,
-  "testing": "testing instructions if applicable",
-  "checklist": ["list", "of", "checkboxes"]
-}
+Provide the description in this JSON format:
+${JSON.stringify(jsonFormat, null, 2)}
 
 Guidelines:
-1. Title should be clear and follow conventional commit format
-2. Description should be comprehensive but well-structured
-3. Include relevant technical details
-4. Highlight significant changes
-5. Note any breaking changes
-6. Follow template structure if provided`;
+1. Title: Use clear, concise language following conventional commit format
+2. Description: 
+   - Explain the purpose and impact of changes
+   - Highlight architectural decisions
+   - Note API changes or breaking changes
+   - Include migration steps if needed
+3. Focus on technical impact and implementation details
+4. Avoid listing commit hashes or file paths${params.template ? "\n5. Follow the provided template structure" : ""}`;
 }
 
 export function generatePRSplitPrompt(params: PRPromptParams): string {
@@ -281,6 +291,18 @@ export function generatePRSplitPrompt(params: PRPromptParams): string {
 
   const fileChanges = formatFileChanges({ files: params.files });
 
+  // Include diff context for better understanding of changes
+  const diffSection = params.diff
+    ? `\nKey Changes:
+\`\`\`diff
+${formatDiffForAI({
+  files: params.files,
+  diff: params.diff,
+  logger: params.logger,
+})}
+\`\`\`\n`
+    : "";
+
   return `Analyze these changes and suggest how to split them into multiple PRs:
 
 Base Branch: ${params.baseBranch}
@@ -289,14 +311,7 @@ Commits:
 ${commitMessages}
 
 Files Changed:
-${fileChanges}
-
-Stats:
-- Total Commits: ${params.stats.totalCommits}
-- Files Changed: ${params.stats.filesChanged}
-- Additions: ${params.stats.additions}
-- Deletions: ${params.stats.deletions}
-- Authors: ${params.stats.authors.join(", ")}
+${fileChanges}${diffSection}
 
 Please provide split suggestions in this JSON format:
 {
@@ -321,38 +336,4 @@ Guidelines:
 4. Maintain dependency order
 5. Follow conventional commit format for titles
 6. Include clear git commands for implementation`;
-}
-
-export function getPriorityDiffs(params: {
-  files: FileChange[];
-  diff: string;
-  maxLength?: number;
-}): string {
-  const maxLength = params.maxLength ?? 4000;
-
-  // Split diff into file sections
-  const fileDiffs = params.diff.split("diff --git").filter(Boolean);
-
-  // Sort files by significance and take top 5
-  const significantDiffs = fileDiffs
-    .map((diff) => {
-      const additions = (diff.match(/^\+(?!\+\+)/gm) || []).length;
-      const deletions = (diff.match(/^-(?!--)/gm) || []).length;
-      return { diff, significance: additions + deletions };
-    })
-    .sort((a, b) => b.significance - a.significance)
-    .slice(0, 5)
-    .map(({ diff }) => "diff --git" + diff);
-
-  // Combine diffs within maxLength
-  let result = "";
-  for (const diff of significantDiffs) {
-    if (result.length + diff.length <= maxLength) {
-      result += diff;
-    } else {
-      break;
-    }
-  }
-
-  return result;
 }

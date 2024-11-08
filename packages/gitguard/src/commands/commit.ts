@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import { DEFAULT_MAX_PROMPT_TOKENS } from "../constants.js";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
@@ -12,6 +11,7 @@ import {
 } from "../types/analysis.types.js";
 import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
+import { checkAILimits } from "../utils/ai-limits.util.js";
 import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
@@ -49,7 +49,6 @@ function displayAISuggestions(params: {
       `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(formattedTitle)}`,
     );
     if (suggestion.message) {
-      logger.info(`\n   ${chalk.dim("Details:")}`);
       suggestion.message.split("\n").forEach((paragraph) => {
         logger.info(`   ${chalk.gray(paragraph)}`);
       });
@@ -226,14 +225,57 @@ export async function analyzeCommit({
     // Handle AI suggestions if enabled
     if (options.ai && ai) {
       logger.info("\n🤖 Preparing AI suggestions...");
-      const aiDiff = await git.getStagedDiffForAI();
+
+      // Compare different diff strategies
+      const stagedAiDiff = await git.getStagedDiffForAI();
+      const prioritizedDiffs = commitService.getPrioritizedDiffs({
+        files: filesToAnalyze,
+        diff: stagedAiDiff,
+        maxLength: 4000,
+      });
+
+      // Compare and select the best diff strategy
+      const diffs = [
+        {
+          name: "staged",
+          content: stagedAiDiff,
+          score: stagedAiDiff.length > 4000 ? 0 : 1, // Penalize if too long
+        },
+        {
+          name: "prioritized",
+          content: prioritizedDiffs,
+          score: prioritizedDiffs.length > 0 ? 2 : 0, // Prefer prioritized if available
+        },
+        {
+          name: "files",
+          content: filesToAnalyze
+            .map((f) => `${f.path} (+${f.additions}/-${f.deletions})`)
+            .join("\n"),
+          score: 0, // Last resort
+        },
+      ];
+
+      // Select the best strategy based on score and length
+      const bestDiff = diffs.reduce((best, current) => {
+        if (current.score > best.score) return current;
+        if (
+          current.score === best.score &&
+          current.content.length < best.content.length
+        )
+          return current;
+        return best;
+      }, diffs[0]);
+
+      logger.info(
+        `Using ${chalk.cyan(bestDiff.name)} diff strategy (${chalk.bold(bestDiff.content.length)} chars)`,
+      );
 
       const prompt = generateCommitSuggestionPrompt({
         files: filesToAnalyze,
         message: options.message ?? "",
-        diff: aiDiff,
+        diff: bestDiff.content,
         logger,
-        complexity: result.complexity,
+        needsDetailedMessage: result.complexity.needsStructure,
       });
 
       const tokenUsage = ai.calculateTokenUsage({ prompt });
@@ -249,18 +291,11 @@ export async function analyzeCommit({
       logger.info(
         `📝 ${chalk.cyan("Prompt size:")} ${chalk.bold(
           Math.round(prompt.length / 1024),
-        )}KB`,
+        )}KB (${chalk.bold(prompt.length)} chars)`,
       );
 
-      // Add token limit check BEFORE any AI calls
-      if (
-        tokenUsage.count >
-          (config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS) ||
-        parseFloat(tokenUsage.estimatedCost) > (config.ai.maxPromptCost ?? 1.0)
-      ) {
-        logger.warn(
-          "\n⚠️  This analysis would exceed configured limits. Please reduce the scope or adjust limits in config.",
-        );
+      // Replace the existing token limit check with the new utility
+      if (!checkAILimits({ tokenUsage, config, logger })) {
         return result;
       }
 
@@ -273,29 +308,29 @@ export async function analyzeCommit({
       switch (aiPromptResult.action) {
         case "generate": {
           logger.info("\nGenerating AI suggestions...");
-          result = await commitService.analyze({
+
+          const suggestions = await commitService.generateAISuggestions({
             files: filesToAnalyze,
             message: options.message ?? "",
-            enableAI: true,
-            enablePrompts: true,
-            securityResult,
+            diff: bestDiff.content,
+            needsDetailedMessage: result.complexity.needsStructure,
           });
 
-          if (!result.suggestions?.length) {
+          if (!suggestions?.length) {
             logger.warn("\n⚠️  No AI suggestions could be generated.");
             return result;
           }
 
           const detectedScope = commitService.detectScope(filesToAnalyze);
           displayAISuggestions({
-            suggestions: result.suggestions,
+            suggestions,
             detectedScope,
             logger,
           });
 
           if (options.execute) {
             const selectedSuggestion = await selectAISuggestion({
-              suggestions: result.suggestions,
+              suggestions,
               logger,
             });
 
@@ -315,9 +350,9 @@ export async function analyzeCommit({
           const prompt = generateCommitSuggestionPrompt({
             files: filesToAnalyze,
             message: options.message ?? "",
-            diff: aiDiff,
+            diff: bestDiff.content,
             logger,
-            complexity: result.complexity,
+            needsDetailedMessage: result.complexity.needsStructure,
           });
 
           await copyToClipboard({
@@ -451,9 +486,7 @@ export async function analyzeCommit({
       // Generate and display the report
       reporter.generateReport({
         result,
-        options: {
-          format: options.format ?? "console",
-        },
+        options: {},
       });
 
       // Handle commit if option is set
@@ -474,9 +507,7 @@ export async function analyzeCommit({
       // Generate and display the report
       reporter.generateReport({
         result,
-        options: {
-          format: options.format ?? "console",
-        },
+        options: {},
       });
     }
 
