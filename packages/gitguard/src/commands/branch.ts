@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { Command } from "commander";
-import { analyzeBranch } from "../controllers/branch/branch.controller.js";
+import { analyzeBranch } from "../controllers/branch/branch.coordinator.js";
 
 export interface BranchCommandOptions {
   name?: string;

@@ -16,7 +16,10 @@ interface StatusAnalyzeParams {
 }
 
 function formatEnabled(enabled: boolean): string {
-  return enabled ? chalk.green("✓ Enabled") : chalk.gray("✗ Disabled");
+  if (enabled) {
+    return chalk.green("✓ Enabled");
+  }
+  return chalk.gray("✗ Disabled");
 }
 
 function formatConfigValue(value: unknown): string {
