@@ -49,7 +49,7 @@ export class AIFactory {
           return undefined;
         }
 
-        openaiApiKey = config.ai.openai.apiKey || process.env.OPENAI_API_KEY;
+        openaiApiKey = config.ai.openai.apiKey ?? process.env.OPENAI_API_KEY;
         if (!openaiApiKey) {
           return undefined;
         }
@@ -62,7 +62,7 @@ export class AIFactory {
               apiKey: openaiApiKey,
               model: config.ai.openai.model || "gpt-4",
               organization:
-                config.ai.openai.organization || process.env.OPENAI_ORG_ID,
+                config.ai.openai.organization ?? process.env.OPENAI_ORG_ID,
             },
           },
         });

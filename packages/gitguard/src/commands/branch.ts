@@ -265,7 +265,7 @@ export async function analyzeBranch({
       if (existingPR) {
         logger.info(`\n🔍 Found existing PR: ${chalk.cyan(existingPR.url)}`);
 
-        if (options.edit && options.ai && ai) {
+        if (options.edit && options.ai) {
           // Handle PR edit with AI
           const prompt = generatePRDescriptionPrompt({
             commits: analysisResult.commits,

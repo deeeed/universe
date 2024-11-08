@@ -120,10 +120,10 @@ export class PRService extends BaseService {
     params.suggestedPRs.forEach((pr, index) => {
       // Generate a clean branch name from title
       const branchName = `split/${index + 1}/${pr.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "")}`;
+        .toLowerCase() // Convert to lowercase first
+        .replace(/[^a-z0-9]+/g, "-") // Replace any non-alphanumeric chars with single dash
+        .replace(/(-)+/g, "-") // Replace multiple consecutive dashes with single dash
+        .replace(/(^-)|(-$)/g, "")}`; // Remove any leading or trailing dashes
 
       commands.push(
         `# ${index + 1}. Create branch for: ${pr.title}`,

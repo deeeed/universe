@@ -44,7 +44,7 @@ const isTiktokenModel = (model: string): model is TiktokenModel => {
 
 export class OpenAIService extends BaseService implements AIProvider {
   private readonly config: OpenAIConfig;
-  private client: OpenAI | AzureOpenAI;
+  private readonly client: OpenAI | AzureOpenAI;
 
   constructor(params: ServiceOptions & { config: OpenAIConfig }) {
     super(params);
@@ -90,7 +90,7 @@ export class OpenAIService extends BaseService implements AIProvider {
       const messages: ChatCompletionMessageParam[] = [
         {
           role: "system",
-          content: params.options?.systemPrompt || "You are an AI assistant.",
+          content: params.options?.systemPrompt ?? "You are an AI assistant.",
         },
         { role: "user", content: params.prompt },
       ];
