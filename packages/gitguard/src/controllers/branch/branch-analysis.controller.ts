@@ -3,7 +3,9 @@ import { GitHubService } from "../../services/github.service.js";
 import { PRService } from "../../services/pr.service.js";
 import { PRAnalysisResult } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
+import { FileChange } from "../../types/git.types.js";
 import { Logger } from "../../types/logger.types.js";
+import { FileUtil } from "../../utils/file.util.js";
 
 interface BranchAnalysisControllerParams {
   logger: Logger;
@@ -25,73 +27,102 @@ interface BranchValidationResult {
 export class BranchAnalysisController {
   private readonly logger: Logger;
   private readonly git: GitService;
-  private readonly github: GitHubService;
-  private readonly prService: PRService;
-  private readonly config: Config;
 
-  constructor({
-    logger,
-    git,
-    github,
-    config,
-    prService,
-  }: BranchAnalysisControllerParams) {
+  constructor({ logger, git }: BranchAnalysisControllerParams) {
     this.logger = logger;
     this.git = git;
-    this.github = github;
-    this.config = config;
-    this.prService = prService;
   }
 
-  async analyzeBranch({
-    branchToAnalyze,
-    enableAI,
-  }: {
+  async analyzeBranch(params: {
     branchToAnalyze: string;
-    enableAI: boolean;
+    enableAI?: boolean;
   }): Promise<PRAnalysisResult> {
-    this.logger.info(`\n🔍 Analyzing branch: ${branchToAnalyze}`);
+    this.logger.info(`\n🔍 Analyzing branch: ${params.branchToAnalyze}`);
 
-    const validation = await this.validateBranchContext({ branchToAnalyze });
+    // Prevent analysis on main branch
+    if (params.branchToAnalyze === this.git.config.baseBranch) {
+      throw new Error(
+        `Cannot analyze the base branch (${this.git.config.baseBranch}). Please create and switch to a feature branch first.`,
+      );
+    }
+
+    const validation = await this.validateBranchContext({
+      branchToAnalyze: params.branchToAnalyze,
+    });
     if (!validation.isValid) {
       throw new Error(
         `Branch validation failed: ${validation.errors.join(", ")}`,
       );
     }
 
-    const baseBranch = await this.getBaseBranch();
+    const baseBranch = this.git.config.baseBranch;
 
-    this.logger.info(`📊 Analysis configuration:
-  • Base branch: ${baseBranch}
-  • AI enabled: ${enableAI ? "yes" : "no"}
-  • Branch to analyze: ${branchToAnalyze}
-  • Repository type: ${(await this.git.isMonorepo()) ? "Monorepo" : "Standard"}
-`);
-
-    const result = await this.prService.analyze({
-      branch: branchToAnalyze,
-      enableAI,
-      enablePrompts: true,
+    // Get commits between branches first
+    const commits = await this.git.getCommits({
+      from: baseBranch,
+      to: params.branchToAnalyze,
     });
 
-    this.displayAnalysisStats(result);
+    // Get diff between base branch and current branch
+    const diffStats = await this.git.execGit({
+      command: "diff",
+      args: [`${baseBranch}...${params.branchToAnalyze}`, "--numstat"],
+    });
 
-    return result;
-  }
+    // Parse the diff stats into FileChange objects
+    const files: FileChange[] = diffStats
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [additions = "0", deletions = "0", path = ""] = line.split(/\s+/);
+        return {
+          path,
+          status: "M", // Modified
+          additions: parseInt(additions, 10),
+          deletions: parseInt(deletions, 10),
+          ...FileUtil.getFileType({ path }),
+        };
+      });
 
-  private async getBaseBranch(): Promise<string> {
-    try {
-      const configuredBase = this.config.git.baseBranch;
-      if (configuredBase) {
-        return configuredBase;
-      }
+    // Get the complete diff content
+    const diff = await this.git.execGit({
+      command: "diff",
+      args: [`${baseBranch}...${params.branchToAnalyze}`],
+    });
 
-      const defaultBranch = await this.github.getBranch({ branch: "main" });
-      return defaultBranch.name;
-    } catch (error) {
-      this.logger.debug("Failed to get GitHub default branch:", error);
-      return "main";
-    }
+    // Group files by directory using the commit service's scope detection
+    const filesByDirectory = files.reduce(
+      (acc, file) => {
+        const directory = file.path.split("/")[0];
+        if (!acc[directory]) {
+          acc[directory] = [];
+        }
+        acc[directory].push(file.path);
+        return acc;
+      },
+      {} as Record<string, string[]>,
+    );
+
+    return {
+      branch: params.branchToAnalyze,
+      baseBranch,
+      commits,
+      stats: {
+        totalCommits: commits.length,
+        filesChanged: files.length,
+        additions: files.reduce((sum, f) => sum + f.additions, 0),
+        deletions: files.reduce((sum, f) => sum + f.deletions, 0),
+        authors: [...new Set(commits.map((c) => c.author))],
+        timeSpan: {
+          firstCommit: commits[commits.length - 1]?.date ?? new Date(),
+          lastCommit: commits[0]?.date ?? new Date(),
+        },
+      },
+      warnings: [],
+      filesByDirectory,
+      files,
+      diff,
+    };
   }
 
   async validateBranchContext({
@@ -162,27 +193,6 @@ export class BranchAnalysisController {
         `Failed to validate branch: ${error instanceof Error ? error.message : String(error)}`,
       );
       return result;
-    }
-  }
-
-  private displayAnalysisStats(result: PRAnalysisResult): void {
-    try {
-      this.logger.info("\n📈 Analysis Results:");
-
-      if (result.stats) {
-        this.logger.info(`  • Files changed: ${result.stats.filesChanged}`);
-        this.logger.info(`  • Additions: ${result.stats.additions}`);
-        this.logger.info(`  • Deletions: ${result.stats.deletions}`);
-      }
-
-      if (result.warnings.length > 0) {
-        this.logger.warn("\n⚠️ Warnings:");
-        result.warnings.forEach((warning) => {
-          this.logger.warn(`  • ${warning.message}`);
-        });
-      }
-    } catch (error) {
-      this.logger.error("Failed to display analysis stats:", error);
     }
   }
 }

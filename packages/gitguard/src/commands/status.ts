@@ -82,10 +82,10 @@ function displayConfigFeatures(config: Partial<Config> | null): string[] {
   output.push("\nSecurity Features:");
   output.push(`  Status: ${formatEnabled(config?.security?.enabled ?? false)}`);
   output.push(
-    `  Secret Detection: ${formatEnabled(config?.security?.checkSecrets ?? false)}`,
+    `  Secret Detection: ${formatEnabled(config?.security?.rules.secrets.enabled ?? false)}`,
   );
   output.push(
-    `  File Checks: ${formatEnabled(config?.security?.checkFiles ?? false)}`,
+    `  File Checks: ${formatEnabled(config?.security?.rules.files.enabled ?? false)}`,
   );
 
   // PR Features

@@ -1,9 +1,9 @@
-import { GitService } from "../../services/git.service.js";
-import { Logger } from "../../types/logger.types.js";
-import { SecurityService } from "../../services/security.service.js";
-import { SecurityCheckResult } from "../../types/security.types.js";
-import { PRAnalysisResult } from "../../types/analysis.types.js";
 import chalk from "chalk";
+import { GitService } from "../../services/git.service.js";
+import { SecurityService } from "../../services/security.service.js";
+import { PRAnalysisResult } from "../../types/analysis.types.js";
+import { Logger } from "../../types/logger.types.js";
+import { SecurityCheckResult } from "../../types/security.types.js";
 import { promptChoice, promptYesNo } from "../../utils/user-prompt.util.js";
 
 interface BranchSecurityControllerParams {
@@ -29,6 +29,10 @@ export class BranchSecurityController {
     result: PRAnalysisResult;
   }): SecurityCheckResult {
     this.logger.debug("Running security analysis for branch...");
+
+    this.logger.debug(
+      `Analyzing ${result.files.length} files between ${result.baseBranch} and ${result.branch}`,
+    );
 
     return this.security.analyzeSecurity({
       files: result.files,

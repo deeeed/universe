@@ -75,8 +75,15 @@ async function setupTestRepo(
     execSync("git config user.email 'test@example.com'", { cwd: testDir });
     execSync("git config commit.gpgsign false", { cwd: testDir }); // Disable GPG signing for tests
 
-    // Create initial commit to establish HEAD
+    // Create initial commit on main branch
+    execSync("git checkout -b main", { cwd: testDir });
     execSync("git commit --allow-empty -m 'Initial commit'", { cwd: testDir });
+
+    // Create and switch to feature branch if specified
+    if (scenario.setup.branch) {
+      logger.debug(`Creating feature branch: ${scenario.setup.branch}`);
+      execSync(`git checkout -b ${scenario.setup.branch}`, { cwd: testDir });
+    }
 
     // Create test files
     logger.debug("Creating test files");
@@ -88,9 +95,12 @@ async function setupTestRepo(
       logger.debug(`Created file: ${filePath}`);
     }
 
-    // Stage all files
-    logger.debug("Staging files");
-    execSync("git add .", { cwd: testDir });
+    // Stage and commit files if specified
+    if (scenario.setup.commit) {
+      logger.debug("Staging and committing files");
+      execSync("git add .", { cwd: testDir });
+      execSync(`git commit -m "${scenario.setup.commit}"`, { cwd: testDir });
+    }
 
     // Create .gitguard directory and config
     await mkdir(join(testDir, ".gitguard"), { recursive: true });

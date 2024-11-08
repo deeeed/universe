@@ -1,5 +1,7 @@
 // types/config.types.ts
 
+import { Severity } from "./security.types.js";
+
 export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
@@ -29,8 +31,19 @@ export interface GitConfig {
 
 export interface SecurityConfig {
   enabled: boolean;
-  checkSecrets: boolean;
-  checkFiles: boolean;
+  rules: {
+    secrets: {
+      enabled: boolean;
+      severity: Severity;
+      blockPR?: boolean;
+      patterns?: string[];
+    };
+    files: {
+      enabled: boolean;
+      severity: Severity;
+      patterns?: string[];
+    };
+  };
 }
 
 export interface PRTemplateConfig {

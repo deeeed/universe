@@ -135,11 +135,9 @@ export async function analyzeBranch({
 
     // Add security checks
     logger.info("\n🔒 Running security checks...");
-    const securityResult = await controllers.securityController.analyzeSecurity(
-      {
-        result: analysisResult,
-      },
-    );
+    const securityResult = controllers.securityController.analyzeSecurity({
+      result: analysisResult,
+    });
 
     if (
       securityResult.secretFindings.length > 0 ||

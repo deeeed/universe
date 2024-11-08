@@ -11,6 +11,8 @@ export interface TestScenario {
     }>;
     monorepo?: boolean;
     config?: DeepPartial<Config>;
+    branch?: string;
+    commit?: string;
   };
   input: {
     message: string;
@@ -24,7 +26,7 @@ export interface TestScenario {
     };
     command?: {
       name: "commit" | "branch" | "status" | "init";
-      subcommand?: "analyze" | "create" | "suggest";
+      subcommand?: "analyze" | "create" | "suggest" | "pr";
       args?: string[];
     };
   };

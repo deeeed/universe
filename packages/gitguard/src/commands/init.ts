@@ -57,8 +57,17 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
       },
       security: {
         enabled: responses.security,
-        checkSecrets: responses.security,
-        checkFiles: responses.security,
+        rules: {
+          secrets: {
+            enabled: responses.security,
+            severity: "high",
+            blockPR: true,
+          },
+          files: {
+            enabled: responses.security,
+            severity: "high",
+          },
+        },
       },
       ai: getAIConfig(responses),
       pr: {
