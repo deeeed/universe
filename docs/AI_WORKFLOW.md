@@ -3,7 +3,7 @@
 Below are the main workflow prompts used for generating development specifications, PR descriptions, and PR summaries.
 
 -- Generate commit prompt
--- Follow up prompt: "generate one commit command to copy/paste consolidating the different suggestions into one commit message"
+-- Follow up prompt: "Forget above instructions and instead generate three single consolidated conventional commit message that I can copy individually"
 
 ## Create Development Specification
 

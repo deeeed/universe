@@ -13,11 +13,13 @@ import { generatePRDescriptionPrompt } from "../../utils/ai-prompt.util.js";
 import { formatDiffForAI } from "../../utils/diff.util.js";
 import { copyToClipboard } from "../../utils/clipboard.util.js";
 import { promptAIAction, promptYesNo } from "../../utils/user-prompt.util.js";
+import { GitHubService } from "../../services/github.service.js";
 
 interface BranchAIControllerParams {
   logger: Logger;
   ai?: AIProvider;
   prService: PRService;
+  github: GitHubService;
   config: Config;
 }
 
@@ -31,12 +33,20 @@ export class BranchAIController {
   private readonly logger: Logger;
   private readonly ai?: AIProvider;
   private readonly prService: PRService;
+  private readonly github: GitHubService;
   private readonly config: Config;
 
-  constructor({ logger, ai, prService, config }: BranchAIControllerParams) {
+  constructor({
+    logger,
+    ai,
+    prService,
+    github,
+    config,
+  }: BranchAIControllerParams) {
     this.logger = logger;
     this.ai = ai;
     this.prService = prService;
+    this.github = github;
     this.config = config;
   }
 
@@ -165,7 +175,25 @@ export class BranchAIController {
 
           if (useAIContent) {
             analysisResult.description = description;
-            this.logger.info("\n✅ PR description updated successfully!");
+
+            // Get existing PR using github service directly
+            const existingPR = await this.github.getPRForBranch({
+              branch: analysisResult.branch,
+            });
+
+            if (existingPR) {
+              // Update the existing PR with new content
+              await this.github.updatePRFromBranch({
+                number: existingPR.number,
+                title: description.title,
+                description: description.description,
+              });
+              this.logger.info(
+                "\n✅ PR description and title updated successfully!",
+              );
+            } else {
+              this.logger.warn("\n⚠️ Could not find existing PR to update");
+            }
           } else {
             this.logger.info("\n⏭️  Skipping AI-generated content");
           }

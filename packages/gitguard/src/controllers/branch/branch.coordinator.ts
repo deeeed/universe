@@ -89,6 +89,7 @@ function initializeControllers(services: ServicesContext): ControllersContext {
       logger,
       ai,
       prService,
+      github,
       config,
     }),
     prController: new BranchPRController({
