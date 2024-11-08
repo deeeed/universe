@@ -275,81 +275,15 @@ export async function analyzeBranch({
         // Don't throw here, as the analysis was successful
       }
     } else if (options.ai && ai) {
-      const prompt = generatePRDescriptionPrompt({
-        commits: analysisResult.commits,
-        files: analysisResult.files,
-        baseBranch,
-        template: await prService.loadPRTemplate(),
-        diff: analysisResult.diff,
-        logger,
-        options: {
-          includeTesting: config.pr?.template?.sections?.testing,
-          includeChecklist: config.pr?.template?.sections?.checklist,
-        },
+      // After the initial analysis and before any AI operations
+      const existingPR = await github.getPRForBranch({
+        branch: branchToAnalyze,
       });
+      if (existingPR) {
+        logger.info(`\n🔍 Found existing PR: ${chalk.cyan(existingPR.url)}`);
 
-      const tokenUsage = ai.calculateTokenUsage({ prompt });
-
-      logger.info(
-        `\n💰 ${chalk.cyan("Estimated cost:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
-      );
-      logger.info(
-        `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}/${chalk.dim(
-          config.ai.maxPromptTokens,
-        )}`,
-      );
-
-      // Check AI limits before proceeding
-      if (!checkAILimits({ tokenUsage, config, logger })) {
-        return analysisResult;
-      }
-
-      const aiPromptResult = await promptAIAction({
-        logger,
-        tokenUsage,
-      });
-
-      switch (aiPromptResult.action) {
-        case "generate": {
-          logger.info("\nGenerating PR description...");
-          const description = await prService.generateAIDescription({
-            commits: analysisResult.commits,
-            files: analysisResult.files,
-            baseBranch,
-            prompt,
-          });
-
-          if (description) {
-            analysisResult.description = description;
-          } else {
-            logger.warn("\n⚠️  No AI description could be generated.");
-          }
-          break;
-        }
-        case "copy": {
-          await copyToClipboard({ text: prompt, logger });
-          logger.info("\n✅ AI prompt copied to clipboard!");
-          break;
-        }
-        case "skip":
-          logger.info("\n⏭️  Skipping AI suggestions");
-          break;
-      }
-    }
-
-    // Add this right after initializing the PR service and before the branch analysis
-    // Inside the analyzeBranch function, after the prService initialization
-    const existingPR = await github.getPRForBranch({ branch: branchToAnalyze });
-    if (existingPR) {
-      logger.info(`\n🔍 Found existing PR: ${chalk.cyan(existingPR.url)}`);
-
-      if (options.edit) {
-        logger.info("\n📝 Current PR Details:");
-        logger.info(`Title: ${existingPR.title}`);
-        logger.info("\nDescription:");
-        logger.info(existingPR.description);
-
-        if (options.ai && ai) {
+        if (options.edit && options.ai && ai) {
+          // Handle PR edit with AI
           const prompt = generatePRDescriptionPrompt({
             commits: analysisResult.commits,
             files: analysisResult.files,
@@ -364,7 +298,6 @@ export async function analyzeBranch({
           });
 
           const tokenUsage = ai.calculateTokenUsage({ prompt });
-
           logger.info(
             `\n💰 ${chalk.cyan("Estimated cost:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
           );
@@ -413,10 +346,7 @@ export async function analyzeBranch({
                   logger.info(
                     "\n✅ PR updated successfully with AI-generated content!",
                   );
-                  return analysisResult;
                 }
-              } else {
-                logger.warn("\n⚠️  No AI description could be generated.");
               }
               break;
             }
@@ -429,54 +359,83 @@ export async function analyzeBranch({
               logger.info("\n⏭️  Skipping AI suggestions");
               break;
           }
+          return analysisResult;
         }
+      }
 
-        const shouldEdit = await promptYesNo({
-          message: "\nWould you like to edit the PR manually?",
-          logger,
-          defaultValue: true,
-        });
+      // Then handle the regular AI flow for non-edit cases
+      const prompt = generatePRDescriptionPrompt({
+        commits: analysisResult.commits,
+        files: analysisResult.files,
+        baseBranch,
+        template: await prService.loadPRTemplate(),
+        diff: analysisResult.diff,
+        logger,
+        options: {
+          includeTesting: config.pr?.template?.sections?.testing,
+          includeChecklist: config.pr?.template?.sections?.checklist,
+        },
+      });
 
-        if (shouldEdit) {
-          const editTitle = await promptYesNo({
-            message: "Edit title?",
-            logger,
-            defaultValue: false,
+      const tokenUsage = ai.calculateTokenUsage({ prompt });
+
+      logger.info(
+        `\n💰 ${chalk.cyan("Estimated cost:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
+      );
+      logger.info(
+        `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}/${chalk.dim(
+          config.ai.maxPromptTokens,
+        )}`,
+      );
+
+      // Check AI limits before proceeding
+      if (!checkAILimits({ tokenUsage, config, logger })) {
+        return analysisResult;
+      }
+
+      const aiPromptResult = await promptAIAction({
+        logger,
+        tokenUsage,
+      });
+
+      switch (aiPromptResult.action) {
+        case "generate": {
+          logger.info("\nGenerating PR description...");
+          const description = await prService.generateAIDescription({
+            commits: analysisResult.commits,
+            files: analysisResult.files,
+            baseBranch,
+            prompt,
           });
 
-          let title;
-          if (editTitle) {
-            title = await promptInput({
-              message: "Enter new title:",
+          if (description) {
+            logger.info("\n📝 AI generated a PR description:");
+            logger.info(`\nTitle: ${description.title}`);
+            logger.info(`\nDescription:\n${description.description}`);
+
+            const useAIContent = await promptYesNo({
+              message: "\nWould you like to use this AI-generated content?",
               logger,
-              defaultValue: existingPR.title,
+              defaultValue: true,
             });
-          }
 
-          const editDescription = await promptYesNo({
-            message: "Edit description?",
-            logger,
-            defaultValue: false,
-          });
-
-          let description;
-          if (editDescription) {
-            description = await promptInput({
-              message: "Enter new description:",
-              logger,
-              defaultValue: existingPR.description,
-            });
+            if (useAIContent) {
+              analysisResult.description = description;
+              logger.info("\n✅ PR description updated successfully!");
+            }
+          } else {
+            logger.warn("\n⚠️  No AI description could be generated.");
           }
-
-          if (title || description) {
-            await github.updatePRFromBranch({
-              number: existingPR.number,
-              title,
-              description,
-            });
-            logger.info("\n✅ PR updated successfully!");
-          }
+          return analysisResult;
         }
+        case "copy": {
+          await copyToClipboard({ text: prompt, logger });
+          logger.info("\n✅ AI prompt copied to clipboard!");
+          return analysisResult;
+        }
+        case "skip":
+          logger.info("\n⏭️  Skipping AI suggestions");
+          return analysisResult;
       }
     }
 

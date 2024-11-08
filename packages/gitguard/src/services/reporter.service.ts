@@ -85,10 +85,14 @@ export class ReporterService extends BaseService {
         {
           "Total Commits": result.stats.totalCommits,
           "Files Changed": result.stats.filesChanged,
-          "Lines Added": `+${chalk.green(result.stats.additions)}`,
-          "Lines Removed": `-${chalk.red(result.stats.deletions)}`,
+          "Lines Added": result.stats.additions,
+          "Lines Removed": result.stats.deletions,
         },
       ]);
+
+      this.logger.info(
+        `Lines: ${chalk.green(`+${result.stats.additions}`)} ${chalk.red(`-${result.stats.deletions}`)}`,
+      );
 
       if (result.commits.length > 0 && options.detailed) {
         this.logger.newLine();
