@@ -40,53 +40,6 @@ interface BranchAnalyzeParams {
   };
 }
 
-async function ensureRemoteBranch(params: {
-  branch: string;
-  git: GitService;
-  github: GitHubService;
-  logger: LoggerService;
-}): Promise<boolean> {
-  const { branch, git, github, logger } = params;
-
-  try {
-    await github.getBranch({ branch });
-    return true;
-  } catch (error) {
-    logger.info(`\n⚠️ Branch '${branch}' not found on remote`);
-
-    try {
-      // Check if branch exists locally
-      const localBranches = await git.getLocalBranches();
-      if (!localBranches.includes(branch)) {
-        logger.error(`\n❌ Branch '${branch}' not found locally either`);
-        return false;
-      }
-
-      // Ask user if they want to push the branch
-      const shouldPush = await promptYesNo({
-        message: "\nWould you like to push this branch to remote?",
-        logger,
-        defaultValue: true,
-      });
-
-      if (shouldPush) {
-        logger.info("\n📤 Pushing branch to remote...");
-        await git.execGit({
-          command: "push",
-          args: ["-u", "origin", branch],
-        });
-        logger.info("✅ Branch pushed successfully!");
-        return true;
-      }
-
-      return false;
-    } catch (innerError) {
-      logger.error("\n❌ Failed to check local branches:", innerError);
-      return false;
-    }
-  }
-}
-
 export async function analyzeBranch({
   options,
 }: BranchAnalyzeParams): Promise<PRAnalysisResult> {
@@ -169,24 +122,45 @@ export async function analyzeBranch({
           return analysisResult;
         }
 
-        // Ensure branch exists on remote
-        const branchExists = await ensureRemoteBranch({
-          branch: branchToAnalyze,
-          git,
-          github,
-          logger,
-        });
+        // Check remote branch using GitHubService directly
+        try {
+          await github.getBranch({ branch: branchToAnalyze });
+        } catch (error) {
+          logger.info(`\n⚠️ Branch '${branchToAnalyze}' not found on remote`);
 
-        if (!branchExists) {
-          logger.info("\n📝 Next steps:");
-          logger.info(
-            [
-              "1. Push your branch to remote using:",
-              `git push -u origin ${branchToAnalyze}`,
-            ].join(" "),
-          );
-          logger.info("2. Run this command again to create the PR");
-          return analysisResult;
+          // Check if branch exists locally using GitService
+          const localBranches = await git.getLocalBranches();
+          if (!localBranches.includes(branchToAnalyze)) {
+            logger.error(
+              `\n❌ Branch '${branchToAnalyze}' not found locally either`,
+            );
+            return analysisResult;
+          }
+
+          const shouldPush = await promptYesNo({
+            message: "\nWould you like to push this branch to remote?",
+            logger,
+            defaultValue: true,
+          });
+
+          if (shouldPush) {
+            logger.info("\n📤 Pushing branch to remote...");
+            await git.execGit({
+              command: "push",
+              args: ["-u", "origin", branchToAnalyze],
+            });
+            logger.info("✅ Branch pushed successfully!");
+          } else {
+            logger.info("\n📝 Next steps:");
+            logger.info(
+              [
+                "1. Push your branch to remote using:",
+                `git push -u origin ${branchToAnalyze}`,
+              ].join(" "),
+            );
+            logger.info("2. Run this command again to create the PR");
+            return analysisResult;
+          }
         }
 
         // Get PR content
@@ -210,19 +184,28 @@ export async function analyzeBranch({
             if (useAIContent) {
               title = analysisResult.description.title;
               description = analysisResult.description.description;
-            }
-          }
+            } else {
+              // If user declines AI content, prompt for manual input
+              title = await promptInput({
+                message: "\nEnter PR title:",
+                logger,
+                defaultValue: branchToAnalyze,
+              });
 
-          // If still missing title/description, prompt user
-          if (!title) {
+              description = await promptInput({
+                message: "\nEnter PR description:",
+                logger,
+                defaultValue: "",
+              });
+            }
+          } else {
+            // If no AI content available, prompt for manual input
             title = await promptInput({
               message: "\nEnter PR title:",
               logger,
               defaultValue: branchToAnalyze,
             });
-          }
 
-          if (!description) {
             description = await promptInput({
               message: "\nEnter PR description:",
               logger,
@@ -334,6 +317,7 @@ export async function analyzeBranch({
                 const useAIContent = await promptYesNo({
                   message: "\nWould you like to use this AI-generated content?",
                   logger,
+                  forceTTY: true,
                   defaultValue: true,
                 });
 
@@ -422,11 +406,16 @@ export async function analyzeBranch({
             if (useAIContent) {
               analysisResult.description = description;
               logger.info("\n✅ PR description updated successfully!");
+            } else {
+              logger.info("\n⏭️  Skipping AI-generated content");
             }
+
+            // Add return statement after handling the prompt
+            return analysisResult;
           } else {
             logger.warn("\n⚠️  No AI description could be generated.");
+            return analysisResult;
           }
-          return analysisResult;
         }
         case "copy": {
           await copyToClipboard({ text: prompt, logger });
