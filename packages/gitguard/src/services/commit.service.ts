@@ -19,6 +19,7 @@ import {
 } from "../types/security.types.js";
 import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
+import { formatDiffForAI } from "../utils/diff.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
 import { SecurityService } from "./security.service.js";
@@ -283,101 +284,12 @@ export class CommitService extends BaseService {
     diff: string;
     maxLength: number;
   }): string {
-    const { files, diff, maxLength } = params;
-    const diffs: Array<{ path: string; diff: string; significance: number }> =
-      [];
-
-    // Debug input
-    this.logger.debug("getPrioritizedDiffs input:", {
-      filesCount: files.length,
-      diffLength: diff.length,
-      maxLength,
-      files: files.map((f) => f.path),
+    return formatDiffForAI({
+      files: params.files,
+      diff: params.diff,
+      maxLength: params.maxLength,
+      logger: this.logger,
     });
-
-    // Split the diff into individual file diffs
-    const diffParts = diff.split("diff --git ").filter(Boolean);
-
-    this.logger.debug("Split diff parts:", {
-      partsCount: diffParts.length,
-      firstPartPreview: diffParts[0]?.substring(0, 100),
-      // Add this to see the actual diff content
-      allParts: diffParts.map((p) => p.substring(0, 200)),
-    });
-
-    // Extract diffs for each file and calculate significance
-    for (const file of files) {
-      const fileDiff = diffParts.find((part) => {
-        // More flexible path matching
-        const normalizedPath = file.path.replace(/^\/+/, "");
-        const matches = part.includes(normalizedPath);
-        this.logger.debug(`Checking file ${file.path}:`, {
-          normalizedPath,
-          found: matches,
-          partPreview: part.substring(0, 100),
-        });
-        return matches;
-      });
-
-      if (fileDiff) {
-        diffs.push({
-          path: file.path,
-          diff: `diff --git ${fileDiff}`,
-          significance: file.additions + file.deletions,
-        });
-        this.logger.debug(`Found diff for file: ${file.path}`, {
-          diffLength: fileDiff.length,
-          significance: file.additions + file.deletions,
-        });
-      } else {
-        this.logger.debug(`No diff found for file: ${file.path}`);
-      }
-    }
-
-    // Sort by significance
-    diffs.sort((a, b) => b.significance - a.significance);
-
-    this.logger.debug("Sorted diffs:", {
-      diffsFound: diffs.length,
-      diffs: diffs.map((d) => ({
-        path: d.path,
-        significance: d.significance,
-        length: d.diff.length,
-      })),
-    });
-
-    // Combine diffs within maxLength limit, starting with most significant
-    let result = "";
-    let currentLength = 0;
-
-    for (const { diff: fileDiff } of diffs) {
-      const newLength = currentLength + fileDiff.length;
-      if (newLength <= maxLength) {
-        result += fileDiff;
-        currentLength = newLength;
-      } else {
-        this.logger.debug(
-          `Skipping diff due to length limit: current=${currentLength}, adding=${fileDiff.length}, max=${maxLength}`,
-        );
-        break;
-      }
-    }
-
-    // If we couldn't include any diffs within the limit, take the most significant one
-    // and truncate it
-    if (result.length === 0 && diffs.length > 0) {
-      result = diffs[0].diff.substring(0, maxLength);
-      this.logger.debug("Using truncated version of most significant diff");
-    }
-
-    this.logger.debug("Final prioritized diffs:", {
-      originalLength: diff.length,
-      resultLength: result.length,
-      fileCount: diffs.length,
-      includedFiles: diffs.map((d) => d.path),
-    });
-
-    return result;
   }
 
   public getSplitSuggestion(params: {

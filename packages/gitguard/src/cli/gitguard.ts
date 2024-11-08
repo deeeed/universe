@@ -4,14 +4,19 @@ import { Command } from "commander";
 import { readFile } from "fs/promises";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
-import { commitCommand } from "../commands/commit.js";
 import { branchCommand } from "../commands/branch.js";
-import { statusCommand } from "../commands/status.js";
+import { commitCommand } from "../commands/commit.js";
 import { initCommand } from "../commands/init.js";
+import { statusCommand } from "../commands/status.js";
 import { LoggerService } from "../services/logger.service.js";
 
 interface PackageJson {
   version: string;
+}
+
+interface GlobalOptions {
+  debug?: boolean;
+  config?: string;
 }
 
 function isDebugEnabled(): boolean {
@@ -57,6 +62,8 @@ async function main(): Promise<void> {
     .name("gitguard")
     .version(version)
     .helpOption("-h, --help", "Display help for command")
+    .option("-d, --debug", "Enable debug mode")
+    .option("-c, --config <path>", "Path to config file")
     .configureHelp({
       sortSubcommands: true,
       sortOptions: true,
@@ -91,11 +98,6 @@ ${chalk.blue("Options:")}
   ${chalk.yellow("-V, --version")}            Output the version number
   ${chalk.yellow("-h, --help")}               Display help for command`,
     )
-    .option(`${chalk.yellow("-d, --debug")}`, "Enable debug mode")
-    .option(`${chalk.yellow("-c, --config <path>")}`, "Path to config file");
-
-  // Add commands
-  program
     .addCommand(commitCommand)
     .addCommand(branchCommand)
     .addCommand(statusCommand)
@@ -104,6 +106,24 @@ ${chalk.blue("Options:")}
   // Add a default action when no command is provided
   program.action(() => {
     program.help();
+  });
+
+  // Add this before program.hook
+  program.hook("preAction", (thisCommand: Command) => {
+    const rootOptions = program.opts<GlobalOptions>();
+    const currentOptions = thisCommand.opts<GlobalOptions>();
+
+    // Propagate debug from root command to current command
+    if (rootOptions.debug) {
+      // Update the command's options object
+      Object.assign(currentOptions, { debug: true });
+
+      // Also set it on the command instance for direct access
+      thisCommand.setOptionValue("debug", true);
+
+      // Update process.env for services that check it
+      process.env.GITGUARD_DEBUG = "true";
+    }
   });
 
   // Parse arguments

@@ -25,6 +25,7 @@ import {
   promptSplitChoice,
   promptYesNo,
 } from "../utils/user-prompt.util.js";
+import { DEFAULT_MAX_PROMPT_TOKENS } from "../constants.js";
 
 interface CommitCommandOptions {
   message?: string;
@@ -69,7 +70,8 @@ async function executeCommit(params: {
 export async function analyzeCommit({
   options,
 }: CommitAnalyzeParams): Promise<CommitAnalysisResult> {
-  const logger = new LoggerService({ debug: options.debug });
+  const isDebug = options.debug || process.env.GITGUARD_DEBUG === "true";
+  const logger = new LoggerService({ debug: isDebug });
   const reporter = new ReporterService({ logger });
 
   try {
@@ -283,41 +285,189 @@ export async function analyzeCommit({
       });
     }
 
-    // Handle AI suggestions if enabled
+    // Handle split suggestions first
+    if (result.splitSuggestion) {
+      // Add AI suggestion as the last option
+      if (options.ai && ai) {
+        result.splitSuggestion.suggestions.push({
+          scope: "ai suggestions",
+          message: "Get AI suggestions for all changes",
+          files: [],
+          order: result.splitSuggestion.suggestions.length + 1,
+          type: "suggestion",
+        });
+      }
+
+      displaySplitSuggestions({
+        suggestions: result.splitSuggestion.suggestions,
+        logger,
+      });
+
+      const { selection } = await promptSplitChoice({
+        suggestions: result.splitSuggestion.suggestions,
+        logger,
+      });
+
+      // Handle split selection
+      if (selection === 0) {
+        logger.info(chalk.yellow("\n⏭️  Continuing with all changes..."));
+      } else if (
+        selection === result.splitSuggestion.suggestions.length &&
+        options.ai
+      ) {
+        // Selected AI option - continue to AI suggestions with all files
+        logger.info("\n🤖 Proceeding with AI suggestions for all changes...");
+      } else if (
+        selection > 0 &&
+        selection < result.splitSuggestion.suggestions.length
+      ) {
+        const selectedSplit = result.splitSuggestion.suggestions[selection - 1];
+
+        logger.info(
+          `\n📦 ${chalk.cyan(`Keeping only ${selectedSplit.scope ?? "root"} changes:`)}`,
+        );
+        selectedSplit.files.forEach((file) => {
+          logger.info(`   ${chalk.dim("•")} ${chalk.gray(file)}`);
+        });
+
+        // Unstage files not in the selected scope
+        const filesToUnstage = result.splitSuggestion.suggestions
+          .filter((_, index) => index + 1 !== selection)
+          .flatMap((suggestion) => suggestion.files);
+
+        if (filesToUnstage.length > 0) {
+          logger.info(`\n🗑️  ${chalk.yellow("Unstaging other files:")}`);
+          filesToUnstage.forEach((file) => {
+            logger.info(`   ${chalk.dim("•")} ${chalk.gray(file)}`);
+          });
+
+          try {
+            await git.unstageFiles({ files: filesToUnstage });
+            logger.info(chalk.green("\n✅ Successfully unstaged other files"));
+
+            // Update the analysis result to reflect only the kept files
+            const keptFiles = selectedSplit.files
+              .map((filePath) =>
+                filesToAnalyze.find((f) => f.path === filePath),
+              )
+              .filter((file): file is FileChange => file !== undefined);
+
+            if (keptFiles.length !== selectedSplit.files.length) {
+              logger.debug("Some files were not found in original analysis:", {
+                expected: selectedSplit.files,
+                found: keptFiles.map((f) => f.path),
+              });
+            }
+
+            // Use the raw message from the split suggestion
+            result = await commitService.analyze({
+              files: keptFiles,
+              message: selectedSplit.message.replace(
+                /^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)\([^)]+\):\s*/,
+                "",
+              ), // Remove any existing prefix
+              enableAI: false,
+              enablePrompts: true,
+              securityResult,
+            });
+          } catch (error) {
+            logger.error(chalk.red("\n❌ Failed to unstage files:"), error);
+            throw error;
+          }
+        }
+      }
+      // Show analysis results
+      if (result.warnings.length > 0) {
+        logger.info(`\n${chalk.yellow("⚠️")} Analysis found some concerns:`);
+        result.warnings.forEach((warning) => {
+          logger.info(`  ${chalk.dim("•")} ${chalk.yellow(warning.message)}`);
+        });
+      } else {
+        logger.info("\n✅ Analysis completed successfully!");
+        logger.info(chalk.green("No issues detected."));
+      }
+
+      // Generate and display the report
+      reporter.generateReport({
+        result,
+        options: {},
+      });
+
+      // Move AI suggestions logic here, only execute if AI option was selected in split
+      if (
+        options.ai &&
+        ai &&
+        selection === (result.splitSuggestion?.suggestions.length ?? 0)
+      ) {
+        // ... existing AI suggestions code ...
+        logger.warning(
+          `\n⚠️  AI suggestion selected in split, but not in commit. This should not happen.`,
+        );
+      }
+    }
+
+    // Now handle AI suggestions if enabled and either:
+    // 1. There were no split suggestions
+    // 2. User chose to continue with all changes
+    // 3. User selected the AI option in split suggestions
     if (options.ai && ai) {
       logger.info("\n🤖 Preparing AI suggestions...");
 
       // Compare different diff strategies
-      const stagedAiDiff = await git.getStagedDiffForAI();
+      const fullDiff = await git.getStagedDiff(); // Get the complete diff
       const prioritizedDiffs = commitService.getPrioritizedDiffs({
         files: filesToAnalyze,
-        diff: stagedAiDiff,
-        maxLength: 4000,
+        diff: fullDiff,
+        maxLength: config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
       });
 
       // Compare and select the best diff strategy
       const diffs = [
         {
-          name: "staged",
-          content: stagedAiDiff,
-          score: stagedAiDiff.length > 4000 ? 0 : 1, // Penalize if too long
+          name: "full",
+          content: fullDiff,
+          score:
+            fullDiff.length >
+            (config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS) / 4
+              ? 0
+              : 1,
         },
         {
           name: "prioritized",
           content: prioritizedDiffs,
-          score: prioritizedDiffs.length > 0 ? 2 : 0, // Prefer prioritized if available
-        },
-        {
-          name: "files",
-          content: filesToAnalyze
-            .map((f) => `${f.path} (+${f.additions}/-${f.deletions})`)
-            .join("\n"),
-          score: 0, // Last resort
+          score: prioritizedDiffs.length > 0 ? 2 : 0,
         },
       ];
 
+      // Log details about each diff strategy
+      logger.debug("Diff strategies comparison:", {
+        full: {
+          length: fullDiff.length,
+          preview: fullDiff.slice(0, 100) + "...",
+          score: diffs[0].score,
+        },
+        prioritized: {
+          length: prioritizedDiffs.length,
+          preview: prioritizedDiffs.slice(0, 100) + "...",
+          score: diffs[1].score,
+        },
+      });
+
       // Select the best strategy based on score and length
       const bestDiff = diffs.reduce((best, current) => {
+        logger.debug(`Comparing diffs:`, {
+          current: {
+            name: current.name,
+            score: current.score,
+            length: current.content.length,
+          },
+          best: {
+            name: best.name,
+            score: best.score,
+            length: best.content.length,
+          },
+        });
+
         if (current.score > best.score) return current;
         if (
           current.score === best.score &&
@@ -431,99 +581,6 @@ export async function analyzeCommit({
       }
     }
 
-    // Handle split suggestions
-    if (result.splitSuggestion) {
-      displaySplitSuggestions({
-        suggestions: result.splitSuggestion.suggestions,
-        logger,
-      });
-
-      const { selection } = await promptSplitChoice({
-        suggestions: result.splitSuggestion.suggestions,
-        logger,
-      });
-
-      if (selection === 0) {
-        logger.info(chalk.yellow("\n⏭️  Continuing with all changes..."));
-      } else if (
-        selection > 0 &&
-        selection <= result.splitSuggestion.suggestions.length
-      ) {
-        const selectedSplit = result.splitSuggestion.suggestions[selection - 1];
-
-        logger.info(
-          `\n📦 ${chalk.cyan(`Keeping only ${selectedSplit.scope ?? "root"} changes:`)}`,
-        );
-        selectedSplit.files.forEach((file) => {
-          logger.info(`   ${chalk.dim("•")} ${chalk.gray(file)}`);
-        });
-
-        // Unstage files not in the selected scope
-        const filesToUnstage = result.splitSuggestion.suggestions
-          .filter((_, index) => index + 1 !== selection)
-          .flatMap((suggestion) => suggestion.files);
-
-        if (filesToUnstage.length > 0) {
-          logger.info(`\n🗑️  ${chalk.yellow("Unstaging other files:")}`);
-          filesToUnstage.forEach((file) => {
-            logger.info(`   ${chalk.dim("•")} ${chalk.gray(file)}`);
-          });
-
-          try {
-            await git.unstageFiles({ files: filesToUnstage });
-            logger.info(chalk.green("\n✅ Successfully unstaged other files"));
-
-            // Update the analysis result to reflect only the kept files
-            const keptFiles = selectedSplit.files
-              .map((filePath) =>
-                filesToAnalyze.find((f) => f.path === filePath),
-              )
-              .filter((file): file is FileChange => file !== undefined);
-
-            if (keptFiles.length !== selectedSplit.files.length) {
-              logger.debug("Some files were not found in original analysis:", {
-                expected: selectedSplit.files,
-                found: keptFiles.map((f) => f.path),
-              });
-            }
-
-            // Use the raw message from the split suggestion
-            result = await commitService.analyze({
-              files: keptFiles,
-              message: selectedSplit.message.replace(
-                /^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)\([^)]+\):\s*/,
-                "",
-              ), // Remove any existing prefix
-              enableAI: false,
-              enablePrompts: true,
-              securityResult,
-            });
-          } catch (error) {
-            logger.error(chalk.red("\n❌ Failed to unstage files:"), error);
-            throw error;
-          }
-        }
-      }
-      // Show analysis results
-      if (result.warnings.length > 0) {
-        logger.info(`\n${chalk.yellow("⚠️")} Analysis found some concerns:`);
-        result.warnings.forEach((warning) => {
-          logger.info(`  ${chalk.dim("•")} ${chalk.yellow(warning.message)}`);
-        });
-      } else {
-        logger.info("\n✅ Analysis completed successfully!");
-        logger.info(chalk.green("No issues detected."));
-      }
-
-      // Generate and display the report
-      reporter.generateReport({
-        result,
-        options: {},
-      });
-
-      // Handle commit if option is set
-    }
-
     // Show analysis results if not already shown
     if (!result.splitSuggestion) {
       if (result.warnings.length > 0) {
@@ -598,7 +655,6 @@ const suggest = new Command("suggest")
 // Main commit command
 export const commitCommand = new Command("commit")
   .description("Commit changes with analysis and validation")
-  .option("-d, --debug", "Enable debug mode")
   .option("--cwd <path>", "Working directory")
   .addHelpText(
     "after",
