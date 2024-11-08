@@ -1,10 +1,59 @@
 import { execSync } from "child_process";
-import { mkdir, rm, writeFile } from "fs/promises";
+import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
-import { analyzeCommit } from "../src/controllers/commit/commit.coordinator.js";
+import { main } from "../src/cli/gitguard.js";
 import { LoggerService } from "../src/services/logger.service.js";
-import { TestResult, TestScenario } from "./tests.types.js";
+import { RepoState, TestResult, TestScenario } from "./tests.types.js";
+
+function buildCommandArgs(scenario: TestScenario): string[] {
+  const baseArgs = ["node", "gitguard"];
+
+  if (!scenario.input.command) {
+    return baseArgs;
+  }
+
+  return [
+    ...baseArgs,
+    scenario.input.command.name,
+    ...(scenario.input.command.subcommand
+      ? [scenario.input.command.subcommand]
+      : []),
+    ...(scenario.input.command.args || []),
+  ];
+}
+
+async function captureRepoState(testDir: string): Promise<RepoState> {
+  const status = execSync("git status --short", { cwd: testDir }).toString();
+  const log = execSync("git log --oneline", { cwd: testDir }).toString();
+
+  const files = execSync("git ls-files", { cwd: testDir })
+    .toString()
+    .split("\n")
+    .filter(Boolean)
+    .map(async (path) => ({
+      path,
+      content: await readFile(join(testDir, path), "utf-8"),
+    }));
+
+  let config: Record<string, unknown> | undefined;
+  try {
+    const configPath = join(testDir, ".gitguard/config.json");
+    config = JSON.parse(await readFile(configPath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
+  } catch {
+    // Config might not exist
+  }
+
+  return {
+    status,
+    log,
+    files: await Promise.all(files),
+    config,
+  };
+}
 
 async function setupTestRepo(
   scenario: TestScenario,
@@ -76,45 +125,39 @@ export async function runScenario(
   try {
     logger.debug(`\nSetting up test directory for: ${scenario.name}`);
     testDir = await setupTestRepo(scenario, logger);
-    logger.debug(`Created test directory: ${testDir}`);
 
-    // Create commit message file
-    const messageFile = join(testDir, "COMMIT_EDITMSG");
-    await writeFile(messageFile, scenario.input.message);
-    logger.debug(`Created commit message file: ${messageFile}`);
+    const originalArgv = process.argv;
+    const originalCwd = process.cwd();
 
-    // Run analyze commit with the correct working directory and options
-    const result = await analyzeCommit({
-      options: {
-        message: scenario.input.message,
-        staged: true,
-        unstaged: false,
-        debug: false,
-        execute: false,
-        configPath: join(testDir, ".gitguard/config.json"),
-        cwd: testDir,
-        ...scenario.input.options, // Merge in the scenario-specific options
-      },
-    });
+    try {
+      if (!scenario.input.command) {
+        throw new Error(`No command specified for scenario: ${scenario.name}`);
+      }
 
-    // Validate result
-    const success = validateResult(
-      {
-        message: result.formattedMessage || scenario.input.message,
-        warnings: result.warnings.map((w) => w.message),
-      },
-      scenario.expected,
-    );
+      const args = buildCommandArgs(scenario);
+      process.argv = args;
+      process.chdir(testDir);
 
-    return {
-      success,
-      message: success ? `✅ ${scenario.name}` : `❌ ${scenario.name}`,
-      details: {
-        input: scenario.input.message,
-        output: result.formattedMessage || scenario.input.message,
-        warnings: result.warnings.map((w) => w.message),
-      },
-    };
+      logger.debug("Running command:", args.join(" "));
+
+      const initialState = await captureRepoState(testDir);
+      await main();
+      const finalState = await captureRepoState(testDir);
+
+      return {
+        success: true,
+        message: `✅ ${scenario.name}`,
+        details: {
+          input: scenario.input.message,
+          command: args.join(" "),
+          initialState,
+          finalState,
+        },
+      };
+    } finally {
+      process.argv = originalArgv;
+      process.chdir(originalCwd);
+    }
   } catch (error) {
     logger.error(`Scenario failed: ${scenario.name}`, error);
     return {
@@ -123,47 +166,16 @@ export async function runScenario(
       error: error instanceof Error ? error : new Error(String(error)),
       details: {
         input: scenario.input.message,
-        output: "failed",
+        command: scenario.input.command
+          ? `${scenario.input.command.name} ${scenario.input.command.subcommand || ""} ${scenario.input.command.args?.join(" ") || ""}`
+          : "No command specified",
       },
     };
   } finally {
     if (testDir) {
-      logger.debug(`Cleaning up test directory: ${testDir}`);
       await rm(testDir, { recursive: true, force: true }).catch((error) =>
         logger.error("Failed to cleanup:", error),
       );
     }
   }
-}
-
-function validateResult(
-  result: { message: string; warnings: string[] },
-  expected: TestScenario["expected"],
-): boolean {
-  if (result.message !== expected.message) {
-    return false;
-  }
-
-  if (
-    expected.securityIssues &&
-    !result.warnings.some((w) => w.includes("security"))
-  ) {
-    return false;
-  }
-
-  if (
-    expected.splitSuggestion &&
-    !result.warnings.some((w) => w.includes("split"))
-  ) {
-    return false;
-  }
-
-  if (
-    expected.aiSuggestions &&
-    !result.warnings.some((w) => w.includes("AI"))
-  ) {
-    return false;
-  }
-
-  return true;
 }

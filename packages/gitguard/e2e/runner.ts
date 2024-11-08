@@ -174,6 +174,70 @@ async function selectTests(logger: LoggerService): Promise<{
   };
 }
 
+function displayTestResult(result: TestResult, logger: LoggerService): void {
+  logger.info("\n📊 Test Result:", result.message);
+
+  if (!result.success || !result.details) {
+    if (result.error) {
+      logger.error("Error:", result.error);
+    }
+    return;
+  }
+
+  logger.info("\n📝 Command:", chalk.cyan(result.details.command));
+
+  if (result.details.initialState) {
+    logger.info("\n📁 Initial Repository State:");
+    logger.info(
+      "Git Status:",
+      chalk.gray(result.details.initialState.status || "Clean"),
+    );
+    logger.info("Git History:", chalk.gray(result.details.initialState.log));
+  }
+
+  if (result.details.finalState) {
+    logger.info("\n📁 Final Repository State:");
+    logger.info(
+      "Git Status:",
+      chalk.gray(result.details.finalState.status || "Clean"),
+    );
+    logger.info("Git History:", chalk.gray(result.details.finalState.log));
+
+    // Show file changes
+    const changes = diffStates(
+      result.details.initialState?.files || [],
+      result.details.finalState.files,
+    );
+    if (changes.length) {
+      logger.info("\n📄 File Changes:");
+      changes.forEach((change) => {
+        logger.info(`${chalk.cyan(change.path)}:`);
+        logger.info(chalk.gray(change.diff));
+      });
+    }
+  }
+}
+
+function diffStates(
+  initial: Array<{ path: string; content: string }>,
+  final: Array<{ path: string; content: string }>,
+): Array<{ path: string; diff: string }> {
+  const changes: Array<{ path: string; diff: string }> = [];
+
+  // Use simple diff for now, could be enhanced with proper diff library
+  final.forEach((file) => {
+    const initialFile = initial.find((f) => f.path === file.path);
+    if (!initialFile || initialFile.content !== file.content) {
+      changes.push({
+        path: file.path,
+        diff: file.content, // Simple content display, could be enhanced with actual diff
+      });
+    }
+  });
+
+  return changes;
+}
+
 export async function runTests(): Promise<void> {
   const logger = new LoggerService({ debug: true });
 
@@ -192,19 +256,19 @@ export async function runTests(): Promise<void> {
       let results: TestResult[];
 
       if (interactive) {
-        // Run single scenario in interactive mode
         const scenario = await promptForScenario(test, logger);
         results = await test.run(logger, [scenario]);
+        displayTestResult(results[0], logger);
       } else if (scenarioId) {
-        // Run specific scenario by ID
         const scenario = test.scenarios.find((s) => s.id === scenarioId);
         if (!scenario) {
           throw new Error(`Invalid scenario ID: ${scenarioId}`);
         }
         results = await test.run(logger, [scenario]);
+        displayTestResult(results[0], logger);
       } else {
-        // Run all scenarios in non-interactive mode
         results = await test.run(logger);
+        results.forEach((result) => displayTestResult(result, logger));
       }
 
       const success = results.filter((r) => r.success).length;
@@ -213,7 +277,6 @@ export async function runTests(): Promise<void> {
       totalSuccess += success;
       totalFailed += failed;
 
-      // Show results based on whether we're running a single scenario or multiple
       if (interactive || scenarioId) {
         logger.info(
           `\n📊 Scenario Result: ${results[0].success ? "✅ Passed" : "❌ Failed"}`,

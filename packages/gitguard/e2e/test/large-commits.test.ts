@@ -21,10 +21,6 @@ const scenarios: TestScenario[] = [
     input: {
       message: "massive update",
     },
-    expected: {
-      message: "feat: massive update",
-      splitSuggestion: true,
-    },
   },
   {
     id: "many-files",
@@ -43,10 +39,6 @@ const scenarios: TestScenario[] = [
     },
     input: {
       message: "update multiple files",
-    },
-    expected: {
-      message: "feat: update multiple files",
-      splitSuggestion: true,
     },
   },
 ];

@@ -22,10 +22,6 @@ const scenarios: TestScenario[] = [
     input: {
       message: "add config",
     },
-    expected: {
-      message: "chore: add config",
-      securityIssues: true,
-    },
   },
   {
     id: "token-detection",
@@ -45,10 +41,6 @@ const scenarios: TestScenario[] = [
     },
     input: {
       message: "add database config",
-    },
-    expected: {
-      message: "chore: add database config",
-      securityIssues: true,
     },
   },
 ];

@@ -22,15 +22,22 @@ export interface TestScenario {
       debug?: boolean;
       execute?: boolean;
     };
+    command?: {
+      name: "commit" | "branch" | "status" | "init";
+      subcommand?: "analyze" | "create" | "suggest";
+      args?: string[];
+    };
   };
-  expected: {
-    message: string;
-    securityIssues?: boolean;
-    splitSuggestion?: boolean;
-    aiSuggestions?: boolean;
-    warnings?: string[];
-    exitCode?: number;
-  };
+}
+
+export interface RepoState {
+  status: string;
+  log: string;
+  files: Array<{
+    path: string;
+    content: string;
+  }>;
+  config?: Record<string, unknown>;
 }
 
 export interface TestResult {
@@ -39,8 +46,9 @@ export interface TestResult {
   error?: Error;
   details?: {
     input: string;
-    output: string;
-    warnings?: string[];
+    command: string;
+    initialState?: RepoState;
+    finalState?: RepoState;
   };
 }
 

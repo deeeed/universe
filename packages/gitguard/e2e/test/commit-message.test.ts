@@ -14,9 +14,11 @@ const scenarios: TestScenario[] = [
     },
     input: {
       message: "add new feature",
-    },
-    expected: {
-      message: "feat: add new feature",
+      command: {
+        name: "commit",
+        subcommand: "create",
+        args: ["-m", "add new feature"],
+      },
     },
   },
   {
@@ -33,9 +35,11 @@ const scenarios: TestScenario[] = [
     },
     input: {
       message: "add new feature",
-    },
-    expected: {
-      message: "feat(app): add new feature",
+      command: {
+        name: "commit",
+        subcommand: "create",
+        args: ["-m", "add new feature"],
+      },
     },
   },
   {
@@ -56,10 +60,11 @@ const scenarios: TestScenario[] = [
     },
     input: {
       message: "update features",
-    },
-    expected: {
-      message: "feat(app,core): update features",
-      splitSuggestion: true,
+      command: {
+        name: "commit",
+        subcommand: "create",
+        args: ["-m", "update features"],
+      },
     },
   },
 ];

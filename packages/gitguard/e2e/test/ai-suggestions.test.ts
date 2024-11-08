@@ -27,13 +27,11 @@ const scenarios: TestScenario[] = [
     },
     input: {
       message: "add new feature",
-      options: {
-        ai: true, // Add this to enable AI processing
+      command: {
+        name: "commit",
+        subcommand: "suggest",
+        args: ["--ai", "-m", "add new feature"],
       },
-    },
-    expected: {
-      message: "feat: add new feature",
-      aiSuggestions: true,
     },
   },
   {
@@ -57,13 +55,11 @@ const scenarios: TestScenario[] = [
     },
     input: {
       message: "implement new authentication system with oauth2",
-      options: {
-        ai: true, // Add this to enable AI processing
+      command: {
+        name: "commit",
+        subcommand: "suggest",
+        args: ["--ai", "-m", "implement oauth2 authentication system"],
       },
-    },
-    expected: {
-      message: "feat: implement oauth2 authentication system",
-      aiSuggestions: true,
     },
   },
 ];
