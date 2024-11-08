@@ -56,9 +56,14 @@ const scenarios: TestScenario[] = [
 export const securityTest: E2ETest = {
   name: "Security Checks",
   scenarios,
-  async run(logger: LoggerService): Promise<TestResult[]> {
+  async run(
+    logger: LoggerService,
+    selectedScenarios?: TestScenario[],
+  ): Promise<TestResult[]> {
     const results: TestResult[] = [];
-    for (const scenario of scenarios) {
+    const scenariosToRun = selectedScenarios || scenarios;
+
+    for (const scenario of scenariosToRun) {
       results.push(await runScenario(scenario, logger));
     }
     return results;

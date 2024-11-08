@@ -15,6 +15,7 @@ const scenarios: TestScenario[] = [
         ai: {
           enabled: true,
           provider: "azure",
+          maxPromptTokens: 4000,
           azure: {
             endpoint: "",
             deployment: "",
@@ -26,6 +27,9 @@ const scenarios: TestScenario[] = [
     },
     input: {
       message: "add new feature",
+      options: {
+        ai: true, // Add this to enable AI processing
+      },
     },
     expected: {
       message: "feat: add new feature",
@@ -38,11 +42,24 @@ const scenarios: TestScenario[] = [
     setup: {
       files: [{ path: "src/feature.ts", content: "console.log('test');" }],
       config: {
-        ai: { enabled: true },
+        ai: {
+          enabled: true,
+          provider: "azure",
+          maxPromptTokens: 4000,
+          azure: {
+            endpoint: "",
+            deployment: "",
+            apiVersion: "",
+            apiKey: "",
+          },
+        },
       },
     },
     input: {
       message: "implement new authentication system with oauth2",
+      options: {
+        ai: true, // Add this to enable AI processing
+      },
     },
     expected: {
       message: "feat: implement oauth2 authentication system",
@@ -106,7 +123,10 @@ AZURE_OPENAI_API_KEY=your-api-key
 export const aiSuggestionsTest: E2ETest = {
   name: "AI Suggestions",
   scenarios,
-  async run(logger: LoggerService): Promise<TestResult[]> {
+  async run(
+    logger: LoggerService,
+    selectedScenarios?: TestScenario[],
+  ): Promise<TestResult[]> {
     const results: TestResult[] = [];
     const aiConfig = await loadAITestConfig(logger);
 
@@ -116,7 +136,7 @@ export const aiSuggestionsTest: E2ETest = {
       !aiConfig.apiVersion ||
       !aiConfig.apiKey
     ) {
-      return scenarios.map((scenario) => ({
+      return (selectedScenarios || scenarios).map((scenario) => ({
         scenario,
         success: true,
         skipped: true,
@@ -124,8 +144,11 @@ export const aiSuggestionsTest: E2ETest = {
       }));
     }
 
+    // Use selectedScenarios if provided, otherwise use all scenarios
+    const scenariosToRun = selectedScenarios || scenarios;
+
     // Type assertion to ensure config is fully defined
-    const enhancedScenarios = scenarios.map((scenario) => ({
+    const enhancedScenarios = scenariosToRun.map((scenario) => ({
       ...scenario,
       setup: {
         ...scenario.setup,

@@ -14,6 +14,14 @@ export interface TestScenario {
   };
   input: {
     message: string;
+    options?: {
+      ai?: boolean;
+      staged?: boolean;
+      unstaged?: boolean;
+      all?: boolean;
+      debug?: boolean;
+      execute?: boolean;
+    };
   };
   expected: {
     message: string;

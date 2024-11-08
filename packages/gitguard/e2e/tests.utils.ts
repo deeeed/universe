@@ -2,7 +2,7 @@ import { execSync } from "child_process";
 import { mkdir, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
-import { analyzeCommit } from "../src/commands/commit.js";
+import { analyzeCommit } from "../src/controllers/commit/commit.coordinator.js";
 import { LoggerService } from "../src/services/logger.service.js";
 import { TestResult, TestScenario } from "./tests.types.js";
 
@@ -83,16 +83,17 @@ export async function runScenario(
     await writeFile(messageFile, scenario.input.message);
     logger.debug(`Created commit message file: ${messageFile}`);
 
-    // Run analyze commit with the correct working directory
+    // Run analyze commit with the correct working directory and options
     const result = await analyzeCommit({
       options: {
         message: scenario.input.message,
         staged: true,
         unstaged: false,
-        debug: true,
+        debug: false,
         execute: false,
         configPath: join(testDir, ".gitguard/config.json"),
         cwd: testDir,
+        ...scenario.input.options, // Merge in the scenario-specific options
       },
     });
 
