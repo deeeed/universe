@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { Command } from "commander";
 import { CommitService } from "../services/commit.service.js";
 import { AIFactory } from "../services/factories/ai.factory.js";
 import { GitService } from "../services/git.service.js";
@@ -15,45 +16,30 @@ import { checkAILimits } from "../utils/ai-limits.util.js";
 import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { copyToClipboard } from "../utils/clipboard.util.js";
 import { loadConfig } from "../utils/config.util.js";
-import { promptAIAction } from "../utils/user-prompt.util.js";
+import {
+  displayAISuggestions,
+  displaySplitSuggestions,
+  promptAIAction,
+  promptChoice,
+  promptCommitSuggestion,
+  promptSplitChoice,
+  promptYesNo,
+} from "../utils/user-prompt.util.js";
 
-interface CommitAnalyzeParams {
-  options: {
-    message?: string;
-    format?: "console" | "json" | "markdown";
-    staged?: boolean;
-    unstaged?: boolean;
-    all?: boolean;
-    ai?: boolean;
-    execute?: boolean;
-    debug?: boolean;
-    configPath?: string;
-    cwd?: string;
-  };
+interface CommitCommandOptions {
+  message?: string;
+  staged?: boolean;
+  unstaged?: boolean;
+  all?: boolean;
+  ai?: boolean;
+  execute?: boolean;
+  debug?: boolean;
+  configPath?: string;
+  cwd?: string;
 }
 
-// Extract AI suggestion display logic
-function displayAISuggestions(params: {
-  suggestions: CommitSuggestion[];
-  detectedScope?: string;
-  logger: Logger;
-}): void {
-  const { suggestions, detectedScope, logger } = params;
-  const scopeDisplay = detectedScope ? `(${detectedScope})` : "";
-
-  logger.info("\n🤖 AI Suggestions:");
-  suggestions.forEach((suggestion, index) => {
-    const formattedTitle = `${suggestion.type}${scopeDisplay}: ${suggestion.title}`;
-
-    logger.info(
-      `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(formattedTitle)}`,
-    );
-    if (suggestion.message) {
-      suggestion.message.split("\n").forEach((paragraph) => {
-        logger.info(`   ${chalk.gray(paragraph)}`);
-      });
-    }
-  });
+interface CommitAnalyzeParams {
+  options: CommitCommandOptions;
 }
 
 // Extract commit execution logic
@@ -79,31 +65,7 @@ async function executeCommit(params: {
   }
 }
 
-// Extract suggestion selection logic
-async function selectAISuggestion(params: {
-  suggestions: CommitSuggestion[];
-  logger: Logger;
-}): Promise<CommitSuggestion | undefined> {
-  const { suggestions, logger } = params;
-  const readline = await import("readline/promises");
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  logger.info(
-    `\n📝 ${chalk.yellow("Select a suggestion to commit")} (${chalk.cyan(`1-${suggestions.length}`)}):`,
-  );
-
-  const answer = await rl.question("Enter number (or press enter to skip): ");
-  rl.close();
-
-  const selection = parseInt(answer, 10);
-  return selection > 0 && selection <= suggestions.length
-    ? suggestions[selection - 1]
-    : undefined;
-}
-
+// Core analysis function
 export async function analyzeCommit({
   options,
 }: CommitAnalyzeParams): Promise<CommitAnalysisResult> {
@@ -111,6 +73,8 @@ export async function analyzeCommit({
   const reporter = new ReporterService({ logger });
 
   try {
+    let result: CommitAnalysisResult;
+
     const config = await loadConfig({ configPath: options.configPath });
 
     // Override config cwd if provided in options
@@ -208,19 +172,116 @@ export async function analyzeCommit({
       ? await git.getStagedDiff()
       : await git.getUnstagedDiff();
 
-    const securityResult = security?.analyzeSecurity({
+    const securityResult = security.analyzeSecurity({
       files: filesToAnalyze,
       diff: securityDiff,
     });
 
-    // Initial analysis
-    let result = await commitService.analyze({
-      files: filesToAnalyze,
-      message: options.message ?? "",
-      enableAI: options.ai ?? false,
-      enablePrompts: true,
-      securityResult,
-    });
+    // Handle security findings with user interaction
+    if (
+      securityResult.secretFindings.length > 0 ||
+      securityResult.fileFindings.length > 0
+    ) {
+      logger.info("\n🚨 Security issues detected:");
+
+      // Display findings
+      [
+        ...securityResult.secretFindings,
+        ...securityResult.fileFindings,
+      ].forEach((finding, index) => {
+        logger.info(
+          `\n${chalk.bold.red(`${index + 1}.`)} ${finding.type === "secret" ? "🔑" : "📄"} ${chalk.cyan(finding.path)}${
+            finding.line ? ` (line ${finding.line})` : ""
+          }`,
+        );
+        logger.info(`   ${chalk.dim("Issue:")} ${finding.suggestion}`);
+        if (finding.content) {
+          logger.info(`   ${chalk.dim("Content:")} ${finding.content}`);
+        }
+      });
+
+      // Prompt user for action
+      const action = await promptChoice<"unstage" | "ignore" | "abort">({
+        message: "\nHow would you like to proceed?",
+        choices: [
+          {
+            label: "Unstage affected files and abort commit",
+            value: "unstage",
+          },
+          {
+            label:
+              "Ignore and proceed (not recommended for high severity issues)",
+            value: "ignore",
+          },
+          {
+            label: "Abort without changes",
+            value: "abort",
+          },
+        ],
+        logger,
+      });
+
+      switch (action) {
+        case "unstage":
+          if (securityResult.commands.length > 0) {
+            logger.info("\n📝 Unstaging affected files...");
+            try {
+              await git.unstageFiles({
+                files: securityResult.filesToUnstage,
+              });
+              logger.info(chalk.green("✅ Files unstaged successfully"));
+            } catch (error) {
+              logger.error(chalk.red("❌ Failed to unstage files:"), error);
+              throw error;
+            }
+          }
+          logger.info("\n❌ Commit aborted due to security issues");
+          process.exit(1);
+          break;
+
+        case "ignore":
+          if (securityResult.shouldBlock) {
+            const confirmed = await promptYesNo({
+              message:
+                "\n⚠️ High severity security issues found. Are you sure you want to proceed?",
+              defaultValue: false,
+              logger,
+            });
+
+            if (!confirmed) {
+              logger.info("\n❌ Commit aborted");
+              process.exit(1);
+            }
+          }
+          logger.info(
+            chalk.yellow("\n⚠️ Proceeding despite security issues..."),
+          );
+          break;
+
+        case "abort":
+          logger.info("\n❌ Commit aborted");
+          process.exit(1);
+          break;
+      }
+
+      // Initial analysis with security results
+      result = await commitService.analyze({
+        files: filesToAnalyze,
+        message: options.message ?? "",
+        enableAI: options.ai ?? false,
+        enablePrompts: true,
+        securityResult,
+      });
+    } else {
+      // Initial analysis without security issues
+      result = await commitService.analyze({
+        files: filesToAnalyze,
+        message: options.message ?? "",
+        enableAI: options.ai ?? false,
+        enablePrompts: true,
+        securityResult,
+      });
+    }
 
     // Handle AI suggestions if enabled
     if (options.ai && ai) {
@@ -329,7 +390,7 @@ export async function analyzeCommit({
           });
 
           if (options.execute) {
-            const selectedSuggestion = await selectAISuggestion({
+            const selectedSuggestion = await promptCommitSuggestion({
               suggestions,
               logger,
             });
@@ -372,45 +433,16 @@ export async function analyzeCommit({
 
     // Handle split suggestions
     if (result.splitSuggestion) {
-      // Display detected scopes
-      result.splitSuggestion.suggestions.forEach((suggestedSplit, index) => {
-        logger.info(
-          `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold.cyan(suggestedSplit.scope ?? "root")}:`,
-        );
-        logger.info(
-          `   ${chalk.dim("Message:")} ${chalk.bold(suggestedSplit.message)}`,
-        );
-        logger.info(`   ${chalk.dim("Files:")}`);
-        suggestedSplit.files.forEach((file) => {
-          logger.info(`     ${chalk.dim("•")} ${chalk.gray(file)}`);
-        });
-      });
-      // Create dynamic choices with clearer messaging
-      const choices = [
-        `${chalk.yellow("0.")} Keep all changes together`,
-        ...result.splitSuggestion.suggestions.map(
-          (suggestion, index) =>
-            `${chalk.green(`${index + 1}.`)} Keep only ${chalk.cyan(suggestion.scope ?? "root")} changes and unstage others`,
-        ),
-      ];
-
-      logger.info("\n📋 Choose how to proceed:");
-      choices.forEach((choice) => logger.info(choice));
-
-      const readline = await import("readline/promises");
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
+      displaySplitSuggestions({
+        suggestions: result.splitSuggestion.suggestions,
+        logger,
       });
 
-      const answer = await rl.question(
-        `\nEnter choice (0-${result.splitSuggestion.suggestions.length}): `,
-      );
-      rl.close();
+      const { selection } = await promptSplitChoice({
+        suggestions: result.splitSuggestion.suggestions,
+        logger,
+      });
 
-      const selection = parseInt(answer, 10);
-
-      // Handle user choice
       if (selection === 0) {
         logger.info(chalk.yellow("\n⏭️  Continuing with all changes..."));
       } else if (
@@ -526,6 +558,71 @@ export async function analyzeCommit({
     return result;
   } catch (error) {
     logger.error(`\n${chalk.red("❌")} Commit analysis failed:`, error);
+    logger.debug("Full analysis error details:", error);
     throw error;
   }
+}
+
+// Subcommands
+const analyze = new Command("analyze")
+  .description("Analyze changes for commit")
+  .option("-m, --message <text>", "Commit message")
+  .option("--staged", "Include analysis of staged changes (default: true)")
+  .option("--unstaged", "Include analysis of unstaged changes")
+  .option("--all", "Analyze both staged and unstaged changes")
+  .option("--ai", "Enable AI-powered suggestions")
+  .action(async (cmdOptions: CommitCommandOptions) => {
+    await analyzeCommit({ options: cmdOptions });
+  });
+
+const create = new Command("create")
+  .description("Create a commit with analysis")
+  .option("-m, --message <text>", "Commit message")
+  .option("--staged", "Include staged changes (default: true)")
+  .option("--unstaged", "Include unstaged changes")
+  .option("--all", "Include all changes")
+  .option("--ai", "Enable AI-powered suggestions")
+  .action(async (cmdOptions: CommitCommandOptions) => {
+    await analyzeCommit({ options: { ...cmdOptions, execute: true } });
+  });
+
+const suggest = new Command("suggest")
+  .description("Get AI suggestions for commit message")
+  .option("--staged", "Include staged changes (default: true)")
+  .option("--unstaged", "Include unstaged changes")
+  .option("--all", "Include all changes")
+  .action(async (cmdOptions: CommitCommandOptions) => {
+    await analyzeCommit({ options: { ...cmdOptions, ai: true } });
+  });
+
+// Main commit command
+export const commitCommand = new Command("commit")
+  .description("Commit changes with analysis and validation")
+  .option("-d, --debug", "Enable debug mode")
+  .option("--cwd <path>", "Working directory")
+  .addHelpText(
+    "after",
+    `
+${chalk.blue("Examples:")}
+  ${chalk.yellow("$")} gitguard commit analyze           # Analyze staged changes
+  ${chalk.yellow("$")} gitguard commit create -m "feat"  # Create commit with message
+  ${chalk.yellow("$")} gitguard commit suggest          # Get AI suggestions
+  ${chalk.yellow("$")} gitguard commit create --ai      # Create with AI help`,
+  );
+
+// Add subcommands
+commitCommand
+  .addCommand(analyze)
+  .addCommand(create)
+  .addCommand(suggest)
+  .action(async (cmdOptions: CommitCommandOptions) => {
+    // Default action when no subcommand is specified - run analysis
+    await analyzeCommit({ options: cmdOptions });
+  });
+
+// Keep original export for backward compatibility
+export async function analyzeCommitLegacy(
+  params: CommitAnalyzeParams,
+): Promise<CommitAnalysisResult> {
+  return analyzeCommit(params);
 }

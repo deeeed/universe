@@ -159,7 +159,7 @@ export interface PRAnalysisOptions {
 // Shared only where absolutely necessary
 export interface AnalysisWarning {
   type: "size" | "security" | "structure" | "file";
-  severity: "error" | "warning";
+  severity: "high" | "medium" | "low";
   message: string;
 }
 

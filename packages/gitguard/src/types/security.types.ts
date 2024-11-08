@@ -1,14 +1,16 @@
 // types/security.types.ts
 
 export type Severity = "high" | "medium" | "low";
+
+// Single interface for security findings
 export interface SecurityFinding {
-  type: "secret" | "sensitive_file";
-  severity: Severity;
   path: string;
   line?: number;
   match?: string;
   content?: string;
   suggestion: string;
+  severity: Severity;
+  type: "secret" | "sensitive_file";
 }
 
 export interface SecurityAnalysis {

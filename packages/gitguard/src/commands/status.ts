@@ -1,12 +1,18 @@
+import { Command } from "commander";
 import chalk from "chalk";
 import { LoggerService } from "../services/logger.service.js";
 import { Config } from "../types/config.types.js";
 import { getConfigStatus } from "../utils/config.util.js";
 
-export interface StatusOptions {
+interface StatusCommandOptions {
   debug?: boolean;
   configPath?: string;
-  configOnly?: boolean;
+  global?: boolean;
+  local?: boolean;
+}
+
+interface StatusAnalyzeParams {
+  options: StatusCommandOptions;
 }
 
 function formatEnabled(enabled: boolean): string {
@@ -109,7 +115,7 @@ function displayConfigFeatures(config: Partial<Config> | null): string[] {
   return output;
 }
 
-export async function status(options: StatusOptions): Promise<void> {
+async function analyzeStatus({ options }: StatusAnalyzeParams): Promise<void> {
   const logger = new LoggerService({ debug: options.debug });
 
   try {
@@ -124,7 +130,7 @@ export async function status(options: StatusOptions): Promise<void> {
 
     logger.info(chalk.blue("\n📝 Configuration Status:"));
 
-    if (status.global.exists) {
+    if (status.global.exists && (!options.local || options.global)) {
       logger.info(
         `\nGlobal config found at: ${chalk.cyan(status.global.path)}`,
       );
@@ -145,11 +151,11 @@ export async function status(options: StatusOptions): Promise<void> {
         const globalFeatures = displayConfigFeatures(status.global.config);
         globalFeatures.forEach((line) => logger.info(line));
       }
-    } else {
+    } else if (!options.local) {
       logger.info(chalk.yellow("\nNo global config found"));
     }
 
-    if (status.local.exists) {
+    if (status.local.exists && (!options.global || options.local)) {
       logger.info(`\nLocal config found at: ${chalk.cyan(status.local.path)}`);
       logger.info(chalk.yellow("\nLocal Settings (overrides global):"));
       const localFeatures = displayConfigFeatures(status.local.config);
@@ -158,11 +164,11 @@ export async function status(options: StatusOptions): Promise<void> {
       } else {
         logger.info(chalk.gray("No features configured"));
       }
-    } else {
+    } else if (!options.global) {
       logger.info(chalk.yellow("\nNo local config found"));
     }
 
-    if (status.effective && status.local.exists) {
+    if (status.effective && status.local.exists && !options.global) {
       logger.info(chalk.blue("\n⚡ Effective Configuration:"));
       displayConfigFeatures(status.effective).forEach((line) =>
         logger.info(line),
@@ -177,4 +183,38 @@ export async function status(options: StatusOptions): Promise<void> {
     logger.error("Failed to get status:", error);
     throw error;
   }
+}
+
+// Subcommands
+const show = new Command("show")
+  .description("Show configuration status")
+  .option("--global", "Show only global configuration")
+  .option("--local", "Show only local configuration")
+  .action(async (cmdOptions: StatusCommandOptions) => {
+    await analyzeStatus({ options: cmdOptions });
+  });
+
+// Main status command
+export const statusCommand = new Command("status")
+  .description("Show GitGuard configuration status")
+  .option("-d, --debug", "Enable debug mode")
+  .addHelpText(
+    "after",
+    `
+${chalk.blue("Examples:")}
+  ${chalk.yellow("$")} gitguard status              # Show all configurations
+  ${chalk.yellow("$")} gitguard status --global     # Show only global config
+  ${chalk.yellow("$")} gitguard status --local      # Show only local config`,
+  );
+
+// Add subcommands
+statusCommand
+  .addCommand(show)
+  .action(async (cmdOptions: StatusCommandOptions) => {
+    await analyzeStatus({ options: cmdOptions });
+  });
+
+// Keep original export for backward compatibility
+export async function statusLegacy(params: StatusAnalyzeParams): Promise<void> {
+  return analyzeStatus(params);
 }

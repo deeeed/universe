@@ -166,7 +166,7 @@ export class CommitService extends BaseService {
         type: "file",
         message:
           "Large number of files changed. Consider splitting the commit.",
-        severity: "warning",
+        severity: "medium",
       });
     }
 
@@ -175,7 +175,7 @@ export class CommitService extends BaseService {
         type: "file",
         message:
           "Changes span multiple packages. Consider splitting the commit by package.",
-        severity: "warning",
+        severity: "medium",
       });
     }
 
@@ -187,8 +187,8 @@ export class CommitService extends BaseService {
   ): AnalysisWarning[] {
     return findings.map((finding) => ({
       type: "security",
-      severity: finding.severity === "high" ? "error" : "warning",
-      message: `Security issue in ${finding.path}: ${finding.type}`,
+      severity: finding.severity,
+      message: finding.suggestion,
     }));
   }
 
@@ -587,7 +587,7 @@ export class CommitService extends BaseService {
 
     warnings.push({
       type: "structure",
-      severity: "warning",
+      severity: "medium",
       message: `Changes span multiple packages: ${Array.from(filesByScope.keys()).join(", ")}`,
     });
 

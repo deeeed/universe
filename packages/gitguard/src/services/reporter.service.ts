@@ -83,10 +83,9 @@ export class ReporterService extends BaseService {
     if (this.isPRResult(result)) {
       this.logger.table([
         {
-          "Total Commits": result.stats.totalCommits,
           "Files Changed": result.stats.filesChanged,
-          "Lines Added": result.stats.additions,
-          "Lines Removed": result.stats.deletions,
+          "Lines Added": result.stats.additions.toString(),
+          "Lines Removed": result.stats.deletions.toString(),
         },
       ]);
 
@@ -97,20 +96,26 @@ export class ReporterService extends BaseService {
       if (result.commits.length > 0 && options.detailed) {
         this.logger.newLine();
         this.logger.info("Changed Files:");
+        const uniqueFiles = new Map<string, FileChange>();
         result.commits.forEach((commit) => {
-          commit.files.forEach((file: FileChange) => {
-            this.logger.info(
-              `  • ${chalk.cyan(file.path)} (+${chalk.green(file.additions)} -${chalk.red(file.deletions)})`,
-            );
+          commit.files.forEach((file) => {
+            // Only keep the most recent change for each file
+            uniqueFiles.set(file.path, file);
           });
+        });
+
+        Array.from(uniqueFiles.values()).forEach((file) => {
+          this.logger.info(
+            `  • ${chalk.cyan(file.path)} (+${chalk.green(file.additions)} -${chalk.red(file.deletions)})`,
+          );
         });
       }
     } else {
       this.logger.table([
         {
           "Files Changed": result.stats.filesChanged,
-          "Lines Added": `+${chalk.green(result.stats.additions)}`,
-          "Lines Removed": `-${chalk.red(result.stats.deletions)}`,
+          "Lines Added": `+${result.stats.additions}`,
+          "Lines Removed": `-${result.stats.deletions}`,
         },
       ]);
 
