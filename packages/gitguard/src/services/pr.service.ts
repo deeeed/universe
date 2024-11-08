@@ -312,17 +312,17 @@ export class PRService extends BaseService {
     if (params.stats.filesChanged > this.config.analysis.maxFileSize) {
       warnings.push({
         type: "size",
-        severity: "warning",
+        severity: "medium",
         message: `PR changes too many files (${params.stats.filesChanged} > ${this.config.analysis.maxFileSize})`,
       });
     }
 
-    // Check total changes (additions + deletions)
+    // Check total changes
     const totalChanges = params.stats.additions + params.stats.deletions;
     if (totalChanges > this.config.analysis.maxFileSize * 100) {
       warnings.push({
         type: "size",
-        severity: "warning",
+        severity: "medium",
         message: `PR has too many changes (${totalChanges} lines)`,
       });
     }
@@ -331,7 +331,7 @@ export class PRService extends BaseService {
     if (params.stats.totalCommits > 10) {
       warnings.push({
         type: "size",
-        severity: "warning",
+        severity: "medium",
         message: `PR has too many commits (${params.stats.totalCommits} > 10)`,
       });
     }
@@ -399,7 +399,7 @@ export class PRService extends BaseService {
       if (Object.keys(filesByDirectory).length > 3) {
         warnings.push({
           type: "structure",
-          severity: "warning",
+          severity: "medium",
           message: `PR spans too many directories (${Object.keys(filesByDirectory).length} > 3)`,
         });
       }
@@ -413,14 +413,13 @@ export class PRService extends BaseService {
       // Add security warnings to result
       if (securityResult?.secretFindings.length) {
         warnings.push(
-          ...securityResult.secretFindings.map((finding) => ({
-            type: "security" as const,
-            severity:
-              finding.severity === "high"
-                ? ("error" as const)
-                : ("warning" as const),
-            message: `Security issue in ${finding.path}: ${finding.suggestion}`,
-          })),
+          ...securityResult.secretFindings.map(
+            (finding): AnalysisWarning => ({
+              type: "security",
+              severity: finding.severity,
+              message: `Security issue in ${finding.path}: ${finding.suggestion}`,
+            }),
+          ),
         );
       }
 

@@ -8,6 +8,7 @@ import { ServiceOptions } from "../types/service.types.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
 import { FileUtil } from "../utils/file.util.js";
 import { BaseService } from "./base.service.js";
+import { formatDiffForAI } from "../utils/diff.util.js";
 
 interface GetDiffParams {
   type: "staged" | "range";
@@ -518,12 +519,14 @@ export class GitService extends BaseService {
         return "";
       }
 
-      this.logger.debug("Staged diff statistics:", {
-        totalLength: diff.length,
-        hasContent: diff.length > 0,
-      });
+      const files = await this.getStagedChanges();
 
-      return diff;
+      return formatDiffForAI({
+        files,
+        diff,
+        maxLength: 8000,
+        logger: this.logger,
+      });
     } catch (error) {
       this.logger.error("Failed to get staged diff for AI:", error);
       throw error;

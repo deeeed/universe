@@ -60,7 +60,7 @@ export class AIFactory {
             type: "openai",
             openai: {
               apiKey: openaiApiKey,
-              model: config.ai.openai.model || "gpt-4",
+              model: config.ai.openai.model ?? "gpt-4",
               organization:
                 config.ai.openai.organization ?? process.env.OPENAI_ORG_ID,
             },

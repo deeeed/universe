@@ -1,8 +1,10 @@
+import chalk from "chalk";
 import { closeSync, openSync } from "fs";
 import { ReadStream, WriteStream } from "tty";
+import { AIProvider } from "../types/ai.types.js";
+import { CommitSuggestion } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
 import { Logger } from "../types/logger.types.js";
-import { AIProvider } from "../types/ai.types.js";
 
 // Common patterns helpers
 export async function displaySuggestions(params: {
@@ -562,5 +564,94 @@ export async function confirmAIUsage(
     message: `\nWould you like to proceed with ${action} using AI?`,
     logger,
     defaultValue: true,
+  });
+}
+
+export async function promptSplitChoice(params: {
+  suggestions: Array<{ scope?: string; files: string[] }>;
+  logger: Logger;
+}): Promise<{ selection: number }> {
+  const { suggestions, logger } = params;
+
+  const choices = [
+    `${chalk.yellow("0.")} Keep all changes together`,
+    ...suggestions.map(
+      (suggestion, index) =>
+        `${chalk.green(`${index + 1}.`)} Keep only ${chalk.cyan(suggestion.scope ?? "root")} changes and unstage others`,
+    ),
+  ];
+
+  logger.info("\n📋 Choose how to proceed:");
+  choices.forEach((choice) => logger.info(choice));
+
+  const answer = await promptNumeric({
+    message: `\nEnter choice (0-${suggestions.length}):`,
+    maxValue: suggestions.length,
+    logger,
+  });
+
+  return { selection: answer ? parseInt(answer) : 0 };
+}
+
+export async function promptCommitSuggestion(params: {
+  suggestions: CommitSuggestion[];
+  logger: Logger;
+}): Promise<CommitSuggestion | undefined> {
+  const { suggestions, logger } = params;
+
+  logger.info(
+    `\n📝 ${chalk.yellow("Select a suggestion to commit")} (${chalk.cyan(`1-${suggestions.length}`)}):`,
+  );
+
+  const answer = await promptNumeric({
+    message: "Enter number (or press enter to skip):",
+    allowEmpty: true,
+    maxValue: suggestions.length,
+    logger,
+  });
+
+  return answer ? suggestions[parseInt(answer) - 1] : undefined;
+}
+
+export function displaySplitSuggestions(params: {
+  suggestions: Array<{ scope?: string; message: string; files: string[] }>;
+  logger: Logger;
+}): void {
+  const { suggestions, logger } = params;
+
+  suggestions.forEach((suggestedSplit, index) => {
+    logger.info(
+      `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold.cyan(suggestedSplit.scope ?? "root")}:`,
+    );
+    logger.info(
+      `   ${chalk.dim("Message:")} ${chalk.bold(suggestedSplit.message)}`,
+    );
+    logger.info(`   ${chalk.dim("Files:")}`);
+    suggestedSplit.files.forEach((file) => {
+      logger.info(`     ${chalk.dim("•")} ${chalk.gray(file)}`);
+    });
+  });
+}
+
+export function displayAISuggestions(params: {
+  suggestions: CommitSuggestion[];
+  detectedScope?: string;
+  logger: Logger;
+}): void {
+  const { suggestions, detectedScope, logger } = params;
+  const scopeDisplay = detectedScope ? `(${detectedScope})` : "";
+
+  logger.info("\n🤖 AI Suggestions:");
+  suggestions.forEach((suggestion, index) => {
+    const formattedTitle = `${suggestion.type}${scopeDisplay}: ${suggestion.title}`;
+
+    logger.info(
+      `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(formattedTitle)}`,
+    );
+    if (suggestion.message) {
+      suggestion.message.split("\n").forEach((paragraph) => {
+        logger.info(`   ${chalk.gray(paragraph)}`);
+      });
+    }
   });
 }

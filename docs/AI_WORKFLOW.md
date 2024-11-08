@@ -2,6 +2,9 @@
 
 Below are the main workflow prompts used for generating development specifications, PR descriptions, and PR summaries.
 
+-- Generate commit prompt
+-- Follow up prompt: "generate one commit command to copy/paste consolidating the different suggestions into one commit message"
+
 ## Create Development Specification
 
 Please help me define the specifications for "{feature name}" considering the following aspects:
@@ -37,6 +40,15 @@ Please provide the specification in a structured format that:
 - Uses object parameters for extensibility
 - Includes clear acceptance criteria
 - Defines testing scenarios
+
+## Generate Commit Suggestions
+
+@Commit Please analyze the changes and generate a conventionalcommit message that includes:
+
+1. Summary
+   - High-level overview of changes
+   - Purpose and motivation
+   - Technical approach taken
 
 ## Generate PR Description
 
