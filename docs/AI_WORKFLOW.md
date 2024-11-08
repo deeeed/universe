@@ -38,6 +38,15 @@ Please provide the specification in a structured format that:
 - Includes clear acceptance criteria
 - Defines testing scenarios
 
+## Generate Commit Suggestions
+
+@Commit Please analyze the changes and generate a conventionalcommit message that includes:
+
+1. Summary
+   - High-level overview of changes
+   - Purpose and motivation
+   - Technical approach taken
+
 ## Generate PR Description
 
 @PR Please analyze the changes and generate a PR description that includes:
