@@ -158,9 +158,12 @@ export async function analyzeBranch({
       },
     });
 
-    // Handle AI suggestions if enabled (for both analyze and PR commands)
+    // Handle AI suggestions if enabled
     if (options.ai && services.ai) {
-      if (options.createPR || options.draft) {
+      // Skip GitHub validation for analysis-only operations
+      const needsGitHubAccess = options.createPR || options.draft;
+
+      if (needsGitHubAccess) {
         // For PR creation, validate GitHub access first
         const hasGitHubAccess =
           await controllers.prController.validateGitHubAccess();

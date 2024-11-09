@@ -113,7 +113,20 @@ export class BranchAIController {
     bestDiff: DiffStrategy,
     format: "api" | "human" = "api",
   ): Promise<string> {
+    this.logger.info("\n📝 Loading PR template...");
     const template = await this.prService.loadPRTemplate();
+
+    if (template) {
+      this.logger.info("✅ PR template loaded successfully");
+      this.logger.debug("Template details:", {
+        sections: template.match(/##\s+([^\n]+)/g)?.map((s) => s.trim()),
+        hasCheckboxes: template.includes("- [ ]"),
+        length: template.length,
+      });
+    } else {
+      this.logger.debug("No PR template found");
+    }
+
     const diff =
       bestDiff.content ||
       (await this.git.getDiff({
@@ -134,7 +147,7 @@ export class BranchAIController {
       },
     });
 
-    return generatePRDescriptionPrompt({
+    const prompt = generatePRDescriptionPrompt({
       commits: analysisResult.commits,
       files: analysisResult.files,
       baseBranch: analysisResult.baseBranch,
@@ -143,6 +156,14 @@ export class BranchAIController {
       logger: this.logger,
       format,
     });
+
+    this.logger.debug(`Generated ${format} prompt with template integration:`, {
+      hasTemplate: Boolean(template),
+      promptLength: prompt.length,
+      includesTemplateStructure: template ? prompt.includes(template) : false,
+    });
+
+    return prompt;
   }
 
   private async processAIAction({

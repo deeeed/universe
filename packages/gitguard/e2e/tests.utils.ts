@@ -97,20 +97,32 @@ async function setupTestRepo(
         execGitCommand(`git add "${file.path}"`, testDir);
       }
 
-      if (scenario.setup.commit) {
+      // Commit files on main if no specific branch is specified
+      if (!scenario.setup.branch && scenario.setup.commit) {
         execGitCommand(`git commit -m "${scenario.setup.commit}"`, testDir);
         logger.debug(`Created initial commit: ${scenario.setup.commit}`);
       }
     }
 
+    // Switch to feature branch if specified (for branch-related scenarios)
+    if (scenario.setup.branch) {
+      logger.debug(
+        `Creating and switching to branch: ${scenario.setup.branch}`,
+      );
+      execGitCommand(`git checkout -b ${scenario.setup.branch}`, testDir);
+
+      // If there's an initial commit message, commit the files on the feature branch
+      if (scenario.setup.commit) {
+        execGitCommand(`git add .`, testDir);
+        execGitCommand(`git commit -m "${scenario.setup.commit}"`, testDir);
+        logger.debug(
+          `Created initial commit on branch: ${scenario.setup.commit}`,
+        );
+      }
+    }
+
     // Handle changes based on scenario type
     if (scenario.setup.changes) {
-      if (scenario.setup.branch) {
-        // Branch scenario: Create new branch and commit changes
-        logger.debug(`Creating feature branch: ${scenario.setup.branch}`);
-        execGitCommand(`git checkout -b ${scenario.setup.branch}`, testDir);
-      }
-
       // Apply changes
       logger.debug("Applying changes to test files");
       for (const change of scenario.setup.changes) {

@@ -72,6 +72,7 @@ export const TestSuites = {
   SECURITY: "security",
   AI_SUGGESTIONS: "ai-suggestions",
   LARGE_COMMITS: "large-commits",
+  BRANCH_FEATURES: "branch-features",
 } as const;
 
 export type TestSuiteKey = (typeof TestSuites)[keyof typeof TestSuites];
