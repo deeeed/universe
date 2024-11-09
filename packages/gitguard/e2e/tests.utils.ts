@@ -102,6 +102,18 @@ async function setupTestRepo(
       execSync(`git commit -m "${scenario.setup.commit}"`, { cwd: testDir });
     }
 
+    // Apply changes after initial commit if specified
+    if (scenario.setup.changes) {
+      logger.debug("Applying changes to test files");
+      for (const change of scenario.setup.changes) {
+        const filePath = join(testDir, change.path);
+        await writeFile(filePath, change.content);
+        logger.debug(`Modified file: ${filePath}`);
+      }
+      // Stage the changes
+      execSync("git add .", { cwd: testDir });
+    }
+
     // Create .gitguard directory and config
     await mkdir(join(testDir, ".gitguard"), { recursive: true });
     await writeFile(

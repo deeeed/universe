@@ -21,16 +21,31 @@ const scenarios: TestScenario[] = [
             deployment: "",
             apiVersion: "",
             apiKey: "",
-          }, // Will be populated from .env.test
+          },
         },
       },
+      commit: "Initial setup",
+      branch: "feature/test-ai",
+      changes: [
+        {
+          path: "src/feature.ts",
+          content: `
+function add(a: number, b: number): number {
+  return a + b;
+}
+
+console.log('test');
+console.log(add(1, 2));
+`,
+        },
+      ],
     },
     input: {
       message: "add new feature",
       command: {
         name: "commit",
         subcommand: "suggest",
-        args: ["--ai", "-m", "add new feature"],
+        args: ["--debug"],
       },
     },
   },

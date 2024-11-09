@@ -9,6 +9,10 @@ export interface TestScenario {
       path: string;
       content: string;
     }>;
+    changes?: Array<{
+      path: string;
+      content: string;
+    }>;
     monorepo?: boolean;
     config?: DeepPartial<Config>;
     branch?: string;
