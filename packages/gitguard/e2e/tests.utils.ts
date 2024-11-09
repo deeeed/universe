@@ -134,7 +134,9 @@ async function setupTestRepo(
       }
 
       // Handle commit based on scenario type
-      const isCommitScenario = scenario.input.command?.name === "commit";
+      const isCommitScenario =
+        scenario.input.command?.name === "commit" &&
+        scenario.input.command?.subcommand === "create";
       const isUnstagedTest =
         scenario.input.command?.args?.includes("--unstaged");
 
@@ -228,7 +230,7 @@ export async function runScenario(
       details: {
         input: scenario.input.message,
         command: scenario.input.command
-          ? `${scenario.input.command.name} ${scenario.input.command.subcommand || ""} ${scenario.input.command.args?.join(" ") || ""}`
+          ? `${scenario.input.command.name} ${scenario.input.command.subcommand ?? ""} ${scenario.input.command.args?.join(" ") ?? ""}`
           : "No command specified",
       },
     };

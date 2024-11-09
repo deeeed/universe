@@ -9,15 +9,22 @@ const scenarios: TestScenario[] = [
     setup: {
       files: [{ path: "src/feature.ts", content: "console.log('test');" }],
       config: {
-        debug: false,
+        debug: true,
+        git: {
+          monorepoPatterns: ["packages/*"],
+        },
       },
+      changes: [{ path: "src/feature.ts", content: "console.log('test');" }],
     },
     input: {
       message: "add new feature",
       command: {
         name: "commit",
         subcommand: "create",
-        args: ["-m", "add new feature"],
+        args: ["-m", "add new feature", "--staged"],
+      },
+      options: {
+        staged: true,
       },
     },
   },
@@ -32,13 +39,28 @@ const scenarios: TestScenario[] = [
           content: "console.log('test');",
         },
       ],
+      config: {
+        debug: true,
+        git: {
+          monorepoPatterns: ["packages/*"],
+        },
+      },
+      changes: [
+        {
+          path: "packages/app/src/feature.ts",
+          content: "console.log('test');",
+        },
+      ],
     },
     input: {
       message: "add new feature",
       command: {
         name: "commit",
         subcommand: "create",
-        args: ["-m", "add new feature"],
+        args: ["-m", "add new feature", "--staged", "--debug"],
+      },
+      options: {
+        staged: true,
       },
     },
   },
@@ -57,13 +79,32 @@ const scenarios: TestScenario[] = [
           content: "console.log('core');",
         },
       ],
+      config: {
+        debug: true,
+        git: {
+          monorepoPatterns: ["packages/*"],
+        },
+      },
+      changes: [
+        {
+          path: "packages/app/src/feature.ts",
+          content: "console.log('app');",
+        },
+        {
+          path: "packages/core/src/utils.ts",
+          content: "console.log('core');",
+        },
+      ],
     },
     input: {
       message: "update features",
       command: {
         name: "commit",
         subcommand: "create",
-        args: ["-m", "update features"],
+        args: ["-m", "update features", "--staged"],
+      },
+      options: {
+        staged: true,
       },
     },
   },

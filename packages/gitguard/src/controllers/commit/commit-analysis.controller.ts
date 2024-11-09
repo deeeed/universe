@@ -8,6 +8,10 @@ import { SecurityCheckResult } from "../../types/security.types.js";
 import { CommitAnalysisResult } from "../../types/analysis.types.js";
 import chalk from "chalk";
 import { AIProvider } from "../../types/ai.types.js";
+import {
+  displaySplitSuggestions,
+  promptSplitChoice,
+} from "../../utils/user-prompt.util.js";
 
 interface CommitAnalysisControllerParams {
   logger: Logger;
@@ -121,13 +125,71 @@ export class CommitAnalysisController {
     enablePrompts,
     securityResult,
   }: AnalyzeChangesParams): Promise<CommitAnalysisResult> {
-    return this.commitService.analyze({
+    // Get initial analysis
+    const result = await this.commitService.analyze({
       files,
       message,
       enableAI,
       enablePrompts,
       securityResult,
     });
+
+    // Check for multi-package changes and handle splitting if needed
+    if (enablePrompts && this.hasMultiPackageChanges(result)) {
+      // Use CommitService's getSplitSuggestion instead of our own implementation
+      const splitSuggestion = this.commitService.getSplitSuggestion({
+        files,
+        message,
+      });
+
+      if (splitSuggestion) {
+        // Display split suggestions
+        displaySplitSuggestions({
+          suggestions: splitSuggestion.suggestions.map((s) => ({
+            scope: s.scope,
+            message: s.message,
+            files: s.files,
+          })),
+          logger: this.logger,
+        });
+
+        // Get user choice
+        const { selection } = await promptSplitChoice({
+          suggestions: splitSuggestion.suggestions,
+          logger: this.logger,
+        });
+
+        // Handle user selection
+        if (selection > 0) {
+          const selectedSplit = splitSuggestion.suggestions[selection - 1];
+
+          // Get files to unstage (all files except selected ones)
+          const filesToUnstage = files
+            .map((f) => f.path)
+            .filter((path) => !selectedSplit.files.includes(path));
+
+          // Use proper unstageFiles method with correct interface
+          await this.git.unstageFiles({ files: filesToUnstage });
+
+          // Re-analyze with updated files
+          return this.commitService.analyze({
+            files: files.filter((f) => selectedSplit.files.includes(f.path)),
+            message,
+            enableAI,
+            enablePrompts,
+            securityResult,
+          });
+        }
+      }
+    }
+
+    return result;
+  }
+
+  private hasMultiPackageChanges(result: CommitAnalysisResult): boolean {
+    return result.warnings.some((w) =>
+      w.message.includes("Changes span multiple packages"),
+    );
   }
 
   async executeCommit({ message }: { message: string }): Promise<void> {
@@ -142,6 +204,7 @@ export class CommitAnalysisController {
   }
 
   displayAnalysisResults(result: CommitAnalysisResult): void {
+    // Remove duplicate display since it's already shown in the analysis report
     if (result.warnings.length > 0) {
       this.logger.info(`\n${chalk.yellow("⚠️")} Analysis found some concerns:`);
       result.warnings.forEach((warning) => {
@@ -149,9 +212,6 @@ export class CommitAnalysisController {
           `  ${chalk.dim("•")} ${chalk.yellow(warning.message)}`,
         );
       });
-    } else {
-      this.logger.info("\n✅ Analysis completed successfully!");
-      this.logger.info(chalk.green("No issues detected."));
     }
   }
 }
