@@ -1,5 +1,14 @@
 import { LoggerService } from "../src/services/logger.service.js";
 import { Config, DeepPartial } from "../src/types/config.types.js";
+import { Severity } from "../src/types/security.types.js";
+
+export type CommandName = "commit" | "branch" | "status" | "init";
+export type CommandSubcommand =
+  | "pr"
+  | "analyze"
+  | "create"
+  | "suggest"
+  | "edit";
 
 export interface TestScenario {
   id: string;
@@ -29,8 +38,8 @@ export interface TestScenario {
       execute?: boolean;
     };
     command?: {
-      name: "commit" | "branch" | "status" | "init";
-      subcommand?: "analyze" | "create" | "suggest" | "pr" | "edit";
+      name: CommandName;
+      subcommand?: CommandSubcommand;
       args?: string[];
     };
   };
@@ -76,3 +85,24 @@ export const TestSuites = {
 } as const;
 
 export type TestSuiteKey = (typeof TestSuites)[keyof typeof TestSuites];
+
+export interface CreateSecurityConfigParams {
+  rules?: {
+    secrets?: {
+      enabled?: boolean;
+      severity?: Severity;
+      patterns?: string[];
+    };
+    files?: {
+      enabled?: boolean;
+      severity?: Severity;
+    };
+  };
+  debug?: boolean;
+}
+
+export interface CreateCommandParams {
+  name: CommandName;
+  subcommand: CommandSubcommand;
+  args: string[];
+}

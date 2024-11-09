@@ -1,6 +1,45 @@
 import { LoggerService } from "../../src/services/logger.service.js";
-import { E2ETest, TestResult, TestScenario } from "../tests.types.js";
+import { Config, DeepPartial } from "../../src/types/config.types.js";
+import {
+  CreateCommandParams,
+  CreateSecurityConfigParams,
+  E2ETest,
+  TestResult,
+  TestScenario,
+} from "../tests.types.js";
 import { runScenario } from "../tests.utils.js";
+
+function createSecurityConfig({
+  rules = {},
+  debug,
+}: CreateSecurityConfigParams = {}): DeepPartial<Config> {
+  return {
+    ...(debug && { debug: true }),
+    security: {
+      enabled: true,
+      rules: {
+        secrets: {
+          enabled: true,
+          severity: "high",
+          ...rules.secrets,
+        },
+        files: {
+          enabled: true,
+          severity: "high",
+          ...rules.files,
+        },
+      },
+    },
+  };
+}
+
+function createCommand({
+  name,
+  subcommand,
+  args,
+}: CreateCommandParams): NonNullable<TestScenario["input"]["command"]> {
+  return { name, subcommand, args };
+}
 
 const scenarios: TestScenario[] = [
   {
@@ -15,28 +54,16 @@ const scenarios: TestScenario[] = [
       ],
       config: {
         debug: true,
-        security: {
-          enabled: true,
-          rules: {
-            secrets: {
-              enabled: true,
-              severity: "high",
-            },
-            files: {
-              enabled: true,
-              severity: "high",
-            },
-          },
-        },
+        ...createSecurityConfig(),
       },
     },
     input: {
       message: "add config",
-      command: {
+      command: createCommand({
         name: "commit",
         subcommand: "analyze",
         args: ["--unstaged", "--debug"],
-      },
+      }),
     },
   },
   {
@@ -49,29 +76,15 @@ const scenarios: TestScenario[] = [
           content: "DATABASE_URL=postgresql://user:password@localhost:5432/db",
         },
       ],
-      config: {
-        security: {
-          enabled: true,
-          rules: {
-            secrets: {
-              enabled: true,
-              severity: "high",
-            },
-            files: {
-              enabled: true,
-              severity: "high",
-            },
-          },
-        },
-      },
+      config: createSecurityConfig(),
     },
     input: {
       message: "add database config",
-      command: {
+      command: createCommand({
         name: "commit",
         subcommand: "analyze",
         args: ["--all", "--debug"],
-      },
+      }),
     },
   },
   {
@@ -96,25 +109,15 @@ const scenarios: TestScenario[] = [
         },
       ],
       commit: "Add credentials configuration",
-      config: {
-        security: {
-          enabled: true,
-          rules: {
-            secrets: {
-              enabled: true,
-              severity: "high",
-            },
-          },
-        },
-      },
+      config: createSecurityConfig(),
     },
     input: {
       message: "analyze branch changes",
-      command: {
+      command: createCommand({
         name: "branch",
         subcommand: "analyze",
         args: ["--security", "--debug"],
-      },
+      }),
     },
   },
   {
@@ -133,30 +136,21 @@ export const config = {
         },
       ],
       commit: "Update configuration with sensitive data",
-      config: {
-        security: {
-          enabled: true,
-          rules: {
-            secrets: {
-              enabled: true,
-              severity: "high",
-              patterns: ["private.*key", "password\\s*=\\s*['\"].*['\"]"],
-            },
-            files: {
-              enabled: true,
-              severity: "high",
-            },
+      config: createSecurityConfig({
+        rules: {
+          secrets: {
+            patterns: ["private.*key", "password\\s*=\\s*['\"].*['\"]"],
           },
         },
-      },
+      }),
     },
     input: {
       message: "update configuration",
-      command: {
+      command: createCommand({
         name: "branch",
         subcommand: "analyze",
         args: ["--security"],
-      },
+      }),
     },
   },
 ];
@@ -168,12 +162,10 @@ export const securityTest: E2ETest = {
     logger: LoggerService,
     selectedScenarios?: TestScenario[],
   ): Promise<TestResult[]> {
-    const results: TestResult[] = [];
-    const scenariosToRun = selectedScenarios || scenarios;
-
-    for (const scenario of scenariosToRun) {
-      results.push(await runScenario(scenario, logger));
-    }
-    return results;
+    return Promise.all(
+      (selectedScenarios || scenarios).map((scenario) =>
+        runScenario(scenario, logger),
+      ),
+    );
   },
 };
