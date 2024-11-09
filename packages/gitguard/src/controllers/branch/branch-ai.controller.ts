@@ -3,17 +3,17 @@ import {
   DEFAULT_CONTEXT_LINES,
   DEFAULT_MAX_PROMPT_TOKENS,
 } from "../../constants.js";
+import { GitHubService } from "../../services/github.service.js";
+import { PRService } from "../../services/pr.service.js";
 import { AIProvider } from "../../types/ai.types.js";
 import { PRAnalysisResult } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { Logger } from "../../types/logger.types.js";
-import { PRService } from "../../services/pr.service.js";
-import { checkAILimits } from "../../utils/ai-limits.util.js";
+import { checkAILimits, displayTokenInfo } from "../../utils/ai-limits.util.js";
 import { generatePRDescriptionPrompt } from "../../utils/ai-prompt.util.js";
-import { formatDiffForAI } from "../../utils/diff.util.js";
 import { copyToClipboard } from "../../utils/clipboard.util.js";
+import { formatDiffForAI } from "../../utils/diff.util.js";
 import { promptAIAction, promptYesNo } from "../../utils/user-prompt.util.js";
-import { GitHubService } from "../../services/github.service.js";
 
 interface BranchAIControllerParams {
   logger: Logger;
@@ -126,18 +126,6 @@ export class BranchAIController {
     });
   }
 
-  private displayTokenInfo(tokenUsage: {
-    estimatedCost: string;
-    count: number;
-  }): void {
-    this.logger.info(
-      `\n💰 ${chalk.cyan("Estimated cost:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
-    );
-    this.logger.info(
-      `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}/${chalk.dim(this.config.ai.maxPromptTokens)}`,
-    );
-  }
-
   private async processAIAction({
     analysisResult,
     prompt,
@@ -202,7 +190,7 @@ export class BranchAIController {
         }
         break;
       }
-      case "copy": {
+      case "copy-api": {
         await copyToClipboard({ text: prompt, logger: this.logger });
         this.logger.info("\n✅ AI prompt copied to clipboard!");
         break;
@@ -234,7 +222,12 @@ export class BranchAIController {
     const prompt = await this.generatePrompt(analysisResult, bestDiff);
     const tokenUsage = this.ai.calculateTokenUsage({ prompt });
 
-    this.displayTokenInfo(tokenUsage);
+    displayTokenInfo({
+      tokenUsage,
+      prompt,
+      maxTokens: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+      logger: this.logger,
+    });
 
     if (
       !checkAILimits({ tokenUsage, config: this.config, logger: this.logger })

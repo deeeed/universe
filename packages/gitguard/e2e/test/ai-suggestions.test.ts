@@ -7,10 +7,15 @@ import { runScenario } from "../tests.utils.js";
 
 const scenarios: TestScenario[] = [
   {
-    id: "basic-suggestions",
-    name: "AI suggestions enabled",
+    id: "commit-ai-basic",
+    name: "Basic commit with AI suggestions",
     setup: {
-      files: [{ path: "src/feature.ts", content: "console.log('test');" }],
+      files: [
+        {
+          path: "src/api/auth.ts",
+          content: "export const auth = () => console.log('auth');",
+        },
+      ],
       config: {
         ai: {
           enabled: true,
@@ -24,36 +29,96 @@ const scenarios: TestScenario[] = [
           },
         },
       },
-      commit: "Initial setup",
-      branch: "feature/test-ai",
       changes: [
         {
-          path: "src/feature.ts",
+          path: "src/api/auth.ts",
           content: `
-function add(a: number, b: number): number {
-  return a + b;
+export interface AuthConfig {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
 }
 
-console.log('test');
-console.log(add(1, 2));
-`,
+export class OAuth2Client {
+  constructor(private config: AuthConfig) {}
+  
+  async authenticate() {
+    // Implementation
+  }
+}`,
         },
       ],
     },
     input: {
-      message: "add new feature",
+      message: "implement oauth authentication",
       command: {
         name: "commit",
         subcommand: "suggest",
-        args: ["--debug"],
+        args: ["--staged"],
       },
     },
   },
+
   {
-    id: "complex-suggestions",
-    name: "Complex AI suggestions",
+    id: "commit-ai-large",
+    name: "Commit with large changes (should exceed limits)",
     setup: {
-      files: [{ path: "src/feature.ts", content: "console.log('test');" }],
+      files: [{ path: "src/generated.ts", content: "// Initial content" }],
+      config: {
+        ai: {
+          enabled: true,
+          provider: "azure",
+          maxPromptTokens: 2000, // Intentionally low limit
+          maxPromptCost: 0.01,
+          azure: {
+            endpoint: "",
+            deployment: "",
+            apiVersion: "",
+            apiKey: "",
+          },
+        },
+      },
+      changes: [
+        {
+          path: "src/generated.ts",
+          content: Array.from(
+            { length: 100 },
+            (_, i) => `
+export interface Type${i} {
+  id: string;
+  metadata: Record<string, unknown>;
+  config: { enabled: boolean; settings: Record<string, unknown>; };
+}
+export class Service${i} {
+  constructor(private config: Type${i}) {}
+  async process(): Promise<void> {
+    console.log('Processing', this.config);
+  }
+}`,
+          ).join("\n"),
+        },
+      ],
+    },
+    input: {
+      message: "update generated types",
+      command: {
+        name: "commit",
+        subcommand: "suggest",
+        args: ["--staged"],
+      },
+    },
+  },
+
+  {
+    id: "branch-ai-analyze",
+    name: "Branch analysis with AI suggestions",
+    setup: {
+      files: [
+        {
+          path: "src/components/Button.tsx",
+          content: "export const Button = () => <button>Click</button>;",
+        },
+      ],
       config: {
         ai: {
           enabled: true,
@@ -67,13 +132,79 @@ console.log(add(1, 2));
           },
         },
       },
+      branch: "feature/ui-components",
+      changes: [
+        {
+          path: "src/components/Button.tsx",
+          content: `
+export interface ButtonProps {
+  variant: 'primary' | 'secondary';
+  size: 'sm' | 'md' | 'lg';
+  label: string;
+  onClick: () => void;
+}
+
+export const Button = ({ variant, size, label, onClick }: ButtonProps) => {
+  return (
+    <button
+      className={\`btn btn-\${variant} btn-\${size}\`}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
+};`,
+        },
+      ],
     },
     input: {
-      message: "implement new authentication system with oauth2",
+      message: "analyze branch changes",
       command: {
-        name: "commit",
-        subcommand: "suggest",
-        args: ["--ai", "-m", "implement oauth2 authentication system"],
+        name: "branch",
+        subcommand: "analyze",
+        args: ["--ai"],
+      },
+    },
+  },
+
+  {
+    id: "branch-ai-pr",
+    name: "Create PR with AI suggestions",
+    setup: {
+      // Same setup as branch-ai-analyze
+      files: [
+        {
+          path: "src/components/Button.tsx",
+          content: "export const Button = () => <button>Click</button>;",
+        },
+      ],
+      config: {
+        ai: {
+          enabled: true,
+          provider: "azure",
+          maxPromptTokens: 4000,
+          azure: {
+            endpoint: "",
+            deployment: "",
+            apiVersion: "",
+            apiKey: "",
+          },
+        },
+      },
+      branch: "feature/ui-components",
+      changes: [
+        {
+          path: "src/components/Button.tsx",
+          content: `// ... same Button component content ...`,
+        },
+      ],
+    },
+    input: {
+      message: "create PR with AI description",
+      command: {
+        name: "branch",
+        subcommand: "pr",
+        args: ["--ai", "--draft"],
       },
     },
   },

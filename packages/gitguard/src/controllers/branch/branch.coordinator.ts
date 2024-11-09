@@ -149,13 +149,6 @@ export async function analyzeBranch({
       });
     }
 
-    // Handle AI suggestions if enabled
-    if (options.ai && services.ai) {
-      analysisResult = await controllers.aiController.handleAISuggestions({
-        analysisResult,
-      });
-    }
-
     // Generate report
     reporter.generateReport({
       result: analysisResult,
@@ -164,13 +157,41 @@ export async function analyzeBranch({
       },
     });
 
-    // Handle PR creation if requested
-    if (options.createPR || options.draft) {
-      analysisResult = await controllers.prController.createPullRequest({
-        options,
-        analysisResult,
-        branchToAnalyze,
-      });
+    // Handle AI suggestions if enabled (for both analyze and PR commands)
+    if (options.ai && services.ai) {
+      if (options.createPR || options.draft) {
+        // For PR creation, validate GitHub access first
+        const hasGitHubAccess =
+          await controllers.prController.validateGitHubAccess();
+        if (hasGitHubAccess) {
+          analysisResult = await controllers.aiController.handleAISuggestions({
+            analysisResult,
+          });
+
+          // Create/update PR after AI suggestions
+          analysisResult = await controllers.prController.createPullRequest({
+            options,
+            analysisResult,
+            branchToAnalyze,
+          });
+        }
+      } else {
+        // For analyze command, generate AI suggestions without GitHub validation
+        analysisResult = await controllers.aiController.handleAISuggestions({
+          analysisResult,
+        });
+      }
+    } else if (options.createPR || options.draft) {
+      // Handle PR creation without AI
+      const hasGitHubAccess =
+        await controllers.prController.validateGitHubAccess();
+      if (hasGitHubAccess) {
+        analysisResult = await controllers.prController.createPullRequest({
+          options,
+          analysisResult,
+          branchToAnalyze,
+        });
+      }
     }
 
     controllers.securityController.displaySecuritySummary(securityResult);

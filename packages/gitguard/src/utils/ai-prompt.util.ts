@@ -126,6 +126,7 @@ export interface CommitSuggestionPromptParams {
   logger: Logger;
   scope?: string;
   needsDetailedMessage?: boolean;
+  isClipboard?: boolean;
 }
 
 export function generateCommitSuggestionPrompt(
@@ -135,23 +136,38 @@ export function generateCommitSuggestionPrompt(
     .map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`)
     .join("\n");
 
+  if (params.isClipboard) {
+    return `You are a helpful AI assistant specializing in Git commits. Please help me create a good commit message for the following changes:
+
+Context:
+- Files Changed:
+${fileChanges}
+${params.message ? `\nOriginal commit message draft:\n${params.message}` : ""}
+${params.needsDetailedMessage ? "\nNote: These changes are complex and would benefit from a detailed explanation." : ""}
+${params.scope ? `\nSuggested scope: ${params.scope}` : ""}
+
+Changes:
+\`\`\`diff
+${params.diff}
+\`\`\`
+
+Please suggest a commit message following the Conventional Commits format (https://www.conventionalcommits.org/). 
+The message should include:
+1. Type (feat, fix, docs, style, refactor, test, chore)
+2. Optional scope in parentheses
+3. Clear, concise description
+4. Optional detailed explanation for complex changes
+
+Respond in a conversational way, explaining your reasoning and suggesting alternatives if relevant.`;
+  }
+
   const messageGuideline = params.needsDetailedMessage
     ? `\nFor the message field, provide bullet points covering:
 • High-level architectural changes
 • New features or removed functionality
 • Breaking changes and impact
 • Major refactoring decisions
-• Dependencies affected
-
-Format:
-• Use bullet points (•)
-• Keep each point concise
-• Focus on impact and changes
-
-Do not include:
-• Number of lines changed
-• Implementation details
-• File paths or specific code changes`
+• Dependencies affected`
     : "\nMessage field is optional for simple changes";
 
   return `Analyze these git changes and suggest commit messages following conventional commits format.

@@ -4,6 +4,7 @@ import { AIProvider } from "../types/ai.types.js";
 import { CommitSuggestion } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
 import { Logger } from "../types/logger.types.js";
+import { TokenUsage } from "../types/ai.types.js";
 
 // Common patterns helpers
 export async function displaySuggestions(params: {
@@ -415,40 +416,38 @@ export async function promptUser(
 }
 
 // Add new interface and function for AI prompts
-export async function promptAIAction(params: {
+export type AIAction = "generate" | "copy-api" | "copy-manual" | "skip";
+
+export async function promptAIAction({
+  logger,
+  tokenUsage,
+}: {
   logger: Logger;
-  tokenUsage: {
-    count: number;
-    estimatedCost: string;
-  };
-}): Promise<{ action: "generate" | "copy" | "skip" }> {
-  const { logger } = params;
+  tokenUsage: TokenUsage;
+}): Promise<{ action: AIAction }> {
+  logger.info("\nChoose an action:");
+  logger.info(
+    `1. Generate AI suggestions now ${chalk.dim(`(estimated cost: $${tokenUsage.estimatedCost}, tokens: ${tokenUsage.count})`)}`,
+  );
+  logger.info("2. Copy API prompt (JSON format) to clipboard");
+  logger.info("3. Copy manual prompt (human-friendly) to clipboard");
+  logger.info("4. Skip AI suggestions");
 
-  logger.info("\n1. Generate AI suggestions now");
-  logger.info("2. Copy prompt to clipboard for manual use");
-  logger.info("3. Skip AI suggestions");
-
-  const readline = await import("readline/promises");
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+  const answer = await promptNumeric({
+    message: "\nEnter your choice (number):",
+    allowEmpty: false,
+    maxValue: 4,
+    logger,
   });
 
-  try {
-    const answer = await rl.question("\nEnter your choice (number): ");
+  const actionMap: Record<number, AIAction> = {
+    1: "generate",
+    2: "copy-api",
+    3: "copy-manual",
+    4: "skip",
+  };
 
-    switch (answer.trim()) {
-      case "1":
-        return { action: "generate" };
-      case "2":
-        return { action: "copy" };
-      case "3":
-      default:
-        return { action: "skip" };
-    }
-  } finally {
-    rl.close();
-  }
+  return { action: actionMap[Number(answer) || 4] };
 }
 
 // Add new helper function for creating readline interface

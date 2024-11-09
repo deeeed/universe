@@ -30,7 +30,7 @@ export interface TestScenario {
     };
     command?: {
       name: "commit" | "branch" | "status" | "init";
-      subcommand?: "analyze" | "create" | "suggest" | "pr";
+      subcommand?: "analyze" | "create" | "suggest" | "pr" | "edit";
       args?: string[];
     };
   };

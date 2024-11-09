@@ -77,16 +77,8 @@ async function setupTestRepo(
 
     // Create initial commit on main branch
     execSync("git checkout -b main", { cwd: testDir });
-    execSync("git commit --allow-empty -m 'Initial commit'", { cwd: testDir });
 
-    // Create and switch to feature branch if specified
-    if (scenario.setup.branch) {
-      logger.debug(`Creating feature branch: ${scenario.setup.branch}`);
-      execSync(`git checkout -b ${scenario.setup.branch}`, { cwd: testDir });
-    }
-
-    // Create test files
-    logger.debug("Creating test files");
+    // Create and commit initial files
     for (const file of scenario.setup.files) {
       const filePath = join(testDir, file.path);
       const dirPath = dirname(filePath);
@@ -95,23 +87,29 @@ async function setupTestRepo(
       logger.debug(`Created file: ${filePath}`);
     }
 
-    // Stage and commit files if specified
-    if (scenario.setup.commit) {
-      logger.debug("Staging and committing files");
-      execSync("git add .", { cwd: testDir });
-      execSync(`git commit -m "${scenario.setup.commit}"`, { cwd: testDir });
-    }
+    // Commit initial files to main
+    execSync("git add .", { cwd: testDir });
+    execSync("git commit -m 'Initial commit with files'", { cwd: testDir });
 
-    // Apply changes after initial commit if specified
-    if (scenario.setup.changes) {
-      logger.debug("Applying changes to test files");
-      for (const change of scenario.setup.changes) {
-        const filePath = join(testDir, change.path);
-        await writeFile(filePath, change.content);
-        logger.debug(`Modified file: ${filePath}`);
+    // Create and switch to feature branch if specified
+    if (scenario.setup.branch) {
+      logger.debug(`Creating feature branch: ${scenario.setup.branch}`);
+      execSync(`git checkout -b ${scenario.setup.branch}`, { cwd: testDir });
+
+      // Apply changes in feature branch
+      if (scenario.setup.changes) {
+        logger.debug("Applying changes to test files");
+        for (const change of scenario.setup.changes) {
+          const filePath = join(testDir, change.path);
+          await writeFile(filePath, change.content);
+          logger.debug(`Modified file: ${filePath}`);
+        }
+        // Commit changes in feature branch
+        execSync("git add .", { cwd: testDir });
+        execSync("git commit -m 'Update files in feature branch'", {
+          cwd: testDir,
+        });
       }
-      // Stage the changes
-      execSync("git add .", { cwd: testDir });
     }
 
     // Create .gitguard directory and config
