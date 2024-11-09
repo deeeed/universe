@@ -141,7 +141,7 @@ async function setupTestRepo(
       if (!isCommitScenario && !isUnstagedTest) {
         // For branch scenarios or when not testing unstaged changes, create a commit
         execGitCommand(
-          `git commit -m "feat: update ${scenario.setup.branch || "files"} with changes"`,
+          `git commit -m "feat: update ${scenario.setup.branch ?? "files"} with changes"`,
           testDir,
         );
         logger.debug("Created commit for changes");
