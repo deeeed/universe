@@ -49,7 +49,7 @@ interface GeneratePromptParams {
   message?: string;
   bestDiff: { content: string };
   result: CommitAnalysisResult;
-  isClipboard?: boolean;
+  format?: "api" | "human";
 }
 
 interface SelectBestDiffParams {
@@ -166,7 +166,7 @@ export class CommitAIController {
     message,
     bestDiff,
     result,
-    isClipboard = false,
+    format = "api",
   }: GeneratePromptParams): string {
     return generateCommitSuggestionPrompt({
       files,
@@ -174,7 +174,7 @@ export class CommitAIController {
       diff: bestDiff.content,
       logger: this.logger,
       needsDetailedMessage: result.complexity.needsStructure,
-      isClipboard,
+      format,
     });
   }
 
@@ -409,7 +409,7 @@ export class CommitAIController {
           message,
           bestDiff,
           result,
-          isClipboard: false,
+          format: "api",
         });
 
         await this.handleClipboardCopy({
@@ -431,7 +431,7 @@ export class CommitAIController {
           message,
           bestDiff,
           result,
-          isClipboard: true,
+          format: "human",
         });
 
         await this.handleClipboardCopy({

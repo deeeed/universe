@@ -7,8 +7,6 @@ const scenarios: TestScenario[] = [
     id: "secrets-detection",
     name: "Security check - AWS credentials",
     setup: {
-      branch: "feature/aws-config",
-      commit: "Add AWS configuration",
       files: [
         {
           path: ".env",
@@ -16,6 +14,7 @@ const scenarios: TestScenario[] = [
         },
       ],
       config: {
+        debug: true,
         security: {
           enabled: true,
           rules: {
@@ -34,9 +33,9 @@ const scenarios: TestScenario[] = [
     input: {
       message: "add config",
       command: {
-        name: "branch",
+        name: "commit",
         subcommand: "analyze",
-        args: ["--security"],
+        args: ["--unstaged", "--debug"],
       },
     },
   },
@@ -44,8 +43,6 @@ const scenarios: TestScenario[] = [
     id: "token-detection",
     name: "Security check - Environment variables",
     setup: {
-      branch: "feature/db-config",
-      commit: "Add database configuration",
       files: [
         {
           path: ".env.local",
@@ -71,9 +68,9 @@ const scenarios: TestScenario[] = [
     input: {
       message: "add database config",
       command: {
-        name: "branch",
+        name: "commit",
         subcommand: "analyze",
-        args: ["--security"],
+        args: ["--all", "--debug"],
       },
     },
   },
@@ -81,36 +78,29 @@ const scenarios: TestScenario[] = [
     id: "branch-security",
     name: "Branch Security - PR Creation with Secrets",
     setup: {
-      branch: "feature/credentials",
-      commit: "Add API credentials",
       files: [
         {
+          path: "src/dummy.ts",
+          content: "// Initial file",
+        },
+      ],
+      branch: "feature/credentials",
+      changes: [
+        {
           path: "config/credentials.json",
-          content: JSON.stringify({
-            apiKey: "sk-1234567890abcdef",
-            secretToken: "github_pat_11AABBCC",
-          }),
+          content: '{"aws_key": "AKIA123456789ABCDEF"}',
         },
         {
           path: "src/config.ts",
-          content: `
-export const config = {
-  database: {
-    url: "postgresql://user:password@localhost:5432/db"
-  }
-};`,
+          content: 'export const DB_PASSWORD = "super_secret_123";',
         },
       ],
+      commit: "Add credentials configuration",
       config: {
         security: {
           enabled: true,
           rules: {
             secrets: {
-              enabled: true,
-              severity: "high",
-              blockPR: true,
-            },
-            files: {
               enabled: true,
               severity: "high",
             },
@@ -119,11 +109,11 @@ export const config = {
       },
     },
     input: {
-      message: "add credentials",
+      message: "analyze branch changes",
       command: {
         name: "branch",
         subcommand: "analyze",
-        args: ["--debug", "--security"],
+        args: ["--security", "--debug"],
       },
     },
   },

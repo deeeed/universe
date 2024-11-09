@@ -88,6 +88,7 @@ function initializeControllers(services: ServicesContext): ControllersContext {
     aiController: new BranchAIController({
       logger,
       ai,
+      git,
       prService,
       github,
       config,

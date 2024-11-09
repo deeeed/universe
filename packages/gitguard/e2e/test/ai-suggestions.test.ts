@@ -29,6 +29,7 @@ const scenarios: TestScenario[] = [
           },
         },
       },
+      commit: "Initial auth implementation",
       changes: [
         {
           path: "src/api/auth.ts",
@@ -131,7 +132,11 @@ export class Service${i} {
             apiKey: "",
           },
         },
+        git: {
+          baseBranch: "main",
+        },
       },
+      commit: "Initial button component",
       branch: "feature/ui-components",
       changes: [
         {

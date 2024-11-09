@@ -41,96 +41,101 @@ export interface SecurityCheckResult {
 
 // Mapping your Python patterns to TypeScript
 export const SECRET_PATTERNS: SecurityPattern[] = [
-  // AWS
+  // AWS patterns - make more specific
   {
     name: "AWS Access Key ID",
-    pattern: /AKIA[0-9A-Z]{16}/,
+    pattern: /(?:^|[^\w/])(AKIA[0-9A-Z]{16})(?:[^\w]|$)/,
     severity: "high",
   },
   {
     name: "AWS Secret Access Key",
-    pattern: /[0-9a-zA-Z/+]{40}/,
+    // Only match if preceded by appropriate key name or assignment
+    pattern:
+      /(?:aws_secret|secret_key|secret_access_key)['"]?\s*[:=]\s*['"]([0-9a-zA-Z/+]{40})['"]/i,
     severity: "high",
   },
   {
     name: "AWS MWS Key",
     pattern:
-      /amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
+      /(?:^|[^\w])(amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[^\w]|$)/,
     severity: "high",
   },
 
-  // Generic API Keys and Tokens
+  // Generic API Keys and Tokens - make context-aware
   {
     name: "Generic API Key",
     pattern:
-      /['"](api[_-]?key|apikey|api[_-]?token)['"]\s*[:=]\s*['"][\w\-+=]{16,}['"]/i,
+      /(?:^|\s)['"](?:api[_-]?key|apikey|api[_-]?token)['"][\s]*[:=][\s]*['"]([a-zA-Z0-9_\-+=]{16,})['"]/i,
     severity: "high",
   },
   {
     name: "Authentication Token",
     pattern:
-      /['"]?(auth[_-]?token|access[_-]?token)['"]?\s*[:=]\s*['"][\w\-+=]{16,}['"]/i,
+      /(?:^|\s)['"](?:auth[_-]?token|access[_-]?token)['"][\s]*[:=][\s]*['"]([a-zA-Z0-9_\-+=]{16,})['"]/i,
     severity: "high",
   },
 
-  // Database Connection Strings
+  // Database patterns - add more context
   {
     name: "Database URL",
     pattern:
-      /(postgres|mysql|mongodb|redis):\/\/[^:]+:[^@]+@[^:]+:[0-9]+\/[^'"]+/,
+      /['"]?(?:postgres|mysql|mongodb|redis):\/\/[^:]+:([^@]{8,})@[^:]+:[0-9]+\/[^'"]+['"]?/,
     severity: "high",
   },
   {
     name: "Database Password",
     pattern:
-      /['"]?(db[_-]?password|database[_-]?password)['"]?\s*[:=]\s*['"][^'"]+['"]/i,
+      /(?:^|\s)(?:DB_PASSWORD|DATABASE_PASSWORD)\s*=\s*['"]([^'"]+)['"]/i,
     severity: "high",
   },
 
-  // Cloud Platform Keys
+  // Cloud Platform Keys - add context and boundaries
   {
     name: "Google API Key",
-    pattern: /AIza[0-9A-Za-z\-_]{35}/,
+    pattern: /(?:^|[^\w])(AIza[0-9A-Za-z\-_]{35})(?:[^\w]|$)/,
     severity: "high",
   },
   {
     name: "Google OAuth",
-    pattern: /[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com/,
+    pattern:
+      /(?:^|[^\w])([0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com)(?:[^\w]|$)/,
     severity: "high",
   },
   {
     name: "Azure Key",
-    pattern: /[0-9a-zA-Z]{32}|[0-9a-zA-Z]{24}/,
+    pattern:
+      /(?:^|\s)['"]?azure[_-]?key['"]?\s*[:=]\s*['"]([0-9a-zA-Z]{24}|[0-9a-zA-Z]{32})['"](?:\s|$)/i,
     severity: "high",
   },
 
-  // Private Keys and Certificates
+  // Private Keys - make more specific
   {
     name: "Private Key",
-    pattern: /-----BEGIN\s+PRIVATE\s+KEY( BLOCK)?-----/,
+    pattern:
+      /-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY(?:\s+BLOCK)?-----[\s\S]+?-----END/,
     severity: "high",
   },
   {
     name: "SSH Private Key",
     pattern:
-      /-----BEGIN\s+(?:RSA|DSA|EC|OPENSSH)\s+PRIVATE\s+KEY( BLOCK)?-----/,
+      /-----BEGIN\s+(?:RSA|DSA|EC|OPENSSH)\s+PRIVATE\s+KEY(?:\s+BLOCK)?-----[\s\S]+?-----END/,
     severity: "high",
   },
 
-  // Platform-specific Tokens
+  // Platform-specific Tokens - add context
   {
     name: "GitHub Token",
-    pattern: /gh[ps]_[0-9a-zA-Z]{36}/,
+    pattern: /(?:^|[^\w])(gh[ps]_[0-9a-zA-Z]{36})(?:[^\w]|$)/,
     severity: "high",
   },
   {
     name: "Slack Token",
-    pattern: /xox[baprs]-([0-9a-zA-Z]{10,48})/,
+    pattern: /(?:^|[^\w])(xox[baprs]-[0-9a-zA-Z]{10,48})(?:[^\w]|$)/,
     severity: "high",
   },
   {
     name: "Stripe API Key",
-    pattern: /sk_live_[0-9a-zA-Z]{24}/,
+    pattern: /(?:^|[^\w])(sk_live_[0-9a-zA-Z]{24})(?:[^\w]|$)/,
     severity: "high",
   },
 ];
