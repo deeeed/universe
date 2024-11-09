@@ -273,7 +273,20 @@ Please provide:
    - Key implementation details
    - Breaking changes (if any)
    - Migration steps (if needed)
-3. Any testing instructions or special considerations`;
+3. Any testing instructions or special considerations
+
+Format your response in markdown with clear headings and sections, making it ready to copy directly into the PR description. Include:
+
+# Title
+[Your suggested title]
+
+# Description
+[Your comprehensive description]
+
+# Testing Instructions
+[Any testing steps or considerations]
+
+${params.template ? "# Template Sections\n[Fill in template-specific sections]" : ""}`;
   }
 
   // API format (default)
