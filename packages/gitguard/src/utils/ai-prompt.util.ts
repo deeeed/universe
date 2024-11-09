@@ -169,7 +169,7 @@ Suggested message:
 [complete commit message]
 
 Command to execute:
-\`git commit -m "type(scope): title" -m "detailed message if any"\``;
+git commit -m "type(scope): title" -m "detailed message if any"`;
   }
 
   // API format (default)
