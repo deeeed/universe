@@ -11,9 +11,13 @@ import { Config } from "../../types/config.types.js";
 import { FileChange } from "../../types/git.types.js";
 import { Logger } from "../../types/logger.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
-import { checkAILimits } from "../../utils/ai-limits.util.js";
+import { checkAILimits, displayTokenInfo } from "../../utils/ai-limits.util.js";
 import { generateCommitSuggestionPrompt } from "../../utils/ai-prompt.util.js";
-import { copyToClipboard } from "../../utils/clipboard.util.js";
+import {
+  DiffStrategy,
+  handleClipboardCopy,
+  selectBestDiff,
+} from "../../utils/shared-ai-controller.util.js";
 import {
   displayAISuggestions,
   displaySplitSuggestions,
@@ -42,6 +46,25 @@ interface HandleSplitSuggestionsParams {
   message?: string;
   securityResult: SecurityCheckResult;
   enableAI: boolean;
+}
+
+interface GeneratePromptParams {
+  files: FileChange[];
+  message?: string;
+  bestDiff: DiffStrategy;
+  result: CommitAnalysisResult;
+  format?: "api" | "human";
+}
+
+interface ExecuteCommitParams {
+  suggestion: CommitSuggestion;
+  detectedScope?: string;
+}
+
+interface SelectBestDiffLocalParams {
+  fullDiff: string;
+  prioritizedDiffs: string;
+  isClipboardAction: boolean;
 }
 
 export class CommitAIController {
@@ -108,85 +131,40 @@ export class CommitAIController {
     );
   }
 
-  private selectBestDiff(
-    fullDiff: string,
-    prioritizedDiffs: string,
-  ): { name: string; content: string; score: number } {
-    const diffs = [
-      {
-        name: "full",
-        content: fullDiff,
-        score:
-          fullDiff.length >
-          (this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS) / 4
-            ? 0
-            : 1,
-      },
-      {
-        name: "prioritized",
-        content: prioritizedDiffs,
-        score: prioritizedDiffs.length > 0 ? 2 : 0,
-      },
-    ];
-
-    return diffs.reduce((best, current) => {
-      this.logger.debug(`Comparing diffs:`, {
-        current: {
-          name: current.name,
-          score: current.score,
-          length: current.content.length,
-        },
-        best: {
-          name: best.name,
-          score: best.score,
-          length: best.content.length,
-        },
-      });
-
-      if (current.score > best.score) return current;
-      if (
-        current.score === best.score &&
-        current.content.length < best.content.length
-      )
-        return current;
-      return best;
-    }, diffs[0]);
+  private selectBestDiff({
+    fullDiff,
+    prioritizedDiffs,
+    isClipboardAction,
+  }: SelectBestDiffLocalParams): DiffStrategy {
+    return selectBestDiff({
+      fullDiff,
+      prioritizedDiffs,
+      isClipboardAction,
+      config: this.config,
+    });
   }
 
-  private displayTokenInfo(tokenUsage: {
-    estimatedCost: string;
-    count: number;
-  }): void {
-    this.logger.info(
-      `\n💰 ${chalk.cyan("Estimated cost:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
-    );
-    this.logger.info(
-      `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}/${chalk.dim(this.config.ai.maxPromptTokens)}`,
-    );
-  }
-
-  private generatePrompt(
-    files: FileChange[],
-    message: string | undefined,
-    bestDiff: { content: string },
-    result: CommitAnalysisResult,
-  ): string {
+  private generatePrompt({
+    files,
+    message,
+    bestDiff,
+    result,
+    format = "api",
+  }: GeneratePromptParams): string {
     return generateCommitSuggestionPrompt({
       files,
       message: message ?? "",
       diff: bestDiff.content,
       logger: this.logger,
       needsDetailedMessage: result.complexity.needsStructure,
+      format,
     });
   }
 
   private async executeCommit({
     suggestion,
     detectedScope,
-  }: {
-    suggestion: CommitSuggestion;
-    detectedScope?: string;
-  }): Promise<void> {
+  }: ExecuteCommitParams): Promise<void> {
     const scopeDisplay = detectedScope ? `(${detectedScope})` : "";
     const commitMessage = `${suggestion.type}${scopeDisplay}: ${suggestion.title}${
       suggestion.message ? `\n\n${suggestion.message}` : ""
@@ -328,11 +306,25 @@ export class CommitAIController {
       maxLength: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
     });
 
-    const bestDiff = this.selectBestDiff(fullDiff, prioritizedDiffs);
-    const prompt = this.generatePrompt(files, message, bestDiff, result);
+    const bestDiff = this.selectBestDiff({
+      fullDiff,
+      prioritizedDiffs,
+      isClipboardAction: false,
+    });
+    const prompt = this.generatePrompt({
+      files,
+      message,
+      bestDiff,
+      result,
+    });
     const tokenUsage = this.ai.calculateTokenUsage({ prompt });
 
-    this.displayTokenInfo(tokenUsage);
+    displayTokenInfo({
+      tokenUsage,
+      prompt,
+      maxTokens: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+      logger: this.logger,
+    });
 
     if (
       !checkAILimits({ tokenUsage, config: this.config, logger: this.logger })
@@ -388,12 +380,47 @@ export class CommitAIController {
         };
       }
 
-      case "copy": {
-        await copyToClipboard({
-          text: prompt,
-          logger: this.logger,
+      case "copy-api": {
+        const bestDiff = this.selectBestDiff({
+          fullDiff,
+          prioritizedDiffs,
+          isClipboardAction: true,
         });
-        this.logger.info("\n✅ AI prompt copied to clipboard!");
+
+        const apiPrompt = this.generatePrompt({
+          files,
+          message,
+          bestDiff,
+          result,
+          format: "api",
+        });
+
+        await this.handleClipboardCopy({
+          prompt: apiPrompt,
+          isApi: true,
+        });
+        break;
+      }
+
+      case "copy-manual": {
+        const bestDiff = this.selectBestDiff({
+          fullDiff,
+          prioritizedDiffs,
+          isClipboardAction: true,
+        });
+
+        const manualPrompt = this.generatePrompt({
+          files,
+          message,
+          bestDiff,
+          result,
+          format: "human",
+        });
+
+        await this.handleClipboardCopy({
+          prompt: manualPrompt,
+          isApi: false,
+        });
         break;
       }
 
@@ -403,5 +430,17 @@ export class CommitAIController {
     }
 
     return result;
+  }
+
+  private async handleClipboardCopy(params: {
+    prompt: string;
+    isApi: boolean;
+  }): Promise<void> {
+    return handleClipboardCopy({
+      ...params,
+      ai: this.ai,
+      config: this.config,
+      logger: this.logger,
+    });
   }
 }

@@ -12,6 +12,7 @@ import { loadConfig } from "../../utils/config.util.js";
 import { CommitAIController } from "./commit-ai.controller.js";
 import { CommitAnalysisController } from "./commit-analysis.controller.js";
 import { CommitSecurityController } from "./commit-security.controller.js";
+import chalk from "chalk";
 
 interface CommitAnalyzeParams {
   options: CommitCommandOptions;
@@ -97,30 +98,31 @@ async function getAnalysisContext(
   const currentBranch = await git.getCurrentBranch();
   const baseBranch = services.config.git.baseBranch;
 
-  const shouldAnalyzeStaged = options.all || options.staged !== false;
-  const shouldAnalyzeUnstaged = options.all || options.unstaged === true;
-
-  logger.info(`📊 Analysis scope:`);
-  if (stagedFiles.length > 0) {
-    logger.info(
-      `   • ${stagedFiles.length} staged files${shouldAnalyzeStaged ? " (will analyze)" : " (skipped)"}`,
-    );
-  }
-  if (unstagedFiles.length > 0) {
-    logger.info(
-      `   • ${unstagedFiles.length} unstaged files${shouldAnalyzeUnstaged ? " (will analyze)" : " (skipped)"}`,
-    );
-  }
+  const shouldAnalyzeStaged =
+    options.all || options.staged || (!options.unstaged && !options.all);
+  const shouldAnalyzeUnstaged = options.all || options.unstaged;
 
   const filesToAnalyze = [
     ...(shouldAnalyzeStaged ? stagedFiles : []),
     ...(shouldAnalyzeUnstaged ? unstagedFiles : []),
   ];
 
+  if (filesToAnalyze.length > 0) {
+    logger.info("\n📂 Files to analyze:");
+    if (shouldAnalyzeStaged && stagedFiles.length > 0) {
+      logger.info(`  ${chalk.green("✓")} ${stagedFiles.length} staged files`);
+    }
+    if (shouldAnalyzeUnstaged && unstagedFiles.length > 0) {
+      logger.info(
+        `  ${chalk.yellow("+")} ${unstagedFiles.length} unstaged files`,
+      );
+    }
+  }
+
   return {
     filesToAnalyze,
     shouldAnalyzeStaged,
-    shouldAnalyzeUnstaged,
+    shouldAnalyzeUnstaged: shouldAnalyzeStaged ?? false,
     currentBranch,
     baseBranch,
   };
@@ -132,7 +134,7 @@ async function handleAnalysis(
   controllers: ControllersContext,
   services: ServicesContext,
 ): Promise<CommitAnalysisResult> {
-  const { logger } = services;
+  const { logger, reporter } = services;
   const { analysisController, securityController } = controllers;
   const { filesToAnalyze, shouldAnalyzeStaged } = context;
 
@@ -159,6 +161,10 @@ async function handleAnalysis(
     securityResult,
   });
 
+  logger.info("\n📊 Analysis Report");
+  analysisController.displayAnalysisResults(result);
+  reporter.generateReport({ result, options: {} });
+
   return result;
 }
 
@@ -166,7 +172,7 @@ export async function analyzeCommit({
   options,
 }: CommitAnalyzeParams): Promise<CommitAnalysisResult> {
   const services = await initializeServices(options);
-  const { logger, reporter } = services;
+  const { logger } = services;
 
   try {
     logger.info("\n🎯 Starting commit analysis...");
@@ -181,22 +187,8 @@ export async function analyzeCommit({
 
     let result = await handleAnalysis(options, context, controllers, services);
 
-    if (result.splitSuggestion) {
-      logger.info("\n🔄 Processing split suggestions...");
-      result = await controllers.aiController.handleSplitSuggestions({
-        result,
-        files: filesToAnalyze,
-        message: options.message,
-        securityResult: await controllers.securityController.analyzeSecurity({
-          files: filesToAnalyze,
-          shouldAnalyzeStaged: context.shouldAnalyzeStaged,
-        }),
-        enableAI: options.ai ?? false,
-      });
-    }
-
     if (options.ai && services.ai) {
-      logger.info("\n🤖 Generating AI suggestions...");
+      logger.info("\n🤖 Preparing AI suggestions...");
       result = await controllers.aiController.handleAISuggestions({
         result,
         files: filesToAnalyze,
@@ -204,10 +196,6 @@ export async function analyzeCommit({
         shouldExecute: options.execute,
       });
     }
-
-    logger.info("\n📋 Generating analysis report...");
-    controllers.analysisController.displayAnalysisResults(result);
-    reporter.generateReport({ result, options: {} });
 
     if (options.execute && result.formattedMessage && !options.ai) {
       logger.info("\n💾 Creating commit...");

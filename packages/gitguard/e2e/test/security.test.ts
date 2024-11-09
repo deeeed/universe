@@ -1,14 +1,51 @@
 import { LoggerService } from "../../src/services/logger.service.js";
-import { E2ETest, TestResult, TestScenario } from "../tests.types.js";
+import { Config, DeepPartial } from "../../src/types/config.types.js";
+import {
+  CreateCommandParams,
+  CreateSecurityConfigParams,
+  E2ETest,
+  TestResult,
+  TestScenario,
+} from "../tests.types.js";
 import { runScenario } from "../tests.utils.js";
+
+function createSecurityConfig({
+  rules = {},
+  debug,
+}: CreateSecurityConfigParams = {}): DeepPartial<Config> {
+  return {
+    ...(debug && { debug: true }),
+    security: {
+      enabled: true,
+      rules: {
+        secrets: {
+          enabled: true,
+          severity: "high",
+          ...rules.secrets,
+        },
+        files: {
+          enabled: true,
+          severity: "high",
+          ...rules.files,
+        },
+      },
+    },
+  };
+}
+
+function createCommand({
+  name,
+  subcommand,
+  args,
+}: CreateCommandParams): NonNullable<TestScenario["input"]["command"]> {
+  return { name, subcommand, args };
+}
 
 const scenarios: TestScenario[] = [
   {
     id: "secrets-detection",
     name: "Security check - AWS credentials",
     setup: {
-      branch: "feature/aws-config",
-      commit: "Add AWS configuration",
       files: [
         {
           path: ".env",
@@ -16,115 +53,71 @@ const scenarios: TestScenario[] = [
         },
       ],
       config: {
-        security: {
-          enabled: true,
-          rules: {
-            secrets: {
-              enabled: true,
-              severity: "high",
-            },
-            files: {
-              enabled: true,
-              severity: "high",
-            },
-          },
-        },
+        debug: true,
+        ...createSecurityConfig(),
       },
     },
     input: {
       message: "add config",
-      command: {
-        name: "branch",
+      command: createCommand({
+        name: "commit",
         subcommand: "analyze",
-        args: ["--security"],
-      },
+        args: ["--unstaged", "--debug"],
+      }),
     },
   },
   {
     id: "token-detection",
     name: "Security check - Environment variables",
     setup: {
-      branch: "feature/db-config",
-      commit: "Add database configuration",
       files: [
         {
           path: ".env.local",
           content: "DATABASE_URL=postgresql://user:password@localhost:5432/db",
         },
       ],
-      config: {
-        security: {
-          enabled: true,
-          rules: {
-            secrets: {
-              enabled: true,
-              severity: "high",
-            },
-            files: {
-              enabled: true,
-              severity: "high",
-            },
-          },
-        },
-      },
+      config: createSecurityConfig(),
     },
     input: {
       message: "add database config",
-      command: {
-        name: "branch",
+      command: createCommand({
+        name: "commit",
         subcommand: "analyze",
-        args: ["--security"],
-      },
+        args: ["--all", "--debug"],
+      }),
     },
   },
   {
     id: "branch-security",
     name: "Branch Security - PR Creation with Secrets",
     setup: {
-      branch: "feature/credentials",
-      commit: "Add API credentials",
       files: [
         {
+          path: "src/dummy.ts",
+          content: "// Initial file",
+        },
+      ],
+      branch: "feature/credentials",
+      changes: [
+        {
           path: "config/credentials.json",
-          content: JSON.stringify({
-            apiKey: "sk-1234567890abcdef",
-            secretToken: "github_pat_11AABBCC",
-          }),
+          content: '{"aws_key": "AKIA123456789ABCDEF"}',
         },
         {
           path: "src/config.ts",
-          content: `
-export const config = {
-  database: {
-    url: "postgresql://user:password@localhost:5432/db"
-  }
-};`,
+          content: 'export const DB_PASSWORD = "super_secret_123";',
         },
       ],
-      config: {
-        security: {
-          enabled: true,
-          rules: {
-            secrets: {
-              enabled: true,
-              severity: "high",
-              blockPR: true,
-            },
-            files: {
-              enabled: true,
-              severity: "high",
-            },
-          },
-        },
-      },
+      commit: "Add credentials configuration",
+      config: createSecurityConfig(),
     },
     input: {
-      message: "add credentials",
-      command: {
+      message: "analyze branch changes",
+      command: createCommand({
         name: "branch",
         subcommand: "analyze",
-        args: ["--debug", "--security"],
-      },
+        args: ["--security", "--debug"],
+      }),
     },
   },
   {
@@ -143,30 +136,21 @@ export const config = {
         },
       ],
       commit: "Update configuration with sensitive data",
-      config: {
-        security: {
-          enabled: true,
-          rules: {
-            secrets: {
-              enabled: true,
-              severity: "high",
-              patterns: ["private.*key", "password\\s*=\\s*['\"].*['\"]"],
-            },
-            files: {
-              enabled: true,
-              severity: "high",
-            },
+      config: createSecurityConfig({
+        rules: {
+          secrets: {
+            patterns: ["private.*key", "password\\s*=\\s*['\"].*['\"]"],
           },
         },
-      },
+      }),
     },
     input: {
       message: "update configuration",
-      command: {
+      command: createCommand({
         name: "branch",
         subcommand: "analyze",
         args: ["--security"],
-      },
+      }),
     },
   },
 ];
@@ -178,12 +162,10 @@ export const securityTest: E2ETest = {
     logger: LoggerService,
     selectedScenarios?: TestScenario[],
   ): Promise<TestResult[]> {
-    const results: TestResult[] = [];
-    const scenariosToRun = selectedScenarios || scenarios;
-
-    for (const scenario of scenariosToRun) {
-      results.push(await runScenario(scenario, logger));
-    }
-    return results;
+    return Promise.all(
+      (selectedScenarios || scenarios).map((scenario) =>
+        runScenario(scenario, logger),
+      ),
+    );
   },
 };

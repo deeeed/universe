@@ -4,6 +4,7 @@ import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { AIProvider, TokenUsage } from "../types/ai.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import { BaseService } from "./base.service.js";
+import { DEFAULT_MAX_PROMPT_TOKENS } from "../constants.js";
 
 export interface OpenAIConfig {
   type: "azure" | "openai";
@@ -17,6 +18,7 @@ export interface OpenAIConfig {
     apiKey: string;
     model: string;
     organization?: string;
+    maxTokens?: number;
   };
 }
 
@@ -129,23 +131,27 @@ export class OpenAIService extends BaseService implements AIProvider {
     prompt: string;
     options?: {
       model?: string;
+      isClipboardAction?: boolean;
     };
   }): TokenUsage {
     const modelName = this.getModel();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const encoder = this.getTokenEncoder(modelName);
+    const maxApiTokens =
+      this.config.openai?.maxTokens ?? DEFAULT_MAX_PROMPT_TOKENS;
+    const maxClipboardTokens = 16000; // Higher limit for clipboard
 
     if (!encoder) {
+      const count = Math.ceil(params.prompt.length / 4);
       return {
-        count: Math.ceil(params.prompt.length / 4),
+        count,
         estimatedCost: "unknown",
+        isWithinApiLimits: count <= maxApiTokens,
+        isWithinClipboardLimits: count <= maxClipboardTokens,
       };
     }
 
     try {
-      type EncodedTokens = number[];
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-      const encoded = encoder.encode(params.prompt) as unknown as EncodedTokens;
+      const encoded = encoder.encode(params.prompt) as unknown as number[];
       const tokenCount = encoded.length;
       const pricing = this.getModelPricing(modelName);
       const estimatedCost = (tokenCount / 1000) * pricing.input;
@@ -153,12 +159,16 @@ export class OpenAIService extends BaseService implements AIProvider {
       return {
         count: tokenCount,
         estimatedCost: `$${estimatedCost.toFixed(4)}`,
+        isWithinApiLimits: tokenCount <= maxApiTokens,
+        isWithinClipboardLimits: tokenCount <= maxClipboardTokens,
       };
     } catch (error) {
       this.logger.error("Token calculation error:", error);
       return {
         count: Math.ceil(params.prompt.length / 4),
         estimatedCost: "unknown",
+        isWithinApiLimits: false,
+        isWithinClipboardLimits: false,
       };
     }
   }

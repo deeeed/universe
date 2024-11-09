@@ -6,9 +6,18 @@ export interface BaseAIOptions {
   maxTokens?: number;
   customPrompt?: string;
 }
+
+// Add new interface
+export interface TokenLimits {
+  api: number;
+  clipboard: number;
+}
+
 export interface TokenUsage {
   count: number;
   estimatedCost: string;
+  isWithinApiLimits: boolean;
+  isWithinClipboardLimits: boolean;
 }
 
 // Main AI Provider Interface
@@ -27,6 +36,7 @@ export interface AIProvider {
     prompt: string;
     options?: {
       model?: string;
+      isClipboardAction?: boolean;
     };
   }): TokenUsage;
 }

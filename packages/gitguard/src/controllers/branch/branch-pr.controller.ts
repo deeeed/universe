@@ -39,7 +39,7 @@ export class BranchPRController {
     this.config = config;
   }
 
-  private async validateGitHubAccess(): Promise<boolean> {
+  public async validateGitHubAccess(): Promise<boolean> {
     if (!checkGitHubToken({ config: this.config, logger: this.logger })) {
       this.logger.info("\n❌ Cannot create PR without GitHub token");
       return false;

@@ -11,6 +11,7 @@ export interface PRPromptParams {
   diff?: string;
   stats?: PRStats;
   logger: Logger;
+  format?: "api" | "human";
   options?: {
     includeTesting?: boolean;
     includeChecklist?: boolean;
@@ -126,34 +127,52 @@ export interface CommitSuggestionPromptParams {
   logger: Logger;
   scope?: string;
   needsDetailedMessage?: boolean;
+  format?: "api" | "human";
 }
 
 export function generateCommitSuggestionPrompt(
   params: CommitSuggestionPromptParams,
 ): string {
-  const fileChanges = params.files
-    .map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`)
-    .join("\n");
+  const fileChanges = formatFileChanges({ files: params.files });
 
-  const messageGuideline = params.needsDetailedMessage
-    ? `\nFor the message field, provide bullet points covering:
-• High-level architectural changes
-• New features or removed functionality
-• Breaking changes and impact
-• Major refactoring decisions
-• Dependencies affected
+  if (params.format === "human") {
+    return `You are a helpful AI assistant specializing in Git commits. Please help me create a good commit message for the following changes:
 
-Format:
-• Use bullet points (•)
-• Keep each point concise
-• Focus on impact and changes
+Context:
+- Files Changed:
+${fileChanges}
+${params.message ? `\nOriginal commit message draft:\n${params.message}` : ""}
+${params.needsDetailedMessage ? "\nNote: These changes are complex and would benefit from a detailed explanation." : ""}
+${params.scope ? `\nSuggested scope: ${params.scope}` : ""}
 
-Do not include:
-• Number of lines changed
-• Implementation details
-• File paths or specific code changes`
-    : "\nMessage field is optional for simple changes";
+Changes:
+\`\`\`diff
+${params.diff}
+\`\`\`
 
+Please suggest a commit message following the Conventional Commits format (https://www.conventionalcommits.org/). 
+The message should include:
+1. Type (feat, fix, docs, style, refactor, test, chore)
+2. Optional scope in parentheses
+3. Clear, concise description
+4. Optional detailed explanation for complex changes
+
+Respond with:
+1. Your reasoning for the suggested message
+2. The complete commit message
+3. The exact git command to execute the commit, which I can copy and paste directly
+
+Example response format:
+Reasoning: [your explanation]
+
+Suggested message:
+[complete commit message]
+
+Command to execute:
+git commit -m "type(scope): title" -m "detailed message if any"`;
+  }
+
+  // API format (default)
   return `Analyze these git changes and suggest commit messages following conventional commits format.
 
 Files Changed:
@@ -163,7 +182,8 @@ Key Changes:
 ${params.diff}
 
 Original message: "${params.message}"
-${messageGuideline}
+${params.needsDetailedMessage ? "\nNote: These changes are complex and would benefit from a detailed explanation." : ""}
+${params.scope ? `\nSuggested scope: ${params.scope}` : ""}
 
 Please provide suggestions in this JSON format:
 {
@@ -227,27 +247,59 @@ export function generatePRDescriptionPrompt(params: PRPromptParams): string {
     .join("\n");
 
   const fileChanges = formatFileChanges({ files: params.files });
-
-  const templateInstructions = params.template
-    ? `\nFollow this PR template structure:\n${params.template}`
-    : "";
-
   const diffSection = params.diff
     ? `\nKey Changes:
 \`\`\`diff
-${formatDiffForAI({
-  files: params.files,
-  diff: params.diff,
-  logger: params.logger,
-})}
+${params.diff}
 \`\`\`\n`
     : "";
 
+  if (params.format === "human") {
+    return `You are a helpful AI assistant specializing in Pull Requests. Please help me create a good PR description for these changes:
+
+Base Branch: ${params.baseBranch}
+
+Commits:
+${commitMessages}
+
+Files Changed:
+${fileChanges}${diffSection}
+${params.template ? `\nFollow this PR template structure:\n${params.template}` : ""}
+
+Please provide:
+1. A clear PR title following conventional commits format
+2. A comprehensive description that explains:
+   - The purpose and impact of changes
+   - Key implementation details
+   - Breaking changes (if any)
+   - Migration steps (if needed)
+3. Any testing instructions or special considerations
+
+Format your response in markdown with clear headings and sections, making it ready to copy directly into the PR description. Include:
+
+# Title
+[Your suggested title]
+
+# Description
+[Your comprehensive description]
+
+# Testing Instructions
+[Any testing steps or considerations]
+
+${params.template ? "# Template Sections\n[Fill in template-specific sections]" : ""}`;
+  }
+
+  // API format (default)
   const jsonFormat = {
     title: "concise and descriptive PR title",
-    description:
-      "detailed description explaining the changes, their purpose, and impact",
+    description: "detailed description explaining the changes",
     breaking: "boolean",
+    branchName: "suggested-branch-name",
+    commands: [
+      "git command to create and switch to the branch",
+      "git command to push the branch",
+      "git command to create PR (if applicable)",
+    ],
     ...(params.options?.includeTesting && {
       testing: "specific testing scenarios and instructions",
     }),
@@ -267,10 +319,11 @@ Base Branch: ${params.baseBranch}
 Commits:
 ${commitMessages}
 
-Changed Files:
-${fileChanges}${diffSection}${templateInstructions}
+Files Changed:
+${fileChanges}${diffSection}
+${params.template ? `\nFollow this PR template structure:\n${params.template}` : ""}
 
-Provide the description in this JSON format:
+Please provide suggestions in this JSON format:
 ${JSON.stringify(jsonFormat, null, 2)}
 
 Guidelines:
@@ -281,7 +334,9 @@ Guidelines:
    - Note API changes or breaking changes
    - Include migration steps if needed
 3. Focus on technical impact and implementation details
-4. Avoid listing commit hashes or file paths${params.template ? "\n5. Follow the provided template structure" : ""}`;
+4. Avoid listing commit hashes or file paths
+5. Provide a kebab-case branch name that reflects the changes
+6. Include exact git commands to execute the changes${params.template ? "\n7. Follow the provided template structure" : ""}`;
 }
 
 export function generatePRSplitPrompt(params: PRPromptParams): string {
@@ -290,16 +345,10 @@ export function generatePRSplitPrompt(params: PRPromptParams): string {
     .join("\n");
 
   const fileChanges = formatFileChanges({ files: params.files });
-
-  // Include diff context for better understanding of changes
   const diffSection = params.diff
     ? `\nKey Changes:
 \`\`\`diff
-${formatDiffForAI({
-  files: params.files,
-  diff: params.diff,
-  logger: params.logger,
-})}
+${params.diff}
 \`\`\`\n`
     : "";
 

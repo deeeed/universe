@@ -182,7 +182,7 @@ export class SecurityService extends BaseService {
     for (const line of lines) {
       for (const pattern of patterns) {
         const match = pattern.exec(line);
-        if (match && match[1]) {
+        if (match?.[1]) {
           this.logger.debug(
             `Extracted file path: ${match[1]} from line: ${line}`,
           );

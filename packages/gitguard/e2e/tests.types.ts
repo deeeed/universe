@@ -1,11 +1,24 @@
 import { LoggerService } from "../src/services/logger.service.js";
 import { Config, DeepPartial } from "../src/types/config.types.js";
+import { Severity } from "../src/types/security.types.js";
+
+export type CommandName = "commit" | "branch" | "status" | "init";
+export type CommandSubcommand =
+  | "pr"
+  | "analyze"
+  | "create"
+  | "suggest"
+  | "edit";
 
 export interface TestScenario {
   id: string;
   name: string;
   setup: {
     files: Array<{
+      path: string;
+      content: string;
+    }>;
+    changes?: Array<{
       path: string;
       content: string;
     }>;
@@ -25,8 +38,8 @@ export interface TestScenario {
       execute?: boolean;
     };
     command?: {
-      name: "commit" | "branch" | "status" | "init";
-      subcommand?: "analyze" | "create" | "suggest" | "pr";
+      name: CommandName;
+      subcommand?: CommandSubcommand;
       args?: string[];
     };
   };
@@ -68,6 +81,28 @@ export const TestSuites = {
   SECURITY: "security",
   AI_SUGGESTIONS: "ai-suggestions",
   LARGE_COMMITS: "large-commits",
+  BRANCH_FEATURES: "branch-features",
 } as const;
 
 export type TestSuiteKey = (typeof TestSuites)[keyof typeof TestSuites];
+
+export interface CreateSecurityConfigParams {
+  rules?: {
+    secrets?: {
+      enabled?: boolean;
+      severity?: Severity;
+      patterns?: string[];
+    };
+    files?: {
+      enabled?: boolean;
+      severity?: Severity;
+    };
+  };
+  debug?: boolean;
+}
+
+export interface CreateCommandParams {
+  name: CommandName;
+  subcommand: CommandSubcommand;
+  args: string[];
+}

@@ -6,9 +6,9 @@ import { GitConfig } from "../types/config.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
+import { formatDiffForAI } from "../utils/diff.util.js";
 import { FileUtil } from "../utils/file.util.js";
 import { BaseService } from "./base.service.js";
-import { formatDiffForAI } from "../utils/diff.util.js";
 
 interface GetDiffParams {
   type: "staged" | "range";
@@ -459,32 +459,56 @@ export class GitService extends BaseService {
   async getUnstagedChanges(): Promise<FileChange[]> {
     try {
       this.logger.debug("Getting unstaged changes");
-      const output = await this.execGit({
+      const changes: FileChange[] = [];
+
+      // Get modified but unstaged files
+      const modifiedOutput = await this.execGit({
         command: "diff",
         args: ["--numstat"],
       });
 
-      if (!output.trim()) {
-        this.logger.debug("No unstaged changes found");
-        return [];
+      // Parse modified files
+      if (modifiedOutput.trim()) {
+        const modifiedFiles = modifiedOutput
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => {
+            const [additions = "0", deletions = "0", path = ""] =
+              line.split(/\s+/);
+            return {
+              path,
+              additions: parseInt(additions, 10) || 0,
+              deletions: parseInt(deletions, 10) || 0,
+              status: "modified",
+              ...FileUtil.getFileType({ path }),
+            };
+          });
+        changes.push(...modifiedFiles);
       }
 
-      const files = output
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => {
-          const [additions = "0", deletions = "0", path = ""] =
-            line.split(/\s+/);
-          return {
-            path,
-            additions: parseInt(additions, 10) || 0,
-            deletions: parseInt(deletions, 10) || 0,
-            ...FileUtil.getFileType({ path }),
-          };
-        });
+      // Get untracked files
+      const untrackedOutput = await this.execGit({
+        command: "ls-files",
+        args: ["--others", "--exclude-standard"],
+      });
 
-      this.logger.debug("Unstaged files:", files);
-      return files;
+      // Parse untracked files
+      if (untrackedOutput.trim()) {
+        const untrackedFiles = untrackedOutput
+          .split("\n")
+          .filter(Boolean)
+          .map((path) => ({
+            path: path.trim(),
+            additions: 0,
+            deletions: 0,
+            status: "untracked",
+            ...FileUtil.getFileType({ path }),
+          }));
+        changes.push(...untrackedFiles);
+      }
+
+      this.logger.debug("Unstaged files:", changes);
+      return changes;
     } catch (error) {
       this.logger.error("Failed to get unstaged changes:", error);
       return [];

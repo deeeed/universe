@@ -3,30 +3,36 @@ import {
   DEFAULT_CONTEXT_LINES,
   DEFAULT_MAX_PROMPT_TOKENS,
 } from "../../constants.js";
+import { GitService } from "../../services/git.service.js";
+import { GitHubService } from "../../services/github.service.js";
+import { PRService } from "../../services/pr.service.js";
 import { AIProvider } from "../../types/ai.types.js";
 import { PRAnalysisResult } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { Logger } from "../../types/logger.types.js";
-import { PRService } from "../../services/pr.service.js";
 import { checkAILimits } from "../../utils/ai-limits.util.js";
 import { generatePRDescriptionPrompt } from "../../utils/ai-prompt.util.js";
 import { formatDiffForAI } from "../../utils/diff.util.js";
-import { copyToClipboard } from "../../utils/clipboard.util.js";
+import {
+  DiffStrategy,
+  handleClipboardCopy,
+  selectBestDiff,
+} from "../../utils/shared-ai-controller.util.js";
 import { promptAIAction, promptYesNo } from "../../utils/user-prompt.util.js";
-import { GitHubService } from "../../services/github.service.js";
 
 interface BranchAIControllerParams {
   logger: Logger;
   ai?: AIProvider;
   prService: PRService;
   github: GitHubService;
+  git: GitService;
   config: Config;
 }
 
-interface DiffStrategy {
-  name: string;
-  content: string;
-  score: number;
+interface SelectBestDiffLocalParams {
+  fullDiff: string;
+  prioritizedDiffs: string;
+  isClipboardAction: boolean;
 }
 
 export class BranchAIController {
@@ -34,6 +40,7 @@ export class BranchAIController {
   private readonly ai?: AIProvider;
   private readonly prService: PRService;
   private readonly github: GitHubService;
+  private readonly git: GitService;
   private readonly config: Config;
 
   constructor({
@@ -41,22 +48,60 @@ export class BranchAIController {
     ai,
     prService,
     github,
+    git,
     config,
   }: BranchAIControllerParams) {
     this.logger = logger;
     this.ai = ai;
     this.prService = prService;
     this.github = github;
+    this.git = git;
     this.config = config;
   }
 
-  private selectBestDiffStrategy(
+  private selectBestDiff({
+    fullDiff,
+    prioritizedDiffs,
+    isClipboardAction,
+  }: SelectBestDiffLocalParams): DiffStrategy {
+    return selectBestDiff({
+      fullDiff,
+      prioritizedDiffs,
+      isClipboardAction,
+      config: this.config,
+    });
+  }
+
+  private async generatePrompt(
     analysisResult: PRAnalysisResult,
-  ): DiffStrategy {
-    const fullDiff = analysisResult.diff;
-    const prioritizedDiffs = formatDiffForAI({
+    bestDiff: DiffStrategy,
+    format: "api" | "human" = "api",
+  ): Promise<string> {
+    this.logger.info("\n📝 Loading PR template...");
+    const template = await this.prService.loadPRTemplate();
+
+    if (template) {
+      this.logger.info("✅ PR template loaded successfully");
+      this.logger.debug("Template details:", {
+        sections: template.match(/##\s+([^\n]+)/g)?.map((s) => s.trim()),
+        hasCheckboxes: template.includes("- [ ]"),
+        length: template.length,
+      });
+    } else {
+      this.logger.debug("No PR template found");
+    }
+
+    const diff =
+      bestDiff.content ||
+      (await this.git.getDiff({
+        type: "range",
+        from: this.git.config.baseBranch,
+        to: analysisResult.branch,
+      }));
+
+    const formattedDiff = formatDiffForAI({
       files: analysisResult.files,
-      diff: fullDiff,
+      diff,
       maxLength: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
       logger: this.logger,
       options: {
@@ -66,84 +111,25 @@ export class BranchAIController {
       },
     });
 
-    const diffs: DiffStrategy[] = [
-      {
-        name: "full",
-        content: fullDiff,
-        score:
-          fullDiff.length >
-          (this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS) / 4
-            ? 0
-            : 1,
-      },
-      {
-        name: "prioritized",
-        content: prioritizedDiffs,
-        score: prioritizedDiffs.length > 0 ? 2 : 0,
-      },
-    ];
-
-    this.logDiffStrategies(diffs);
-
-    return diffs.reduce((best, current) => {
-      if (current.score > best.score) return current;
-      if (
-        current.score === best.score &&
-        current.content.length < best.content.length
-      )
-        return current;
-      return best;
-    }, diffs[0]);
-  }
-
-  private logDiffStrategies(diffs: DiffStrategy[]): void {
-    this.logger.debug("Diff strategies comparison:", {
-      full: {
-        length: diffs[0].content.length,
-        preview: diffs[0].content.slice(0, 100) + "...",
-        score: diffs[0].score,
-      },
-      prioritized: {
-        length: diffs[1].content.length,
-        preview: diffs[1].content.slice(0, 100) + "...",
-        score: diffs[1].score,
-      },
-    });
-  }
-
-  private async generatePrompt(
-    analysisResult: PRAnalysisResult,
-    bestDiff: DiffStrategy,
-  ): Promise<string> {
-    const template = await this.prService.loadPRTemplate();
     return generatePRDescriptionPrompt({
       commits: analysisResult.commits,
       files: analysisResult.files,
       baseBranch: analysisResult.baseBranch,
       template,
-      diff: bestDiff.content,
+      diff: formattedDiff,
       logger: this.logger,
+      format,
     });
-  }
-
-  private displayTokenInfo(tokenUsage: {
-    estimatedCost: string;
-    count: number;
-  }): void {
-    this.logger.info(
-      `\n💰 ${chalk.cyan("Estimated cost:")} ${chalk.bold(tokenUsage.estimatedCost)}`,
-    );
-    this.logger.info(
-      `📊 ${chalk.cyan("Estimated tokens:")} ${chalk.bold(tokenUsage.count)}/${chalk.dim(this.config.ai.maxPromptTokens)}`,
-    );
   }
 
   private async processAIAction({
     analysisResult,
     prompt,
+    humanFriendlyPrompt,
   }: {
     analysisResult: PRAnalysisResult;
     prompt: string;
+    humanFriendlyPrompt: string;
   }): Promise<PRAnalysisResult> {
     if (!this.ai) return analysisResult;
 
@@ -202,9 +188,24 @@ export class BranchAIController {
         }
         break;
       }
-      case "copy": {
-        await copyToClipboard({ text: prompt, logger: this.logger });
-        this.logger.info("\n✅ AI prompt copied to clipboard!");
+      case "copy-api": {
+        await handleClipboardCopy({
+          prompt,
+          isApi: true,
+          ai: this.ai,
+          config: this.config,
+          logger: this.logger,
+        });
+        break;
+      }
+      case "copy-manual": {
+        await handleClipboardCopy({
+          prompt: humanFriendlyPrompt,
+          isApi: false,
+          ai: this.ai,
+          config: this.config,
+          logger: this.logger,
+        });
         break;
       }
       case "skip":
@@ -225,23 +226,56 @@ export class BranchAIController {
     }
 
     this.logger.info("\n🤖 Preparing AI suggestions...");
-    const bestDiff = this.selectBestDiffStrategy(analysisResult);
+
+    const fullDiff = await this.git.getDiff({
+      type: "range",
+      from: this.git.config.baseBranch,
+      to: analysisResult.branch,
+    });
+
+    const prioritizedDiffs = formatDiffForAI({
+      files: analysisResult.files,
+      diff: fullDiff,
+      maxLength: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+      logger: this.logger,
+      options: {
+        includeTests: false,
+        prioritizeCore: true,
+        contextLines: DEFAULT_CONTEXT_LINES,
+      },
+    });
+
+    const bestDiff = this.selectBestDiff({
+      fullDiff,
+      prioritizedDiffs,
+      isClipboardAction: false,
+    });
 
     this.logger.info(
       `Using ${chalk.cyan(bestDiff.name)} diff strategy (${chalk.bold(bestDiff.content.length)} chars)`,
     );
 
-    const prompt = await this.generatePrompt(analysisResult, bestDiff);
-    const tokenUsage = this.ai.calculateTokenUsage({ prompt });
-
-    this.displayTokenInfo(tokenUsage);
+    const prompt = await this.generatePrompt(analysisResult, bestDiff, "api");
+    const humanFriendlyPrompt = await this.generatePrompt(
+      analysisResult,
+      bestDiff,
+      "human",
+    );
 
     if (
-      !checkAILimits({ tokenUsage, config: this.config, logger: this.logger })
+      !checkAILimits({
+        tokenUsage: this.ai.calculateTokenUsage({ prompt }),
+        config: this.config,
+        logger: this.logger,
+      })
     ) {
       return analysisResult;
     }
 
-    return this.processAIAction({ analysisResult, prompt });
+    return this.processAIAction({
+      analysisResult,
+      prompt,
+      humanFriendlyPrompt,
+    });
   }
 }
