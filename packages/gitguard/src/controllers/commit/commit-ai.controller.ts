@@ -13,7 +13,11 @@ import { Logger } from "../../types/logger.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
 import { checkAILimits, displayTokenInfo } from "../../utils/ai-limits.util.js";
 import { generateCommitSuggestionPrompt } from "../../utils/ai-prompt.util.js";
-import { copyToClipboard } from "../../utils/clipboard.util.js";
+import {
+  DiffStrategy,
+  handleClipboardCopy,
+  selectBestDiff,
+} from "../../utils/shared-ai-controller.util.js";
 import {
   displayAISuggestions,
   displaySplitSuggestions,
@@ -47,20 +51,20 @@ interface HandleSplitSuggestionsParams {
 interface GeneratePromptParams {
   files: FileChange[];
   message?: string;
-  bestDiff: { content: string };
+  bestDiff: DiffStrategy;
   result: CommitAnalysisResult;
   format?: "api" | "human";
-}
-
-interface SelectBestDiffParams {
-  fullDiff: string;
-  prioritizedDiffs: string;
-  isClipboardAction: boolean;
 }
 
 interface ExecuteCommitParams {
   suggestion: CommitSuggestion;
   detectedScope?: string;
+}
+
+interface SelectBestDiffLocalParams {
+  fullDiff: string;
+  prioritizedDiffs: string;
+  isClipboardAction: boolean;
 }
 
 export class CommitAIController {
@@ -131,34 +135,13 @@ export class CommitAIController {
     fullDiff,
     prioritizedDiffs,
     isClipboardAction,
-  }: SelectBestDiffParams): { name: string; content: string; score: number } {
-    const diffs = [
-      {
-        name: "full",
-        content: fullDiff,
-        score: isClipboardAction
-          ? 2
-          : fullDiff.length >
-              (this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS) / 4
-            ? 0
-            : 1,
-      },
-      {
-        name: "prioritized",
-        content: prioritizedDiffs,
-        score: !isClipboardAction && prioritizedDiffs.length > 0 ? 2 : 0,
-      },
-    ];
-
-    return diffs.reduce((best, current) => {
-      if (current.score > best.score) return current;
-      if (
-        current.score === best.score &&
-        current.content.length < best.content.length
-      )
-        return current;
-      return best;
-    }, diffs[0]);
+  }: SelectBestDiffLocalParams): DiffStrategy {
+    return selectBestDiff({
+      fullDiff,
+      prioritizedDiffs,
+      isClipboardAction,
+      config: this.config,
+    });
   }
 
   private generatePrompt({
@@ -449,53 +432,15 @@ export class CommitAIController {
     return result;
   }
 
-  private async handleClipboardCopy({
-    prompt,
-    isApi,
-  }: {
+  private async handleClipboardCopy(params: {
     prompt: string;
     isApi: boolean;
   }): Promise<void> {
-    const clipboardTokens = this.ai?.calculateTokenUsage({
-      prompt,
-      options: { isClipboardAction: true },
+    return handleClipboardCopy({
+      ...params,
+      ai: this.ai,
+      config: this.config,
+      logger: this.logger,
     });
-
-    if (!clipboardTokens) {
-      this.logger.error(
-        "\n❌ Failed to calculate token usage for clipboard content",
-      );
-      return;
-    }
-
-    if (
-      checkAILimits({
-        tokenUsage: clipboardTokens,
-        config: this.config,
-        logger: this.logger,
-        isClipboardAction: true,
-      })
-    ) {
-      await copyToClipboard({
-        text: prompt,
-        logger: this.logger,
-      });
-      this.logger.info("\n✅ AI prompt copied to clipboard!");
-      if (isApi) {
-        this.logger.info(
-          chalk.dim(
-            "\nTip: This prompt will return a JSON response that matches the API format.",
-          ),
-        );
-      } else {
-        this.logger.info(
-          chalk.dim(
-            "\nTip: Paste this prompt into ChatGPT or similar AI assistant for interactive suggestions.",
-          ),
-        );
-      }
-    } else {
-      this.logger.warn("\n⚠️ Content exceeds maximum clipboard token limit");
-    }
   }
 }

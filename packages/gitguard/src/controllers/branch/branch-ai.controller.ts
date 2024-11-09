@@ -12,8 +12,12 @@ import { Config } from "../../types/config.types.js";
 import { Logger } from "../../types/logger.types.js";
 import { checkAILimits } from "../../utils/ai-limits.util.js";
 import { generatePRDescriptionPrompt } from "../../utils/ai-prompt.util.js";
-import { copyToClipboard } from "../../utils/clipboard.util.js";
 import { formatDiffForAI } from "../../utils/diff.util.js";
+import {
+  DiffStrategy,
+  handleClipboardCopy,
+  selectBestDiff,
+} from "../../utils/shared-ai-controller.util.js";
 import { promptAIAction, promptYesNo } from "../../utils/user-prompt.util.js";
 
 interface BranchAIControllerParams {
@@ -25,13 +29,7 @@ interface BranchAIControllerParams {
   config: Config;
 }
 
-interface DiffStrategy {
-  name: string;
-  content: string;
-  score: number;
-}
-
-interface SelectBestDiffParams {
+interface SelectBestDiffLocalParams {
   fullDiff: string;
   prioritizedDiffs: string;
   isClipboardAction: boolean;
@@ -65,47 +63,13 @@ export class BranchAIController {
     fullDiff,
     prioritizedDiffs,
     isClipboardAction,
-  }: SelectBestDiffParams): DiffStrategy {
-    const diffs: DiffStrategy[] = [
-      {
-        name: "full",
-        content: fullDiff,
-        score: isClipboardAction
-          ? 2
-          : fullDiff.length >
-              (this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS) / 4
-            ? 0
-            : 1,
-      },
-      {
-        name: "prioritized",
-        content: prioritizedDiffs,
-        score: !isClipboardAction && prioritizedDiffs.length > 0 ? 2 : 0,
-      },
-    ];
-
-    this.logger.debug("Diff strategies comparison:", {
-      full: {
-        length: diffs[0].content.length,
-        preview: diffs[0].content.slice(0, 100) + "...",
-        score: diffs[0].score,
-      },
-      prioritized: {
-        length: diffs[1].content.length,
-        preview: diffs[1].content.slice(0, 100) + "...",
-        score: diffs[1].score,
-      },
+  }: SelectBestDiffLocalParams): DiffStrategy {
+    return selectBestDiff({
+      fullDiff,
+      prioritizedDiffs,
+      isClipboardAction,
+      config: this.config,
     });
-
-    return diffs.reduce((best, current) => {
-      if (current.score > best.score) return current;
-      if (
-        current.score === best.score &&
-        current.content.length < best.content.length
-      )
-        return current;
-      return best;
-    }, diffs[0]);
   }
 
   private async generatePrompt(
@@ -147,7 +111,7 @@ export class BranchAIController {
       },
     });
 
-    const prompt = generatePRDescriptionPrompt({
+    return generatePRDescriptionPrompt({
       commits: analysisResult.commits,
       files: analysisResult.files,
       baseBranch: analysisResult.baseBranch,
@@ -156,14 +120,6 @@ export class BranchAIController {
       logger: this.logger,
       format,
     });
-
-    this.logger.debug(`Generated ${format} prompt with template integration:`, {
-      hasTemplate: Boolean(template),
-      promptLength: prompt.length,
-      includesTemplateStructure: template ? prompt.includes(template) : false,
-    });
-
-    return prompt;
   }
 
   private async processAIAction({
@@ -233,16 +189,22 @@ export class BranchAIController {
         break;
       }
       case "copy-api": {
-        await this.handleClipboardCopy({
+        await handleClipboardCopy({
           prompt,
           isApi: true,
+          ai: this.ai,
+          config: this.config,
+          logger: this.logger,
         });
         break;
       }
       case "copy-manual": {
-        await this.handleClipboardCopy({
+        await handleClipboardCopy({
           prompt: humanFriendlyPrompt,
           isApi: false,
+          ai: this.ai,
+          config: this.config,
+          logger: this.logger,
         });
         break;
       }
@@ -265,14 +227,12 @@ export class BranchAIController {
 
     this.logger.info("\n🤖 Preparing AI suggestions...");
 
-    // Get full diff using git service instead of github
     const fullDiff = await this.git.getDiff({
       type: "range",
       from: this.git.config.baseBranch,
       to: analysisResult.branch,
     });
 
-    // Get prioritized diffs
     const prioritizedDiffs = formatDiffForAI({
       files: analysisResult.files,
       diff: fullDiff,
@@ -317,52 +277,5 @@ export class BranchAIController {
       prompt,
       humanFriendlyPrompt,
     });
-  }
-
-  private async handleClipboardCopy({
-    prompt,
-    isApi,
-  }: {
-    prompt: string;
-    isApi: boolean;
-  }): Promise<void> {
-    const clipboardTokens = this.ai?.calculateTokenUsage({
-      prompt,
-      options: { isClipboardAction: true },
-    });
-
-    if (!clipboardTokens) {
-      this.logger.error(
-        "\n❌ Failed to calculate token usage for clipboard content",
-      );
-      return;
-    }
-
-    if (
-      checkAILimits({
-        tokenUsage: clipboardTokens,
-        config: this.config,
-        logger: this.logger,
-        isClipboardAction: true,
-      })
-    ) {
-      await copyToClipboard({ text: prompt, logger: this.logger });
-      this.logger.info("\n✅ AI prompt copied to clipboard!");
-      if (isApi) {
-        this.logger.info(
-          chalk.dim(
-            "\nTip: This prompt will return a JSON response that matches the API format.",
-          ),
-        );
-      } else {
-        this.logger.info(
-          chalk.dim(
-            "\nTip: Paste this prompt into ChatGPT or similar AI assistant for interactive suggestions.",
-          ),
-        );
-      }
-    } else {
-      this.logger.warn("\n⚠️ Content exceeds maximum clipboard token limit");
-    }
   }
 }
