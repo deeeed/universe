@@ -1,12 +1,71 @@
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { LoggerService } from "../../src/services/logger.service.js";
-import { AIConfig } from "../../src/types/config.types.js";
+import { AIConfig, DeepPartial } from "../../src/types/config.types.js";
 import { E2ETest, TestResult, TestScenario } from "../tests.types.js";
 import { runScenario } from "../tests.utils.js";
 
+// Create base configurations that can be reused
+const baseAIConfig: DeepPartial<AIConfig> = {
+  enabled: true,
+  provider: "azure",
+  maxPromptTokens: 4000,
+  azure: {
+    endpoint: "",
+    deployment: "",
+    apiVersion: "",
+    apiKey: "",
+  },
+};
+
+const baseButtonComponent = {
+  path: "src/components/Button.tsx",
+  content: "export const Button = () => <button>Click</button>;",
+};
+
+const enhancedButtonComponent = {
+  path: "src/components/Button.tsx",
+  content: `
+export interface ButtonProps {
+  variant: 'primary' | 'secondary';
+  size: 'sm' | 'md' | 'lg';
+  label: string;
+  onClick: () => void;
+}
+
+export const Button = ({ variant, size, label, onClick }: ButtonProps) => {
+  return (
+    <button
+      className={\`btn btn-\${variant} btn-\${size}\`}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
+};`,
+};
+
+// Create a function to generate common scenario structure
+function createScenario(params: {
+  id: string;
+  name: string;
+  setup: Partial<TestScenario["setup"]>;
+  input: TestScenario["input"];
+}): TestScenario {
+  return {
+    id: params.id,
+    name: params.name,
+    setup: {
+      files: [],
+      config: { ai: baseAIConfig },
+      ...params.setup,
+    },
+    input: params.input,
+  };
+}
+
 const scenarios: TestScenario[] = [
-  {
+  createScenario({
     id: "commit-ai-basic",
     name: "Basic commit with AI suggestions",
     setup: {
@@ -16,19 +75,6 @@ const scenarios: TestScenario[] = [
           content: "export const auth = () => console.log('auth');",
         },
       ],
-      config: {
-        ai: {
-          enabled: true,
-          provider: "azure",
-          maxPromptTokens: 4000,
-          azure: {
-            endpoint: "",
-            deployment: "",
-            apiVersion: "",
-            apiKey: "",
-          },
-        },
-      },
       commit: "Initial auth implementation",
       changes: [
         {
@@ -58,44 +104,25 @@ export class OAuth2Client {
         args: ["--staged"],
       },
     },
-  },
+  }),
 
-  {
+  createScenario({
     id: "commit-ai-large",
     name: "Commit with large changes (should exceed limits)",
     setup: {
       files: [{ path: "src/generated.ts", content: "// Initial content" }],
       config: {
         ai: {
-          enabled: true,
-          provider: "azure",
-          maxPromptTokens: 2000, // Intentionally low limit
+          ...baseAIConfig,
+          maxPromptTokens: 2000,
           maxPromptCost: 0.01,
-          azure: {
-            endpoint: "",
-            deployment: "",
-            apiVersion: "",
-            apiKey: "",
-          },
         },
       },
       changes: [
         {
           path: "src/generated.ts",
-          content: Array.from(
-            { length: 100 },
-            (_, i) => `
-export interface Type${i} {
-  id: string;
-  metadata: Record<string, unknown>;
-  config: { enabled: boolean; settings: Record<string, unknown>; };
-}
-export class Service${i} {
-  constructor(private config: Type${i}) {}
-  async process(): Promise<void> {
-    console.log('Processing', this.config);
-  }
-}`,
+          content: Array.from({ length: 100 }, (_, i) =>
+            generateTypeAndService(i),
           ).join("\n"),
         },
       ],
@@ -108,59 +135,20 @@ export class Service${i} {
         args: ["--staged"],
       },
     },
-  },
+  }),
 
-  {
+  createScenario({
     id: "branch-ai-analyze",
     name: "Branch analysis with AI suggestions",
     setup: {
-      files: [
-        {
-          path: "src/components/Button.tsx",
-          content: "export const Button = () => <button>Click</button>;",
-        },
-      ],
+      files: [baseButtonComponent],
       config: {
-        ai: {
-          enabled: true,
-          provider: "azure",
-          maxPromptTokens: 4000,
-          azure: {
-            endpoint: "",
-            deployment: "",
-            apiVersion: "",
-            apiKey: "",
-          },
-        },
-        git: {
-          baseBranch: "main",
-        },
+        ...baseAIConfig,
+        git: { baseBranch: "main" },
       },
       commit: "Initial button component",
       branch: "feature/ui-components",
-      changes: [
-        {
-          path: "src/components/Button.tsx",
-          content: `
-export interface ButtonProps {
-  variant: 'primary' | 'secondary';
-  size: 'sm' | 'md' | 'lg';
-  label: string;
-  onClick: () => void;
-}
-
-export const Button = ({ variant, size, label, onClick }: ButtonProps) => {
-  return (
-    <button
-      className={\`btn btn-\${variant} btn-\${size}\`}
-      onClick={onClick}
-    >
-      {label}
-    </button>
-  );
-};`,
-        },
-      ],
+      changes: [{ ...enhancedButtonComponent }],
     },
     input: {
       message: "analyze branch changes",
@@ -170,39 +158,15 @@ export const Button = ({ variant, size, label, onClick }: ButtonProps) => {
         args: ["--ai"],
       },
     },
-  },
+  }),
 
-  {
+  createScenario({
     id: "branch-ai-pr",
     name: "Create PR with AI suggestions",
     setup: {
-      // Same setup as branch-ai-analyze
-      files: [
-        {
-          path: "src/components/Button.tsx",
-          content: "export const Button = () => <button>Click</button>;",
-        },
-      ],
-      config: {
-        ai: {
-          enabled: true,
-          provider: "azure",
-          maxPromptTokens: 4000,
-          azure: {
-            endpoint: "",
-            deployment: "",
-            apiVersion: "",
-            apiKey: "",
-          },
-        },
-      },
+      files: [baseButtonComponent],
       branch: "feature/ui-components",
-      changes: [
-        {
-          path: "src/components/Button.tsx",
-          content: `// ... same Button component content ...`,
-        },
-      ],
+      changes: [{ ...enhancedButtonComponent }],
     },
     input: {
       message: "create PR with AI description",
@@ -212,8 +176,24 @@ export const Button = ({ variant, size, label, onClick }: ButtonProps) => {
         args: ["--ai", "--draft"],
       },
     },
-  },
+  }),
 ];
+
+// Helper function to generate type and service code
+function generateTypeAndService(index: number): string {
+  return `
+export interface Type${index} {
+  id: string;
+  metadata: Record<string, unknown>;
+  config: { enabled: boolean; settings: Record<string, unknown>; };
+}
+export class Service${index} {
+  constructor(private config: Type${index}) {}
+  async process(): Promise<void> {
+    console.log('Processing', this.config);
+  }
+}`;
+}
 
 async function loadAITestConfig(
   logger: LoggerService,
