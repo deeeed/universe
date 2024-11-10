@@ -160,7 +160,7 @@ The message should include:
 Respond with:
 1. Your reasoning for the suggested message
 2. The complete commit message
-3. The exact git command to execute the commit (bash/zsh compatible, no backticks), which I can copy and paste directly
+3. The command to copy (no formatting, quotes, or backticks)
 
 Example response format:
 Reasoning: [your explanation]
@@ -168,8 +168,10 @@ Reasoning: [your explanation]
 Suggested message:
 [complete commit message]
 
-Command to execute:
-git commit -m "type(scope): title" -m "detailed message if any"`;
+Command to copy:
+git commit -m "type(scope): title" -m "detailed message if any"
+
+Note: The command must be on a single line with no formatting or special characters, ready to copy directly into the terminal.`;
   }
 
   // API format (default)
