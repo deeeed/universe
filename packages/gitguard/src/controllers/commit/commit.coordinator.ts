@@ -148,6 +148,7 @@ async function handleAnalysis(
   const { analysisController, securityController, aiController } = controllers;
   const { filesToAnalyze } = context;
 
+  // Security checks first
   logger.info("\n🔒 Running security checks...");
   const securityResult = await securityController.analyzeSecurity({
     files: filesToAnalyze,
@@ -162,6 +163,7 @@ async function handleAnalysis(
     await securityController.handleSecurityIssues({ securityResult });
   }
 
+  // Initial analysis
   logger.info("\n🔍 Analyzing changes...");
   let result = await analysisController.analyzeChanges({
     files: filesToAnalyze,
@@ -170,19 +172,34 @@ async function handleAnalysis(
     securityResult,
   });
 
-  if (options.ai && services.ai && result.splitSuggestion) {
-    logger.info("\n🤖 Enhancing split suggestions with AI...");
-    result = await aiController.handleSplitSuggestions({
-      result,
-      files: filesToAnalyze,
-      message: options.message,
-      securityResult,
-      enableAI: options.ai,
+  // Display initial analysis results
+  logger.info("\n📊 Initial Analysis Report");
+  analysisController.displayAnalysisResults(result);
+  reporter.generateReport({ result, options: {} });
+
+  // If commit is complex and AI is available, prompt for AI assistance
+  if (options.ai && services.ai && result.complexity.needsStructure) {
+    const shouldUseAI = await promptYesNo({
+      message:
+        "\n🤖 Would you like AI assistance to split this complex commit?",
+      logger,
+      defaultValue: true,
     });
+
+    if (shouldUseAI) {
+      logger.info("\n🔄 Analyzing commit structure with AI...");
+      result = await aiController.handleSplitSuggestions({
+        result,
+        files: filesToAnalyze,
+        message: options.message,
+        securityResult,
+        enableAI: options.ai,
+      });
+    }
   }
 
-  if (options.ai && services.ai) {
-    logger.info("\n🤖 Preparing AI suggestions...");
+  // Handle general AI suggestions if enabled
+  if (options.ai && services.ai && !result.splitSuggestion) {
     result = await aiController.handleAISuggestions({
       result,
       files: filesToAnalyze,
@@ -191,13 +208,14 @@ async function handleAnalysis(
     });
   }
 
-  logger.info("\n📊 Analysis Report");
+  // Final report after all modifications
+  logger.info("\n📊 Final Analysis Report");
   analysisController.displayAnalysisResults(result);
   reporter.generateReport({ result, options: {} });
 
+  // Handle commit execution
   if (options.execute && result.formattedMessage && !options.ai) {
     logger.info("\n💾 Creating commit...");
-
     if (result.formattedMessage !== result.originalMessage) {
       const shouldProceed = await promptYesNo({
         message: `\nCommit message will be changed from:

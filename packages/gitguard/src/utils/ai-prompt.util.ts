@@ -1,4 +1,8 @@
-import { CommitComplexity, PRStats } from "../types/analysis.types.js";
+import {
+  CommitComplexity,
+  CommitSplitSuggestion,
+  PRStats,
+} from "../types/analysis.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
 import { formatDiffForAI } from "./diff.util.js";
@@ -211,48 +215,59 @@ export function generateSplitSuggestionPrompt(params: {
   message: string;
   logger: Logger;
   diff?: string;
+  basicSuggestion?: CommitSplitSuggestion;
 }): string {
   const fileChanges = formatFileChanges({ files: params.files });
   const diffSection = params.diff
     ? `\nChanges:\n\`\`\`diff\n${params.diff}\n\`\`\``
     : "";
 
-  return `Analyze these git changes and suggest how to split them into multiple logical commits:
+  return `Analyze these git changes and suggest how to split them into multiple logical commits (maximum 3 suggestions):
 
 Files Changed:
 ${fileChanges}${diffSection}
 
 Original message: "${params.message}"
 
-Please analyze the changes and suggest a logical split based on:
-1. Related functionality
-2. Architectural layers
-3. Independent features
-4. Test and implementation separation
-5. Breaking changes isolation
-
-Please provide suggestion in this JSON format:
+Please provide suggestions in this JSON format:
 {
-    "reason": "detailed explanation why and how the changes should be split",
+    "reason": "explanation why the changes should be split",
     "suggestions": [
         {
             "message": "conventional commit message",
-            "files": ["list of related files"],
+            "files": ["list of files"],
             "order": "commit order number",
             "type": "commit type (feat|fix|refactor|etc)",
             "scope": "affected component or area"
+        }
+    ],
+    "commands": ["git commands to execute the split"],
+    "enhancedOptions": [
+        {
+            "id": "unique identifier",
+            "title": "short descriptive title",
+            "explanation": "brief explanation why this split makes sense (max 100 chars)",
+            "commits": [
+                {
+                    "message": "conventional commit message",
+                    "files": ["list of files"],
+                    "order": "commit order number",
+                    "type": "commit type (feat|fix|refactor|etc)",
+                    "scope": "affected component or area"
+                }
+            ]
         }
     ]
 }
 
 Guidelines:
-1. Split commits by logical units of work
-2. Keep related changes together
-3. Order commits to maintain dependencies
-4. Follow conventional commits format
-5. Consider test and implementation separation
-6. Isolate breaking changes
-7. Group related file changes`;
+1. Provide maximum 3 different ways to split the commits
+2. Each suggestion should have a clear, concise explanation
+3. Keep related changes together
+4. Order commits to maintain dependencies
+5. Follow conventional commits format
+6. Consider separating tests from implementation
+7. Prioritize logical grouping over number of commits`;
 }
 
 export function generatePRDescriptionPrompt(params: PRPromptParams): string {

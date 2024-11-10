@@ -97,33 +97,23 @@ async function setupTestRepo(
         execGitCommand(`git add "${file.path}"`, testDir);
       }
 
-      // Commit files on main if no specific branch is specified
-      if (!scenario.setup.branch && scenario.setup.commit) {
+      // Commit initial files if commit message is provided
+      if (scenario.setup.commit) {
         execGitCommand(`git commit -m "${scenario.setup.commit}"`, testDir);
         logger.debug(`Created initial commit: ${scenario.setup.commit}`);
       }
     }
 
-    // Switch to feature branch if specified (for branch-related scenarios)
+    // Switch to feature branch if specified
     if (scenario.setup.branch) {
       logger.debug(
         `Creating and switching to branch: ${scenario.setup.branch}`,
       );
       execGitCommand(`git checkout -b ${scenario.setup.branch}`, testDir);
-
-      // If there's an initial commit message, commit the files on the feature branch
-      if (scenario.setup.commit) {
-        execGitCommand(`git add .`, testDir);
-        execGitCommand(`git commit -m "${scenario.setup.commit}"`, testDir);
-        logger.debug(
-          `Created initial commit on branch: ${scenario.setup.commit}`,
-        );
-      }
     }
 
-    // Handle changes based on scenario type
+    // Handle changes
     if (scenario.setup.changes) {
-      // Apply changes
       logger.debug("Applying changes to test files");
       for (const change of scenario.setup.changes) {
         const filePath = join(testDir, change.path);
@@ -133,22 +123,14 @@ async function setupTestRepo(
         execGitCommand(`git add "${change.path}"`, testDir);
       }
 
-      // Handle commit based on scenario type
-      const isCommitScenario =
-        scenario.input.command?.name === "commit" &&
-        scenario.input.command?.subcommand === "create";
-      const isUnstagedTest =
-        scenario.input.command?.args?.includes("--unstaged");
-
-      if (!isCommitScenario && !isUnstagedTest) {
-        // For branch scenarios or when not testing unstaged changes, create a commit
+      if (!scenario.setup.stageOnly) {
         execGitCommand(
           `git commit -m "feat: update ${scenario.setup.branch ?? "files"} with changes"`,
           testDir,
         );
         logger.debug("Created commit for changes");
       } else {
-        logger.debug("Keeping changes staged for commit scenario");
+        logger.debug("Keeping changes staged (stageOnly: true)");
       }
     }
 
@@ -183,25 +165,43 @@ export async function runScenario(
   scenario: TestScenario,
   logger: LoggerService,
 ): Promise<TestResult> {
+  const isDebug = process.argv.includes("--debug");
+
+  const enhancedScenario = isDebug
+    ? {
+        ...scenario,
+        setup: {
+          ...scenario.setup,
+          config: {
+            ...scenario.setup.config,
+            debug: scenario.setup.config?.debug ?? true,
+          },
+        },
+      }
+    : scenario;
+
   let testDir: string | undefined;
 
   try {
-    logger.debug(`\nSetting up test directory for: ${scenario.name}`);
-    testDir = await setupTestRepo(scenario, logger);
+    logger.debug(`\nSetting up test directory for: ${enhancedScenario.name}`);
+    testDir = await setupTestRepo(enhancedScenario, logger);
 
     const originalArgv = process.argv;
     const originalCwd = process.cwd();
 
     try {
-      if (!scenario.input.command) {
-        throw new Error(`No command specified for scenario: ${scenario.name}`);
+      if (!enhancedScenario.input.command) {
+        throw new Error(
+          `No command specified for scenario: ${enhancedScenario.name}`,
+        );
       }
 
-      const args = buildCommandArgs(scenario);
-      process.argv = args;
+      const args = buildCommandArgs(enhancedScenario);
+      // Filter out test runner specific args while keeping gitguard args
+      process.argv = [...args, ...(isDebug ? ["--debug"] : [])];
       process.chdir(testDir);
 
-      logger.debug("Running command:", args.join(" "));
+      logger.debug("Running command:", process.argv.join(" "));
 
       const initialState = await captureRepoState(testDir);
       await main();
@@ -209,9 +209,9 @@ export async function runScenario(
 
       return {
         success: true,
-        message: `✅ ${scenario.name}`,
+        message: `✅ ${enhancedScenario.name}`,
         details: {
-          input: scenario.input.message,
+          input: enhancedScenario.input.message,
           command: args.join(" "),
           initialState,
           finalState,
@@ -222,15 +222,15 @@ export async function runScenario(
       process.chdir(originalCwd);
     }
   } catch (error) {
-    logger.error(`Scenario failed: ${scenario.name}`, error);
+    logger.error(`Scenario failed: ${enhancedScenario.name}`, error);
     return {
       success: false,
-      message: `❌ ${scenario.name}`,
+      message: `❌ ${enhancedScenario.name}`,
       error: error instanceof Error ? error : new Error(String(error)),
       details: {
-        input: scenario.input.message,
-        command: scenario.input.command
-          ? `${scenario.input.command.name} ${scenario.input.command.subcommand ?? ""} ${scenario.input.command.args?.join(" ") ?? ""}`
+        input: enhancedScenario.input.message,
+        command: enhancedScenario.input.command
+          ? `${enhancedScenario.input.command.name} ${enhancedScenario.input.command.subcommand ?? ""} ${enhancedScenario.input.command.args?.join(" ") ?? ""}`
           : "No command specified",
       },
     };

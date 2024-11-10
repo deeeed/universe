@@ -15,6 +15,7 @@ const scenarios: TestScenario[] = [
         },
       },
       changes: [{ path: "src/feature.ts", content: "console.log('test');" }],
+      stageOnly: true,
     },
     input: {
       message: "add new feature",
@@ -51,6 +52,7 @@ const scenarios: TestScenario[] = [
           content: "console.log('test');",
         },
       ],
+      stageOnly: true,
     },
     input: {
       message: "add new feature",
@@ -96,6 +98,7 @@ const scenarios: TestScenario[] = [
           content: "console.log('core');",
         },
       ],
+      stageOnly: true,
     },
     input: {
       message: "update features",

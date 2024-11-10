@@ -10,7 +10,7 @@ import { AIProvider } from "../../types/ai.types.js";
 import { PRAnalysisResult } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { Logger } from "../../types/logger.types.js";
-import { checkAILimits } from "../../utils/ai-limits.util.js";
+import { checkAILimits, displayTokenInfo } from "../../utils/ai-limits.util.js";
 import { generatePRDescriptionPrompt } from "../../utils/ai-prompt.util.js";
 import { formatDiffForAI } from "../../utils/diff.util.js";
 import {
@@ -18,7 +18,11 @@ import {
   handleClipboardCopy,
   selectBestDiff,
 } from "../../utils/shared-ai-controller.util.js";
-import { promptAIAction, promptYesNo } from "../../utils/user-prompt.util.js";
+import {
+  AIAction,
+  promptActionChoice,
+  promptYesNo,
+} from "../../utils/user-prompt.util.js";
 
 interface BranchAIControllerParams {
   logger: Logger;
@@ -69,6 +73,8 @@ export class BranchAIController {
       prioritizedDiffs,
       isClipboardAction,
       config: this.config,
+      ai: this.ai,
+      logger: this.logger,
     });
   }
 
@@ -133,12 +139,46 @@ export class BranchAIController {
   }): Promise<PRAnalysisResult> {
     if (!this.ai) return analysisResult;
 
-    const aiPromptResult = await promptAIAction({
+    const tokenUsage = this.ai.calculateTokenUsage({ prompt });
+
+    displayTokenInfo({
+      tokenUsage,
+      prompt,
+      maxTokens: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
       logger: this.logger,
-      tokenUsage: this.ai.calculateTokenUsage({ prompt }),
     });
 
-    switch (aiPromptResult.action) {
+    if (
+      !checkAILimits({ tokenUsage, config: this.config, logger: this.logger })
+    ) {
+      return analysisResult;
+    }
+
+    const { action } = await promptActionChoice<AIAction>({
+      message: "Choose how to proceed:",
+      choices: [
+        {
+          label: "Continue without AI assistance",
+          value: "skip",
+          isDefault: true,
+        },
+        {
+          label: `Generate PR description (estimated cost: ${tokenUsage.estimatedCost})`,
+          value: "generate",
+        },
+        {
+          label: "Copy API prompt to clipboard",
+          value: "copy-api",
+        },
+        {
+          label: "Copy human-friendly prompt to clipboard",
+          value: "copy-manual",
+        },
+      ],
+      logger: this.logger,
+    });
+
+    switch (action) {
       case "generate": {
         this.logger.info("\nGenerating PR description...");
         const description = await this.prService.generateAIDescription({
@@ -161,14 +201,11 @@ export class BranchAIController {
 
           if (useAIContent) {
             analysisResult.description = description;
-
-            // Get existing PR using github service directly
             const existingPR = await this.github.getPRForBranch({
               branch: analysisResult.branch,
             });
 
             if (existingPR) {
-              // Update the existing PR with new content
               await this.github.updatePRFromBranch({
                 number: existingPR.number,
                 title: description.title,
@@ -188,28 +225,21 @@ export class BranchAIController {
         }
         break;
       }
-      case "copy-api": {
-        await handleClipboardCopy({
-          prompt,
-          isApi: true,
-          ai: this.ai,
-          config: this.config,
-          logger: this.logger,
-        });
-        break;
-      }
+
+      case "copy-api":
       case "copy-manual": {
         await handleClipboardCopy({
-          prompt: humanFriendlyPrompt,
-          isApi: false,
+          prompt: action === "copy-api" ? prompt : humanFriendlyPrompt,
+          isApi: action === "copy-api",
           ai: this.ai,
           config: this.config,
           logger: this.logger,
         });
         break;
       }
+
       case "skip":
-        this.logger.info("\n⏭️  Skipping AI suggestions");
+        this.logger.info("\n⏭️  Continuing without AI assistance");
         break;
     }
 
@@ -261,16 +291,6 @@ export class BranchAIController {
       bestDiff,
       "human",
     );
-
-    if (
-      !checkAILimits({
-        tokenUsage: this.ai.calculateTokenUsage({ prompt }),
-        config: this.config,
-        logger: this.logger,
-      })
-    ) {
-      return analysisResult;
-    }
 
     return this.processAIAction({
       analysisResult,

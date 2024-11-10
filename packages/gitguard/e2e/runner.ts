@@ -28,6 +28,7 @@ interface ParsedArgs {
   all?: boolean;
   interactive?: boolean;
   scenario?: string;
+  debug?: boolean;
 }
 
 async function promptUser(question: string): Promise<string> {
@@ -122,6 +123,7 @@ async function selectTests(logger: LoggerService): Promise<{
       all: { type: "boolean" },
       interactive: { type: "boolean" },
       scenario: { type: "string" },
+      debug: { type: "boolean" },
     },
   });
 

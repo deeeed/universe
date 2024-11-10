@@ -26,6 +26,7 @@ export interface TestScenario {
     config?: DeepPartial<Config>;
     branch?: string;
     commit?: string;
+    stageOnly?: boolean;
   };
   input: {
     message: string;

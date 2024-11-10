@@ -88,22 +88,14 @@ const scenarios: TestScenario[] = [
       changes: [
         {
           path: "src/api/auth.ts",
-          content: `
-export interface AuthConfig {
-  clientId: string;
-  clientSecret: string;
-  redirectUri: string;
-}
-
-export class OAuth2Client {
-  constructor(private config: AuthConfig) {}
-  
-  async authenticate() {
-    // Implementation
-  }
-}`,
+          content: `// Updated auth implementation...`,
+        },
+        {
+          path: "src/api/oauth.ts",
+          content: `// OAuth implementation...`,
         },
       ],
+      stageOnly: true,
     },
     input: {
       message: "implement oauth authentication",
@@ -135,13 +127,14 @@ export class OAuth2Client {
           ).join("\n"),
         },
       ],
+      stageOnly: true,
     },
     input: {
       message: "update generated types",
       command: {
         name: "commit",
-        subcommand: "suggest",
-        args: ["--staged"],
+        subcommand: "create",
+        args: ["--ai"],
       },
     },
   }),
@@ -191,6 +184,7 @@ export class OAuth2Client {
     id: "complex-commit-split",
     name: "Complex commit with AI split suggestions",
     setup: {
+      stageOnly: true,
       files: [
         {
           path: "packages/app/src/features/user/profile.ts",
@@ -273,13 +267,7 @@ test('Profile renders correctly', () => {
       command: {
         name: "commit",
         subcommand: "create",
-        args: [
-          "-m",
-          "implement user profile and settings",
-          "--staged",
-          "--ai",
-          "--debug",
-        ],
+        args: ["-m", "implement user profile and settings", "--staged", "--ai"],
       },
       options: {
         staged: true,

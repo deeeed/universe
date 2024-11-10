@@ -31,6 +31,19 @@ export interface FilesByType {
   [key: string]: string[];
 }
 
+export interface CommitSplitOption {
+  id: string;
+  title: string;
+  explanation: string;
+  commits: Array<{
+    message: string;
+    files: string[];
+    order: number;
+    type: string;
+    scope?: string;
+  }>;
+}
+
 export interface CommitSplitSuggestion {
   reason: string;
   suggestions: Array<{
@@ -41,6 +54,7 @@ export interface CommitSplitSuggestion {
     scope?: string;
   }>;
   commands: string[];
+  enhancedOptions?: CommitSplitOption[];
 }
 
 export interface CommitAnalysisOptions {

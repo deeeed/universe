@@ -390,7 +390,7 @@ export class CommitService extends BaseService {
     breaking: boolean;
     description: string;
   } | null {
-    const match = message.match(CommitService.CONVENTIONAL_COMMIT_PATTERN.full);
+    const match = CommitService.CONVENTIONAL_COMMIT_PATTERN.full.exec(message);
     if (!match) return null;
 
     const [, type, scope, breaking, description] = match;
@@ -509,18 +509,11 @@ export class CommitService extends BaseService {
 
       for (const file of files) {
         for (const pattern of monorepoPatterns) {
-          // Remove trailing slash and escape for regex
           const basePattern = pattern
             .replace(/\/$/, "")
             .replace(/\*/g, "([^/]+)");
 
-          this.logger.debug("Checking file against pattern:", {
-            file: file.path,
-            pattern,
-            basePattern,
-          });
-
-          const match = file.path.match(new RegExp(`^${basePattern}`));
+          const match = new RegExp(`^${basePattern}`).exec(file.path);
 
           if (match?.[1]) {
             const packageName = match[1];
