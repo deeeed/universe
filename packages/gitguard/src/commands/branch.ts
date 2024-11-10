@@ -18,6 +18,7 @@ export interface BranchCommandOptions {
   base?: string;
   security?: boolean;
   edit?: boolean;
+  split?: boolean;
 }
 
 // Subcommands
@@ -60,6 +61,7 @@ export const branchCommand = new Command("branch")
   .description("Branch management and pull request operations")
   .option("--name <branch>", "Branch name (defaults to current)")
   .option("--debug", "Enable debug mode")
+  .option("--split", "Suggest split changes using AI", false)
   .addHelpText(
     "after",
     `

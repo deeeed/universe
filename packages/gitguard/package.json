@@ -40,6 +40,7 @@
     "test:e2e:ai:complex": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=complex-commit-split",
     "test:e2e:ai:branch": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=branch-ai-analyze",
     "test:e2e:ai:pr": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=branch-ai-pr",
+    "test:e2e:ai:split": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=branch-ai-split",
     "test:e2e:large:size": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=large-commits --scenario=size-detection",
     "test:e2e:large:files": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=large-commits --scenario=many-files",
     "test:e2e:branch:split": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=branch-features --scenario=branch-split-suggestion",

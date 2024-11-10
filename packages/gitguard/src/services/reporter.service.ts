@@ -41,24 +41,38 @@ export class ReporterService extends BaseService {
     this.logger.info(`Base branch: ${chalk.cyan(result.baseBranch)}`);
     this.logger.newLine();
 
-    if (this.isPRResult(result) && options.detailed) {
+    if (this.isPRResult(result)) {
       this.logger.info("Commits:");
-      result.commits.forEach((commit) => {
-        this.logger.info(`\n  ${chalk.yellow(commit.hash.slice(0, 7))}`);
-        this.logger.info(`  Author: ${chalk.cyan(commit.author)}`);
-        this.logger.info(`  Date: ${commit.date.toISOString()}`);
-        this.logger.info(`  Message: ${commit.message}`);
+      if (result.commits.length === 0) {
+        this.logger.info(chalk.yellow("  No commits found"));
+      } else {
+        this.logger.info(`  Total: ${chalk.cyan(result.commits.length)}`);
 
-        if (commit.files.length > 0) {
-          this.logger.info("  Changed files:");
-          commit.files.forEach((file) => {
+        if (options.detailed) {
+          result.commits.forEach((commit) => {
+            this.logger.info(`\n  ${chalk.yellow(commit.hash.slice(0, 7))}`);
+            this.logger.info(`  Author: ${chalk.cyan(commit.author)}`);
+            this.logger.info(`  Date: ${commit.date.toISOString()}`);
+            this.logger.info(`  Message: ${commit.message}`);
+
+            if (commit.files.length > 0) {
+              this.logger.info("  Changed files:");
+              commit.files.forEach((file) => {
+                this.logger.info(
+                  `    • ${chalk.cyan(file.path)} (+${chalk.green(file.additions)} -${chalk.red(file.deletions)})`,
+                );
+              });
+            }
+          });
+        } else {
+          result.commits.forEach((commit) => {
             this.logger.info(
-              `    • ${chalk.cyan(file.path)} (+${chalk.green(file.additions)} -${chalk.red(file.deletions)})`,
+              `  • ${chalk.yellow(commit.hash.slice(0, 7))} ${commit.message}`,
             );
           });
         }
-      });
-      this.logger.newLine();
+        this.logger.newLine();
+      }
     }
 
     if ("complexity" in result) {

@@ -358,6 +358,173 @@ export interface LogConfig {
       },
     },
   }),
+
+  createScenario({
+    id: "branch-ai-split",
+    name: "Branch analysis with AI split suggestions",
+    setup: {
+      files: [
+        {
+          path: "packages/app/src/features/auth/login.tsx",
+          content: `
+export const Login = () => <div>Login</div>;`,
+        },
+        {
+          path: "packages/app/src/features/auth/register.tsx",
+          content: `
+export const Register = () => <div>Register</div>;`,
+        },
+        {
+          path: "packages/core/src/services/auth.service.ts",
+          content: `
+export class AuthService {
+  login() { return true; }
+  register() { return true; }
+}`,
+        },
+        {
+          path: "packages/shared/src/components/Button.tsx",
+          content: `
+export const Button = () => <button>Click</button>;`,
+        },
+        {
+          path: "packages/shared/src/components/Input.tsx",
+          content: `
+export const Input = () => <input />;`,
+        },
+      ],
+      config: {
+        debug: true,
+        git: {
+          monorepoPatterns: ["packages/*"],
+        },
+        ai: {
+          ...baseAIConfig,
+          maxPromptTokens: 4000,
+        },
+      },
+      branch: "feature/auth-and-ui",
+      commit: "Initial commit",
+      changes: [
+        {
+          path: "packages/app/src/features/auth/login.tsx",
+          content: `
+export interface LoginProps {
+  onSuccess: () => void;
+}
+
+export const Login = ({ onSuccess }: LoginProps) => {
+  return (
+    <div>
+      <h1>Login</h1>
+      <Input placeholder="Email" />
+      <Input type="password" placeholder="Password" />
+      <Button onClick={onSuccess}>Login</Button>
+    </div>
+  );
+};`,
+        },
+        {
+          path: "packages/app/src/features/auth/register.tsx",
+          content: `
+export interface RegisterProps {
+  onSuccess: () => void;
+}
+
+export const Register = ({ onSuccess }: RegisterProps) => {
+  return (
+    <div>
+      <h1>Register</h1>
+      <Input placeholder="Email" />
+      <Input type="password" placeholder="Password" />
+      <Input type="password" placeholder="Confirm Password" />
+      <Button onClick={onSuccess}>Register</Button>
+    </div>
+  );
+};`,
+        },
+        {
+          path: "packages/core/src/services/auth.service.ts",
+          content: `
+interface AuthCredentials {
+  email: string;
+  password: string;
+}
+
+export class AuthService {
+  async login(credentials: AuthCredentials) {
+    // Implement login logic
+    return { success: true, token: 'mock-token' };
+  }
+
+  async register(credentials: AuthCredentials) {
+    // Implement registration logic
+    return { success: true, userId: 'mock-user-id' };
+  }
+
+  async validateToken(token: string) {
+    return token === 'mock-token';
+  }
+}`,
+        },
+        {
+          path: "packages/shared/src/components/Button.tsx",
+          content: `
+export interface ButtonProps {
+  children: React.ReactNode;
+  onClick: () => void;
+  variant?: 'primary' | 'secondary';
+}
+
+export const Button = ({ children, onClick, variant = 'primary' }: ButtonProps) => {
+  return (
+    <button 
+      className={\`btn btn-\${variant}\`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+};`,
+        },
+        {
+          path: "packages/shared/src/components/Input.tsx",
+          content: `
+export interface InputProps {
+  type?: 'text' | 'password' | 'email';
+  placeholder?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+}
+
+export const Input = ({ 
+  type = 'text',
+  placeholder,
+  value,
+  onChange
+}: InputProps) => {
+  return (
+    <input
+      type={type}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}
+      className="input"
+    />
+  );
+};`,
+        },
+      ],
+    },
+    input: {
+      message: "analyze branch changes",
+      command: {
+        name: "branch",
+        subcommand: "analyze",
+        args: ["--ai", "--split"],
+      },
+    },
+  }),
 ];
 
 // Helper function to generate type and service code

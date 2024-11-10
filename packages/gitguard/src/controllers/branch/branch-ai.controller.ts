@@ -7,11 +7,17 @@ import { GitService } from "../../services/git.service.js";
 import { GitHubService } from "../../services/github.service.js";
 import { PRService } from "../../services/pr.service.js";
 import { AIProvider } from "../../types/ai.types.js";
-import { PRAnalysisResult } from "../../types/analysis.types.js";
+import {
+  PRAnalysisResult,
+  PRSplitSuggestion,
+} from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { Logger } from "../../types/logger.types.js";
 import { checkAILimits, displayTokenInfo } from "../../utils/ai-limits.util.js";
-import { generatePRDescriptionPrompt } from "../../utils/ai-prompt.util.js";
+import {
+  generatePRDescriptionPrompt,
+  generatePRSplitPrompt,
+} from "../../utils/ai-prompt.util.js";
 import { formatDiffForAI } from "../../utils/diff.util.js";
 import {
   DiffStrategy,
@@ -255,7 +261,7 @@ export class BranchAIController {
       return analysisResult;
     }
 
-    this.logger.info("\n🤖 Preparing AI suggestions...");
+    this.logger.info("\n Preparing AI suggestions...");
 
     const fullDiff = await this.git.getDiff({
       type: "range",
@@ -297,5 +303,158 @@ export class BranchAIController {
       prompt,
       humanFriendlyPrompt,
     });
+  }
+
+  public async handleSplitSuggestions({
+    analysisResult,
+  }: {
+    analysisResult: PRAnalysisResult;
+  }): Promise<PRAnalysisResult> {
+    this.logger.debug("Starting split suggestions with:", {
+      hasAI: Boolean(this.ai),
+      commitCount: analysisResult.commits.length,
+      fileCount: analysisResult.files.length,
+    });
+
+    if (!this.ai) {
+      this.logger.debug("No AI provider available, skipping split suggestions");
+      return analysisResult;
+    }
+
+    this.logger.info("\n🤖 Analyzing PR structure...");
+
+    try {
+      const fullDiff = await this.git.getDiff({
+        type: "range",
+        from: this.git.config.baseBranch,
+        to: analysisResult.branch,
+      });
+
+      this.logger.debug("Retrieved diff for split analysis:", {
+        diffSize: fullDiff.length,
+        fromBranch: this.git.config.baseBranch,
+        toBranch: analysisResult.branch,
+      });
+
+      const bestDiff = this.selectBestDiff({
+        fullDiff,
+        prioritizedDiffs: formatDiffForAI({
+          files: analysisResult.files,
+          diff: fullDiff,
+          maxLength:
+            this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+          logger: this.logger,
+          options: {
+            includeTests: false,
+            prioritizeCore: true,
+            contextLines: DEFAULT_CONTEXT_LINES,
+          },
+        }),
+        isClipboardAction: false,
+      });
+
+      const prompt = generatePRSplitPrompt({
+        commits: analysisResult.commits,
+        files: analysisResult.files,
+        baseBranch: analysisResult.baseBranch,
+        diff: bestDiff.content,
+        logger: this.logger,
+      });
+
+      const tokenUsage = this.ai.calculateTokenUsage({ prompt });
+
+      displayTokenInfo({
+        tokenUsage,
+        prompt,
+        maxTokens: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+        logger: this.logger,
+      });
+
+      if (
+        !checkAILimits({ tokenUsage, config: this.config, logger: this.logger })
+      ) {
+        return analysisResult;
+      }
+
+      const { action } = await promptActionChoice<AIAction>({
+        message: "Choose how to proceed:",
+        choices: [
+          {
+            label: "Continue without split suggestions",
+            value: "skip",
+            isDefault: true,
+          },
+          {
+            label: `Generate split suggestions (estimated cost: ${tokenUsage.estimatedCost})`,
+            value: "generate",
+          },
+          {
+            label: "Copy API prompt to clipboard",
+            value: "copy-api",
+          },
+          {
+            label: "Copy human-friendly prompt to clipboard",
+            value: "copy-manual",
+          },
+        ],
+        logger: this.logger,
+      });
+
+      switch (action) {
+        case "generate": {
+          this.logger.debug("Generating split suggestions with AI...");
+          this.logger.info("\nGenerating split suggestions...");
+          const splitSuggestion =
+            await this.ai.generateCompletion<PRSplitSuggestion>({
+              prompt,
+              options: { requireJson: true },
+            });
+
+          if (splitSuggestion) {
+            this.logger.info("\n📦 Suggested PR splits:");
+            splitSuggestion.suggestedPRs.forEach((pr, index) => {
+              this.logger.info(`\n${index + 1}. ${chalk.cyan(pr.title)}`);
+              this.logger.info(`   Description: ${pr.description}`);
+              this.logger.info(`   Files: ${pr.files.length}`);
+              if (pr.dependencies?.length) {
+                this.logger.info(
+                  `   Dependencies: ${pr.dependencies.join(", ")}`,
+                );
+              }
+            });
+
+            return { ...analysisResult, splitSuggestion };
+          }
+          break;
+        }
+
+        case "copy-api":
+        case "copy-manual": {
+          await handleClipboardCopy({
+            prompt:
+              action === "copy-api"
+                ? prompt
+                : generatePRSplitPrompt({
+                    commits: analysisResult.commits,
+                    files: analysisResult.files,
+                    baseBranch: analysisResult.baseBranch,
+                    diff: bestDiff.content,
+                    logger: this.logger,
+                    format: "human",
+                  }),
+            isApi: action === "copy-api",
+            ai: this.ai,
+            config: this.config,
+            logger: this.logger,
+          });
+          break;
+        }
+      }
+    } catch (error) {
+      this.logger.error("Failed to process split suggestions:", error);
+      return analysisResult;
+    }
+
+    return analysisResult;
   }
 }

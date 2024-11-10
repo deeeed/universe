@@ -160,14 +160,28 @@ export async function analyzeBranch({
 
     // Handle AI suggestions if enabled
     if (options.ai && services.ai) {
-      // Skip GitHub validation for analysis-only operations
+      logger.debug("AI processing enabled with options:", {
+        needsGitHubAccess: options.createPR || options.draft,
+        split: options.split,
+      });
+
       const needsGitHubAccess = options.createPR || options.draft;
 
       if (needsGitHubAccess) {
-        // For PR creation, validate GitHub access first
+        logger.debug("GitHub access required, validating...");
         const hasGitHubAccess =
           await controllers.prController.validateGitHubAccess();
+        logger.debug("GitHub access validation result:", { hasGitHubAccess });
+
         if (hasGitHubAccess) {
+          if (options.split) {
+            logger.debug("Processing split suggestions...");
+            analysisResult =
+              await controllers.aiController.handleSplitSuggestions({
+                analysisResult,
+              });
+          }
+
           analysisResult = await controllers.aiController.handleAISuggestions({
             analysisResult,
           });
@@ -180,7 +194,14 @@ export async function analyzeBranch({
           });
         }
       } else {
-        // For analyze command, generate AI suggestions without GitHub validation
+        logger.debug("Processing without GitHub access");
+        if (options.split) {
+          logger.debug("Processing split suggestions without GitHub...");
+          analysisResult =
+            await controllers.aiController.handleSplitSuggestions({
+              analysisResult,
+            });
+        }
         analysisResult = await controllers.aiController.handleAISuggestions({
           analysisResult,
         });
