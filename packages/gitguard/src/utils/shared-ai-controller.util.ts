@@ -1,10 +1,16 @@
 import chalk from "chalk";
-import { DEFAULT_MAX_PROMPT_TOKENS } from "../constants.js";
-import { AIProvider } from "../types/ai.types.js";
+import {
+  DEFAULT_CONTEXT_LINES,
+  DEFAULT_MAX_PROMPT_TOKENS,
+} from "../constants.js";
+import { AIProvider, TokenUsage } from "../types/ai.types.js";
 import { Config } from "../types/config.types.js";
+import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
-import { checkAILimits } from "./ai-limits.util.js";
+import { checkAILimits, displayTokenInfo } from "./ai-limits.util.js";
 import { copyToClipboard } from "./clipboard.util.js";
+import { formatDiffForAI } from "./diff.util.js";
+import { promptActionChoice } from "./user-prompt.util.js";
 
 // Base interface for shared dependencies
 interface BaseAIParams {
@@ -20,17 +26,32 @@ export interface DiffStrategy {
   score: number;
 }
 
-export interface SelectBestDiffParams extends Pick<BaseAIParams, "config"> {
+export interface SelectBestDiffParams extends BaseAIParams {
   fullDiff: string;
-  prioritizedDiffs: string;
-  isClipboardAction: boolean;
-  ai?: AIProvider;
-  logger?: Logger;
+  files: FileChange[];
+  isClipboardAction?: boolean;
 }
 
 export interface HandleClipboardCopyParams extends BaseAIParams {
   prompt: string;
   isApi: boolean;
+}
+
+export type AIActionType = "generate" | "copy-api" | "copy-manual" | "skip";
+
+export interface AIActionHandlerParams<T> {
+  prompt: string;
+  humanFriendlyPrompt: string;
+  tokenUsage: TokenUsage;
+  generateLabel?: string;
+  actionHandler: (action: AIActionType) => Promise<T>;
+}
+
+export interface DiffGenerationParams {
+  files: FileChange[];
+  diff: string;
+  maxLength: number;
+  logger: Logger;
 }
 
 function calculateDiffScore(params: {
@@ -58,14 +79,26 @@ function calculateDiffScore(params: {
 
 export function selectBestDiff({
   fullDiff,
-  prioritizedDiffs,
-  isClipboardAction,
+  files,
+  isClipboardAction = false,
   config,
   ai,
   logger,
 }: SelectBestDiffParams): DiffStrategy {
+  const prioritizedDiffs = formatDiffForAI({
+    files,
+    diff: fullDiff,
+    maxLength: config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+    logger,
+    options: {
+      includeTests: false,
+      prioritizeCore: true,
+      contextLines: DEFAULT_CONTEXT_LINES,
+    },
+  });
+
   const maxTokens = isClipboardAction
-    ? (config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS) * 2 // Fallback for clipboard
+    ? (config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS) * 2
     : (config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS);
 
   logger?.debug("Selecting best diff strategy:", {
@@ -85,24 +118,20 @@ export function selectBestDiff({
 
   const prioritizedDiffScore = calculateDiffScore({
     content: prioritizedDiffs,
-    isClipboardAction: false, // Never use clipboard scoring for prioritized
+    isClipboardAction: false,
     maxTokens,
     ai,
     logger,
   });
 
   const diffs: DiffStrategy[] = [
-    {
-      name: "full",
-      content: fullDiff,
-      score: fullDiffScore,
-    },
+    { name: "full", content: fullDiff, score: fullDiffScore },
     {
       name: "prioritized",
       content: prioritizedDiffs,
       score:
         !isClipboardAction && prioritizedDiffs.length > 0
-          ? prioritizedDiffScore * 2 // Prioritize the prioritized diff
+          ? prioritizedDiffScore * 2
           : 0,
     },
   ];
@@ -169,4 +198,66 @@ export async function handleClipboardCopy({
   } else {
     logger.warn("\n⚠️ Content exceeds maximum clipboard token limit");
   }
+}
+
+export async function handleAIAction<T>({
+  prompt,
+  humanFriendlyPrompt,
+  tokenUsage,
+  generateLabel = "Generate content",
+  actionHandler,
+  config,
+  logger,
+  ai,
+}: AIActionHandlerParams<T> & BaseAIParams): Promise<T> {
+  if (ai) {
+    displayTokenInfo({
+      tokenUsage,
+      prompt,
+      maxTokens: config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+      logger,
+    });
+
+    if (!checkAILimits({ tokenUsage, config, logger })) {
+      return actionHandler("skip");
+    }
+  }
+
+  const { action } = await promptActionChoice<AIActionType>({
+    message: "Choose how to proceed:",
+    choices: [
+      {
+        label: "Continue without AI assistance",
+        value: "skip" as const,
+        isDefault: true,
+      },
+      ...(ai
+        ? [
+            {
+              label: `${generateLabel} (estimated cost: ${tokenUsage.estimatedCost})`,
+              value: "generate" as const,
+            },
+          ]
+        : []),
+      { label: "Copy API prompt to clipboard", value: "copy-api" as const },
+      {
+        label: "Copy human-friendly prompt to clipboard",
+        value: "copy-manual" as const,
+      },
+    ],
+    logger,
+  });
+
+  if (action === "copy-api" || action === "copy-manual") {
+    await handleClipboardCopy({
+      prompt: action === "copy-api" ? prompt : humanFriendlyPrompt,
+      isApi: action === "copy-api",
+      ai,
+      config,
+      logger,
+    });
+    return actionHandler("skip");
+  }
+
+  return actionHandler(action);
 }

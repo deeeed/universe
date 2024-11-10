@@ -13,20 +13,17 @@ import { Config } from "../../types/config.types.js";
 import { FileChange } from "../../types/git.types.js";
 import { Logger } from "../../types/logger.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
-import { checkAILimits, displayTokenInfo } from "../../utils/ai-limits.util.js";
 import {
   generateCommitSuggestionPrompt,
   generateSplitSuggestionPrompt,
 } from "../../utils/ai-prompt.util.js";
 import {
   DiffStrategy,
-  handleClipboardCopy,
+  handleAIAction,
   selectBestDiff,
 } from "../../utils/shared-ai-controller.util.js";
 import {
-  AIAction,
   displayAISuggestions,
-  promptActionChoice,
   promptCommitSuggestion,
 } from "../../utils/user-prompt.util.js";
 
@@ -65,12 +62,6 @@ interface ExecuteCommitParams {
   detectedScope?: string;
 }
 
-interface SelectBestDiffLocalParams {
-  fullDiff: string;
-  prioritizedDiffs: string;
-  isClipboardAction: boolean;
-}
-
 export class CommitAIController {
   private readonly logger: Logger;
   private readonly ai?: AIProvider;
@@ -88,21 +79,6 @@ export class CommitAIController {
       git,
       logger,
       ai,
-    });
-  }
-
-  private selectBestDiff({
-    fullDiff,
-    prioritizedDiffs,
-    isClipboardAction,
-  }: SelectBestDiffLocalParams): DiffStrategy {
-    return selectBestDiff({
-      fullDiff,
-      prioritizedDiffs,
-      isClipboardAction,
-      config: this.config,
-      ai: this.ai,
-      logger: this.logger,
     });
   }
 
@@ -155,109 +131,68 @@ export class CommitAIController {
       params.result.complexity.needsStructure ||
       (params.result.splitSuggestion?.suggestions?.length ?? 0) > 0;
 
-    if (params.enableAI && this.ai && shouldSplit) {
+    if (params.enableAI && shouldSplit) {
       try {
         const diff = await this.git.getStagedDiff();
-        const prioritizedDiffs = this.commitService.getPrioritizedDiffs({
+
+        const bestDiff = selectBestDiff({
+          fullDiff: diff,
           files: params.files,
-          diff,
-          maxLength:
-            this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+          config: this.config,
+          ai: this.ai,
+          logger: this.logger,
         });
 
         const prompt = generateSplitSuggestionPrompt({
           files: params.files,
           message: params.message ?? "",
-          diff: prioritizedDiffs,
+          diff: bestDiff.content,
           basicSuggestion: basicAnalysis.splitSuggestion,
           logger: this.logger,
         });
 
-        const tokenUsage = this.ai.calculateTokenUsage({ prompt });
+        const tokenUsage = this.ai?.calculateTokenUsage({ prompt }) ?? {
+          count: 0,
+          estimatedCost: "N/A (AI not configured)",
+          isWithinApiLimits: true,
+          isWithinClipboardLimits: true,
+        };
 
-        displayTokenInfo({
-          tokenUsage,
+        return handleAIAction({
           prompt,
-          maxTokens:
-            this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
-          logger: this.logger,
-        });
+          humanFriendlyPrompt: prompt,
+          tokenUsage,
+          generateLabel: "Generate split suggestions",
+          actionHandler: async (action) => {
+            if (action === "generate" && this.ai) {
+              const aiSuggestions =
+                await this.ai.generateCompletion<CommitSplitSuggestion>({
+                  prompt,
+                  options: { requireJson: true },
+                });
 
-        if (
-          !checkAILimits({
-            tokenUsage,
-            config: this.config,
-            logger: this.logger,
-          })
-        ) {
-          return params.result;
-        }
-
-        const { action } = await promptActionChoice<AIAction>({
-          message: "Choose how to proceed:",
-          choices: [
-            {
-              label: "Continue with current commit",
-              value: "skip",
-              isDefault: true,
-            },
-            // Temporarily disabled until we have a better way to handle this with consistency
-            // {
-            //   label: `Generate split suggestions (estimated cost: ${tokenUsage.estimatedCost})`,
-            //   value: "generate",
-            // },
-            {
-              label: "Copy API prompt to clipboard",
-              value: "copy-api",
-            },
-          ],
-          logger: this.logger,
-        });
-
-        switch (action) {
-          case "generate": {
-            this.logger.info("\nGenerating split suggestions...");
-            const aiSuggestions =
-              await this.ai.generateCompletion<CommitSplitSuggestion>({
-                prompt,
-                options: { requireJson: true },
-              });
-
-            if (aiSuggestions?.suggestions?.length) {
-              return {
-                ...params.result,
-                splitSuggestion: {
-                  ...aiSuggestions,
-                  suggestions: aiSuggestions.suggestions,
-                },
-              };
+              if (aiSuggestions?.suggestions?.length) {
+                return {
+                  ...params.result,
+                  splitSuggestion: {
+                    ...aiSuggestions,
+                    suggestions: aiSuggestions.suggestions,
+                  },
+                };
+              }
             }
-            break;
-          }
-
-          case "copy-api":
-          case "copy-manual": {
-            await this.handleClipboardCopy({
-              prompt,
-              isApi: action === "copy-api",
-            });
-            break;
-          }
-
-          case "skip":
-            this.logger.info("\n⏭️  Continuing with current commit");
-            break;
-        }
+            return params.result;
+          },
+          config: this.config,
+          logger: this.logger,
+          ai: this.ai,
+        });
       } catch (error) {
         this.logger.error("Failed to get AI enhanced analysis:", error);
       }
     }
 
-    // Fall back to basic analysis
-    return {
-      ...params.result,
-      splitSuggestion: basicAnalysis.splitSuggestion,
-    };
+    return params.result;
   }
 
   async handleAISuggestions({
@@ -266,176 +201,99 @@ export class CommitAIController {
     message,
     shouldExecute = false,
   }: HandleAISuggestionsParams): Promise<CommitAnalysisResult> {
-    if (!this.ai) {
-      this.logger.debug("AI service not available, skipping suggestions");
-      return result;
-    }
-
     this.logger.info("\n🤖 Preparing AI suggestions...");
-
     const fullDiff = await this.git.getStagedDiff();
-    const prioritizedDiffs = this.commitService.getPrioritizedDiffs({
+
+    const bestDiff = selectBestDiff({
+      fullDiff,
       files,
-      diff: fullDiff,
-      maxLength: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+      config: this.config,
+      ai: this.ai,
+      logger: this.logger,
     });
 
-    const bestDiff = this.selectBestDiff({
-      fullDiff,
-      prioritizedDiffs,
-      isClipboardAction: false,
-    });
-    const prompt = this.generatePrompt({
+    const prompt = this.generatePrompt({ files, message, bestDiff, result });
+    const humanFriendlyPrompt = this.generatePrompt({
       files,
       message,
       bestDiff,
       result,
+      format: "human",
     });
-    const tokenUsage = this.ai.calculateTokenUsage({ prompt });
 
-    displayTokenInfo({
-      tokenUsage,
+    const tokenUsage = this.ai?.calculateTokenUsage({ prompt }) ?? {
+      count: 0,
+      estimatedCost: "N/A (AI not configured)",
+      isWithinApiLimits: true,
+      isWithinClipboardLimits: true,
+    };
+
+    return handleAIAction({
       prompt,
-      maxTokens: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+      humanFriendlyPrompt,
+      tokenUsage,
+      generateLabel: "Generate commit message suggestions",
+      actionHandler: async (action) => {
+        if (action === "generate" && this.ai) {
+          return this.handleCommitGeneration({
+            result,
+            files,
+            message,
+            bestDiff,
+            shouldExecute,
+          });
+        }
+        return result;
+      },
+      config: this.config,
       logger: this.logger,
+      ai: this.ai,
+    });
+  }
+
+  private async handleCommitGeneration({
+    result,
+    files,
+    message,
+    bestDiff,
+    shouldExecute,
+  }: {
+    result: CommitAnalysisResult;
+    files: FileChange[];
+    message?: string;
+    bestDiff: DiffStrategy;
+    shouldExecute: boolean;
+  }): Promise<CommitAnalysisResult> {
+    const suggestions = await this.commitService.generateAISuggestions({
+      files,
+      message: message ?? "",
+      diff: bestDiff.content,
+      needsDetailedMessage: result.complexity.needsStructure,
     });
 
-    if (
-      !checkAILimits({ tokenUsage, config: this.config, logger: this.logger })
-    ) {
+    if (!suggestions?.length) {
+      this.logger.warn("\n⚠️  No AI suggestions could be generated.");
       return result;
     }
 
-    const { action } = await promptActionChoice<AIAction>({
-      message: `Current commit message:
-Original: ${chalk.yellow(message || "(empty)")}
-Formatted: ${chalk.green(result.formattedMessage || "(empty)")}\n\nChoose how to proceed:`,
-      choices: [
-        {
-          label: "Continue with current commit",
-          value: "skip",
-          isDefault: true,
-        },
-        {
-          label: `Generate commit message suggestions (estimated cost: ${tokenUsage.estimatedCost})`,
-          value: "generate",
-        },
-        {
-          label: "Copy API prompt to clipboard",
-          value: "copy-api",
-        },
-        {
-          label: "Copy human-friendly prompt to clipboard",
-          value: "copy-manual",
-        },
-      ],
-      logger: this.logger,
-    });
+    const detectedScope = this.commitService.detectScope(files);
+    displayAISuggestions({ suggestions, detectedScope, logger: this.logger });
 
-    switch (action) {
-      case "generate": {
-        this.logger.info("\nGenerating AI suggestions...");
-        const suggestions = await this.commitService.generateAISuggestions({
-          files,
-          message: message ?? "",
-          diff: bestDiff.content,
-          needsDetailedMessage: result.complexity.needsStructure,
-        });
+    if (shouldExecute) {
+      const selectedSuggestion = await promptCommitSuggestion({
+        suggestions,
+        logger: this.logger,
+      });
 
-        if (!suggestions?.length) {
-          this.logger.warn("\n⚠️  No AI suggestions could be generated.");
-          return result;
-        }
-
-        const detectedScope = this.commitService.detectScope(files);
-        displayAISuggestions({
-          suggestions,
+      if (selectedSuggestion) {
+        await this.executeCommit({
+          suggestion: selectedSuggestion,
           detectedScope,
-          logger: this.logger,
         });
-
-        if (shouldExecute) {
-          const selectedSuggestion = await promptCommitSuggestion({
-            suggestions,
-            logger: this.logger,
-          });
-
-          if (selectedSuggestion) {
-            await this.executeCommit({
-              suggestion: selectedSuggestion,
-              detectedScope,
-            });
-          }
-        }
-
-        return {
-          ...result,
-          suggestions,
-        };
       }
-
-      case "copy-api": {
-        const bestDiff = this.selectBestDiff({
-          fullDiff,
-          prioritizedDiffs,
-          isClipboardAction: true,
-        });
-
-        const apiPrompt = this.generatePrompt({
-          files,
-          message,
-          bestDiff,
-          result,
-          format: "api",
-        });
-
-        await this.handleClipboardCopy({
-          prompt: apiPrompt,
-          isApi: true,
-        });
-        break;
-      }
-
-      case "copy-manual": {
-        const bestDiff = this.selectBestDiff({
-          fullDiff,
-          prioritizedDiffs,
-          isClipboardAction: true,
-        });
-
-        const manualPrompt = this.generatePrompt({
-          files,
-          message,
-          bestDiff,
-          result,
-          format: "human",
-        });
-
-        await this.handleClipboardCopy({
-          prompt: manualPrompt,
-          isApi: false,
-        });
-        break;
-      }
-
-      case "skip":
-        this.logger.info("\n⏭️  Skipping AI suggestions");
-        break;
     }
 
-    return result;
-  }
-
-  private async handleClipboardCopy(params: {
-    prompt: string;
-    isApi: boolean;
-  }): Promise<void> {
-    return handleClipboardCopy({
-      ...params,
-      ai: this.ai,
-      config: this.config,
-      logger: this.logger,
-    });
+    return { ...result, suggestions };
   }
 
   handleAISplitAnalysis(params: {

@@ -46,7 +46,6 @@
     "test:e2e:branch:split": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=branch-features --scenario=branch-split-suggestion",
     "test:e2e:branch:template": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=branch-features --scenario=pr-template-parsing",
     "test:e2e:branch:complex": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=branch-features --scenario=complex-branch-split",
-    "test:e2e:branch:changelog": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=branch-features --scenario=changelog-generation",
     "test:e2e": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --interactive ",
     "lint": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",

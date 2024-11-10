@@ -35,6 +35,9 @@ const scenarios: TestScenario[] = [
       commit: "feat: add authentication and UI components",
     },
     input: {
+      options: {
+        split: true,
+      },
       message: "feat: add authentication and UI components",
       command: {
         name: "branch",
