@@ -363,7 +363,7 @@ export class CommitService extends BaseService {
 
   private static readonly CONVENTIONAL_COMMIT_PATTERN = {
     // Matches: type(scope)!: description
-    full: /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(?:\(([^)]+)\))?(!?)?: (.+)$/,
+    full: /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(?:\(([^)]+)\))?(!)?:\s+(.+)$/,
     // Valid commit types
     types: [
       "feat",
@@ -381,7 +381,9 @@ export class CommitService extends BaseService {
   } as const;
 
   private isConventionalCommit(message: string): boolean {
-    return CommitService.CONVENTIONAL_COMMIT_PATTERN.full.test(message);
+    return (
+      CommitService.CONVENTIONAL_COMMIT_PATTERN.full.exec(message) !== null
+    );
   }
 
   private parseConventionalCommit(message: string): {
@@ -512,8 +514,8 @@ export class CommitService extends BaseService {
           const basePattern = pattern
             .replace(/\/$/, "")
             .replace(/\*/g, "([^/]+)");
-
-          const match = new RegExp(`^${basePattern}`).exec(file.path);
+          const regex = new RegExp(`^${basePattern}`);
+          const match = regex.exec(file.path);
 
           if (match?.[1]) {
             const packageName = match[1];
