@@ -31,8 +31,13 @@ const scenarios: TestScenario[] = [
           monorepoPatterns: ["packages/"],
         },
       },
+      branch: "feature/auth-and-ui",
+      commit: "feat: add authentication and UI components",
     },
     input: {
+      options: {
+        split: true,
+      },
       message: "feat: add authentication and UI components",
       command: {
         name: "branch",
@@ -61,7 +66,8 @@ const scenarios: TestScenario[] = [
         },
         {
           path: "src/features/user/profile.ts",
-          content: "export const profile = () => console.log('profile');",
+          content:
+            "export const profile = () => console.log('updated profile');",
         },
       ],
       config: {
@@ -72,7 +78,7 @@ const scenarios: TestScenario[] = [
         },
       },
       branch: "feature/user-profile",
-      commit: "feat: initial commit",
+      commit: "feat: add user profile feature",
     },
     input: {
       message: "feat: add user profile feature",
@@ -91,20 +97,23 @@ const scenarios: TestScenario[] = [
       files: [
         {
           path: "packages/api/src/endpoints/user.ts",
-          content: "export const userApi = () => console.log('user api');",
+          content:
+            "export const userApi = () => console.log('updated user api');",
         },
         {
           path: "packages/core/src/models/user.ts",
-          content: "export const userModel = () => console.log('user model');",
+          content:
+            "export const userModel = () => console.log('updated user model');",
         },
         {
           path: "packages/app/src/features/user/list.tsx",
-          content: "export const UserList = () => console.log('user list');",
+          content:
+            "export const UserList = () => console.log('updated user list');",
         },
         {
           path: "packages/app/src/features/user/detail.tsx",
           content:
-            "export const UserDetail = () => console.log('user detail');",
+            "export const UserDetail = () => console.log('updated user detail');",
         },
       ],
       config: {
@@ -112,6 +121,8 @@ const scenarios: TestScenario[] = [
           monorepoPatterns: ["packages/"],
         },
       },
+      branch: "feature/user-management",
+      commit: "feat: implement user management system",
     },
     input: {
       message: "feat: implement user management system",
@@ -119,37 +130,6 @@ const scenarios: TestScenario[] = [
         name: "branch",
         subcommand: "analyze",
         args: ["--ai", "--split"],
-      },
-    },
-  },
-  {
-    id: "changelog-generation",
-    name: "Changelog generation from commits",
-    setup: {
-      files: [
-        {
-          path: "src/features/auth.ts",
-          content: "export const auth = () => console.log('auth');",
-        },
-      ],
-      changes: [
-        {
-          path: "src/features/auth.ts",
-          content: "export const auth = () => console.log('updated auth');",
-        },
-        {
-          path: "src/features/auth.test.ts",
-          content: "test('auth works', () => expect(true).toBe(true));",
-        },
-      ],
-      commit: "feat(auth): implement basic authentication",
-    },
-    input: {
-      message: "test(auth): add authentication tests",
-      command: {
-        name: "branch",
-        subcommand: "pr",
-        args: ["--ai", "--generate-changelog"],
       },
     },
   },

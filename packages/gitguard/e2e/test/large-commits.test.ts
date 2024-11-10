@@ -20,6 +20,14 @@ const scenarios: TestScenario[] = [
     },
     input: {
       message: "massive update",
+      command: {
+        name: "commit",
+        subcommand: "create",
+        args: ["-m", "massive update", "--staged"],
+      },
+      options: {
+        staged: true,
+      },
     },
   },
   {
@@ -39,6 +47,14 @@ const scenarios: TestScenario[] = [
     },
     input: {
       message: "update multiple files",
+      command: {
+        name: "commit",
+        subcommand: "create",
+        args: ["-m", "update multiple files", "--staged"],
+      },
+      options: {
+        staged: true,
+      },
     },
   },
 ];

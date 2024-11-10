@@ -26,6 +26,7 @@ export interface TestScenario {
     config?: DeepPartial<Config>;
     branch?: string;
     commit?: string;
+    stageOnly?: boolean;
   };
   input: {
     message: string;
@@ -36,6 +37,7 @@ export interface TestScenario {
       all?: boolean;
       debug?: boolean;
       execute?: boolean;
+      split?: boolean;
     };
     command?: {
       name: CommandName;

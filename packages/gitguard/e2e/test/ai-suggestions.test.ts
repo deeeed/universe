@@ -57,7 +57,16 @@ function createScenario(params: {
     name: params.name,
     setup: {
       files: [],
-      config: { ai: baseAIConfig },
+      config: {
+        debug: true,
+        git: {
+          monorepoPatterns: ["packages/*"],
+        },
+        ai: {
+          ...baseAIConfig,
+          maxPromptTokens: 4000,
+        },
+      },
       ...params.setup,
     },
     input: params.input,
@@ -79,22 +88,14 @@ const scenarios: TestScenario[] = [
       changes: [
         {
           path: "src/api/auth.ts",
-          content: `
-export interface AuthConfig {
-  clientId: string;
-  clientSecret: string;
-  redirectUri: string;
-}
-
-export class OAuth2Client {
-  constructor(private config: AuthConfig) {}
-  
-  async authenticate() {
-    // Implementation
-  }
-}`,
+          content: `// Updated auth implementation...`,
+        },
+        {
+          path: "src/api/oauth.ts",
+          content: `// OAuth implementation...`,
         },
       ],
+      stageOnly: true,
     },
     input: {
       message: "implement oauth authentication",
@@ -126,13 +127,14 @@ export class OAuth2Client {
           ).join("\n"),
         },
       ],
+      stageOnly: true,
     },
     input: {
       message: "update generated types",
       command: {
         name: "commit",
-        subcommand: "suggest",
-        args: ["--staged"],
+        subcommand: "create",
+        args: ["--ai"],
       },
     },
   }),
@@ -174,6 +176,356 @@ export class OAuth2Client {
         name: "branch",
         subcommand: "pr",
         args: ["--ai", "--draft"],
+      },
+    },
+  }),
+
+  createScenario({
+    id: "complex-commit-split",
+    name: "Complex commit with AI split suggestions",
+    setup: {
+      stageOnly: true,
+      files: [
+        {
+          path: "packages/app/src/features/user/profile.ts",
+          content: "export const Profile = () => null;",
+        },
+        {
+          path: "packages/app/src/features/user/settings.ts",
+          content: "export const Settings = () => null;",
+        },
+        {
+          path: "packages/app/src/types/user.ts",
+          content: "export type User = { id: string; };",
+        },
+        {
+          path: "packages/app/tests/user/profile.test.ts",
+          content: "test('profile', () => {});",
+        },
+        {
+          path: "packages/core/src/auth/service.ts",
+          content: "export const authenticate = () => false;",
+        },
+        {
+          path: "packages/core/src/auth/types.ts",
+          content: "export type AuthToken = string;",
+        },
+        {
+          path: "packages/shared/src/logging/logger.ts",
+          content: "export const logger = { log: console.log };",
+        },
+        {
+          path: "packages/shared/src/logging/types.ts",
+          content: "export type LogLevel = 'info' | 'error';",
+        },
+      ],
+      config: {
+        debug: true,
+        git: {
+          monorepoPatterns: ["packages/*"],
+        },
+        ai: {
+          ...baseAIConfig,
+          maxPromptTokens: 4000,
+        },
+      },
+      changes: [
+        {
+          path: "packages/app/src/features/user/profile.ts",
+          content: `
+export interface ProfileProps {
+  userId: string;
+  onUpdate: () => void;
+}
+
+export const Profile = ({ userId, onUpdate }: ProfileProps) => {
+  return <div>Profile Component</div>;
+};`,
+        },
+        {
+          path: "packages/app/src/features/user/settings.ts",
+          content: `
+export interface SettingsProps {
+  config: Record<string, unknown>;
+}
+
+export const Settings = ({ config }: SettingsProps) => {
+  return <div>Settings Component</div>;
+};`,
+        },
+        {
+          path: "packages/app/src/types/user.ts",
+          content: `
+export interface User {
+  id: string;
+  email: string;
+  profile: {
+    name: string;
+    avatar: string;
+  };
+  settings: Record<string, unknown>;
+}`,
+        },
+        {
+          path: "packages/app/tests/user/profile.test.ts",
+          content: `
+import { render } from '@testing-library/react';
+import { Profile } from '../../src/features/user/profile';
+
+test('Profile renders correctly', () => {
+  render(<Profile userId="123" onUpdate={() => {}} />);
+});`,
+        },
+        {
+          path: "packages/core/src/auth/service.ts",
+          content: `
+export interface AuthOptions {
+  provider: 'google' | 'github';
+  clientId: string;
+}
+
+export class AuthService {
+  constructor(private options: AuthOptions) {}
+  
+  async authenticate(token: string): Promise<boolean> {
+    console.log('Authenticating with', this.options.provider);
+    return true;
+  }
+  
+  async validateToken(token: string): Promise<boolean> {
+    return token.length > 0;
+  }
+}`,
+        },
+        {
+          path: "packages/core/src/auth/types.ts",
+          content: `
+export interface AuthToken {
+  value: string;
+  expiresAt: Date;
+  provider: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  provider: string;
+  lastLogin: Date;
+}`,
+        },
+        {
+          path: "packages/shared/src/logging/logger.ts",
+          content: `
+import { LogLevel, LogConfig } from './types';
+
+export class Logger {
+  constructor(private config: LogConfig) {}
+  
+  log(level: LogLevel, message: string, meta?: Record<string, unknown>) {
+    const timestamp = new Date().toISOString();
+    console.log(\`[\${timestamp}] [\${level}] \${message}\`, meta);
+  }
+  
+  error(message: string, error?: Error) {
+    this.log('error', message, { error: error?.message });
+  }
+}`,
+        },
+        {
+          path: "packages/shared/src/logging/types.ts",
+          content: `
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export interface LogConfig {
+  minLevel: LogLevel;
+  enableConsole: boolean;
+  enableFile: boolean;
+  filePath?: string;
+}`,
+        },
+      ],
+    },
+    input: {
+      message: "implement user profile and settings",
+      command: {
+        name: "commit",
+        subcommand: "create",
+        args: ["-m", "implement user profile and settings", "--staged", "--ai"],
+      },
+      options: {
+        staged: true,
+        ai: true,
+      },
+    },
+  }),
+
+  createScenario({
+    id: "branch-ai-split",
+    name: "Branch analysis with AI split suggestions",
+    setup: {
+      files: [
+        {
+          path: "packages/app/src/features/auth/login.tsx",
+          content: `
+export const Login = () => <div>Login</div>;`,
+        },
+        {
+          path: "packages/app/src/features/auth/register.tsx",
+          content: `
+export const Register = () => <div>Register</div>;`,
+        },
+        {
+          path: "packages/core/src/services/auth.service.ts",
+          content: `
+export class AuthService {
+  login() { return true; }
+  register() { return true; }
+}`,
+        },
+        {
+          path: "packages/shared/src/components/Button.tsx",
+          content: `
+export const Button = () => <button>Click</button>;`,
+        },
+        {
+          path: "packages/shared/src/components/Input.tsx",
+          content: `
+export const Input = () => <input />;`,
+        },
+      ],
+      config: {
+        debug: true,
+        git: {
+          monorepoPatterns: ["packages/*"],
+        },
+        ai: {
+          ...baseAIConfig,
+          maxPromptTokens: 4000,
+        },
+      },
+      branch: "feature/auth-and-ui",
+      commit: "Initial commit",
+      changes: [
+        {
+          path: "packages/app/src/features/auth/login.tsx",
+          content: `
+export interface LoginProps {
+  onSuccess: () => void;
+}
+
+export const Login = ({ onSuccess }: LoginProps) => {
+  return (
+    <div>
+      <h1>Login</h1>
+      <Input placeholder="Email" />
+      <Input type="password" placeholder="Password" />
+      <Button onClick={onSuccess}>Login</Button>
+    </div>
+  );
+};`,
+        },
+        {
+          path: "packages/app/src/features/auth/register.tsx",
+          content: `
+export interface RegisterProps {
+  onSuccess: () => void;
+}
+
+export const Register = ({ onSuccess }: RegisterProps) => {
+  return (
+    <div>
+      <h1>Register</h1>
+      <Input placeholder="Email" />
+      <Input type="password" placeholder="Password" />
+      <Input type="password" placeholder="Confirm Password" />
+      <Button onClick={onSuccess}>Register</Button>
+    </div>
+  );
+};`,
+        },
+        {
+          path: "packages/core/src/services/auth.service.ts",
+          content: `
+interface AuthCredentials {
+  email: string;
+  password: string;
+}
+
+export class AuthService {
+  async login(credentials: AuthCredentials) {
+    // Implement login logic
+    return { success: true, token: 'mock-token' };
+  }
+
+  async register(credentials: AuthCredentials) {
+    // Implement registration logic
+    return { success: true, userId: 'mock-user-id' };
+  }
+
+  async validateToken(token: string) {
+    return token === 'mock-token';
+  }
+}`,
+        },
+        {
+          path: "packages/shared/src/components/Button.tsx",
+          content: `
+export interface ButtonProps {
+  children: React.ReactNode;
+  onClick: () => void;
+  variant?: 'primary' | 'secondary';
+}
+
+export const Button = ({ children, onClick, variant = 'primary' }: ButtonProps) => {
+  return (
+    <button 
+      className={\`btn btn-\${variant}\`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+};`,
+        },
+        {
+          path: "packages/shared/src/components/Input.tsx",
+          content: `
+export interface InputProps {
+  type?: 'text' | 'password' | 'email';
+  placeholder?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+}
+
+export const Input = ({ 
+  type = 'text',
+  placeholder,
+  value,
+  onChange
+}: InputProps) => {
+  return (
+    <input
+      type={type}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}
+      className="input"
+    />
+  );
+};`,
+        },
+      ],
+    },
+    input: {
+      message: "analyze branch changes",
+      command: {
+        name: "branch",
+        subcommand: "analyze",
+        args: [],
+      },
+      options: {
+        ai: true,
+        split: true,
       },
     },
   }),

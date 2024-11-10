@@ -30,7 +30,6 @@ export interface CommitComplexity {
 export interface FilesByType {
   [key: string]: string[];
 }
-
 export interface CommitSplitSuggestion {
   reason: string;
   suggestions: Array<{

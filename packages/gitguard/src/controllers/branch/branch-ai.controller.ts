@@ -7,18 +7,23 @@ import { GitService } from "../../services/git.service.js";
 import { GitHubService } from "../../services/github.service.js";
 import { PRService } from "../../services/pr.service.js";
 import { AIProvider } from "../../types/ai.types.js";
-import { PRAnalysisResult } from "../../types/analysis.types.js";
+import {
+  PRAnalysisResult,
+  PRSplitSuggestion,
+} from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { Logger } from "../../types/logger.types.js";
-import { checkAILimits } from "../../utils/ai-limits.util.js";
-import { generatePRDescriptionPrompt } from "../../utils/ai-prompt.util.js";
+import {
+  generatePRDescriptionPrompt,
+  generatePRSplitPrompt,
+} from "../../utils/ai-prompt.util.js";
 import { formatDiffForAI } from "../../utils/diff.util.js";
 import {
   DiffStrategy,
-  handleClipboardCopy,
+  handleAIAction,
   selectBestDiff,
 } from "../../utils/shared-ai-controller.util.js";
-import { promptAIAction, promptYesNo } from "../../utils/user-prompt.util.js";
+import { promptYesNo } from "../../utils/user-prompt.util.js";
 
 interface BranchAIControllerParams {
   logger: Logger;
@@ -27,12 +32,6 @@ interface BranchAIControllerParams {
   github: GitHubService;
   git: GitService;
   config: Config;
-}
-
-interface SelectBestDiffLocalParams {
-  fullDiff: string;
-  prioritizedDiffs: string;
-  isClipboardAction: boolean;
 }
 
 export class BranchAIController {
@@ -57,19 +56,6 @@ export class BranchAIController {
     this.github = github;
     this.git = git;
     this.config = config;
-  }
-
-  private selectBestDiff({
-    fullDiff,
-    prioritizedDiffs,
-    isClipboardAction,
-  }: SelectBestDiffLocalParams): DiffStrategy {
-    return selectBestDiff({
-      fullDiff,
-      prioritizedDiffs,
-      isClipboardAction,
-      config: this.config,
-    });
   }
 
   private async generatePrompt(
@@ -122,108 +108,12 @@ export class BranchAIController {
     });
   }
 
-  private async processAIAction({
-    analysisResult,
-    prompt,
-    humanFriendlyPrompt,
-  }: {
-    analysisResult: PRAnalysisResult;
-    prompt: string;
-    humanFriendlyPrompt: string;
-  }): Promise<PRAnalysisResult> {
-    if (!this.ai) return analysisResult;
-
-    const aiPromptResult = await promptAIAction({
-      logger: this.logger,
-      tokenUsage: this.ai.calculateTokenUsage({ prompt }),
-    });
-
-    switch (aiPromptResult.action) {
-      case "generate": {
-        this.logger.info("\nGenerating PR description...");
-        const description = await this.prService.generateAIDescription({
-          commits: analysisResult.commits,
-          files: analysisResult.files,
-          baseBranch: analysisResult.baseBranch,
-          prompt,
-        });
-
-        if (description) {
-          this.logger.info("\n📝 AI generated a PR description:");
-          this.logger.info(`\nTitle: ${description.title}`);
-          this.logger.info(`\nDescription:\n${description.description}`);
-
-          const useAIContent = await promptYesNo({
-            message: "\nWould you like to use this AI-generated content?",
-            logger: this.logger,
-            defaultValue: true,
-          });
-
-          if (useAIContent) {
-            analysisResult.description = description;
-
-            // Get existing PR using github service directly
-            const existingPR = await this.github.getPRForBranch({
-              branch: analysisResult.branch,
-            });
-
-            if (existingPR) {
-              // Update the existing PR with new content
-              await this.github.updatePRFromBranch({
-                number: existingPR.number,
-                title: description.title,
-                description: description.description,
-              });
-              this.logger.info(
-                "\n✅ PR description and title updated successfully!",
-              );
-            } else {
-              this.logger.warn("\n⚠️ Could not find existing PR to update");
-            }
-          } else {
-            this.logger.info("\n⏭️  Skipping AI-generated content");
-          }
-        } else {
-          this.logger.warn("\n⚠️  No AI description could be generated.");
-        }
-        break;
-      }
-      case "copy-api": {
-        await handleClipboardCopy({
-          prompt,
-          isApi: true,
-          ai: this.ai,
-          config: this.config,
-          logger: this.logger,
-        });
-        break;
-      }
-      case "copy-manual": {
-        await handleClipboardCopy({
-          prompt: humanFriendlyPrompt,
-          isApi: false,
-          ai: this.ai,
-          config: this.config,
-          logger: this.logger,
-        });
-        break;
-      }
-      case "skip":
-        this.logger.info("\n⏭️  Skipping AI suggestions");
-        break;
-    }
-
-    return analysisResult;
-  }
-
   async handleAISuggestions({
     analysisResult,
   }: {
     analysisResult: PRAnalysisResult;
   }): Promise<PRAnalysisResult> {
-    if (!this.ai) {
-      return analysisResult;
-    }
+    if (!this.ai) return analysisResult;
 
     this.logger.info("\n🤖 Preparing AI suggestions...");
 
@@ -233,22 +123,12 @@ export class BranchAIController {
       to: analysisResult.branch,
     });
 
-    const prioritizedDiffs = formatDiffForAI({
-      files: analysisResult.files,
-      diff: fullDiff,
-      maxLength: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
-      logger: this.logger,
-      options: {
-        includeTests: false,
-        prioritizeCore: true,
-        contextLines: DEFAULT_CONTEXT_LINES,
-      },
-    });
-
-    const bestDiff = this.selectBestDiff({
+    const bestDiff = selectBestDiff({
       fullDiff,
-      prioritizedDiffs,
-      isClipboardAction: false,
+      files: analysisResult.files,
+      config: this.config,
+      ai: this.ai,
+      logger: this.logger,
     });
 
     this.logger.info(
@@ -261,21 +141,139 @@ export class BranchAIController {
       bestDiff,
       "human",
     );
+    const tokenUsage = this.ai.calculateTokenUsage({ prompt });
 
-    if (
-      !checkAILimits({
-        tokenUsage: this.ai.calculateTokenUsage({ prompt }),
-        config: this.config,
-        logger: this.logger,
-      })
-    ) {
+    return handleAIAction({
+      prompt,
+      humanFriendlyPrompt,
+      tokenUsage,
+      generateLabel: "Generate PR description",
+      actionHandler: async (action) => {
+        if (action === "generate") {
+          return this.handlePRGeneration(analysisResult, prompt);
+        }
+        return analysisResult;
+      },
+      config: this.config,
+      logger: this.logger,
+      ai: this.ai,
+    });
+  }
+
+  private async handlePRGeneration(
+    analysisResult: PRAnalysisResult,
+    prompt: string,
+  ): Promise<PRAnalysisResult> {
+    const description = await this.prService.generateAIDescription({
+      commits: analysisResult.commits,
+      files: analysisResult.files,
+      baseBranch: analysisResult.baseBranch,
+      prompt,
+    });
+
+    if (!description) {
+      this.logger.warn("\n⚠️  No AI description could be generated.");
       return analysisResult;
     }
 
-    return this.processAIAction({
-      analysisResult,
+    this.logger.info("\n📝 AI generated a PR description:");
+    this.logger.info(`\nTitle: ${description.title}`);
+    this.logger.info(`\nDescription:\n${description.description}`);
+
+    const useAIContent = await promptYesNo({
+      message: "\nWould you like to use this AI-generated content?",
+      logger: this.logger,
+      defaultValue: true,
+    });
+
+    if (useAIContent) {
+      analysisResult.description = description;
+      const existingPR = await this.github.getPRForBranch({
+        branch: analysisResult.branch,
+      });
+
+      if (existingPR) {
+        await this.github.updatePRFromBranch({
+          number: existingPR.number,
+          title: description.title,
+          description: description.description,
+        });
+        this.logger.info("\n✅ PR description and title updated successfully!");
+      } else {
+        this.logger.warn("\n⚠️ Could not find existing PR to update");
+      }
+    } else {
+      this.logger.info("\n⏭️  Skipping AI-generated content");
+    }
+
+    return { ...analysisResult, description };
+  }
+
+  public async handleSplitSuggestions({
+    analysisResult,
+  }: {
+    analysisResult: PRAnalysisResult;
+  }): Promise<PRAnalysisResult> {
+    this.logger.info("\n🤖 Analyzing PR structure...");
+
+    const fullDiff = await this.git.getDiff({
+      type: "range",
+      from: this.git.config.baseBranch,
+      to: analysisResult.branch,
+    });
+
+    const bestDiff = selectBestDiff({
+      fullDiff,
+      files: analysisResult.files,
+      isClipboardAction: false,
+      config: this.config,
+      ai: this.ai,
+      logger: this.logger,
+    });
+
+    this.logger.debug("Retrieved diff for split analysis:", {
+      diffSize: fullDiff.length,
+      fromBranch: this.git.config.baseBranch,
+      toBranch: analysisResult.branch,
+    });
+
+    const prompt = generatePRSplitPrompt({
+      commits: analysisResult.commits,
+      files: analysisResult.files,
+      baseBranch: analysisResult.baseBranch,
+      diff: bestDiff.content,
+      logger: this.logger,
+    });
+
+    const tokenUsage = this.ai?.calculateTokenUsage({ prompt }) ?? {
+      count: 0,
+      estimatedCost: "N/A (AI not configured)",
+      isWithinApiLimits: true,
+      isWithinClipboardLimits: true,
+    };
+
+    return handleAIAction({
       prompt,
-      humanFriendlyPrompt,
+      humanFriendlyPrompt: prompt,
+      tokenUsage,
+      generateLabel: "Generate split suggestions",
+      actionHandler: async (action) => {
+        if (action === "generate" && this.ai) {
+          const splitSuggestion =
+            await this.ai.generateCompletion<PRSplitSuggestion>({
+              prompt,
+              options: { requireJson: true },
+            });
+
+          if (splitSuggestion) {
+            return { ...analysisResult, splitSuggestion };
+          }
+        }
+        return analysisResult;
+      },
+      config: this.config,
+      logger: this.logger,
+      ai: this.ai,
     });
   }
 }

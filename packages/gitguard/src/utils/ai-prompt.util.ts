@@ -1,4 +1,8 @@
-import { CommitComplexity, PRStats } from "../types/analysis.types.js";
+import {
+  CommitComplexity,
+  CommitSplitSuggestion,
+  PRStats,
+} from "../types/analysis.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
 import { formatDiffForAI } from "./diff.util.js";
@@ -160,7 +164,7 @@ The message should include:
 Respond with:
 1. Your reasoning for the suggested message
 2. The complete commit message
-3. The exact git command to execute the commit, which I can copy and paste directly
+3. The command to copy (no formatting, quotes, or backticks)
 
 Example response format:
 Reasoning: [your explanation]
@@ -168,8 +172,10 @@ Reasoning: [your explanation]
 Suggested message:
 [complete commit message]
 
-Command to execute:
-git commit -m "type(scope): title" -m "detailed message if any"`;
+Command to copy:
+git commit -m "type(scope): title" -m $'detailed message line 1\\n• point 1\\n• point 2\\n• point 3'
+
+Note: The command must use $'string' syntax with \\n for newlines to create a properly formatted multi-line commit message.`;
   }
 
   // API format (default)
@@ -207,38 +213,47 @@ Guidelines:
 export function generateSplitSuggestionPrompt(params: {
   files: FileChange[];
   message: string;
+  diff: string;
   logger: Logger;
+  basicSuggestion?: CommitSplitSuggestion;
 }): string {
   const fileChanges = formatFileChanges({ files: params.files });
+  const diffSection = params.diff
+    ? `\nChanges:\n\`\`\`diff\n${params.diff}\n\`\`\``
+    : "";
 
-  return `Analyze these git changes and suggest if they should be split into multiple commits:
+  return `Analyze these git changes and determine if they should be split into multiple commits. If the changes are cohesive and make sense together, return empty suggestions.
 
 Files Changed:
-${fileChanges}
+${fileChanges}${diffSection}
 
 Original message: "${params.message}"
 
-Please provide suggestion in this JSON format:
+Please provide analysis in this JSON format:
 {
-    "reason": "explanation why the changes should be split",
-    "suggestions": [
-        {
-            "message": "commit message",
-            "files": ["list of files"],
-            "order": "commit order number",
-            "type": "commit type",
-            "scope": "affected package or component"
-        }
-    ],
-    "commands": ["git commands to execute the split"]
+  "reason": "explanation why changes should be split OR why they work well together (max 100 chars)",
+  "suggestions": [
+    {
+      "message": "conventional commit message",
+      "files": ["list of files"],
+      "order": 1,
+      "type": "commit type (feat|fix|refactor|etc)",
+      "scope": "affected component or area"
+    }
+  ],
+  "commands": [
+    "git commands to execute the split"
+  ]
 }
 
 Guidelines:
-1. Split commits by logical changes
-2. Keep related changes together
-3. Order commits logically
+1. If changes are cohesive (e.g., single feature, related components), return empty suggestions array
+2. Only suggest splits for truly separate concerns or unrelated changes
+3. Keep related changes together (e.g., component + its types + its tests)
 4. Follow conventional commits format
-5. Include clear git commands`;
+5. Order suggestions by importance (1 being most important)
+6. Consider package boundaries in monorepo setups
+7. Provide clear reasoning whether splitting or keeping together`;
 }
 
 export function generatePRDescriptionPrompt(params: PRPromptParams): string {

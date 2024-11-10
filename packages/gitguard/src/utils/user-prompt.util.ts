@@ -4,7 +4,6 @@ import { AIProvider } from "../types/ai.types.js";
 import { CommitSuggestion } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
 import { Logger } from "../types/logger.types.js";
-import { TokenUsage } from "../types/ai.types.js";
 
 // Common patterns helpers
 export async function displaySuggestions(params: {
@@ -418,38 +417,6 @@ export async function promptUser(
 // Add new interface and function for AI prompts
 export type AIAction = "generate" | "copy-api" | "copy-manual" | "skip";
 
-export async function promptAIAction({
-  logger,
-  tokenUsage,
-}: {
-  logger: Logger;
-  tokenUsage: TokenUsage;
-}): Promise<{ action: AIAction }> {
-  logger.info("\nChoose an action:");
-  logger.info(
-    `1. Generate AI suggestions now ${chalk.dim(`(estimated cost: $${tokenUsage.estimatedCost}, tokens: ${tokenUsage.count})`)}`,
-  );
-  logger.info("2. Copy API prompt (JSON format) to clipboard");
-  logger.info("3. Copy manual prompt (human-friendly) to clipboard");
-  logger.info("4. Skip AI suggestions");
-
-  const answer = await promptNumeric({
-    message: "\nEnter your choice (number):",
-    allowEmpty: false,
-    maxValue: 4,
-    logger,
-  });
-
-  const actionMap: Record<number, AIAction> = {
-    1: "generate",
-    2: "copy-api",
-    3: "copy-manual",
-    4: "skip",
-  };
-
-  return { action: actionMap[Number(answer) || 4] };
-}
-
 // Add new helper function for creating readline interface
 function createReadlineInterface(): readline.Interface {
   return readline.createInterface({
@@ -570,4 +537,40 @@ export function displayAISuggestions(params: {
       });
     }
   });
+}
+
+interface PromptActionChoice<T extends string> {
+  label: string;
+  value: T;
+  isDefault?: boolean;
+}
+
+export async function promptActionChoice<T extends string>(params: {
+  message: string;
+  choices: PromptActionChoice<T>[];
+  logger: Logger;
+}): Promise<{ action: T }> {
+  const { message, choices, logger } = params;
+
+  logger.info(`\n${message}`);
+  choices.forEach((choice, index) => {
+    const prefix = choice.isDefault ? chalk.yellow("*") : " ";
+    logger.info(`${prefix} ${index + 1}. ${choice.label}`);
+  });
+
+  const defaultChoice = choices.findIndex((c) => c.isDefault) + 1;
+
+  const answer = await promptNumeric({
+    message: "\nEnter your choice (number):",
+    allowEmpty: true,
+    maxValue: choices.length,
+    defaultValue: defaultChoice ? String(defaultChoice) : "1",
+    logger,
+  });
+
+  const selectedChoice =
+    choices[Number(answer) - 1] ??
+    choices.find((c) => c.isDefault) ??
+    choices[0];
+  return { action: selectedChoice.value };
 }

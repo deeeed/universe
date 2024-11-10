@@ -5,25 +5,26 @@ import { GitService } from "../../services/git.service.js";
 import { AIProvider } from "../../types/ai.types.js";
 import {
   CommitAnalysisResult,
+  CommitCohesionAnalysis,
+  CommitSplitSuggestion,
   CommitSuggestion,
 } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { FileChange } from "../../types/git.types.js";
 import { Logger } from "../../types/logger.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
-import { checkAILimits, displayTokenInfo } from "../../utils/ai-limits.util.js";
-import { generateCommitSuggestionPrompt } from "../../utils/ai-prompt.util.js";
+import {
+  generateCommitSuggestionPrompt,
+  generateSplitSuggestionPrompt,
+} from "../../utils/ai-prompt.util.js";
 import {
   DiffStrategy,
-  handleClipboardCopy,
+  handleAIAction,
   selectBestDiff,
 } from "../../utils/shared-ai-controller.util.js";
 import {
   displayAISuggestions,
-  displaySplitSuggestions,
-  promptAIAction,
   promptCommitSuggestion,
-  promptSplitChoice,
 } from "../../utils/user-prompt.util.js";
 
 interface CommitAIControllerParams {
@@ -61,12 +62,6 @@ interface ExecuteCommitParams {
   detectedScope?: string;
 }
 
-interface SelectBestDiffLocalParams {
-  fullDiff: string;
-  prioritizedDiffs: string;
-  isClipboardAction: boolean;
-}
-
 export class CommitAIController {
   private readonly logger: Logger;
   private readonly ai?: AIProvider;
@@ -84,63 +79,6 @@ export class CommitAIController {
       git,
       logger,
       ai,
-    });
-  }
-
-  private async handleUnstageFiles(files: string[]): Promise<void> {
-    this.logger.debug("Attempting to unstage files:", { files });
-
-    this.logger.info(`\n🗑️  ${chalk.yellow("Unstaging other files:")}`);
-    files.forEach((file) => {
-      this.logger.info(`   ${chalk.dim("•")} ${chalk.gray(file)}`);
-    });
-
-    try {
-      await this.git.unstageFiles({ files });
-      this.logger.info(chalk.green("\n✅ Successfully unstaged other files"));
-      this.logger.debug("Files unstaged successfully");
-    } catch (error) {
-      this.logger.error(chalk.red("\n❌ Failed to unstage files:"), error);
-      this.logger.debug("Failed to unstage files:", { error });
-      throw error;
-    }
-  }
-
-  private getKeptFiles(
-    selectedFiles: string[],
-    originalFiles: FileChange[],
-  ): FileChange[] {
-    const keptFiles = selectedFiles
-      .map((filePath) => originalFiles.find((f) => f.path === filePath))
-      .filter((file): file is FileChange => file !== undefined);
-
-    if (keptFiles.length !== selectedFiles.length) {
-      this.logger.debug("Some files were not found in original analysis:", {
-        expected: selectedFiles,
-        found: keptFiles.map((f) => f.path),
-      });
-    }
-
-    return keptFiles;
-  }
-
-  private cleanMessage(message: string): string {
-    return message.replace(
-      /^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)\([^)]+\):\s*/,
-      "",
-    );
-  }
-
-  private selectBestDiff({
-    fullDiff,
-    prioritizedDiffs,
-    isClipboardAction,
-  }: SelectBestDiffLocalParams): DiffStrategy {
-    return selectBestDiff({
-      fullDiff,
-      prioritizedDiffs,
-      isClipboardAction,
-      config: this.config,
     });
   }
 
@@ -180,110 +118,81 @@ export class CommitAIController {
     }
   }
 
-  async handleSplitSuggestions({
-    result,
-    files,
-    message: _message,
-    securityResult,
-    enableAI,
-  }: HandleSplitSuggestionsParams): Promise<CommitAnalysisResult> {
-    if (!result.splitSuggestion) {
-      this.logger.debug("No split suggestion available");
-      return result;
-    }
-
-    // Add AI suggestion as the last option if AI is enabled
-    if (enableAI && this.ai) {
-      result.splitSuggestion.suggestions.push({
-        scope: "ai suggestions",
-        message: "Get AI suggestions for all changes",
-        files: [],
-        order: result.splitSuggestion.suggestions.length + 1,
-        type: "suggestion",
-      });
-    }
-
-    displaySplitSuggestions({
-      suggestions: result.splitSuggestion.suggestions,
-      logger: this.logger,
+  async handleSplitSuggestions(
+    params: HandleSplitSuggestionsParams,
+  ): Promise<CommitAnalysisResult> {
+    // Get basic analysis from commit service
+    const basicAnalysis = this.commitService.analyzeCommitCohesion({
+      files: params.files,
+      originalMessage: params.message ?? "",
     });
 
-    const { selection } = await promptSplitChoice({
-      suggestions: result.splitSuggestion.suggestions,
-      logger: this.logger,
-    });
+    const shouldSplit =
+      params.result.complexity.needsStructure ||
+      (params.result.splitSuggestion?.suggestions?.length ?? 0) > 0;
 
-    this.logger.debug("Split selection made:", { selection });
+    if (params.enableAI && shouldSplit) {
+      try {
+        const diff = await this.git.getStagedDiff();
 
-    // Handle keep all changes
-    if (selection === 0) {
-      this.logger.info(chalk.yellow("\n⏭️  Continuing with all changes..."));
-      return result;
-    }
-
-    // Handle AI suggestion option
-    if (enableAI && selection === result.splitSuggestion.suggestions.length) {
-      this.logger.info(
-        "\n🤖 Proceeding with AI suggestions for all changes...",
-      );
-      return result;
-    }
-
-    // Handle split selection - note the condition change here
-    const selectedSplit = result.splitSuggestion.suggestions[selection - 1];
-    if (selectedSplit) {
-      // Changed condition to check if we have a valid selection
-      this.logger.debug("Selected split:", {
-        scope: selectedSplit.scope,
-        files: selectedSplit.files,
-        message: selectedSplit.message,
-      });
-
-      this.logger.info(
-        `\n📦 ${chalk.cyan(`Keeping only ${selectedSplit.scope ?? "root"} changes:`)}`,
-      );
-      selectedSplit.files.forEach((file) => {
-        this.logger.info(`   ${chalk.dim("•")} ${chalk.gray(file)}`);
-      });
-
-      // Handle unstaging files not in selected scope
-      const filesToUnstage = result.splitSuggestion.suggestions
-        .filter((_, index) => index + 1 !== selection)
-        .flatMap((suggestion) => suggestion.files);
-
-      this.logger.debug("Files to unstage:", { filesToUnstage });
-
-      if (filesToUnstage.length > 0) {
-        await this.handleUnstageFiles(filesToUnstage);
-
-        // Update analysis with kept files only
-        const keptFiles = this.getKeptFiles(selectedSplit.files, files);
-        this.logger.debug("Kept files for new analysis:", {
-          keptFiles: keptFiles.map((f) => f.path),
+        const bestDiff = selectBestDiff({
+          fullDiff: diff,
+          files: params.files,
+          config: this.config,
+          ai: this.ai,
+          logger: this.logger,
         });
 
-        // Re-analyze with only the selected files
-        const newResult = await this.commitService.analyze({
-          files: keptFiles,
-          message: this.cleanMessage(selectedSplit.message),
-          enableAI: false,
-          enablePrompts: true,
-          securityResult,
+        const prompt = generateSplitSuggestionPrompt({
+          files: params.files,
+          message: params.message ?? "",
+          diff: bestDiff.content,
+          basicSuggestion: basicAnalysis.splitSuggestion,
+          logger: this.logger,
         });
 
-        this.logger.debug("New analysis result:", {
-          formattedMessage: newResult.formattedMessage,
-          stats: newResult.stats,
-          warnings: newResult.warnings,
-        });
+        const tokenUsage = this.ai?.calculateTokenUsage({ prompt }) ?? {
+          count: 0,
+          estimatedCost: "N/A (AI not configured)",
+          isWithinApiLimits: true,
+          isWithinClipboardLimits: true,
+        };
 
-        return newResult;
+        return handleAIAction({
+          prompt,
+          humanFriendlyPrompt: prompt,
+          tokenUsage,
+          generateLabel: "Generate split suggestions",
+          actionHandler: async (action) => {
+            if (action === "generate" && this.ai) {
+              const aiSuggestions =
+                await this.ai.generateCompletion<CommitSplitSuggestion>({
+                  prompt,
+                  options: { requireJson: true },
+                });
+
+              if (aiSuggestions?.suggestions?.length) {
+                return {
+                  ...params.result,
+                  splitSuggestion: {
+                    ...aiSuggestions,
+                    suggestions: aiSuggestions.suggestions,
+                  },
+                };
+              }
+            }
+            return params.result;
+          },
+          config: this.config,
+          logger: this.logger,
+          ai: this.ai,
+        });
+      } catch (error) {
+        this.logger.error("Failed to get AI enhanced analysis:", error);
       }
-    } else {
-      this.logger.debug("Invalid selection:", { selection });
     }
 
-    return result;
+    return params.result;
   }
 
   async handleAISuggestions({
@@ -292,155 +201,161 @@ export class CommitAIController {
     message,
     shouldExecute = false,
   }: HandleAISuggestionsParams): Promise<CommitAnalysisResult> {
-    if (!this.ai) {
-      this.logger.debug("AI service not available, skipping suggestions");
-      return result;
-    }
-
     this.logger.info("\n🤖 Preparing AI suggestions...");
-
     const fullDiff = await this.git.getStagedDiff();
-    const prioritizedDiffs = this.commitService.getPrioritizedDiffs({
+
+    const bestDiff = selectBestDiff({
+      fullDiff,
       files,
-      diff: fullDiff,
-      maxLength: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+      config: this.config,
+      ai: this.ai,
+      logger: this.logger,
     });
 
-    const bestDiff = this.selectBestDiff({
-      fullDiff,
-      prioritizedDiffs,
-      isClipboardAction: false,
-    });
-    const prompt = this.generatePrompt({
+    const prompt = this.generatePrompt({ files, message, bestDiff, result });
+    const humanFriendlyPrompt = this.generatePrompt({
       files,
       message,
       bestDiff,
       result,
+      format: "human",
     });
-    const tokenUsage = this.ai.calculateTokenUsage({ prompt });
 
-    displayTokenInfo({
-      tokenUsage,
+    const tokenUsage = this.ai?.calculateTokenUsage({ prompt }) ?? {
+      count: 0,
+      estimatedCost: "N/A (AI not configured)",
+      isWithinApiLimits: true,
+      isWithinClipboardLimits: true,
+    };
+
+    return handleAIAction({
       prompt,
-      maxTokens: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+      humanFriendlyPrompt,
+      tokenUsage,
+      generateLabel: "Generate commit message suggestions",
+      actionHandler: async (action) => {
+        if (action === "generate" && this.ai) {
+          return this.handleCommitGeneration({
+            result,
+            files,
+            message,
+            bestDiff,
+            shouldExecute,
+          });
+        }
+        return result;
+      },
+      config: this.config,
       logger: this.logger,
+      ai: this.ai,
+    });
+  }
+
+  private async handleCommitGeneration({
+    result,
+    files,
+    message,
+    bestDiff,
+    shouldExecute,
+  }: {
+    result: CommitAnalysisResult;
+    files: FileChange[];
+    message?: string;
+    bestDiff: DiffStrategy;
+    shouldExecute: boolean;
+  }): Promise<CommitAnalysisResult> {
+    const suggestions = await this.commitService.generateAISuggestions({
+      files,
+      message: message ?? "",
+      diff: bestDiff.content,
+      needsDetailedMessage: result.complexity.needsStructure,
     });
 
-    if (
-      !checkAILimits({ tokenUsage, config: this.config, logger: this.logger })
-    ) {
+    if (!suggestions?.length) {
+      this.logger.warn("\n⚠️  No AI suggestions could be generated.");
       return result;
     }
 
-    // Add AI action prompt
-    const aiPromptResult = await promptAIAction({
-      logger: this.logger,
-      tokenUsage,
-    });
+    const detectedScope = this.commitService.detectScope(files);
+    displayAISuggestions({ suggestions, detectedScope, logger: this.logger });
 
-    switch (aiPromptResult.action) {
-      case "generate": {
-        this.logger.info("\nGenerating AI suggestions...");
-        const suggestions = await this.commitService.generateAISuggestions({
-          files,
-          message: message ?? "",
-          diff: bestDiff.content,
-          needsDetailedMessage: result.complexity.needsStructure,
-        });
+    if (shouldExecute) {
+      const selectedSuggestion = await promptCommitSuggestion({
+        suggestions,
+        logger: this.logger,
+      });
 
-        if (!suggestions?.length) {
-          this.logger.warn("\n⚠️  No AI suggestions could be generated.");
-          return result;
-        }
-
-        const detectedScope = this.commitService.detectScope(files);
-        displayAISuggestions({
-          suggestions,
+      if (selectedSuggestion) {
+        await this.executeCommit({
+          suggestion: selectedSuggestion,
           detectedScope,
-          logger: this.logger,
         });
-
-        if (shouldExecute) {
-          const selectedSuggestion = await promptCommitSuggestion({
-            suggestions,
-            logger: this.logger,
-          });
-
-          if (selectedSuggestion) {
-            await this.executeCommit({
-              suggestion: selectedSuggestion,
-              detectedScope,
-            });
-          }
-        }
-
-        return {
-          ...result,
-          suggestions,
-        };
       }
-
-      case "copy-api": {
-        const bestDiff = this.selectBestDiff({
-          fullDiff,
-          prioritizedDiffs,
-          isClipboardAction: true,
-        });
-
-        const apiPrompt = this.generatePrompt({
-          files,
-          message,
-          bestDiff,
-          result,
-          format: "api",
-        });
-
-        await this.handleClipboardCopy({
-          prompt: apiPrompt,
-          isApi: true,
-        });
-        break;
-      }
-
-      case "copy-manual": {
-        const bestDiff = this.selectBestDiff({
-          fullDiff,
-          prioritizedDiffs,
-          isClipboardAction: true,
-        });
-
-        const manualPrompt = this.generatePrompt({
-          files,
-          message,
-          bestDiff,
-          result,
-          format: "human",
-        });
-
-        await this.handleClipboardCopy({
-          prompt: manualPrompt,
-          isApi: false,
-        });
-        break;
-      }
-
-      case "skip":
-        this.logger.info("\n⏭️  Skipping AI suggestions");
-        break;
     }
 
-    return result;
+    return { ...result, suggestions };
   }
 
-  private async handleClipboardCopy(params: {
-    prompt: string;
-    isApi: boolean;
-  }): Promise<void> {
-    return handleClipboardCopy({
-      ...params,
-      ai: this.ai,
-      config: this.config,
-      logger: this.logger,
+  handleAISplitAnalysis(params: {
+    files: FileChange[];
+    message?: string;
+    enablePrompts?: boolean;
+  }): CommitCohesionAnalysis {
+    if (!this.ai) {
+      return { shouldSplit: false, warnings: [] };
+    }
+
+    // Directly use analyzeCommitCohesion since we don't need the diff
+    return this.commitService.analyzeCommitCohesion({
+      files: params.files,
+      originalMessage: params.message ?? "",
     });
+  }
+
+  async getAIEnhancedCohesionAnalysis(params: {
+    files: FileChange[];
+    message: string;
+    basicAnalysis: CommitCohesionAnalysis;
+  }): Promise<CommitCohesionAnalysis> {
+    if (!this.ai || !params.basicAnalysis.shouldSplit) {
+      return params.basicAnalysis;
+    }
+
+    try {
+      const diff = await this.git.getStagedDiff();
+      const prioritizedDiffs = this.commitService.getPrioritizedDiffs({
+        files: params.files,
+        diff,
+        maxLength: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+      });
+
+      const prompt = generateSplitSuggestionPrompt({
+        files: params.files,
+        message: params.message,
+        diff: prioritizedDiffs,
+        basicSuggestion: params.basicAnalysis.splitSuggestion,
+        logger: this.logger,
+      });
+
+      const aiSuggestions =
+        await this.ai.generateCompletion<CommitSplitSuggestion>({
+          prompt,
+          options: { requireJson: true },
+        });
+
+      if (aiSuggestions) {
+        return {
+          ...params.basicAnalysis,
+          splitSuggestion: {
+            ...aiSuggestions,
+            suggestions: aiSuggestions.suggestions,
+          },
+        };
+      }
+    } catch (error) {
+      this.logger.error("Failed to get AI enhanced analysis:", error);
+    }
+
+    return params.basicAnalysis;
   }
 }

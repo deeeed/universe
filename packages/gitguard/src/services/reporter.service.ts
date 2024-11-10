@@ -1,13 +1,13 @@
 // packages/gitguard/src/services/reporter.service.ts
+import chalk from "chalk";
 import {
   AnalysisWarning,
   CommitAnalysisResult,
   PRAnalysisResult,
 } from "../types/analysis.types.js";
-import { FileChange } from "../types/git.types.js";
+import { CommitInfo, FileChange } from "../types/git.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import { BaseService } from "./base.service.js";
-import chalk from "chalk";
 
 export interface ReportOptions {
   format?: "console";
@@ -15,6 +15,20 @@ export interface ReportOptions {
 }
 
 type AnalysisResult = CommitAnalysisResult | PRAnalysisResult;
+
+interface PrintCommitDetailsParams {
+  commits: CommitInfo[];
+  isDetailed: boolean;
+}
+
+interface PrintCommitsSectionParams {
+  result: PRAnalysisResult;
+  options: ReportOptions;
+}
+
+interface PrintHeaderParams {
+  result: AnalysisResult;
+}
 
 export class ReporterService extends BaseService {
   constructor(params: ServiceOptions) {
@@ -36,31 +50,72 @@ export class ReporterService extends BaseService {
   }): void {
     const { result, options } = params;
 
+    this.printHeader({ result });
+
+    if (this.isPRResult(result)) {
+      this.printCommitsSection({ result, options });
+    }
+
+    this.printComplexitySection(result);
+    this.printChangesSummary(result, options);
+    this.printWarningsSection(result);
+  }
+
+  private printHeader(params: PrintHeaderParams): void {
+    const { result } = params;
     this.logger.info("\n📊 " + chalk.bold("Analysis Report"));
     this.logger.info(`Branch: ${chalk.cyan(result.branch)}`);
     this.logger.info(`Base branch: ${chalk.cyan(result.baseBranch)}`);
     this.logger.newLine();
+  }
 
-    if (this.isPRResult(result) && options.detailed) {
-      this.logger.info("Commits:");
-      result.commits.forEach((commit) => {
-        this.logger.info(`\n  ${chalk.yellow(commit.hash.slice(0, 7))}`);
-        this.logger.info(`  Author: ${chalk.cyan(commit.author)}`);
-        this.logger.info(`  Date: ${commit.date.toISOString()}`);
-        this.logger.info(`  Message: ${commit.message}`);
+  private printCommitsSection(params: PrintCommitsSectionParams): void {
+    const { result, options } = params;
+    this.logger.info("Commits:");
 
-        if (commit.files.length > 0) {
-          this.logger.info("  Changed files:");
-          commit.files.forEach((file) => {
-            this.logger.info(
-              `    • ${chalk.cyan(file.path)} (+${chalk.green(file.additions)} -${chalk.red(file.deletions)})`,
-            );
-          });
-        }
-      });
-      this.logger.newLine();
+    if (!result.commits.length) {
+      this.logger.info(chalk.yellow("  No commits found"));
+      return;
     }
 
+    this.logger.info(`  Total: ${chalk.cyan(result.commits.length)}`);
+    this.printCommitDetails({
+      commits: result.commits,
+      isDetailed: options.detailed ?? false,
+    });
+    this.logger.newLine();
+  }
+
+  private printCommitDetails(params: PrintCommitDetailsParams): void {
+    const { commits, isDetailed } = params;
+
+    if (!isDetailed) {
+      commits.forEach((commit) =>
+        this.logger.info(
+          `  • ${chalk.yellow(commit.hash.slice(0, 7))} ${commit.message}`,
+        ),
+      );
+      return;
+    }
+
+    commits.forEach((commit) => {
+      this.logger.info(`\n  ${chalk.yellow(commit.hash.slice(0, 7))}`);
+      this.logger.info(`  Author: ${chalk.cyan(commit.author)}`);
+      this.logger.info(`  Date: ${commit.date.toISOString()}`);
+      this.logger.info(`  Message: ${commit.message}`);
+
+      if (commit.files.length) {
+        this.logger.info("  Changed files:");
+        commit.files.forEach((file) => {
+          this.logger.info(
+            `    • ${chalk.cyan(file.path)} (+${chalk.green(file.additions)} -${chalk.red(file.deletions)})`,
+          );
+        });
+      }
+    });
+  }
+
+  private printComplexitySection(result: AnalysisResult): void {
     if ("complexity" in result) {
       this.logger.info("Complexity Analysis:");
       this.logger.table([
@@ -78,7 +133,12 @@ export class ReporterService extends BaseService {
         this.logger.newLine();
       }
     }
+  }
 
+  private printChangesSummary(
+    result: AnalysisResult,
+    options: ReportOptions,
+  ): void {
     this.logger.info("Changes Summary:");
     if (this.isPRResult(result)) {
       this.logger.table([
@@ -126,7 +186,9 @@ export class ReporterService extends BaseService {
         this.logger.info(`Formatted: ${result.formattedMessage}`);
       }
     }
+  }
 
+  private printWarningsSection(result: AnalysisResult): void {
     if (result.warnings.length > 0) {
       this.logger.newLine();
       this.logger.warning(`⚠️  Found ${result.warnings.length} warnings:`);

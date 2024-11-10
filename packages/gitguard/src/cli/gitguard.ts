@@ -9,28 +9,25 @@ import { commitCommand } from "../commands/commit.js";
 import { initCommand } from "../commands/init.js";
 import { statusCommand } from "../commands/status.js";
 import { LoggerService } from "../services/logger.service.js";
+import { addGlobalOptions, GlobalOptions } from "../cli/shared-options.js";
 
 interface PackageJson {
   version: string;
 }
 
-interface GlobalOptions {
-  debug?: boolean;
-  config?: string;
-}
-
 function isDebugEnabled(): boolean {
-  const debugEnv = process.env.GITGUARD_DEBUG;
-  if (debugEnv) {
-    return ["1", "true", "yes", "on", "y"].includes(debugEnv.toLowerCase());
-  }
-  return process.argv.includes("--debug") || process.argv.includes("-d");
+  return (
+    process.argv.includes("--debug") ||
+    process.env.GITGUARD_DEBUG === "true" ||
+    process.env.DEBUG === "true"
+  );
 }
 
 async function main(): Promise<void> {
-  const isDebug = isDebugEnabled();
-  const logger = new LoggerService({ debug: isDebug });
+  const debug: boolean = isDebugEnabled();
+  const logger = new LoggerService({ debug });
   const program = new Command();
+  addGlobalOptions(program);
 
   // Add error handling for unknown commands and options
   program.showHelpAfterError();
@@ -62,8 +59,6 @@ async function main(): Promise<void> {
     .name("gitguard")
     .version(version)
     .helpOption("-h, --help", "Display help for command")
-    .option("-d, --debug", "Enable debug mode")
-    .option("-c, --config <path>", "Path to config file")
     .configureHelp({
       sortSubcommands: true,
       sortOptions: true,
@@ -113,15 +108,18 @@ ${chalk.blue("Options:")}
     const rootOptions = program.opts<GlobalOptions>();
     const currentOptions = thisCommand.opts<GlobalOptions>();
 
-    // Propagate debug from root command to current command
-    if (rootOptions.debug) {
-      // Update the command's options object
+    // Get all parent options
+    let parent = thisCommand.parent;
+    while (parent) {
+      const parentOpts = parent.opts<GlobalOptions>();
+      Object.assign(currentOptions, parentOpts);
+      parent = parent.parent;
+    }
+
+    // Ensure debug is properly set
+    if (rootOptions.debug || currentOptions.debug) {
       Object.assign(currentOptions, { debug: true });
-
-      // Also set it on the command instance for direct access
       thisCommand.setOptionValue("debug", true);
-
-      // Update process.env for services that check it
       process.env.GITGUARD_DEBUG = "true";
     }
   });

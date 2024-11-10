@@ -1,19 +1,18 @@
-import { CommitCommandOptions } from "../../commands/commit.js";
-import { GitService } from "../../services/git.service.js";
-import { Logger } from "../../types/logger.types.js";
-import { FileChange } from "../../types/git.types.js";
-import { Config } from "../../types/config.types.js";
-import { CommitService } from "../../services/commit.service.js";
-import { SecurityCheckResult } from "../../types/security.types.js";
-import { CommitAnalysisResult } from "../../types/analysis.types.js";
 import chalk from "chalk";
-import { AIProvider } from "../../types/ai.types.js";
+import { CommitCommandOptions } from "../../commands/commit.js";
+import { CommitService } from "../../services/commit.service.js";
+import { GitService } from "../../services/git.service.js";
+import { CommitAnalysisResult } from "../../types/analysis.types.js";
+import { Config } from "../../types/config.types.js";
+import { FileChange } from "../../types/git.types.js";
+import { Logger } from "../../types/logger.types.js";
+import { SecurityCheckResult } from "../../types/security.types.js";
+import { promptSplitChoice } from "../../utils/user-prompt.util.js";
 
 interface CommitAnalysisControllerParams {
   logger: Logger;
   git: GitService;
   config: Config;
-  ai?: AIProvider;
 }
 
 interface GetFilesToAnalyzeParams {
@@ -31,7 +30,6 @@ interface GetFilesToAnalyzeResult {
 interface AnalyzeChangesParams {
   files: FileChange[];
   message: string;
-  enableAI: boolean;
   enablePrompts: boolean;
   securityResult: SecurityCheckResult;
 }
@@ -41,14 +39,14 @@ export class CommitAnalysisController {
   private readonly git: GitService;
   private readonly commitService: CommitService;
 
-  constructor({ logger, git, config, ai }: CommitAnalysisControllerParams) {
+  constructor({ logger, git, config }: CommitAnalysisControllerParams) {
     this.logger = logger;
     this.git = git;
+
     this.commitService = new CommitService({
       config,
       git,
       logger,
-      ai,
     });
   }
 
@@ -117,17 +115,69 @@ export class CommitAnalysisController {
   async analyzeChanges({
     files,
     message,
-    enableAI,
     enablePrompts,
     securityResult,
   }: AnalyzeChangesParams): Promise<CommitAnalysisResult> {
-    return this.commitService.analyze({
+    const result = await this.commitService.analyze({
       files,
       message,
-      enableAI,
       enablePrompts,
       securityResult,
     });
+
+    const cohesionAnalysis = this.commitService.analyzeCommitCohesion({
+      files,
+      originalMessage: message,
+    });
+
+    if (cohesionAnalysis.shouldSplit && cohesionAnalysis.warnings.length > 0) {
+      this.logger.info("\n📦 Detected changes that should be split");
+      const splitReason = cohesionAnalysis.warnings[0].message;
+      this.logger.info(chalk.yellow(splitReason));
+
+      const splitSuggestion = cohesionAnalysis.splitSuggestion;
+
+      if (splitSuggestion) {
+        this.logger.info("\n📦 Suggested commit splits:");
+        splitSuggestion.suggestions.forEach((suggestion, index) => {
+          this.logger.info(`\n${index + 1}. ${chalk.cyan(suggestion.message)}`);
+          suggestion.files.forEach((file) => {
+            this.logger.info(`   ${chalk.dim("•")} ${file}`);
+          });
+        });
+
+        if (enablePrompts) {
+          const { selection } = await promptSplitChoice({
+            suggestions: splitSuggestion.suggestions,
+            logger: this.logger,
+          });
+
+          if (selection > 0) {
+            const selectedSplit = splitSuggestion.suggestions[selection - 1];
+
+            await this.git.unstageFiles({
+              files: files
+                .map((f) => f.path)
+                .filter((path) => !selectedSplit.files.includes(path)),
+            });
+
+            return this.commitService.analyze({
+              files: files.filter((f) => selectedSplit.files.includes(f.path)),
+              message: selectedSplit.message,
+              enablePrompts: true,
+              securityResult,
+            });
+          }
+        }
+
+        return {
+          ...result,
+          splitSuggestion,
+        };
+      }
+    }
+
+    return result;
   }
 
   async executeCommit({ message }: { message: string }): Promise<void> {
@@ -142,6 +192,30 @@ export class CommitAnalysisController {
   }
 
   displayAnalysisResults(result: CommitAnalysisResult): void {
+    if (result.splitSuggestion) {
+      this.logger.info("\n📦 Suggested commit splits:");
+      result.splitSuggestion.suggestions.forEach((suggestion, index) => {
+        this.logger.info(`\n${index + 1}. ${chalk.cyan(suggestion.message)}`);
+        suggestion.files.forEach((file) => {
+          this.logger.info(`   ${chalk.dim("•")} ${file}`);
+        });
+      });
+    }
+
+    if (
+      result.complexity.needsStructure ||
+      result.complexity.reasons.length > 0
+    ) {
+      this.logger.info(
+        chalk.yellow("\n⚠️") + "  This commit appears to be complex:",
+      );
+      if (result.complexity.reasons.length > 0) {
+        result.complexity.reasons.forEach((reason) => {
+          this.logger.info(`  ${chalk.dim("•")} ${chalk.yellow(reason)}`);
+        });
+      }
+    }
+
     if (result.warnings.length > 0) {
       this.logger.info(`\n${chalk.yellow("⚠️")} Analysis found some concerns:`);
       result.warnings.forEach((warning) => {

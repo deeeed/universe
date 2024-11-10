@@ -5,6 +5,14 @@ Below are the main workflow prompts used for generating development specificatio
 -- Generate commit prompt
 -- Follow up prompt: "Forget above instructions and instead generate three single consolidated conventional commit message that I can copy individually"
 
+## Changing Context / Side Quests
+
+A lot of time the AI goes into the wrong direction and you need to self correct within the same context. It creates very long chains of messages which can loose the initial purpose of the prompt. In this case, I ask the AI to create a prompt to summarize current context and start over.
+I usually ask to do this in raw plain text without any formatting so that it is easy to copy and paste.
+
+"I meant for you to write a prompt for an llm to start those changes, do not use typescript formatting raw formatting within a single prompt is good"
+
+
 ## Create Development Specification
 
 Please help me define the specifications for "{feature name}" considering the following aspects:

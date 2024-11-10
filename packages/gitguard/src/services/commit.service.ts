@@ -361,29 +361,122 @@ export class CommitService extends BaseService {
     };
   }
 
+  private static readonly CONVENTIONAL_COMMIT_PATTERN = {
+    /**
+     * Regex for parsing conventional commits with ReDoS protection:
+     * - ^: Start of string
+     * - (?:feat|fix|...): Non-capturing group of valid commit types
+     * - (?:\(([^\n()]{1,50})\))?: Optional scope limited to 50 chars, no newlines/nested parens
+     * - (!)?: Optional breaking change indicator
+     * - :\s+: Required separator
+     * - (.{1,200}): Description limited to 200 chars
+     * - $: End of string
+     */
+    full: /^(?:feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(?:\(([^\n()]{1,50})\))?(!)?:\s+(.{1,200})$/,
+    // Valid commit types
+    types: [
+      "feat",
+      "fix",
+      "docs",
+      "style",
+      "refactor",
+      "perf",
+      "test",
+      "chore",
+      "ci",
+      "build",
+      "revert",
+    ],
+  } as const;
+
+  private isConventionalCommit(message: string): boolean {
+    return (
+      CommitService.CONVENTIONAL_COMMIT_PATTERN.full.exec(message) !== null
+    );
+  }
+
+  private parseConventionalCommit(message: string): {
+    type: string;
+    scope?: string;
+    breaking: boolean;
+    description: string;
+  } | null {
+    const match = CommitService.CONVENTIONAL_COMMIT_PATTERN.full.exec(message);
+    if (!match) return null;
+
+    const [, type, scope, breaking, description] = match;
+    return {
+      type,
+      scope,
+      breaking: breaking === "!",
+      description,
+    };
+  }
+
+  private enhanceConventionalCommit(
+    message: string,
+    files: FileChange[],
+  ): string {
+    const parsed = this.parseConventionalCommit(message);
+    if (!parsed) return message;
+
+    // If already has a scope, keep it
+    if (parsed.scope) return message;
+
+    // Try to detect monorepo scope
+    const detectedScope = this.detectScope(files);
+    if (!detectedScope) return message;
+
+    // Reconstruct message with detected scope
+    return `${parsed.type}(${detectedScope})${parsed.breaking ? "!" : ""}: ${parsed.description}`;
+  }
+
   public formatCommitMessage(params: {
     message: string;
     files: FileChange[];
   }): string {
     const { message, files } = params;
 
+    this.logger.debug("Formatting commit message:", {
+      originalMessage: message,
+      fileCount: files.length,
+    });
+
+    // Check if it's conventional
     if (this.isConventionalCommit(message)) {
-      return message;
+      // Even if conventional, check if it needs scope enhancement
+      const enhanced = this.enhanceConventionalCommit(message, files);
+      if (enhanced !== message) {
+        this.logger.debug("Enhanced conventional commit with scope:", {
+          original: message,
+          enhanced,
+        });
+      }
+      return enhanced;
     }
 
     const type = this.detectCommitType(files);
     const scope = this.detectScope(files);
-    const description = message.trim();
 
-    return scope
+    this.logger.debug("Detected commit details:", {
+      type,
+      scope,
+      originalMessage: message,
+    });
+
+    const description = message.trim();
+    const formattedMessage = scope
       ? `${type}(${scope}): ${description}`
       : `${type}: ${description}`;
-  }
 
-  private isConventionalCommit(message: string): boolean {
-    const conventionalPattern =
-      /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?: .+/;
-    return conventionalPattern.test(message);
+    this.logger.debug("Formatted new conventional commit:", {
+      type,
+      scope,
+      description,
+      formattedMessage,
+    });
+
+    return formattedMessage;
   }
 
   public detectCommitType(files: FileChange[]): string {
@@ -414,60 +507,56 @@ export class CommitService extends BaseService {
   }
 
   public detectScope(files: FileChange[]): string | undefined {
-    const patterns = this.git.config.monorepoPatterns;
+    // Check for monorepo package scope
+    const monorepoPatterns = this.git.config.monorepoPatterns;
 
     this.logger.debug("Detecting scope with patterns:", {
-      patterns,
-      fileCount: files.length,
-      filePaths: files.map((f) => f.path),
+      patterns: monorepoPatterns,
+      files: files.map((f) => f.path),
     });
 
-    const isMonorepo = files.some((f) =>
-      patterns.some((pattern) => f.path.startsWith(pattern)),
-    );
+    if (monorepoPatterns?.length) {
+      const packages = new Set<string>();
 
-    this.logger.debug("Monorepo detection result:", {
-      isMonorepo,
-      patterns,
-    });
+      for (const file of files) {
+        for (const pattern of monorepoPatterns) {
+          const basePattern = pattern
+            .replace(/\/$/, "")
+            .replace(/\*/g, "([^/]+)");
+          const regex = new RegExp(`^${basePattern}`);
+          const match = regex.exec(file.path);
 
-    if (!isMonorepo) {
-      this.logger.debug("Not a monorepo structure, skipping scope detection");
-      return undefined;
-    }
-
-    const scopes = new Set<string>();
-    for (const file of files) {
-      for (const pattern of patterns) {
-        if (file.path.startsWith(pattern)) {
-          const parts = file.path.split("/");
-          if (parts.length >= 2) {
-            scopes.add(parts[1]);
-            this.logger.debug("Found scope for file:", {
+          if (match?.[1]) {
+            const packageName = match[1];
+            packages.add(packageName);
+            this.logger.debug("Found package match:", {
               file: file.path,
               pattern,
-              scope: parts[1],
+              packageName,
             });
+            break;
           }
-          break;
         }
+      }
+
+      this.logger.debug("Detected packages:", {
+        packagesFound: Array.from(packages),
+        count: packages.size,
+      });
+
+      // If all files are in the same package, use it as scope
+      if (packages.size === 1) {
+        const scope = Array.from(packages)[0];
+        this.logger.debug("Using detected scope:", scope);
+        return scope;
       }
     }
 
-    const scopeNames = Array.from(scopes);
-    const result =
-      scopeNames.length === 1 ? scopeNames[0] : scopeNames.join(",");
-
-    this.logger.debug("Final scope detection result:", {
-      scopeCount: scopeNames.length,
-      scopes: scopeNames,
-      result,
-    });
-
-    return result;
+    this.logger.debug("No scope detected");
+    return undefined;
   }
 
-  private analyzeCommitCohesion(params: {
+  public analyzeCommitCohesion(params: {
     files: FileChange[];
     originalMessage: string;
   }): CommitCohesionAnalysis {
