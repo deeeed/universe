@@ -173,9 +173,9 @@ Suggested message:
 [complete commit message]
 
 Command to copy:
-git commit -m "type(scope): title" -m "detailed message if any"
+git commit -m "type(scope): title" -m $'detailed message line 1\\n• point 1\\n• point 2\\n• point 3'
 
-Note: The command must be on a single line with no formatting or special characters, ready to copy directly into the terminal.`;
+Note: The command must use $'string' syntax with \\n for newlines to create a properly formatted multi-line commit message.`;
   }
 
   // API format (default)
