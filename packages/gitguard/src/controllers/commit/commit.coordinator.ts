@@ -183,7 +183,7 @@ async function handleAnalysis(
       message:
         "\n🤖 Would you like AI assistance to split this complex commit?",
       logger,
-      defaultValue: true,
+      defaultValue: false,
     });
 
     if (shouldUseAI) {
