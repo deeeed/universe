@@ -362,8 +362,17 @@ export class CommitService extends BaseService {
   }
 
   private static readonly CONVENTIONAL_COMMIT_PATTERN = {
-    // Matches: type(scope)!: description
-    full: /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(?:\(([^)]+)\))?(!)?:\s+(.+)$/,
+    /**
+     * Regex for parsing conventional commits with ReDoS protection:
+     * - ^: Start of string
+     * - (?:feat|fix|...): Non-capturing group of valid commit types
+     * - (?:\(([^\n()]{1,50})\))?: Optional scope limited to 50 chars, no newlines/nested parens
+     * - (!)?: Optional breaking change indicator
+     * - :\s+: Required separator
+     * - (.{1,200}): Description limited to 200 chars
+     * - $: End of string
+     */
+    full: /^(?:feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(?:\(([^\n()]{1,50})\))?(!)?:\s+(.{1,200})$/,
     // Valid commit types
     types: [
       "feat",
