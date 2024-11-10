@@ -208,37 +208,49 @@ export function generateSplitSuggestionPrompt(params: {
   files: FileChange[];
   message: string;
   logger: Logger;
+  diff?: string;
 }): string {
   const fileChanges = formatFileChanges({ files: params.files });
+  const diffSection = params.diff
+    ? `\nChanges:\n\`\`\`diff\n${params.diff}\n\`\`\``
+    : "";
 
-  return `Analyze these git changes and suggest if they should be split into multiple commits:
+  return `Analyze these git changes and suggest how to split them into multiple logical commits:
 
 Files Changed:
-${fileChanges}
+${fileChanges}${diffSection}
 
 Original message: "${params.message}"
 
+Please analyze the changes and suggest a logical split based on:
+1. Related functionality
+2. Architectural layers
+3. Independent features
+4. Test and implementation separation
+5. Breaking changes isolation
+
 Please provide suggestion in this JSON format:
 {
-    "reason": "explanation why the changes should be split",
+    "reason": "detailed explanation why and how the changes should be split",
     "suggestions": [
         {
-            "message": "commit message",
-            "files": ["list of files"],
+            "message": "conventional commit message",
+            "files": ["list of related files"],
             "order": "commit order number",
-            "type": "commit type",
-            "scope": "affected package or component"
+            "type": "commit type (feat|fix|refactor|etc)",
+            "scope": "affected component or area"
         }
-    ],
-    "commands": ["git commands to execute the split"]
+    ]
 }
 
 Guidelines:
-1. Split commits by logical changes
+1. Split commits by logical units of work
 2. Keep related changes together
-3. Order commits logically
+3. Order commits to maintain dependencies
 4. Follow conventional commits format
-5. Include clear git commands`;
+5. Consider test and implementation separation
+6. Isolate breaking changes
+7. Group related file changes`;
 }
 
 export function generatePRDescriptionPrompt(params: PRPromptParams): string {

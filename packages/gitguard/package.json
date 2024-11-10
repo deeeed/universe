@@ -37,6 +37,7 @@
     "test:e2e:security:branch": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=security --scenario=branch-security",
     "test:e2e:ai:basic": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=commit-ai-basic",
     "test:e2e:ai:large": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=commit-ai-large",
+    "test:e2e:ai:complex": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=complex-commit-split",
     "test:e2e:ai:branch": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=branch-ai-analyze",
     "test:e2e:ai:pr": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=ai-suggestions --scenario=branch-ai-pr",
     "test:e2e:large:size": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --tests=large-commits --scenario=size-detection",

@@ -80,7 +80,12 @@ async function initializeServices(
 function initializeControllers(services: ServicesContext): ControllersContext {
   const { logger, git, security, ai, config } = services;
   return {
-    analysisController: new CommitAnalysisController({ logger, git, config }),
+    analysisController: new CommitAnalysisController({
+      logger,
+      git,
+      ai,
+      config,
+    }),
     securityController: new CommitSecurityController({ logger, security, git }),
     aiController: new CommitAIController({ logger, ai, git, config }),
   };

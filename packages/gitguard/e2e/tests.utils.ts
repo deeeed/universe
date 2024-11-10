@@ -38,7 +38,7 @@ function buildCommandArgs(scenario: TestScenario): string[] {
 
 async function captureRepoState(testDir: string): Promise<RepoState> {
   const status = execSync("git status --short", { cwd: testDir }).toString();
-  const log = execSync("git log --oneline", { cwd: testDir }).toString();
+  const log = execGitCommand("git log --pretty=format:'%s'", testDir);
 
   const files = execSync("git ls-files", { cwd: testDir })
     .toString()

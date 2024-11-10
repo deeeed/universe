@@ -57,7 +57,16 @@ function createScenario(params: {
     name: params.name,
     setup: {
       files: [],
-      config: { ai: baseAIConfig },
+      config: {
+        debug: true,
+        git: {
+          monorepoPatterns: ["packages/*"],
+        },
+        ai: {
+          ...baseAIConfig,
+          maxPromptTokens: 4000,
+        },
+      },
       ...params.setup,
     },
     input: params.input,
@@ -174,6 +183,107 @@ export class OAuth2Client {
         name: "branch",
         subcommand: "pr",
         args: ["--ai", "--draft"],
+      },
+    },
+  }),
+
+  createScenario({
+    id: "complex-commit-split",
+    name: "Complex commit with AI split suggestions",
+    setup: {
+      files: [
+        {
+          path: "packages/app/src/features/user/profile.ts",
+          content: "export const Profile = () => null;",
+        },
+        {
+          path: "packages/app/src/features/user/settings.ts",
+          content: "export const Settings = () => null;",
+        },
+        {
+          path: "packages/app/src/types/user.ts",
+          content: "export type User = { id: string; };",
+        },
+        {
+          path: "packages/app/tests/user/profile.test.ts",
+          content: "test('profile', () => {});",
+        },
+      ],
+      config: {
+        debug: true,
+        git: {
+          monorepoPatterns: ["packages/*"],
+        },
+        ai: {
+          ...baseAIConfig,
+          maxPromptTokens: 4000,
+        },
+      },
+      changes: [
+        {
+          path: "packages/app/src/features/user/profile.ts",
+          content: `
+export interface ProfileProps {
+  userId: string;
+  onUpdate: () => void;
+}
+
+export const Profile = ({ userId, onUpdate }: ProfileProps) => {
+  return <div>Profile Component</div>;
+};`,
+        },
+        {
+          path: "packages/app/src/features/user/settings.ts",
+          content: `
+export interface SettingsProps {
+  config: Record<string, unknown>;
+}
+
+export const Settings = ({ config }: SettingsProps) => {
+  return <div>Settings Component</div>;
+};`,
+        },
+        {
+          path: "packages/app/src/types/user.ts",
+          content: `
+export interface User {
+  id: string;
+  email: string;
+  profile: {
+    name: string;
+    avatar: string;
+  };
+  settings: Record<string, unknown>;
+}`,
+        },
+        {
+          path: "packages/app/tests/user/profile.test.ts",
+          content: `
+import { render } from '@testing-library/react';
+import { Profile } from '../../src/features/user/profile';
+
+test('Profile renders correctly', () => {
+  render(<Profile userId="123" onUpdate={() => {}} />);
+});`,
+        },
+      ],
+    },
+    input: {
+      message: "implement user profile and settings",
+      command: {
+        name: "commit",
+        subcommand: "create",
+        args: [
+          "-m",
+          "implement user profile and settings",
+          "--staged",
+          "--ai",
+          "--debug",
+        ],
+      },
+      options: {
+        staged: true,
+        ai: true,
       },
     },
   }),

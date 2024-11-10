@@ -61,6 +61,7 @@ const scenarios: TestScenario[] = [
       },
       options: {
         staged: true,
+        debug: true,
       },
     },
   },
