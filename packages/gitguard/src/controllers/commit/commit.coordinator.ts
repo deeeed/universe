@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import { CommitCommandOptions } from "../../commands/commit.js";
 import { AIFactory } from "../../services/factories/ai.factory.js";
 import { GitService } from "../../services/git.service.js";
@@ -12,7 +13,7 @@ import { loadConfig } from "../../utils/config.util.js";
 import { CommitAIController } from "./commit-ai.controller.js";
 import { CommitAnalysisController } from "./commit-analysis.controller.js";
 import { CommitSecurityController } from "./commit-security.controller.js";
-import chalk from "chalk";
+import { promptYesNo } from "../../utils/user-prompt.util.js";
 
 interface CommitAnalyzeParams {
   options: CommitCommandOptions;
@@ -78,16 +79,20 @@ async function initializeServices(
 }
 
 function initializeControllers(services: ServicesContext): ControllersContext {
-  const { logger, git, security, ai, config } = services;
+  const { logger, git, security, config } = services;
   return {
     analysisController: new CommitAnalysisController({
       logger,
       git,
-      ai,
       config,
     }),
     securityController: new CommitSecurityController({ logger, security, git }),
-    aiController: new CommitAIController({ logger, ai, git, config }),
+    aiController: new CommitAIController({
+      logger,
+      ai: services.ai,
+      git,
+      config,
+    }),
   };
 }
 
@@ -140,13 +145,13 @@ async function handleAnalysis(
   services: ServicesContext,
 ): Promise<CommitAnalysisResult> {
   const { logger, reporter } = services;
-  const { analysisController, securityController } = controllers;
-  const { filesToAnalyze, shouldAnalyzeStaged } = context;
+  const { analysisController, securityController, aiController } = controllers;
+  const { filesToAnalyze } = context;
 
   logger.info("\n🔒 Running security checks...");
   const securityResult = await securityController.analyzeSecurity({
     files: filesToAnalyze,
-    shouldAnalyzeStaged,
+    shouldAnalyzeStaged: context.shouldAnalyzeStaged,
   });
 
   if (
@@ -158,17 +163,63 @@ async function handleAnalysis(
   }
 
   logger.info("\n🔍 Analyzing changes...");
-  const result = await analysisController.analyzeChanges({
+  let result = await analysisController.analyzeChanges({
     files: filesToAnalyze,
     message: options.message ?? "",
-    enableAI: options.ai ?? false,
     enablePrompts: true,
     securityResult,
   });
 
+  if (options.ai && services.ai && result.splitSuggestion) {
+    logger.info("\n🤖 Enhancing split suggestions with AI...");
+    result = await aiController.handleSplitSuggestions({
+      result,
+      files: filesToAnalyze,
+      message: options.message,
+      securityResult,
+      enableAI: options.ai,
+    });
+  }
+
+  if (options.ai && services.ai) {
+    logger.info("\n🤖 Preparing AI suggestions...");
+    result = await aiController.handleAISuggestions({
+      result,
+      files: filesToAnalyze,
+      message: options.message,
+      shouldExecute: options.execute,
+    });
+  }
+
   logger.info("\n📊 Analysis Report");
   analysisController.displayAnalysisResults(result);
   reporter.generateReport({ result, options: {} });
+
+  if (options.execute && result.formattedMessage && !options.ai) {
+    logger.info("\n💾 Creating commit...");
+
+    if (result.formattedMessage !== result.originalMessage) {
+      const shouldProceed = await promptYesNo({
+        message: `\nCommit message will be changed from:
+${chalk.red(`"${result.originalMessage}"`)}
+to:
+${chalk.green(`"${result.formattedMessage}"`)}
+
+Proceed with formatted message?`,
+        logger,
+        defaultValue: true,
+      });
+
+      if (!shouldProceed) {
+        logger.info("\n⚠️ Commit cancelled by user");
+        return result;
+      }
+    }
+
+    await analysisController.executeCommit({
+      message: result.formattedMessage,
+    });
+  }
 
   return result;
 }
@@ -190,24 +241,12 @@ export async function analyzeCommit({
       return controllers.analysisController.getEmptyAnalysisResult(context);
     }
 
-    let result = await handleAnalysis(options, context, controllers, services);
-
-    if (options.ai && services.ai) {
-      logger.info("\n🤖 Preparing AI suggestions...");
-      result = await controllers.aiController.handleAISuggestions({
-        result,
-        files: filesToAnalyze,
-        message: options.message,
-        shouldExecute: options.execute,
-      });
-    }
-
-    if (options.execute && result.formattedMessage && !options.ai) {
-      logger.info("\n💾 Creating commit...");
-      await controllers.analysisController.executeCommit({
-        message: result.formattedMessage,
-      });
-    }
+    const result = await handleAnalysis(
+      options,
+      context,
+      controllers,
+      services,
+    );
 
     logger.info("\n✨ Analysis complete!");
     return result;

@@ -160,7 +160,7 @@ The message should include:
 Respond with:
 1. Your reasoning for the suggested message
 2. The complete commit message
-3. The exact git command to execute the commit, which I can copy and paste directly
+3. The exact git command to execute the commit (bash/zsh compatible, no backticks), which I can copy and paste directly
 
 Example response format:
 Reasoning: [your explanation]

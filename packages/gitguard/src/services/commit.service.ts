@@ -552,7 +552,7 @@ export class CommitService extends BaseService {
     return undefined;
   }
 
-  private analyzeCommitCohesion(params: {
+  public analyzeCommitCohesion(params: {
     files: FileChange[];
     originalMessage: string;
   }): CommitCohesionAnalysis {

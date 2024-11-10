@@ -5,6 +5,7 @@ import { GitService } from "../../services/git.service.js";
 import { AIProvider } from "../../types/ai.types.js";
 import {
   CommitAnalysisResult,
+  CommitCohesionAnalysis,
   CommitSuggestion,
 } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
@@ -441,6 +442,22 @@ export class CommitAIController {
       ai: this.ai,
       config: this.config,
       logger: this.logger,
+    });
+  }
+
+  handleAISplitAnalysis(params: {
+    files: FileChange[];
+    message?: string;
+    enablePrompts?: boolean;
+  }): CommitCohesionAnalysis {
+    if (!this.ai) {
+      return { shouldSplit: false, warnings: [] };
+    }
+
+    // Directly use analyzeCommitCohesion since we don't need the diff
+    return this.commitService.analyzeCommitCohesion({
+      files: params.files,
+      originalMessage: params.message ?? "",
     });
   }
 }
