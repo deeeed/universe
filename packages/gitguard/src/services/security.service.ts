@@ -63,92 +63,125 @@ export class SecurityService extends BaseService {
   }
 
   private detectSecrets(params: { diff: string }): SecurityFinding[] {
-    const findings: SecurityFinding[] = [];
+    this.logger.debug(`Analyzing diff content: ${params.diff.length} lines`);
     const lines = params.diff.split("\n");
     const foundSecrets = new Set<string>();
-    let currentFile: string | undefined;
+    const filePathMap = this.buildFilePathMap(lines, params.diff);
 
-    // Debug log the diff content
-    this.logger.debug(`Analyzing diff content: ${params.diff.length} lines`);
+    return this.analyzeLines({
+      lines,
+      filePathMap,
+      foundSecrets,
+    });
+  }
 
-    // First pass: find all file paths
+  private buildFilePathMap(lines: string[], diff: string): Map<number, string> {
     const filePathMap = new Map<number, string>();
     lines.forEach((_line, index) => {
-      const filePath = this.extractFilePath(params.diff, index);
+      const filePath = this.extractFilePath(diff, index);
       if (filePath) {
         filePathMap.set(index, filePath);
-        currentFile = filePath;
       }
     });
+    return filePathMap;
+  }
 
-    // Second pass: detect secrets with correct file paths
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+  private analyzeLines(params: {
+    lines: string[];
+    filePathMap: Map<number, string>;
+    foundSecrets: Set<string>;
+  }): SecurityFinding[] {
+    const findings: SecurityFinding[] = [];
+    let currentFile: string | undefined;
 
-      // Update current file if we have a mapping
-      if (filePathMap.has(i)) {
-        currentFile = filePathMap.get(i);
-      }
+    for (let i = 0; i < params.lines.length; i++) {
+      const line = params.lines[i];
+      currentFile = params.filePathMap.get(i) ?? currentFile;
 
-      // Only check added or modified lines
       if (!line.startsWith("+")) continue;
 
-      // Remove the '+' prefix for pattern matching
       const contentLine = line.substring(1);
+      this.checkCustomPatterns({
+        contentLine,
+        currentFile,
+        lineNumber: i,
+        findings,
+        foundSecrets: params.foundSecrets,
+      });
 
-      // Check custom patterns first
-      const customPatterns = this.config.security.rules.secrets.patterns || [];
-      for (const pattern of customPatterns) {
-        try {
-          const regex = new RegExp(pattern);
-          const match = regex.exec(contentLine);
-          if (match) {
-            const secretKey = `${currentFile ?? "unknown"}-${match[0]}`;
-            if (!foundSecrets.has(secretKey)) {
-              foundSecrets.add(secretKey);
-              findings.push({
-                type: "secret",
-                severity: this.config.security.rules.secrets.severity,
-                path: currentFile ?? ".env",
-                line: i + 1,
-                content: this.maskSecret(contentLine),
-                match: "Custom Pattern Match",
-                suggestion:
-                  "Custom pattern detected. Consider using environment variables or a secret manager.",
-              });
-            }
-          }
-        } catch (error) {
-          this.logger.error(`Invalid custom pattern: ${pattern}`, error);
-        }
-      }
-
-      // Check built-in patterns
-      for (const pattern of SECRET_PATTERNS) {
-        const match = pattern.pattern.exec(contentLine);
-        if (match) {
-          const secretKey = `${currentFile ?? "unknown"}-${match[0]}`;
-          if (!foundSecrets.has(secretKey)) {
-            foundSecrets.add(secretKey);
-            // this.logger.debug(
-            //   `Found secret: ${pattern.name} in ${currentFile}`,
-            // );
-            findings.push({
-              type: "secret",
-              severity: pattern.severity,
-              path: currentFile ?? ".env",
-              line: i + 1,
-              content: this.maskSecret(contentLine),
-              match: pattern.name,
-              suggestion: `Detected ${pattern.name}. Consider using environment variables or a secret manager.`,
-            });
-          }
-        }
-      }
+      this.checkBuiltInPatterns({
+        contentLine,
+        currentFile,
+        lineNumber: i,
+        findings,
+        foundSecrets: params.foundSecrets,
+      });
     }
 
     this.logger.debug(`Total secrets found: ${findings.length}`);
     return findings;
+  }
+
+  private checkCustomPatterns(params: {
+    contentLine: string;
+    currentFile: string | undefined;
+    lineNumber: number;
+    findings: SecurityFinding[];
+    foundSecrets: Set<string>;
+  }): void {
+    const customPatterns = this.config.security.rules.secrets.patterns || [];
+
+    for (const pattern of customPatterns) {
+      try {
+        const regex = new RegExp(pattern);
+        const match = regex.exec(params.contentLine);
+        if (!match) continue;
+
+        const secretKey = `${params.currentFile ?? "unknown"}-${match[0]}`;
+        if (params.foundSecrets.has(secretKey)) continue;
+
+        params.foundSecrets.add(secretKey);
+        params.findings.push({
+          type: "secret",
+          severity: this.config.security.rules.secrets.severity,
+          path: params.currentFile ?? ".env",
+          line: params.lineNumber + 1,
+          content: this.maskSecret(params.contentLine),
+          match: "Custom Pattern Match",
+          suggestion:
+            "Custom pattern detected. Consider using environment variables or a secret manager.",
+        });
+      } catch (error) {
+        this.logger.error(`Invalid custom pattern: ${pattern}`, error);
+      }
+    }
+  }
+
+  private checkBuiltInPatterns(params: {
+    contentLine: string;
+    currentFile: string | undefined;
+    lineNumber: number;
+    findings: SecurityFinding[];
+    foundSecrets: Set<string>;
+  }): void {
+    for (const pattern of SECRET_PATTERNS) {
+      const match = pattern.pattern.exec(params.contentLine);
+      if (!match) continue;
+
+      const secretKey = `${params.currentFile ?? "unknown"}-${match[0]}`;
+      if (params.foundSecrets.has(secretKey)) continue;
+
+      params.foundSecrets.add(secretKey);
+      params.findings.push({
+        type: "secret",
+        severity: pattern.severity,
+        path: params.currentFile ?? ".env",
+        line: params.lineNumber + 1,
+        content: this.maskSecret(params.contentLine),
+        match: pattern.name,
+        suggestion: `Detected ${pattern.name}. Consider using environment variables or a secret manager.`,
+      });
+    }
   }
 
   private maskSecret(line: string): string {
