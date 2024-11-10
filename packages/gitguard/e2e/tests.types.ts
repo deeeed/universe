@@ -37,6 +37,7 @@ export interface TestScenario {
       all?: boolean;
       debug?: boolean;
       execute?: boolean;
+      split?: boolean;
     };
     command?: {
       name: CommandName;

@@ -1,15 +1,15 @@
-import chalk from "chalk";
 import { Command } from "commander";
+import {
+  addGlobalOptions,
+  getCommandOptions,
+  GlobalOptions,
+} from "../cli/shared-options.js";
 import { analyzeBranch } from "../controllers/branch/branch.coordinator.js";
 
-export interface BranchCommandOptions {
+export interface BranchCommandOptions extends GlobalOptions {
   name?: string;
   pr?: string | number;
-  color?: boolean;
   detailed?: boolean;
-  ai?: boolean;
-  debug?: boolean;
-  configPath?: string;
   createPR?: boolean;
   draft?: boolean;
   labels?: string[];
@@ -18,20 +18,21 @@ export interface BranchCommandOptions {
   base?: string;
   security?: boolean;
   edit?: boolean;
-  split?: boolean;
 }
 
 // Subcommands
 const analyze = new Command("analyze")
   .description("Analyze current branch changes")
   .option("--detailed", "Generate a detailed report")
-  .option("--ai", "Enable AI-powered suggestions")
   .option("--format <format>", "Output format (console, json, markdown)")
   .option("--security", "Include security analysis")
-  .option("--debug", "Enable debug mode")
-  .action(async (cmdOptions: BranchCommandOptions) => {
-    await analyzeBranch({ options: cmdOptions });
+  .action(async (_cmdOptions: BranchCommandOptions, command: Command) => {
+    const options = getCommandOptions<BranchCommandOptions>(command);
+    await analyzeBranch({ options });
   });
+
+// Apply global options to analyze command
+addGlobalOptions(analyze);
 
 const create = new Command("pr")
   .description("Create a pull request")
@@ -40,44 +41,40 @@ const create = new Command("pr")
   .option("--description <description>", "PR description")
   .option("--base <branch>", "Base branch for PR", "main")
   .option("--labels <labels...>", "PR labels")
-  .option("--ai", "Use AI to generate content")
-  .option("--debug", "Enable debug mode")
-  .action(async (cmdOptions: BranchCommandOptions) => {
-    await analyzeBranch({ options: { ...cmdOptions, createPR: true } });
+  .action(async (_cmdOptions: BranchCommandOptions, command: Command) => {
+    const options = getCommandOptions<BranchCommandOptions>(command);
+    await analyzeBranch({ options });
   });
+
+// Apply global options to create command
+addGlobalOptions(create);
 
 const edit = new Command("edit")
   .description("Edit existing PR")
-  .option("--ai", "Use AI to generate content")
   .option("--title <title>", "New PR title")
   .option("--description <description>", "New PR description")
-  .option("--debug", "Enable debug mode")
-  .action(async (cmdOptions: BranchCommandOptions) => {
-    await analyzeBranch({ options: { ...cmdOptions, edit: true } });
+  .action(async (_cmdOptions: BranchCommandOptions, command: Command) => {
+    const options = getCommandOptions<BranchCommandOptions>(command);
+    await analyzeBranch({ options });
   });
+
+// Apply global options to edit command
+addGlobalOptions(edit);
 
 // Main branch command
 export const branchCommand = new Command("branch")
   .description("Branch management and pull request operations")
-  .option("--name <branch>", "Branch name (defaults to current)")
-  .option("--debug", "Enable debug mode")
-  .option("--split", "Suggest split changes using AI", false)
-  .addHelpText(
-    "after",
-    `
-${chalk.blue("Examples:")}
-  ${chalk.yellow("$")} gitguard branch analyze          # Analyze current branch
-  ${chalk.yellow("$")} gitguard branch analyze --ai     # Get AI suggestions
-  ${chalk.yellow("$")} gitguard branch pr --draft       # Create draft PR
-  ${chalk.yellow("$")} gitguard branch edit --ai        # Edit PR with AI help
-  ${chalk.yellow("$")} gitguard branch pr --base dev    # Create PR against dev branch`,
-  );
+  .option("--name <branch>", "Branch name (defaults to current)");
+
+// Apply global options to main branch command
+addGlobalOptions(branchCommand);
 
 // Add subcommands
 branchCommand
   .addCommand(analyze)
   .addCommand(create)
   .addCommand(edit)
-  .action(async (cmdOptions: BranchCommandOptions) => {
-    await analyzeBranch({ options: cmdOptions });
+  .action(async (_cmdOptions: BranchCommandOptions, command: Command) => {
+    const options = getCommandOptions<BranchCommandOptions>(command);
+    await analyzeBranch({ options });
   });

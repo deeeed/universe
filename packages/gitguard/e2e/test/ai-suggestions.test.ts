@@ -521,7 +521,11 @@ export const Input = ({
       command: {
         name: "branch",
         subcommand: "analyze",
-        args: ["--ai", "--split"],
+        args: [],
+      },
+      options: {
+        ai: true,
+        split: true,
       },
     },
   }),

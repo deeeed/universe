@@ -115,6 +115,10 @@ export async function analyzeBranch({
   const { logger, reporter } = services;
 
   try {
+    logger.debug("Full options received:", options);
+    logger.debug("Split option value:", options.split);
+    logger.debug("Split option type:", typeof options.split);
+
     logger.info("\n🎯 Starting branch analysis...");
     const controllers = initializeControllers(services);
 
@@ -160,12 +164,20 @@ export async function analyzeBranch({
 
     // Handle AI suggestions if enabled
     if (options.ai && services.ai) {
-      logger.debug("AI processing enabled with options:", {
-        needsGitHubAccess: options.createPR || options.draft,
+      logger.debug("AI processing options:", {
         split: options.split,
+        splitType: typeof options.split,
+        aiEnabled: Boolean(options.ai),
+        needsGitHubAccess: Boolean(options.createPR || options.draft),
       });
 
       const needsGitHubAccess = options.createPR || options.draft;
+
+      if (options.split) {
+        logger.debug(
+          "Split option is enabled, should process split suggestions",
+        );
+      }
 
       if (needsGitHubAccess) {
         logger.debug("GitHub access required, validating...");

@@ -69,7 +69,7 @@ export class SecurityService extends BaseService {
     let currentFile: string | undefined;
 
     // Debug log the diff content
-    this.logger.debug("Analyzing diff content:", params.diff);
+    this.logger.debug(`Analyzing diff content: ${params.diff.length} lines`);
 
     // First pass: find all file paths
     const filePathMap = new Map<number, string>();
@@ -78,7 +78,6 @@ export class SecurityService extends BaseService {
       if (filePath) {
         filePathMap.set(index, filePath);
         currentFile = filePath;
-        this.logger.debug(`Found file path at line ${index}: ${filePath}`);
       }
     });
 
@@ -96,9 +95,6 @@ export class SecurityService extends BaseService {
 
       // Remove the '+' prefix for pattern matching
       const contentLine = line.substring(1);
-      this.logger.debug(
-        `Checking line ${i + 1}: ${this.maskSecret(contentLine)}`,
-      );
 
       // Check custom patterns first
       const customPatterns = this.config.security.rules.secrets.patterns || [];
@@ -134,9 +130,9 @@ export class SecurityService extends BaseService {
           const secretKey = `${currentFile ?? "unknown"}-${match[0]}`;
           if (!foundSecrets.has(secretKey)) {
             foundSecrets.add(secretKey);
-            this.logger.debug(
-              `Found secret: ${pattern.name} in ${currentFile}`,
-            );
+            // this.logger.debug(
+            //   `Found secret: ${pattern.name} in ${currentFile}`,
+            // );
             findings.push({
               type: "secret",
               severity: pattern.severity,
@@ -183,9 +179,9 @@ export class SecurityService extends BaseService {
       for (const pattern of patterns) {
         const match = pattern.exec(line);
         if (match?.[1]) {
-          this.logger.debug(
-            `Extracted file path: ${match[1]} from line: ${line}`,
-          );
+          // this.logger.debug(
+          //   `Extracted file path: ${match[1]} from line: ${line}`,
+          // );
           return match[1];
         }
       }

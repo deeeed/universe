@@ -19,14 +19,18 @@ async function createTempDir(): Promise<string> {
   return tempPath;
 }
 
-function buildCommandArgs(scenario: TestScenario): string[] {
+function buildCommandArgs(
+  scenario: TestScenario,
+  logger: LoggerService,
+): string[] {
   const baseArgs = ["node", "gitguard"];
+  logger.debug("Building command args for scenario:", scenario);
 
   if (!scenario.input.command) {
     return baseArgs;
   }
 
-  return [
+  const commandArgs = [
     ...baseArgs,
     scenario.input.command.name,
     ...(scenario.input.command.subcommand
@@ -34,6 +38,19 @@ function buildCommandArgs(scenario: TestScenario): string[] {
       : []),
     ...(scenario.input.command.args || []),
   ];
+
+  // Add boolean flags correctly
+  if (scenario.input.options) {
+    Object.entries(scenario.input.options).forEach(([key, value]) => {
+      logger.debug(`Processing option ${key}:`, value);
+      if (value === true) {
+        commandArgs.push(`--${key}`);
+      }
+    });
+  }
+
+  logger.debug("Final command args:", commandArgs);
+  return commandArgs;
 }
 
 async function captureRepoState(testDir: string): Promise<RepoState> {
@@ -193,7 +210,7 @@ export async function runScenario(
         );
       }
 
-      const args = buildCommandArgs(enhancedScenario);
+      const args = buildCommandArgs(enhancedScenario, logger);
       // Filter out test runner specific args while keeping gitguard args
       process.argv = [...args, ...(isDebug ? ["--debug"] : [])];
       process.chdir(testDir);
