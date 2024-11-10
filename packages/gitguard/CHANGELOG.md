@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- refactor(commit): consolidate AI controllers and enhance commit split suggestions (#24) ([2665ebb](https://github.com/deeeed/universe/commit/2665ebb754a4adee4b7b70a160646294fc8d365c))
+- refactor(gitguard): modularize commit and branch handling with enhanced e2e logging and security configuration (#22) ([548c5d6](https://github.com/deeeed/universe/commit/548c5d67449674864a0e50f2155252b2c6fc1563))
 - feat/branchcommands (#19) ([95a5bbd](https://github.com/deeeed/universe/commit/95a5bbd90b8d8120adb30a69d0d1e567309b3e0b))
 - docs(gitguard): update changelog with smart package split detection feature ([b9397f1](https://github.com/deeeed/universe/commit/b9397f1dfbac509d180323a69df2e0f230838ba0))
 - feat(gitguard): add smart package split detection in analyze command ([92a1ae8](https://github.com/deeeed/universe/commit/92a1ae8f4ef4dc22f833876e27b70af807f74074))
