@@ -1,6 +1,10 @@
 import chalk from "chalk";
 import { Command } from "commander";
-import { addGlobalOptions, GlobalOptions } from "../cli/shared-options.js";
+import {
+  addGlobalOptions,
+  getCommandOptions,
+  GlobalOptions,
+} from "../cli/shared-options.js";
 import { analyzeCommit } from "../controllers/commit/commit.coordinator.js";
 
 export interface CommitCommandOptions extends GlobalOptions {
@@ -19,12 +23,8 @@ const analyze = new Command("analyze")
   .option("--staged", "Include analysis of staged changes (default: true)")
   .option("--unstaged", "Include analysis of unstaged changes")
   .option("--all", "Analyze both staged and unstaged changes")
-  .action(async (cmdOptions: CommitCommandOptions, command: Command) => {
-    const parentOptions = command.parent?.opts() || {};
-    const options: CommitCommandOptions = {
-      ...parentOptions,
-      ...cmdOptions,
-    };
+  .action(async (_cmdOptions: CommitCommandOptions, command: Command) => {
+    const options = getCommandOptions<CommitCommandOptions>(command);
     await analyzeCommit({ options });
   });
 
@@ -37,14 +37,9 @@ const create = new Command("create")
   .option("--staged", "Include staged changes (default: true)")
   .option("--unstaged", "Include unstaged changes")
   .option("--all", "Include all changes")
-  .action(async (cmdOptions: CommitCommandOptions, command: Command) => {
-    const parentOptions = command.parent?.opts() || {};
-    const options: CommitCommandOptions = {
-      ...parentOptions,
-      ...cmdOptions,
-      execute: true,
-    };
-    await analyzeCommit({ options });
+  .action(async (_cmdOptions: CommitCommandOptions, command: Command) => {
+    const options = getCommandOptions<CommitCommandOptions>(command);
+    await analyzeCommit({ options: { ...options, execute: true } });
   });
 
 // Apply global options to create command
@@ -55,14 +50,9 @@ const suggest = new Command("suggest")
   .option("--staged", "Include staged changes (default: true)")
   .option("--unstaged", "Include unstaged changes")
   .option("--all", "Include all changes")
-  .action(async (cmdOptions: CommitCommandOptions, command: Command) => {
-    const parentOptions = command.parent?.opts() || {};
-    const options: CommitCommandOptions = {
-      ...parentOptions,
-      ...cmdOptions,
-      ai: true,
-    };
-    await analyzeCommit({ options });
+  .action(async (_cmdOptions: CommitCommandOptions, command: Command) => {
+    const options = getCommandOptions<CommitCommandOptions>(command);
+    await analyzeCommit({ options: { ...options, ai: true } });
   });
 
 // Apply global options to suggest command
@@ -90,6 +80,7 @@ commitCommand
   .addCommand(analyze)
   .addCommand(create)
   .addCommand(suggest)
-  .action(async (cmdOptions: CommitCommandOptions) => {
-    await analyzeCommit({ options: cmdOptions });
+  .action(async (_cmdOptions: CommitCommandOptions, command: Command) => {
+    const options = getCommandOptions<CommitCommandOptions>(command);
+    await analyzeCommit({ options });
   });
