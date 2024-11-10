@@ -210,11 +210,17 @@ async function handleAnalysis(
 
   // Final report after all modifications
   logger.info("\n📊 Final Analysis Report");
-  analysisController.displayAnalysisResults(result);
-  reporter.generateReport({ result, options: {} });
+  // Only show essential information, skip the detailed analysis
+  if (result.formattedMessage) {
+    logger.info(`\nCommit Message:
+Original: ${result.originalMessage}
+Formatted: ${result.formattedMessage}
+
+✅ No issues detected`);
+  }
 
   // Handle commit execution
-  if (options.execute && result.formattedMessage && !options.ai) {
+  if (options.execute && result.formattedMessage) {
     logger.info("\n💾 Creating commit...");
     if (result.formattedMessage !== result.originalMessage) {
       const shouldProceed = await promptYesNo({

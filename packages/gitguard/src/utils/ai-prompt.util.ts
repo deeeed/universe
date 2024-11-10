@@ -213,8 +213,8 @@ Guidelines:
 export function generateSplitSuggestionPrompt(params: {
   files: FileChange[];
   message: string;
+  diff: string;
   logger: Logger;
-  diff?: string;
   basicSuggestion?: CommitSplitSuggestion;
 }): string {
   const fileChanges = formatFileChanges({ files: params.files });
@@ -222,52 +222,38 @@ export function generateSplitSuggestionPrompt(params: {
     ? `\nChanges:\n\`\`\`diff\n${params.diff}\n\`\`\``
     : "";
 
-  return `Analyze these git changes and suggest how to split them into multiple logical commits (maximum 3 suggestions):
+  return `Analyze these git changes and determine if they should be split into multiple commits. If the changes are cohesive and make sense together, return empty suggestions.
 
 Files Changed:
 ${fileChanges}${diffSection}
 
 Original message: "${params.message}"
 
-Please provide suggestions in this JSON format:
+Please provide analysis in this JSON format:
 {
-    "reason": "explanation why the changes should be split",
-    "suggestions": [
-        {
-            "message": "conventional commit message",
-            "files": ["list of files"],
-            "order": "commit order number",
-            "type": "commit type (feat|fix|refactor|etc)",
-            "scope": "affected component or area"
-        }
-    ],
-    "commands": ["git commands to execute the split"],
-    "enhancedOptions": [
-        {
-            "id": "unique identifier",
-            "title": "short descriptive title",
-            "explanation": "brief explanation why this split makes sense (max 100 chars)",
-            "commits": [
-                {
-                    "message": "conventional commit message",
-                    "files": ["list of files"],
-                    "order": "commit order number",
-                    "type": "commit type (feat|fix|refactor|etc)",
-                    "scope": "affected component or area"
-                }
-            ]
-        }
-    ]
+  "reason": "explanation why changes should be split OR why they work well together (max 100 chars)",
+  "suggestions": [
+    {
+      "message": "conventional commit message",
+      "files": ["list of files"],
+      "order": 1,
+      "type": "commit type (feat|fix|refactor|etc)",
+      "scope": "affected component or area"
+    }
+  ],
+  "commands": [
+    "git commands to execute the split"
+  ]
 }
 
 Guidelines:
-1. Provide maximum 3 different ways to split the commits
-2. Each suggestion should have a clear, concise explanation
-3. Keep related changes together
-4. Order commits to maintain dependencies
-5. Follow conventional commits format
-6. Consider separating tests from implementation
-7. Prioritize logical grouping over number of commits`;
+1. If changes are cohesive (e.g., single feature, related components), return empty suggestions array
+2. Only suggest splits for truly separate concerns or unrelated changes
+3. Keep related changes together (e.g., component + its types + its tests)
+4. Follow conventional commits format
+5. Order suggestions by importance (1 being most important)
+6. Consider package boundaries in monorepo setups
+7. Provide clear reasoning whether splitting or keeping together`;
 }
 
 export function generatePRDescriptionPrompt(params: PRPromptParams): string {

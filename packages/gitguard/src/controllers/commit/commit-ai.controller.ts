@@ -201,17 +201,14 @@ export class CommitAIController {
               value: "skip",
               isDefault: true,
             },
-            {
-              label: `Generate split suggestions (estimated cost: ${tokenUsage.estimatedCost})`,
-              value: "generate",
-            },
+            // Temporarily disabled until we have a better way to handle this with consistency
+            // {
+            //   label: `Generate split suggestions (estimated cost: ${tokenUsage.estimatedCost})`,
+            //   value: "generate",
+            // },
             {
               label: "Copy API prompt to clipboard",
               value: "copy-api",
-            },
-            {
-              label: "Copy human-friendly prompt to clipboard",
-              value: "copy-manual",
             },
           ],
           logger: this.logger,
@@ -310,7 +307,9 @@ export class CommitAIController {
     }
 
     const { action } = await promptActionChoice<AIAction>({
-      message: "Choose how to proceed:",
+      message: `Current commit message:
+Original: ${chalk.yellow(message || "(empty)")}
+Formatted: ${chalk.green(result.formattedMessage || "(empty)")}\n\nChoose how to proceed:`,
       choices: [
         {
           label: "Continue with current commit",

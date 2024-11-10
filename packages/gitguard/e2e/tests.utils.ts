@@ -87,7 +87,15 @@ async function setupTestRepo(
     execGitCommand("git checkout -b main", testDir);
     execGitCommand("git commit --allow-empty -m 'Initial commit'", testDir);
 
-    // Create initial files and commit them to main
+    // Switch to feature branch if specified
+    if (scenario.setup.branch) {
+      logger.debug(
+        `Creating and switching to branch: ${scenario.setup.branch}`,
+      );
+      execGitCommand(`git checkout -b ${scenario.setup.branch}`, testDir);
+    }
+
+    // Create files and commit them on the feature branch
     if (scenario.setup.files) {
       for (const file of scenario.setup.files) {
         const filePath = join(testDir, file.path);
@@ -97,40 +105,29 @@ async function setupTestRepo(
         execGitCommand(`git add "${file.path}"`, testDir);
       }
 
-      // Commit initial files if commit message is provided
+      // Commit files if commit message is provided
       if (scenario.setup.commit) {
         execGitCommand(`git commit -m "${scenario.setup.commit}"`, testDir);
-        logger.debug(`Created initial commit: ${scenario.setup.commit}`);
+        logger.debug(`Created commit: ${scenario.setup.commit}`);
       }
     }
 
-    // Switch to feature branch if specified
-    if (scenario.setup.branch) {
-      logger.debug(
-        `Creating and switching to branch: ${scenario.setup.branch}`,
-      );
-      execGitCommand(`git checkout -b ${scenario.setup.branch}`, testDir);
-    }
-
-    // Handle changes
+    // Apply additional changes if specified
     if (scenario.setup.changes) {
-      logger.debug("Applying changes to test files");
       for (const change of scenario.setup.changes) {
         const filePath = join(testDir, change.path);
         await mkdir(dirname(filePath), { recursive: true });
         await writeFile(filePath, change.content);
-        logger.debug(`Modified file: ${filePath}`);
-        execGitCommand(`git add "${change.path}"`, testDir);
-      }
+        logger.debug(`Applied change to: ${filePath}`);
 
-      if (!scenario.setup.stageOnly) {
-        execGitCommand(
-          `git commit -m "feat: update ${scenario.setup.branch ?? "files"} with changes"`,
-          testDir,
-        );
-        logger.debug("Created commit for changes");
-      } else {
-        logger.debug("Keeping changes staged (stageOnly: true)");
+        if (!scenario.setup.stageOnly) {
+          execGitCommand(`git add "${change.path}"`, testDir);
+          if (scenario.setup.commit) {
+            execGitCommand(`git commit -m "Update ${change.path}"`, testDir);
+          }
+        } else {
+          execGitCommand(`git add "${change.path}"`, testDir);
+        }
       }
     }
 

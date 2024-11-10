@@ -202,6 +202,22 @@ const scenarios: TestScenario[] = [
           path: "packages/app/tests/user/profile.test.ts",
           content: "test('profile', () => {});",
         },
+        {
+          path: "packages/core/src/auth/service.ts",
+          content: "export const authenticate = () => false;",
+        },
+        {
+          path: "packages/core/src/auth/types.ts",
+          content: "export type AuthToken = string;",
+        },
+        {
+          path: "packages/shared/src/logging/logger.ts",
+          content: "export const logger = { log: console.log };",
+        },
+        {
+          path: "packages/shared/src/logging/types.ts",
+          content: "export type LogLevel = 'info' | 'error';",
+        },
       ],
       config: {
         debug: true,
@@ -259,6 +275,73 @@ import { Profile } from '../../src/features/user/profile';
 test('Profile renders correctly', () => {
   render(<Profile userId="123" onUpdate={() => {}} />);
 });`,
+        },
+        {
+          path: "packages/core/src/auth/service.ts",
+          content: `
+export interface AuthOptions {
+  provider: 'google' | 'github';
+  clientId: string;
+}
+
+export class AuthService {
+  constructor(private options: AuthOptions) {}
+  
+  async authenticate(token: string): Promise<boolean> {
+    console.log('Authenticating with', this.options.provider);
+    return true;
+  }
+  
+  async validateToken(token: string): Promise<boolean> {
+    return token.length > 0;
+  }
+}`,
+        },
+        {
+          path: "packages/core/src/auth/types.ts",
+          content: `
+export interface AuthToken {
+  value: string;
+  expiresAt: Date;
+  provider: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  provider: string;
+  lastLogin: Date;
+}`,
+        },
+        {
+          path: "packages/shared/src/logging/logger.ts",
+          content: `
+import { LogLevel, LogConfig } from './types';
+
+export class Logger {
+  constructor(private config: LogConfig) {}
+  
+  log(level: LogLevel, message: string, meta?: Record<string, unknown>) {
+    const timestamp = new Date().toISOString();
+    console.log(\`[\${timestamp}] [\${level}] \${message}\`, meta);
+  }
+  
+  error(message: string, error?: Error) {
+    this.log('error', message, { error: error?.message });
+  }
+}`,
+        },
+        {
+          path: "packages/shared/src/logging/types.ts",
+          content: `
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export interface LogConfig {
+  minLevel: LogLevel;
+  enableConsole: boolean;
+  enableFile: boolean;
+  filePath?: string;
+}`,
         },
       ],
     },
