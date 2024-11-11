@@ -1,4 +1,5 @@
 import { promises as fs } from "fs";
+import { rm } from "fs/promises";
 
 interface CheckFileParams {
   path: string;
@@ -48,5 +49,15 @@ export const FileUtil = {
       isSecret: this.isSecretFile({ path: params.path }),
       isEnv: this.isEnvironmentFile({ path: params.path }),
     };
+  },
+
+  async rimraf(path: string): Promise<void> {
+    try {
+      await rm(path, { recursive: true, force: true });
+    } catch (error) {
+      if ((error as { code?: string }).code !== "ENOENT") {
+        throw error;
+      }
+    }
   },
 };

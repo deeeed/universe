@@ -7,6 +7,8 @@ import { commitMessageTest } from "./test/commit-message.test.js";
 import { largeCommitsTest } from "./test/large-commits.test.js";
 import { securityTest } from "./test/security.test.js";
 import { branchFeaturesTest } from "./test/branch-features.test.js";
+import { initTest } from "./test/init.test.js";
+import { statusTest } from "./test/status.test.js";
 import {
   E2ETest,
   TestResult,
@@ -21,6 +23,8 @@ const TEST_MAP = new Map<TestSuiteKey, E2ETest>([
   [TestSuites.AI_SUGGESTIONS, aiSuggestionsTest],
   [TestSuites.LARGE_COMMITS, largeCommitsTest],
   [TestSuites.BRANCH_FEATURES, branchFeaturesTest],
+  [TestSuites.INIT, initTest],
+  [TestSuites.STATUS, statusTest],
 ]);
 
 interface ParsedArgs {

@@ -61,19 +61,19 @@ export const SECRET_PATTERNS: SecurityPattern[] = [
   {
     name: "Generic API Key",
     pattern:
-      /(?:^|\s)['"](?:api[_-]?key|apikey|api[_-]?token)['"][\s]*[:=][\s]*['"](\w[-+=]{16,})['"]/i,
+      /(?:^|\s)["'](?:api[_-]?key|apikey|api[_-]?token)["'][\s]*[:=][\s]*["'](\w[-+=]{16,})["']/i,
     severity: "high",
   },
   {
     name: "Authentication Token",
     pattern:
-      /(?:^|\s)['"](?:auth[_-]?token|access[_-]?token)['"][\s]*[:=][\s]*['"](\w[-+=]{16,})['"]/i,
+      /(?:^|\s)["'](?:auth[_-]?token|access[_-]?token)["'][\s]*[:=][\s]*["'](\w[-+=]{16,})["']/i,
     severity: "high",
   },
   {
     name: "Database URL",
     pattern:
-      /['"]?(?:postgres|mysql|mongodb|redis):\/\/[^:]+:([^@]{8,})@[^:]+:[0-9]+\/[^'"]+['"]?/,
+      /["']?(?:postgres|mysql|mongodb|redis):\/\/[^:]+:([^@]{8,})@[^:]+:\d+\/[^'"]+["']?/,
     severity: "high",
   },
   {

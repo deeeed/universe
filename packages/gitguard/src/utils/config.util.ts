@@ -242,8 +242,8 @@ export function getDefaultConfig(cwd?: string): Config {
     ai: {
       enabled: false,
       provider: null,
-      maxPromptTokens: 32000, // Default max tokens
-      maxPromptCost: 0.1, // Default max cost in USD
+      maxPromptTokens: 32000,
+      maxPromptCost: 0.1,
     },
     pr: {
       template: {
@@ -258,10 +258,6 @@ export function getDefaultConfig(cwd?: string): Config {
       },
       maxSize: 800,
       requireApprovals: 1,
-    },
-    hook: {
-      defaultChoice: "keep",
-      timeoutSeconds: 90,
     },
   };
 }

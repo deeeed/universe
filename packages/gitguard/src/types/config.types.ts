@@ -93,11 +93,6 @@ export interface PRConfig {
   requireApprovals: number;
 }
 
-interface HookConfig {
-  defaultChoice: "keep" | "ai" | "format";
-  timeoutSeconds: number;
-}
-
 // Main config with required fields
 export interface Config {
   git: GitConfig;
@@ -106,7 +101,6 @@ export interface Config {
   security: SecurityConfig;
   ai: AIConfig;
   pr: PRConfig;
-  hook: HookConfig;
 }
 
 // Partial config type for user input
