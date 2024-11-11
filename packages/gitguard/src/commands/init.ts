@@ -15,6 +15,7 @@ import { promptForInit } from "../utils/user-prompt.util.js";
 interface InitCommandOptions {
   global?: boolean;
   debug?: boolean;
+  noColors?: boolean;
   configPath?: string;
   useDefaults?: boolean;
 }
@@ -51,6 +52,8 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
 
     const defaultCfg = getDefaultConfig();
     const config: Partial<Config> = {
+      debug: options.debug,
+      colors: options.noColors ? false : defaultCfg.colors,
       git: {
         baseBranch: responses.baseBranch,
         monorepoPatterns: defaultCfg.git.monorepoPatterns,

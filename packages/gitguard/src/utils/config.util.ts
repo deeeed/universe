@@ -223,6 +223,7 @@ export function getDefaultConfig(cwd?: string): Config {
       complexity: { ...DEFAULT_COMPLEXITY_OPTIONS },
     },
     debug: false,
+    colors: true,
     security: {
       enabled: true,
       rules: {

@@ -6,6 +6,7 @@ export interface GlobalOptions {
   configPath?: string;
   ai?: boolean;
   split?: boolean;
+  noColors?: boolean;
 }
 
 // Helper to get all options including globals
@@ -23,5 +24,6 @@ export function addGlobalOptions(command: Command): Command {
       return value;
     })
     .option("--ai", "Enable AI-powered suggestions")
+    .option("--no-colors", "Disable colors")
     .option("--split", "Suggest split changes using AI");
 }
