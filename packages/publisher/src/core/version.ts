@@ -9,9 +9,10 @@ import type {
   ReleaseConfig,
 } from "../types/config";
 import { GitService } from "./git";
+import * as fs from "fs";
 
 export class VersionService {
-  private git: GitService;
+  private readonly git: GitService;
 
   constructor(gitConfig: GitConfig) {
     const rootDir = process.cwd(); // Or get it from workspace service
@@ -93,7 +94,9 @@ export class VersionService {
     updatedPackages: Map<string, string>,
   ): Promise<void> {
     const packageJsonPath = `${context.path}/package.json`;
-    const packageJson = (await import(packageJsonPath)) as PackageJson;
+    const packageJson = JSON.parse(
+      await fs.promises.readFile(packageJsonPath, "utf8"),
+    ) as PackageJson;
     let updated = false;
 
     for (const [name, version] of updatedPackages.entries()) {
@@ -112,6 +115,11 @@ export class VersionService {
     }
 
     if (updated) {
+      await fs.promises.writeFile(
+        packageJsonPath,
+        JSON.stringify(packageJson, null, 2) + "\n",
+      );
+
       await this.execCommand(
         "yarn",
         ["up", ...Array.from(updatedPackages.keys())],

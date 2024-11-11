@@ -262,7 +262,7 @@ export class ReleaseService {
   ): Promise<string> {
     if (config.bumpStrategy === "conventional") {
       const analyzedBumpType = await this.version.analyzeCommits(context);
-      const bumpType = config.bumpType || analyzedBumpType;
+      const bumpType = config.bumpType ?? analyzedBumpType;
       return this.version.determineVersion(
         context,
         bumpType,
