@@ -173,21 +173,17 @@ export async function promptChoice<T extends string>(params: {
   return choice.value;
 }
 
-export type AIProviderName = "azure" | "openai" | "ollama";
+export type AIProviderName = "azure" | "openai" | "ollama" | "skip";
 
 interface InitPromptResponses {
   baseBranch: string;
   conventionalCommits: boolean;
   security: boolean;
-  enableAI: boolean;
-  aiProvider?: AIProviderName;
-  aiEndpoint?: string;
-  aiDeployment?: string;
-  prTemplate: boolean;
-  hook: {
-    defaultChoice: "keep" | "ai" | "format";
-    timeoutSeconds: number;
+  ai: {
+    enabled: boolean;
+    provider: AIProviderName | null;
   };
+  prTemplate: boolean;
 }
 
 export async function promptForInit(params: {
@@ -195,87 +191,70 @@ export async function promptForInit(params: {
   currentConfig: Partial<Config> | null;
 }): Promise<InitPromptResponses> {
   const { logger, currentConfig } = params;
-  const responses: InitPromptResponses = {
-    baseBranch: await promptChoice({
-      message: "Select your default base branch:",
-      choices: [
-        { label: "main", value: "main" },
-        { label: "master", value: "master" },
-        { label: "develop", value: "develop" },
-      ],
-      logger,
-    }),
-    conventionalCommits: await promptYesNo({
-      message: "Enable Conventional Commits validation?",
-      defaultValue: currentConfig?.analysis?.checkConventionalCommits ?? true,
-      logger,
-    }),
-    security: await promptYesNo({
-      message: "Enable security checks (secrets and sensitive files)?",
-      defaultValue: currentConfig?.security?.enabled ?? true,
-      logger,
-    }),
-    enableAI: await promptYesNo({
-      message: "Would you like to enable AI features?",
-      defaultValue: currentConfig?.ai?.enabled ?? false,
-      logger,
-    }),
-    prTemplate: await promptYesNo({
-      message: "Enable PR template validation?",
-      defaultValue: currentConfig?.pr?.template?.required ?? true,
-      logger,
-    }),
-    hook: {
-      defaultChoice: await promptChoice<"keep" | "ai" | "format">({
-        message: "\nSelect default action for commit hooks:",
-        choices: [
-          { label: "Keep original message", value: "keep" },
-          { label: "Generate with AI", value: "ai" },
-          { label: "Use formatted message", value: "format" },
-        ],
-        logger,
-      }),
-      timeoutSeconds: parseInt(
-        (await promptNumeric({
-          message: "Enter timeout for hook prompts (seconds) [30-300]:",
-          logger,
-          allowEmpty: true,
-          defaultValue: currentConfig?.hook?.timeoutSeconds?.toString() ?? "90",
-        })) ?? "90",
-      ),
-    },
-  };
-  if (responses.enableAI) {
-    responses.aiProvider = await promptChoice<AIProviderName>({
-      message: "Select AI provider:",
-      choices: [
-        { label: "Azure OpenAI", value: "azure" },
-        { label: "OpenAI", value: "openai" },
-        { label: "Ollama", value: "ollama" },
-      ],
-      logger,
-    });
 
-    if (responses.aiProvider !== "openai") {
-      responses.aiEndpoint = await promptInput({
-        message: `Enter ${responses.aiProvider} endpoint:`,
-        defaultValue: responses.aiProvider
-          ? getDefaultEndpoint(responses.aiProvider, currentConfig)
-          : "",
-        logger,
-      });
-    }
+  logger.info(chalk.cyan("\n🔍 Base Branch Configuration"));
+  logger.info("Select the main branch for your repository:");
 
-    if (responses.aiProvider) {
-      responses.aiDeployment = await promptInput({
-        message: `Enter ${responses.aiProvider} model/deployment:`,
-        defaultValue: getDefaultDeployment(responses.aiProvider, currentConfig),
-        logger,
-      });
-    }
+  const baseBranch = await promptChoice({
+    message: "Select base branch:",
+    choices: [
+      { label: "main - Default branch for new repositories", value: "main" },
+      { label: "master - Legacy default branch name", value: "master" },
+      { label: "develop - Development branch (GitFlow)", value: "develop" },
+    ],
+    logger,
+  });
+
+  logger.info(chalk.cyan("\n🔍 Code Quality Settings"));
+  const conventionalCommits = await promptYesNo({
+    message: "Enable Conventional Commits validation?",
+    defaultValue: currentConfig?.analysis?.checkConventionalCommits ?? true,
+    logger,
+  });
+
+  const security = await promptYesNo({
+    message: "Enable security checks for secrets and sensitive files?",
+    defaultValue: currentConfig?.security?.enabled ?? true,
+    logger,
+  });
+
+  logger.info(chalk.cyan("\n🤖 AI Configuration"));
+  logger.info(
+    "AI features help with commit messages, PR descriptions, and code analysis",
+  );
+  const aiEnabled = await promptYesNo({
+    message: "Enable AI features?",
+    defaultValue: currentConfig?.ai?.enabled ?? true,
+    logger,
+  });
+
+  if (aiEnabled) {
+    logger.info(
+      "\nTo configure AI providers, add their settings to .gitguard/config.json",
+    );
+    logger.info("and set API keys via environment variables.");
+    logger.info("\nSupported providers:");
+    logger.info("- Azure OpenAI (AZURE_OPENAI_API_KEY)");
+    logger.info("- OpenAI (OPENAI_API_KEY)");
+    logger.info("- Ollama (local setup)");
   }
 
-  return responses;
+  const prTemplate = await promptYesNo({
+    message: "Enable PR template validation?",
+    defaultValue: currentConfig?.pr?.template?.required ?? true,
+    logger,
+  });
+
+  return {
+    baseBranch,
+    conventionalCommits,
+    security,
+    ai: {
+      enabled: aiEnabled,
+      provider: null,
+    },
+    prTemplate,
+  };
 }
 
 export async function promptInput(params: {
@@ -292,90 +271,6 @@ export async function promptInput(params: {
     return (response.trim() || defaultValue) ?? "";
   } finally {
     rl.close();
-  }
-}
-
-// Helper functions for AI defaults
-function getDefaultEndpoint(
-  provider: AIProviderName,
-  config: Partial<Config> | null,
-): string {
-  if (provider === "azure") {
-    return (
-      config?.ai?.azure?.endpoint ?? "https://your-resource.openai.azure.com/"
-    );
-  }
-  if (provider === "ollama") {
-    return config?.ai?.ollama?.host ?? "http://localhost:11434";
-  }
-  return "";
-}
-
-export function getDefaultDeployment(
-  provider: AIProviderName,
-  config: Partial<Config> | null,
-): string {
-  if (provider === "azure") {
-    return config?.ai?.azure?.deployment ?? "gpt-4";
-  }
-  if (provider === "ollama") {
-    return config?.ai?.ollama?.model ?? "codellama";
-  }
-  if (provider === "openai") {
-    return config?.ai?.openai?.model ?? "gpt-4";
-  }
-  return "";
-}
-
-export function getAIConfig(responses: InitPromptResponses): Config["ai"] {
-  if (!responses.enableAI) {
-    return {
-      enabled: false,
-      provider: null,
-    };
-  }
-
-  const provider = responses.aiProvider;
-  if (!provider) {
-    return {
-      enabled: false,
-      provider: null,
-    };
-  }
-
-  switch (provider) {
-    case "azure":
-      return {
-        enabled: true,
-        provider: "azure",
-        azure: {
-          endpoint: responses.aiEndpoint ?? "",
-          deployment: responses.aiDeployment ?? "",
-          apiVersion: "2024-02-15-preview",
-        },
-      };
-    case "ollama":
-      return {
-        enabled: true,
-        provider: "ollama",
-        ollama: {
-          host: responses.aiEndpoint ?? "",
-          model: responses.aiDeployment ?? "",
-        },
-      };
-    case "openai":
-      return {
-        enabled: true,
-        provider: "openai",
-        openai: {
-          model: responses.aiDeployment ?? "",
-        },
-      };
-    default:
-      return {
-        enabled: false,
-        provider: null,
-      };
   }
 }
 

@@ -1,5 +1,3 @@
-Here's the content in a simple markdown format that's easy to copy:
-
 # Personal Dev Notes
 
 Quick setup:

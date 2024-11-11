@@ -276,4 +276,8 @@ export class BranchAIController {
       ai: this.ai,
     });
   }
+
+  public hasAIProvider(): boolean {
+    return !!this.ai;
+  }
 }

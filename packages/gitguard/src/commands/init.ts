@@ -5,17 +5,18 @@ import { join } from "path";
 import { LoggerService } from "../services/logger.service.js";
 import { Config } from "../types/config.types.js";
 import {
-  defaultConfig,
   getConfigPaths,
   getConfigStatus,
+  getDefaultConfig,
 } from "../utils/config.util.js";
 import { FileUtil } from "../utils/file.util.js";
-import { getAIConfig, promptForInit } from "../utils/user-prompt.util.js";
+import { promptForInit } from "../utils/user-prompt.util.js";
 
 interface InitCommandOptions {
   global?: boolean;
   debug?: boolean;
   configPath?: string;
+  useDefaults?: boolean;
 }
 
 interface InitAnalyzeParams {
@@ -40,19 +41,24 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
     : status.local.config;
 
   try {
-    const responses = await promptForInit({ logger, currentConfig });
+    const responses = await promptForInit({
+      logger,
+      currentConfig,
+    });
+
     const configDir = join(configPath, "..");
     await FileUtil.mkdirp(configDir);
 
+    const defaultCfg = getDefaultConfig();
     const config: Partial<Config> = {
       git: {
         baseBranch: responses.baseBranch,
-        monorepoPatterns: defaultConfig.git.monorepoPatterns,
-        ignorePatterns: defaultConfig.git.ignorePatterns,
+        monorepoPatterns: defaultCfg.git.monorepoPatterns,
+        ignorePatterns: defaultCfg.git.ignorePatterns,
         cwd: process.cwd(),
       },
       analysis: {
-        ...defaultConfig.analysis,
+        ...defaultCfg.analysis,
         checkConventionalCommits: responses.conventionalCommits,
       },
       security: {
@@ -69,17 +75,18 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
           },
         },
       },
-      ai: getAIConfig(responses),
+      ai: {
+        enabled: responses.ai.enabled,
+        provider: null,
+        maxPromptTokens: defaultCfg.ai.maxPromptTokens,
+        maxPromptCost: defaultCfg.ai.maxPromptCost,
+      },
       pr: {
-        ...defaultConfig.pr,
+        ...defaultCfg.pr,
         template: {
-          ...defaultConfig.pr.template,
+          ...defaultCfg.pr.template,
           required: responses.prTemplate,
         },
-      },
-      hook: {
-        defaultChoice: responses.hook.defaultChoice,
-        timeoutSeconds: responses.hook.timeoutSeconds,
       },
     };
 
@@ -104,12 +111,14 @@ export const initCommand = new Command("init")
   .description("Initialize GitGuard configuration")
   .option("-d, --debug", "Enable debug mode")
   .option("-g, --global", "Initialize global configuration")
+  .option("-y, --yes", "Use default values without prompting")
   .addHelpText(
     "after",
     `
 ${chalk.blue("Examples:")}
-  ${chalk.yellow("$")} gitguard init              # Initialize local configuration
+  ${chalk.yellow("$")} gitguard init              # Interactive initialization
   ${chalk.yellow("$")} gitguard init -g           # Initialize global configuration
+  ${chalk.yellow("$")} gitguard init -y           # Use defaults without prompting
   ${chalk.yellow("$")} gitguard init create       # Create new configuration`,
   );
 

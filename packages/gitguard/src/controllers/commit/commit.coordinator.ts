@@ -68,11 +68,30 @@ async function initializeServices(
 
   const security = new SecurityService({ config, logger });
 
-  logger.info("🔍 Checking AI configuration...");
-  const ai =
-    (options.ai ?? config.ai?.enabled)
-      ? AIFactory.create({ config: { ...config }, logger })
-      : undefined;
+  logger.info("\n🔍 Checking AI configuration...");
+  let ai: AIProvider | undefined;
+
+  const isAIRequested = options.ai ?? config.ai?.enabled;
+  if (isAIRequested) {
+    if (!config.ai?.provider) {
+      logger.warn("AI requested but no provider configured in settings");
+    } else {
+      try {
+        ai = AIFactory.create({ config: { ...config }, logger });
+        if (ai) {
+          logger.info(`✅ AI initialized using ${ai.getName()}`);
+        } else {
+          logger.warn(
+            `⚠️  AI configuration found for ${config.ai.provider} but initialization failed`,
+          );
+        }
+      } catch (error) {
+        logger.warn("⚠️  Failed to initialize AI provider:", error);
+      }
+    }
+  } else {
+    logger.info("ℹ️  AI analysis disabled");
+  }
 
   logger.info("✅ Services initialized successfully");
   return { logger, reporter, git, security, ai, config };
@@ -177,8 +196,18 @@ async function handleAnalysis(
   analysisController.displayAnalysisResults(result);
   reporter.generateReport({ result, options: {} });
 
-  // If commit is complex and AI is available, prompt for AI assistance
-  if (options.ai && services.ai && result.complexity.needsStructure) {
+  // If commit is complex and AI is requested but not available
+  if (options.ai && !services.ai && result.complexity.needsStructure) {
+    logger.warn(
+      "\n⚠️  AI assistance requested but no valid AI provider configured",
+    );
+    logger.info(
+      "💡 To enable AI, configure a provider in your .gitguard/config.json or environment variables",
+    );
+  }
+
+  // If commit is complex and AI is available
+  else if (options.ai && services.ai && result.complexity.needsStructure) {
     const shouldUseAI = await promptYesNo({
       message:
         "\n🤖 Would you like AI assistance to split this complex commit?",

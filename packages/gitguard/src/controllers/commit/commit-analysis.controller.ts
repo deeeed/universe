@@ -213,6 +213,32 @@ export class CommitAnalysisController {
         result.complexity.reasons.forEach((reason) => {
           this.logger.info(`  ${chalk.dim("•")} ${chalk.yellow(reason)}`);
         });
+
+        this.logger.info(
+          chalk.dim(
+            "\n💡 Pro tip: You can configure complexity thresholds in .gitguard/config.json:",
+          ),
+        );
+        this.logger.info(
+          chalk.dim(`  "analysis": {
+    "complexity": {
+      "structureThresholds": {
+        "scoreThreshold": 10,     // Total complexity score that triggers restructuring
+        "reasonsThreshold": 2    // Number of reasons that triggers restructuring
+      },
+      "thresholds": {
+        "largeFile": 100,        // Lines changed to consider a file large
+        "multipleFiles": 5       // Number of files to consider too many
+        // ... other thresholds
+      }
+    }
+  }`),
+        );
+        this.logger.info(
+          chalk.dim(
+            "\nHigher thresholds will be more permissive, lower thresholds will encourage smaller commits.",
+          ),
+        );
       }
     }
 

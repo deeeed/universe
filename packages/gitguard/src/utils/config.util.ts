@@ -1,10 +1,11 @@
 import { promises as fs } from "fs";
 import { homedir } from "os";
 import { join } from "path";
+import { ComplexityOptions } from "../types/analysis.types.js";
 import { Config, DeepPartial } from "../types/config.types.js";
-import { getGitRoot, isGitRepository } from "./git.util.js";
-import { deepMerge } from "./deep-merge.js";
 import { Severity } from "../types/security.types.js";
+import { deepMerge } from "./deep-merge.js";
+import { getGitRoot, isGitRepository } from "./git.util.js";
 
 export interface ConfigStatus {
   global: {
@@ -28,9 +29,18 @@ export interface LoadConfigOptions {
 async function loadJsonFile(path: string): Promise<Partial<Config>> {
   try {
     const content = await fs.readFile(path, "utf-8");
-    return JSON.parse(content) as Partial<Config>;
-  } catch {
-    return {};
+    try {
+      return JSON.parse(content) as Partial<Config>;
+    } catch (parseError) {
+      throw new Error(`Invalid JSON in config file: ${path}`, {
+        cause: parseError,
+      });
+    }
+  } catch (readError) {
+    if ((readError as NodeJS.ErrnoException).code === "ENOENT") {
+      return {};
+    }
+    throw readError;
   }
 }
 
@@ -110,7 +120,7 @@ export async function getConfigStatus(): Promise<ConfigStatus> {
 
   const envConfig = getEnvConfig();
   const effectiveConfig = deepMerge<Config>(
-    defaultConfig,
+    getDefaultConfig(),
     globalConfig || {},
     localConfig || {},
     envConfig,
@@ -118,9 +128,9 @@ export async function getConfigStatus(): Promise<ConfigStatus> {
 
   return {
     global: {
-      exists: Object.keys(globalConfig).length > 0,
+      exists: Object.keys(globalConfig || {}).length > 0,
       path: globalConfigPath,
-      config: Object.keys(globalConfig).length > 0 ? globalConfig : null,
+      config: Object.keys(globalConfig || {}).length > 0 ? globalConfig : null,
     },
     local: {
       exists: Object.keys(localConfig || {}).length > 0,
@@ -131,60 +141,126 @@ export async function getConfigStatus(): Promise<ConfigStatus> {
   };
 }
 
-export const defaultConfig: Config = {
-  git: {
-    baseBranch: "main",
-    monorepoPatterns: ["packages/", "apps/", "libs/"],
-    ignorePatterns: ["*.lock", "dist/*"],
-    cwd: isGitRepository() ? getGitRoot() : process.cwd(),
+// File pattern constants
+export const FILE_PATTERNS = {
+  TEST: /\/tests?\/|\.tests?\./,
+  CONFIG: /\/\.?config\//,
+} as const;
+
+export const DEFAULT_FILE_PATTERNS = {
+  source: ["/src/", "/lib/", "/core/"],
+  test: ["/test/", "/tests/", "/spec/", "/specs/"],
+  config: ["/config/", "/.config/"],
+  docs: ["/docs/", "/documentation/", "/*.md"],
+  api: ["/api/", "/interfaces/", "/services/"],
+  migrations: ["/migrations/", "/migrate/"],
+  components: ["/components/", "/views/", "/pages/"],
+  hooks: ["/hooks/", "/composables/"],
+  utils: ["/utils/", "/helpers/", "/shared/"],
+  critical: [
+    "package.json",
+    "tsconfig.json",
+    ".env",
+    "pnpm-workspace.yaml",
+    "yarn.lock",
+    "package-lock.json",
+  ],
+} as const;
+
+export const DEFAULT_COMPLEXITY_OPTIONS: ComplexityOptions = {
+  thresholds: {
+    largeFile: 100,
+    veryLargeFile: 300,
+    hugeFile: 500,
+    multipleFiles: 5,
+    manyFiles: 10,
   },
-  analysis: {
-    maxCommitSize: 500,
-    maxFileSize: 800,
-    checkConventionalCommits: true,
+  scoring: {
+    baseFileScore: 1,
+    largeFileScore: 2,
+    veryLargeFileScore: 3,
+    hugeFileScore: 5,
+    sourceFileScore: 1,
+    testFileScore: 1,
+    configFileScore: 0.5,
+    apiFileScore: 2,
+    migrationFileScore: 2,
+    componentFileScore: 1,
+    hookFileScore: 1,
+    utilityFileScore: 0.5,
+    criticalFileScore: 2,
   },
-  debug: false,
-  security: {
-    enabled: true,
-    rules: {
-      secrets: {
-        enabled: true,
-        severity: "high",
-        blockPR: true,
-        patterns: [], // Will use default patterns if empty
-      },
-      files: {
-        enabled: true,
-        severity: "high",
-        patterns: [], // Will use default patterns if empty
-      },
-    },
+  patterns: {
+    sourceFiles: [...DEFAULT_FILE_PATTERNS.source],
+    apiFiles: [...DEFAULT_FILE_PATTERNS.api],
+    migrationFiles: [...DEFAULT_FILE_PATTERNS.migrations],
+    componentFiles: [...DEFAULT_FILE_PATTERNS.components],
+    hookFiles: [...DEFAULT_FILE_PATTERNS.hooks],
+    utilityFiles: [...DEFAULT_FILE_PATTERNS.utils],
+    criticalFiles: [...DEFAULT_FILE_PATTERNS.critical],
   },
-  ai: {
-    enabled: false,
-    provider: null,
-    maxPromptTokens: 32000, // Default max tokens
-    maxPromptCost: 0.1, // Default max cost in USD
-  },
-  pr: {
-    template: {
-      path: ".github/pull_request_template.md",
-      required: false,
-      sections: {
-        description: true,
-        breaking: true,
-        testing: true,
-        checklist: true,
-      },
-    },
-    maxSize: 800,
-    requireApprovals: 1,
-  },
-  hook: {
-    defaultChoice: "keep",
-    timeoutSeconds: 90,
+  structureThresholds: {
+    scoreThreshold: 10,
+    reasonsThreshold: 2,
   },
 };
+
+export function getDefaultConfig(cwd?: string): Config {
+  const effectiveCwd =
+    cwd ?? (isGitRepository() ? getGitRoot() : process.cwd());
+
+  return {
+    git: {
+      baseBranch: "main",
+      monorepoPatterns: ["packages/", "apps/", "libs/"],
+      ignorePatterns: ["*.lock", "dist/*"],
+      cwd: effectiveCwd,
+    },
+    analysis: {
+      maxCommitSize: 500,
+      maxFileSize: 800,
+      checkConventionalCommits: true,
+      complexity: { ...DEFAULT_COMPLEXITY_OPTIONS },
+    },
+    debug: false,
+    security: {
+      enabled: true,
+      rules: {
+        secrets: {
+          enabled: true,
+          severity: "high",
+          blockPR: true,
+          patterns: [], // Will use default patterns if empty
+        },
+        files: {
+          enabled: true,
+          severity: "high",
+          patterns: [], // Will use default patterns if empty
+        },
+      },
+    },
+    ai: {
+      enabled: false,
+      provider: null,
+      maxPromptTokens: 32000,
+      maxPromptCost: 0.1,
+    },
+    pr: {
+      template: {
+        path: ".github/pull_request_template.md",
+        required: false,
+        sections: {
+          description: true,
+          breaking: true,
+          testing: true,
+          checklist: true,
+        },
+      },
+      maxSize: 800,
+      requireApprovals: 1,
+    },
+  };
+}
 
 export async function loadConfig(
   options: LoadConfigOptions = {},
@@ -195,9 +271,8 @@ export async function loadConfig(
     const status = await getConfigStatus();
     const customConfig = configPath ? await loadJsonFile(configPath) : {};
 
-    // Merge configs with custom config taking precedence
     const finalConfig = deepMerge<Config>(
-      defaultConfig,
+      getDefaultConfig(),
       status.global.config || {},
       status.local.config || {},
       getEnvConfig(),
@@ -249,7 +324,7 @@ export function createConfig({
   partial = {},
   cwd,
 }: CreateConfigParams = {}): Config {
-  const merged = deepMerge(defaultConfig, partial);
+  const merged = deepMerge(getDefaultConfig(cwd), partial);
 
   if (cwd) {
     return {

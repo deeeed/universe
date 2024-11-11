@@ -170,28 +170,59 @@ export interface CommitCohesionAnalysis {
 }
 
 export interface ComplexityOptions {
+  /**
+   * Thresholds for individual file and commit size metrics.
+   * These values trigger specific complexity reasons but don't directly force restructuring.
+   */
   thresholds: {
+    /** Number of lines changed to consider a file large */
     largeFile: number;
+    /** Number of lines changed to consider a file very large */
     veryLargeFile: number;
+    /** Number of lines changed to consider a file huge */
     hugeFile: number;
+    /** Number of files changed to trigger multiple files warning */
     multipleFiles: number;
+    /** Number of files changed to trigger many files warning */
     manyFiles: number;
   };
+  /**
+   * Scoring weights for different types of changes.
+   * These values contribute to the overall complexity score.
+   * Higher scores indicate more complex changes that may need restructuring.
+   */
   scoring: {
+    /** Base score for any file change */
     baseFileScore: number;
+    /** Additional score for large files */
     largeFileScore: number;
+    /** Additional score for very large files */
     veryLargeFileScore: number;
+    /** Additional score for huge files */
     hugeFileScore: number;
+    /** Additional score for source code files */
     sourceFileScore: number;
+    /** Additional score for test files */
     testFileScore: number;
+    /** Additional score for configuration files */
     configFileScore: number;
+    /** Additional score for API-related files */
     apiFileScore: number;
+    /** Additional score for database migration files */
     migrationFileScore: number;
+    /** Additional score for UI component files */
     componentFileScore: number;
+    /** Additional score for hook files */
     hookFileScore: number;
+    /** Additional score for utility files */
     utilityFileScore: number;
+    /** Additional score for critical infrastructure files */
     criticalFileScore: number;
   };
+  /**
+   * File patterns used to categorize files and apply appropriate scoring.
+   * These patterns determine how files are classified and scored.
+   */
   patterns: {
     sourceFiles: string[];
     apiFiles: string[];
@@ -201,8 +232,14 @@ export interface ComplexityOptions {
     utilityFiles: string[];
     criticalFiles: string[];
   };
+  /**
+   * Thresholds that determine when a commit needs restructuring.
+   * These are the primary values that trigger restructuring recommendations.
+   */
   structureThresholds: {
+    /** Total complexity score threshold above which restructuring is recommended */
     scoreThreshold: number;
+    /** Number of complexity reasons threshold above which restructuring is recommended */
     reasonsThreshold: number;
   };
 }

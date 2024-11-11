@@ -1,222 +1,117 @@
 # GitGuard
 
-A smart Git commit hook and CLI tool that helps maintain high-quality, consistent commit messages using AI.
+A smart Git tool that helps maintain high-quality commits and PRs using AI.
 
-## Quick Start
+## AI Quick Start
 
-No installation needed! Use directly with `npx` or `yarn dlx`:
+### Commit Messages
 
 ```bash
 # Using npx (npm)
-npx @siteed/gitguard hook install --global
+npx @siteed/gitguard commit analyze
+npx @siteed/gitguard commit create --ai
 
-# Using yarn dlx
-yarn dlx @siteed/gitguard hook install --global
+# Using yarn dlx (yarn berry)
+yarn dlx @siteed/gitguard commit analyze
+yarn dlx @siteed/gitguard commit create --ai
+```
+
+### Branch Management
+
+```bash
+npx @siteed/gitguard branch 
+npx @siteed/gitguard branch --ai --split
 ```
 
 ## Features
 
-### 🛠️ Multiple Usage Modes
+### 🛠️ Smart Commit Management
 
-1. **Git Hook Mode**
-   - Automatically formats and validates commits
-   - Integrates with your git workflow
+1. **Commit Analysis**
+   - Analyze changes before committing
+   - Get AI-powered suggestions
+   - Detect security issues
    ```bash
-   npx @siteed/gitguard hook install --global
-   git commit -m "your message"  # Hook will format automatically
+   # Analyze staged changes
+   npx @siteed/gitguard commit analyze
+   
+   # Get AI suggestions
+   npx @siteed/gitguard commit suggest
+   
+   # Create commit with analysis
+   npx @siteed/gitguard commit create -m "feat: update login"
    ```
 
-2. **CLI Mode**
-   - Format messages directly
-   - Check commit history
-   - Analyze repository patterns
+2. **Branch Management**
+   - Analyze branch changes
+   - Create and manage PRs
+   - Smart package split detection
    ```bash
-   # Format a message
-   npx @siteed/gitguard format "update login form"
+   # Analyze branch
+   npx @siteed/gitguard branch analyze
    
-   # Check last commit
-   npx @siteed/gitguard check
-   
-   # Analyze repository
-   npx @siteed/gitguard analyze
+   # Create PR with analysis
+   npx @siteed/gitguard branch pr --title "My PR"
    ```
 
-3. **Programmatic Usage**
-   ```typescript
-   import { formatMessage } from '@siteed/gitguard';
-   
-   const formatted = await formatMessage({
-     message: "update login form",
-     cwd: process.cwd()
-   });
+3. **Security Features**
+   - Secret detection
+   - Large file checks
+   - PR template validation
+   ```bash
+   # Run security checks
+   npx @siteed/gitguard commit analyze --security
    ```
 
-### 🤖 Smart Features
+### 🤖 AI Integration
 
-- 🎯 **Smart Repository Detection**: 
-  - Automatically detects monorepo vs standard repository structure
-  - Adapts commit message format accordingly
-- 🤖 **Multi-Provider AI Suggestions**: 
-  - Azure OpenAI (with fallback model support)
+- **Multi-Provider Support**: 
+  - Azure OpenAI
+  - OpenAI
   - Local Ollama models
-- 📦 **Repository-Aware Formatting**:
-  - Monorepo: Enforces package scopes and detects cross-package changes
-  - Smart package split detection with interactive unstaging
-  - Standard Repos: Uses conventional commits without forcing scopes
+- **Smart Features**:
+  - Commit message suggestions
+  - PR description generation
+  - Change analysis
+  - Package split recommendations
 
-## Installation Options
+### 📦 Repository Intelligence
 
-### 1. Temporary Usage (Recommended)
-```bash
-# Run commands directly without installation
-npx @siteed/gitguard <command>
-yarn dlx @siteed/gitguard <command>
-```
-
-### 2. Global Installation
-```bash
-# Install globally
-npm install -g @siteed/gitguard
-yarn global add @siteed/gitguard
-
-# Now you can use directly
-gitguard <command>
-```
-
-### 3. Project Installation
-```bash
-# Install in your project
-npm install --save-dev @siteed/gitguard
-yarn add -D @siteed/gitguard
-
-# Add to package.json scripts
-{
-  "scripts": {
-    "commit": "gitguard format",
-    "prepare": "gitguard hook install"
-  }
-}
-```
-
-## CLI Commands
-
-```bash
-# Hook Management
-gitguard hook install [--global]    # Install git hooks
-gitguard hook uninstall [--global]  # Remove git hooks
-
-# Message Formatting
-gitguard format "your message"      # Format a commit message
-gitguard check                      # Check last commit
-gitguard analyze                    # Analyze repository patterns
-
-# Configuration
-gitguard init                       # Initialize configuration
-gitguard config check              # Validate configuration
-```
+- Automatic monorepo detection
+- Smart package change analysis
+- Cross-package dependency tracking
+- PR template management
 
 ## Configuration
 
-GitGuard can be configured using:
-- TypeScript/JavaScript: `gitguard.config.ts` or `gitguard.config.js`
-- JSON: `.gitguard/config.json`
-- Environment variables
+GitGuard can be configured both globally and locally using the `init` command:
 
-### TypeScript Configuration
-```typescript
-import { defineConfig } from '@siteed/gitguard';
-
-export default defineConfig({
-  auto_mode: false,        // Skip prompts and use automatic formatting
-  use_ai: false,          // Enable/disable AI suggestions
-  ai_provider: "azure",   // "azure" or "ollama"
-  
-  azure: {
-    endpoint: "",         // Azure OpenAI endpoint
-    deployment: "",       // Primary deployment
-    fallback_deployment: "", // Fallback model
-    api_version: "",      // API version
-  },
-  
-  ollama: {
-    host: "http://localhost:11434",
-    model: "codellama",
-  },
-  
-  debug: false
-});
-```
-
-// ... (keep existing Configuration sections) ...
-
-## Husky Integration
-
-If you're using Husky, you can integrate GitGuard in two ways:
-
-### 1. Direct Integration (Recommended)
 ```bash
-# Install husky
-yarn add -D husky
-# Add GitGuard hook
-npx @siteed/gitguard hook install
+# Initialize local configuration (in current repository)
+npx @siteed/gitguard init
+# Initialize global configuration (user-level)
+npx @siteed/gitguard init -g
+
+# View all configurations
+npx @siteed/gitguard status
+
+# View only global config
+npx @siteed/gitguard status --global
+
+# View only local config
+npx @siteed/gitguard status --local
 ```
 
-### 2. Manual Integration
-Add to your prepare-commit-msg hook:
+The status command will show:
 
-```typescript:.husky/prepare-commit-msg
-#!/usr/bin/env node
-import { prepareCommit } from '@siteed/gitguard/hooks';
+- Global configuration (if exists)
+- Local configuration (if exists)
+- Effective configuration (merged global and local)
+- Quick actions and next steps
 
-prepareCommit({ messageFile: process.argv[2] })
-  .catch((error) => {
-    console.error('Hook failed:', error);
-    process.exit(1);
-  });
-```
+Configuration precedence:
 
-## Examples
+- Local configuration (repository-specific)
+- Global configuration (user-level)
+- Default values
 
-### Basic Usage
-```bash
-# Format a message
-npx @siteed/gitguard format "update login form"
-# Output: feat(auth): update login form
-
-# Check last commit
-npx @siteed/gitguard check
-
-# Install hooks
-npx @siteed/gitguard hook install --global
-```
-
-### Advanced Usage
-```bash
-# Analyze repository for patterns
-npx @siteed/gitguard analyze
-
-# Format with specific scope
-npx @siteed/gitguard format "update colors" --scope design-system
-
-# Check commit history
-npx @siteed/gitguard check --last 10
-
-# Analyze changes with smart package splitting
-npx @siteed/gitguard analyze --staged
-# Will detect cross-package changes and offer to split them
-```
-
-// ... (keep rest of troubleshooting section) ...
-```
-
-The key changes are:
-1. Emphasized temporary usage with `npx`/`yarn dlx`
-2. Added CLI mode and programmatic usage
-3. Reorganized installation options by preference
-4. Added more examples and use cases
-5. Updated Husky integration with simpler options
-6. Added comprehensive CLI commands section
-7. Added "Smart package split detection" bullet point under Repository-Aware Formatting
-8. Added example for package splitting feature in Advanced Usage section
-
-Would you like me to continue with any other sections or add more examples?
