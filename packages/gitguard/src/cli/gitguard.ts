@@ -33,25 +33,74 @@ async function getPackageVersion({
   logger?: LoggerService;
 }): Promise<string> {
   try {
-    let packagePath: string;
-
+    // Get the directory of the executing script, handling both ESM and CJS
+    let currentDir: string;
     if (typeof __dirname !== "undefined") {
-      packagePath = resolve(__dirname, "../../package.json");
+      // CommonJS
+      currentDir = __dirname;
     } else {
+      // ESM
       const __filename = fileURLToPath(import.meta.url);
-      const __dirname = dirname(__filename);
-      packagePath = resolve(__dirname, "../../package.json");
+      currentDir = dirname(__filename);
     }
 
-    logger?.debug(`Reading package.json from: ${packagePath}`);
+    // Try multiple possible locations for package.json, sorted by path depth
+    const possiblePaths = [
+      // From the executing script location
+      resolve(currentDir, "../../package.json"),
+      // From the project root (when installed as dependency)
+      resolve(currentDir, "../../../package.json"),
+      // From the project root (when running in development)
+      resolve(currentDir, "../../../../package.json"),
+      // Additional fallback for CJS bundled environment
+      resolve(currentDir, "../package.json"),
+    ].sort((a, b) => {
+      // Sort by path depth (fewer path segments = closer)
+      return a.split("/").length - b.split("/").length;
+    });
 
-    // Read file directly instead of using require/import
-    const packageJson = JSON.parse(
-      await readFile(packagePath, "utf8"),
-    ) as PackageJson;
+    logger?.debug("Searching for package.json in (ordered by proximity):");
+    possiblePaths.forEach((path) => logger?.debug(`- ${path}`));
 
-    logger?.debug(`Found version: ${packageJson.version}`);
-    return packageJson.version;
+    const foundVersions: Array<{ path: string; version: string }> = [];
+
+    // Collect all found versions
+    for (const packagePath of possiblePaths) {
+      try {
+        const content = await readFile(packagePath, "utf8");
+        const packageJson = JSON.parse(content) as PackageJson;
+
+        if (packageJson.version) {
+          foundVersions.push({
+            path: packagePath,
+            version: packageJson.version,
+          });
+          logger?.debug(
+            `Found version ${packageJson.version} in ${packagePath}`,
+          );
+        }
+      } catch (err) {
+        logger?.debug(`No valid package.json found at ${packagePath}`);
+        continue;
+      }
+    }
+
+    // If we found any versions, use the closest one
+    if (foundVersions.length > 0) {
+      const closest = foundVersions[0];
+      if (foundVersions.length > 1) {
+        logger?.debug(
+          `Multiple package.json files found, using closest one: ${closest.path}`,
+        );
+      }
+      return closest.version;
+    }
+
+    // If no version found, return development version
+    logger?.warning(
+      "Could not determine package version, using development version",
+    );
+    return "0.0.0-dev";
   } catch (error) {
     logger?.error("Failed to read package version:", error);
     return "0.0.0-dev";
