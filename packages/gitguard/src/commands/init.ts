@@ -5,9 +5,9 @@ import { join } from "path";
 import { LoggerService } from "../services/logger.service.js";
 import { Config } from "../types/config.types.js";
 import {
-  defaultConfig,
   getConfigPaths,
   getConfigStatus,
+  getDefaultConfig,
 } from "../utils/config.util.js";
 import { FileUtil } from "../utils/file.util.js";
 import { getAIConfig, promptForInit } from "../utils/user-prompt.util.js";
@@ -44,15 +44,16 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
     const configDir = join(configPath, "..");
     await FileUtil.mkdirp(configDir);
 
+    const defaultCfg = getDefaultConfig();
     const config: Partial<Config> = {
       git: {
         baseBranch: responses.baseBranch,
-        monorepoPatterns: defaultConfig.git.monorepoPatterns,
-        ignorePatterns: defaultConfig.git.ignorePatterns,
+        monorepoPatterns: defaultCfg.git.monorepoPatterns,
+        ignorePatterns: defaultCfg.git.ignorePatterns,
         cwd: process.cwd(),
       },
       analysis: {
-        ...defaultConfig.analysis,
+        ...defaultCfg.analysis,
         checkConventionalCommits: responses.conventionalCommits,
       },
       security: {
@@ -71,9 +72,9 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
       },
       ai: getAIConfig(responses),
       pr: {
-        ...defaultConfig.pr,
+        ...defaultCfg.pr,
         template: {
-          ...defaultConfig.pr.template,
+          ...defaultCfg.pr.template,
           required: responses.prTemplate,
         },
       },

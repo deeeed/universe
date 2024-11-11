@@ -1,14 +1,17 @@
 // types/config.types.ts
 
 import { Severity } from "./security.types.js";
+import { ComplexityOptions } from "./analysis.types.js";
 
 export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
+
 export interface AnalysisConfig {
   maxCommitSize: number;
   maxFileSize: number;
   checkConventionalCommits: boolean;
+  complexity?: Partial<ComplexityOptions>;
 }
 
 export interface GitConfig {

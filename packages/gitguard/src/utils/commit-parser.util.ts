@@ -9,45 +9,12 @@ import {
   FileChange,
   ParsedCommit,
 } from "../types/git.types.js";
+import {
+  DEFAULT_COMPLEXITY_OPTIONS,
+  DEFAULT_FILE_PATTERNS,
+  FILE_PATTERNS,
+} from "./config.util.js";
 import { deepMerge } from "./deep-merge.js";
-
-const DEFAULT_COMPLEXITY_OPTIONS: ComplexityOptions = {
-  thresholds: {
-    largeFile: 100,
-    veryLargeFile: 300,
-    hugeFile: 500,
-    multipleFiles: 5,
-    manyFiles: 10,
-  },
-  scoring: {
-    baseFileScore: 1,
-    largeFileScore: 2,
-    veryLargeFileScore: 3,
-    hugeFileScore: 5,
-    sourceFileScore: 1,
-    testFileScore: 1,
-    configFileScore: 0.5,
-    apiFileScore: 2,
-    migrationFileScore: 2,
-    componentFileScore: 1,
-    hookFileScore: 1,
-    utilityFileScore: 0.5,
-    criticalFileScore: 2,
-  },
-  patterns: {
-    sourceFiles: ["/src/"],
-    apiFiles: ["/api/", "/interfaces/"],
-    migrationFiles: ["/migrations/"],
-    componentFiles: ["/components/"],
-    hookFiles: ["/hooks/"],
-    utilityFiles: ["/utils/"],
-    criticalFiles: ["package.json", "tsconfig.json", ".env"],
-  },
-  structureThresholds: {
-    scoreThreshold: 5,
-    reasonsThreshold: 1,
-  },
-};
 
 export class CommitParser {
   parseCommitLog(params: { log: string }): Omit<CommitInfo, "files">[] {
@@ -87,8 +54,8 @@ export class CommitParser {
           path,
           additions: parseInt(additions, 10) || 0,
           deletions: parseInt(deletions, 10) || 0,
-          isTest: this.isTestFile(path),
-          isConfig: this.isConfigFile(path),
+          isTest: this.isTestFile({ path }),
+          isConfig: this.isConfigFile({ path }),
         });
       }
     }
@@ -123,16 +90,20 @@ export class CommitParser {
     };
   }
 
-  private isTestFile(path: string): boolean {
-    return /\.(test|spec)\.(ts|js|tsx|jsx)$/.test(path);
+  private isTestFile(params: { path: string }): boolean {
+    const { path } = params;
+    return (
+      FILE_PATTERNS.TEST.test(path) ||
+      DEFAULT_FILE_PATTERNS.test.some((pattern) => path.includes(pattern))
+    );
   }
 
-  private isConfigFile(path: string): boolean {
+  private isConfigFile(params: { path: string }): boolean {
+    const { path } = params;
     return (
-      /\.(json|ya?ml|config\.(js|ts))$/.test(path) ||
-      path.includes("tsconfig") ||
-      path.includes(".eslintrc") ||
-      path.includes(".prettierrc")
+      FILE_PATTERNS.CONFIG.test(path) ||
+      DEFAULT_FILE_PATTERNS.config.some((pattern) => path.includes(pattern)) ||
+      DEFAULT_FILE_PATTERNS.critical.some((pattern) => path === pattern)
     );
   }
 
@@ -220,7 +191,7 @@ export class CommitParser {
     }, 0);
 
     const reasons: string[] = [];
-    const filesByType = this.groupFilesByType(files);
+    const filesByType = this.groupFilesByType({ files });
     const scopes = new Set(files.map((f) => f.path.split("/")[1]));
 
     // File count complexity
@@ -258,7 +229,13 @@ export class CommitParser {
 
     return {
       score,
-      reasons,
+      reasons: [
+        ...reasons,
+        // Add reason when score exceeds threshold
+        score > config.structureThresholds.scoreThreshold
+          ? `Complexity score (${score}) exceeds threshold (${config.structureThresholds.scoreThreshold})`
+          : "",
+      ].filter(Boolean), // Remove empty strings
       needsStructure:
         score > config.structureThresholds.scoreThreshold ||
         reasons.length > config.structureThresholds.reasonsThreshold ||
@@ -266,19 +243,24 @@ export class CommitParser {
     };
   }
 
-  groupFilesByType(files: FileChange[]): FilesByType {
+  groupFilesByType(params: { files: FileChange[] }): FilesByType {
+    const { files } = params;
     return files.reduce((groups, file) => {
-      const type = this.getFileType(file);
+      const type = this.getFileType({ file });
       if (!groups[type]) groups[type] = [];
       groups[type].push(file.path);
       return groups;
     }, {} as FilesByType);
   }
 
-  private getFileType(file: FileChange): string {
+  private getFileType(params: { file: FileChange }): string {
+    const patterns = DEFAULT_FILE_PATTERNS;
+    const { file } = params;
+
     if (file.isTest) return "Tests";
-    if (file.path.includes("/src/")) return "Source";
-    if (file.path.endsWith(".md")) return "Documentation";
+    if (patterns.source.some((p) => file.path.includes(p))) return "Source";
+    if (patterns.docs.some((p) => file.path.includes(p)))
+      return "Documentation";
     if (file.isConfig) return "Configuration";
     return "Other";
   }

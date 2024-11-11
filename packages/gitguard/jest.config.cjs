@@ -3,10 +3,8 @@ const config = {
   projects: [
     {
       displayName: "unit",
-      testMatch: [
-        "<rootDir>/src/**/*.test.ts",
-        "!<rootDir>/src/**/*.integration.test.ts",
-      ],
+      testMatch: ["<rootDir>/src/**/*.test.ts"],
+      testPathIgnorePatterns: [".*\\.integration\\.test\\.ts$"],
       setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
       transform: {
         "^.+\\.tsx?$": [
