@@ -6,11 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- refactor(publisher): improve package version handling (#27) ([3c8f703](https://github.com/deeeed/universe/commit/3c8f703ce62a16e320a0346ac934c112a119f560))
+
+
+## [0.4.17] - 2024-11-11
 - chore(publisher): add optional relative path ([9e39762](https://github.com/deeeed/universe/commit/9e397628ed5a65c76f767a2e4806f5b5d1a67d64))
 - feat(publisher): add setup script for Publisher CLI ([4c1664d](https://github.com/deeeed/universe/commit/4c1664d1bb233a5d6a76134db6539a15d243a80a))
+- refactor(publisher): improve package version handling (#27) ([3c8f703](https://github.com/deeeed/universe/commit/3c8f703ce62a16e320a0346ac934c112a119f560))
 - feat(git): enhance commit retrieval logic and handling ([c9ef55f](https://github.com/deeeed/universe/commit/c9ef55f12ee34d69f4b816ab2bb42a7930225104))
-
 
 ## [0.4.16] - 2024-11-04
 - feat(init): add format option for generating config files ([13c5fe6](https://github.com/deeeed/universe/commit/13c5fe67fd35becee6daf452c640bf7ccd075589))
@@ -22,10 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat(gitguard,publisher): check ([4c61482](https://github.com/deeeed/universe/commit/4c61482a71723d84fe5ec00841a8d877331e732e))
 - chore(release): release @siteed/publisher@0.4.15 ([fdb2a3a](https://github.com/deeeed/universe/commit/fdb2a3ae2b3de3ef33ff9101e748b4ff83e9a744))
 
+
 ## [0.4.15] - 2024-10-31
 - extract file information in git service ([de663d2](https://github.com/deeeed/universe/commit/de663d2cf84e80dc2fe898cbc6dc8264fed88115))
 - filter autochangelog by package ([c3b1221](https://github.com/deeeed/universe/commit/c3b12212c7dfd7c6fa630ec1541fc198120a1a43))
 - chore(release): release @siteed/publisher@0.4.14 ([11f1b85](https://github.com/deeeed/universe/commit/11f1b85603d910d10e6ee963ccd9784624921cec))
+
 
 
 
@@ -35,12 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - docs: cleanup changelog
 
 
+
 ## [0.4.12] - 2024-10-31
 - fix: invalid changelog format
 
 
+
 ## [0.4.11] - 2024-10-31
 - ⚠️ **WARNING: DEVELOPMENT IN PROGRESS** ⚠️
+
 
 
 ## [0.4.10] - 2024-10-30
@@ -48,11 +55,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: dry run mode
 
 
+
 ## [0.4.9] - 2024-10-30
 - full process with helper scripts
 - feat: full process with helper scripts
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.16...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.17...HEAD
+[0.4.17]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.16...@siteed/publisher@0.4.17
 [0.4.16]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.15...@siteed/publisher@0.4.16
 [0.4.15]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.14...@siteed/publisher@0.4.15
 [0.4.14]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.13...@siteed/publisher@0.4.14
