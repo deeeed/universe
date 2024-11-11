@@ -39,6 +39,22 @@ export class GitService extends BaseService {
   async getCurrentBranch(): Promise<string> {
     try {
       this.logger.debug("Getting current branch");
+
+      // First check if there are any commits
+      const hasCommits = await this.execGit({
+        command: "rev-parse",
+        args: ["--verify", "HEAD"],
+      }).catch(() => false);
+
+      if (!hasCommits) {
+        // If no commits exist, we're on the default branch (usually 'main' or 'master')
+        const defaultBranch = this.gitConfig.baseBranch || "main";
+        this.logger.debug(
+          `No commits yet, returning default branch: ${defaultBranch}`,
+        );
+        return defaultBranch;
+      }
+
       const result = await this.execGit({
         command: "rev-parse",
         args: ["--abbrev-ref", "HEAD"],
@@ -347,7 +363,7 @@ export class GitService extends BaseService {
       let currentChanges: string[] = [];
 
       output.split("\n").forEach((line) => {
-        if (line.match(/^[0-9a-f]{40}$/)) {
+        if (/^[0-9a-f]{40}$/.exec(line)) {
           // This is a commit hash line
           if (currentHash && currentChanges.length) {
             changesByCommit.set(
