@@ -80,13 +80,15 @@ function displayConfigFeatures(config: Partial<Config> | null): string[] {
 
   // Security Features
   output.push("\nSecurity Features:");
-  output.push(`  Status: ${formatEnabled(config?.security?.enabled ?? false)}`);
-  output.push(
-    `  Secret Detection: ${formatEnabled(config?.security?.rules.secrets.enabled ?? false)}`,
-  );
-  output.push(
-    `  File Checks: ${formatEnabled(config?.security?.rules.files.enabled ?? false)}`,
-  );
+  const securityEnabled = config?.security?.enabled ?? false;
+  output.push(`  Status: ${formatEnabled(securityEnabled)}`);
+
+  // Safely access nested security properties with fallbacks
+  const secretsEnabled = config?.security?.rules?.secrets?.enabled ?? false;
+  const filesEnabled = config?.security?.rules?.files?.enabled ?? false;
+
+  output.push(`  Secret Detection: ${formatEnabled(secretsEnabled)}`);
+  output.push(`  File Checks: ${formatEnabled(filesEnabled)}`);
 
   // PR Features
   output.push("\nPull Request Features:");
