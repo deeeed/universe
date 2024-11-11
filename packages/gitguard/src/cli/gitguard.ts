@@ -4,12 +4,12 @@ import { Command } from "commander";
 import { readFile } from "fs/promises";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
+import { addGlobalOptions, GlobalOptions } from "../cli/shared-options.js";
 import { branchCommand } from "../commands/branch.js";
 import { commitCommand } from "../commands/commit.js";
 import { initCommand } from "../commands/init.js";
 import { statusCommand } from "../commands/status.js";
 import { LoggerService } from "../services/logger.service.js";
-import { addGlobalOptions, GlobalOptions } from "../cli/shared-options.js";
 
 interface PackageJson {
   version: string;
@@ -27,18 +27,11 @@ function disableColors(): void {
   process.env.FORCE_COLOR = "0";
 }
 
-async function main(): Promise<void> {
-  const debug: boolean = isDebugEnabled();
-  const logger = new LoggerService({ debug });
-  const program = new Command();
-  addGlobalOptions(program);
-
-  // Add error handling for unknown commands and options
-  program.showHelpAfterError();
-  program.showSuggestionAfterError();
-
-  // Set version early
-  let version = "0.0.0-dev";
+async function getPackageVersion({
+  logger,
+}: {
+  logger?: LoggerService;
+}): Promise<string> {
   try {
     let packagePath: string;
 
@@ -50,13 +43,33 @@ async function main(): Promise<void> {
       packagePath = resolve(__dirname, "../../package.json");
     }
 
+    logger?.debug(`Reading package.json from: ${packagePath}`);
+
+    // Read file directly instead of using require/import
     const packageJson = JSON.parse(
       await readFile(packagePath, "utf8"),
     ) as PackageJson;
-    version = packageJson.version;
+
+    logger?.debug(`Found version: ${packageJson.version}`);
+    return packageJson.version;
   } catch (error) {
-    logger.error("Failed to load version:", error);
+    logger?.error("Failed to read package version:", error);
+    return "0.0.0-dev";
   }
+}
+
+async function main(): Promise<void> {
+  const debug: boolean = isDebugEnabled();
+  const logger = new LoggerService({ debug });
+  const program = new Command();
+  addGlobalOptions(program);
+
+  // Add error handling for unknown commands and options
+  program.showHelpAfterError();
+  program.showSuggestionAfterError();
+
+  // Set version early
+  const version = await getPackageVersion({ logger });
 
   // Create the program
   program

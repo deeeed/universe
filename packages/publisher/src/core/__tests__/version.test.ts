@@ -9,6 +9,7 @@ import {
   beforeEach,
   afterEach,
 } from "@jest/globals";
+import fs from "fs";
 
 type MockFunction = (...args: any[]) => Promise<unknown>;
 
@@ -82,6 +83,26 @@ describe("VersionService", () => {
       jest
         .spyOn(versionService as any, "execCommand")
         .mockImplementation(mockExecCommand);
+
+      // Mock fs.promises.readFile and writeFile
+      jest.spyOn(fs.promises, "readFile").mockImplementation((path) => {
+        if (path === "/test/path/package.json") {
+          return Promise.resolve(
+            JSON.stringify({
+              dependencies: {
+                "dep-a": "^1.0.0",
+                "dep-b": "^2.0.0",
+              },
+              devDependencies: {
+                "dev-dep-a": "^1.0.0",
+              },
+              peerDependencies: {},
+            }),
+          );
+        }
+        throw new Error(`Unexpected file read: ${String(path)}`);
+      });
+      jest.spyOn(fs.promises, "writeFile").mockResolvedValue(undefined);
     });
 
     afterEach(() => {
@@ -89,21 +110,6 @@ describe("VersionService", () => {
     });
 
     it("should update package dependencies correctly", async () => {
-      const mockPackageJson = {
-        dependencies: {
-          "dep-a": "^1.0.0",
-          "dep-b": "^2.0.0",
-        },
-        devDependencies: {
-          "dev-dep-a": "^1.0.0",
-        },
-        peerDependencies: {},
-      };
-
-      jest.mock("/test/path/package.json", () => mockPackageJson, {
-        virtual: true,
-      });
-
       const context: PackageContext = {
         name: "test-package",
         path: "/test/path",
@@ -125,6 +131,7 @@ describe("VersionService", () => {
 
       await versionService.updateDependencies(context, updates);
 
+      expect(fs.promises.writeFile).toHaveBeenCalled();
       expect(mockExecCommand).toHaveBeenCalledWith(
         "yarn",
         ["up", "dep-a", "dev-dep-a"],
@@ -146,6 +153,7 @@ describe("VersionService", () => {
 
       await versionService.updateDependencies(context, updates);
 
+      expect(fs.promises.writeFile).not.toHaveBeenCalled();
       expect(mockExecCommand).not.toHaveBeenCalled();
     });
 
@@ -163,6 +171,7 @@ describe("VersionService", () => {
 
       await versionService.updateDependencies(context, updates);
 
+      expect(fs.promises.writeFile).toHaveBeenCalled();
       expect(mockExecCommand).toHaveBeenCalledWith("yarn", ["up", "dep-a"], {
         cwd: "/test/path",
       });
