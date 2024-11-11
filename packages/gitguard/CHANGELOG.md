@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- refactor(cli): improve package version detection reliability ([f48dca5](https://github.com/deeeed/universe/commit/f48dca593b86f2f949de26931995cd7b7d89fad6))
 
 ## [0.4.2] - 2024-11-11
 - add option to disable colors in CLI (#26) ([a6be573](https://github.com/deeeed/universe/commit/a6be573c495c611876e1026e0a85f902a9c40a3f))
