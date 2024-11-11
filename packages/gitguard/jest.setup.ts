@@ -1,5 +1,5 @@
-// Increase timeout for all tests
-jest.setTimeout(10000);
+// Already has the timeout for unit tests
+jest.setTimeout(5000);
 
 // Silence console logs during tests
 const mockConsole = {

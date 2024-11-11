@@ -38,8 +38,10 @@
     "bin/**/*",
     ".publisher/**/*",
     "package.json",
-    "jest.config.ts",
+    "jest.config.cjs",
     "jest.setup.ts",
+    "jest.integration.config.ts",
+    "jest.integration.setup.ts",
     "e2e/**/*"
   ],
   "exclude": [
