@@ -3,7 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- refactor(gitguard): improve package version handling (#27) ([3c8f703](https://github.com/deeeed/universe/commit/3c8f703ce62a16e320a0346ac934c112a119f560))
+- feat: add option to disable colors in CLI (#26) ([a6be573](https://github.com/deeeed/universe/commit/a6be573c495c611876e1026e0a85f902a9c40a3f))
 
 ## [0.4.1] - 2024-11-11
 - refactor(gitguard): migrate to project-based test setup and enhance configuration system (#25) ([98d12a0](https://github.com/deeeed/universe/commit/98d12a0ce58ab35aa923c58f2e377abc41bde2be))
