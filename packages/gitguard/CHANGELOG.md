@@ -3,14 +3,19 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+
+
+## [0.4.3] - 2024-11-11
 - refactor(cli): improve package version detection reliability ([f48dca5](https://github.com/deeeed/universe/commit/f48dca593b86f2f949de26931995cd7b7d89fad6))
 
 ## [0.4.2] - 2024-11-11
 - add option to disable colors in CLI (#26) ([a6be573](https://github.com/deeeed/universe/commit/a6be573c495c611876e1026e0a85f902a9c40a3f))
 - refactor(gitguard): improve package version handling (#27) ([3c8f703](https://github.com/deeeed/universe/commit/3c8f703ce62a16e320a0346ac934c112a119f560))
 
+
 ## [0.4.1] - 2024-11-11
 - refactor(gitguard): migrate to project-based test setup and enhance configuration system (#25) ([98d12a0](https://github.com/deeeed/universe/commit/98d12a0ce58ab35aa923c58f2e377abc41bde2be))
+
 
 
 ## [0.4.0] - 2024-11-10
@@ -22,9 +27,11 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.3.2] - 2024-11-06
 - feat(gitguard): add monorepoPatterns to init command configuration ([11995bd](https://github.com/deeeed/universe/commit/11995bdc661d9426b1af84fe80ac36806fca3011))
 - feat(cli): add commit option to analyze command ([c8755f5](https://github.com/deeeed/universe/commit/c8755f50198df1efa820f20af41aa282822445c2))
+
 
 
 
@@ -41,12 +48,14 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.3.0] - 2024-11-04
 
 ### Changed
 - inititial version.
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.4.2...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.4.3...HEAD
+[0.4.3]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.4.2...@siteed/gitguard@0.4.3
 [0.4.2]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.4.1...@siteed/gitguard@0.4.2
 [0.4.1]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.4.0...@siteed/gitguard@0.4.1
 [0.4.0]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.3.2...@siteed/gitguard@0.4.0
