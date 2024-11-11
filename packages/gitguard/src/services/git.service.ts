@@ -8,6 +8,7 @@ import { ServiceOptions } from "../types/service.types.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
 import { formatDiffForAI } from "../utils/diff.util.js";
 import { FileUtil } from "../utils/file.util.js";
+import { determineDefaultBranch, isGitRepository } from "../utils/git.util.js";
 import { BaseService } from "./base.service.js";
 
 interface GetDiffParams {
@@ -44,11 +45,12 @@ export class GitService extends BaseService {
       const hasCommits = await this.execGit({
         command: "rev-parse",
         args: ["--verify", "HEAD"],
+        cwd: this.cwd,
       }).catch(() => false);
 
       if (!hasCommits) {
-        // If no commits exist, we're on the default branch (usually 'main' or 'master')
-        const defaultBranch = this.gitConfig.baseBranch || "main";
+        // Use determineDefaultBranch with cwd
+        const defaultBranch = determineDefaultBranch({ cwd: this.cwd });
         this.logger.debug(
           `No commits yet, returning default branch: ${defaultBranch}`,
         );
@@ -58,6 +60,7 @@ export class GitService extends BaseService {
       const result = await this.execGit({
         command: "rev-parse",
         args: ["--abbrev-ref", "HEAD"],
+        cwd: this.cwd,
       });
       const branch = result.trim();
       this.logger.debug(`Current branch: ${branch}`);
@@ -80,6 +83,7 @@ export class GitService extends BaseService {
           "--format=%H%n%an%n%aI%n%B%n--END--",
           `${params.from}..${params.to}`,
         ],
+        cwd: this.cwd,
       });
 
       const commits = this.parser.parseCommitLog({ log: output });
@@ -97,6 +101,7 @@ export class GitService extends BaseService {
       const output = await this.execGit({
         command: "diff",
         args: ["--cached", "--numstat"],
+        cwd: this.cwd,
       });
 
       if (!output.trim()) {
@@ -132,6 +137,7 @@ export class GitService extends BaseService {
       return await this.execGit({
         command: "diff",
         args: ["--cached"],
+        cwd: this.cwd,
       });
     } catch (error) {
       this.logger.error("Failed to get staged diff:", error);
@@ -155,6 +161,11 @@ export class GitService extends BaseService {
 
   async isMonorepo(): Promise<boolean> {
     try {
+      // Check if we're in a git repo first
+      if (!isGitRepository({ cwd: this.cwd })) {
+        return false;
+      }
+
       const root = await this.getRepositoryRoot();
       const patterns = this.gitConfig.monorepoPatterns || [
         "packages/",
@@ -167,6 +178,7 @@ export class GitService extends BaseService {
           this.execGit({
             command: "ls-files",
             args: [`${root}/${pattern}`],
+            cwd: this.cwd,
           }),
         ),
       );
@@ -191,6 +203,7 @@ export class GitService extends BaseService {
           const content = await this.execGit({
             command: "show",
             args: [`HEAD:${path}`],
+            cwd: this.cwd,
           });
           if (content) {
             return content;
@@ -266,6 +279,7 @@ export class GitService extends BaseService {
       const output = await this.execGit({
         command: "diff",
         args: ["--numstat", params.from, params.to],
+        cwd: this.cwd,
       });
 
       const changes: FileChange[] = this.parser.parseFileChanges({
@@ -294,6 +308,7 @@ export class GitService extends BaseService {
         return await this.execGit({
           command: "diff",
           args: ["--cached"],
+          cwd: this.cwd,
         });
       }
 
@@ -301,6 +316,7 @@ export class GitService extends BaseService {
         return await this.execGit({
           command: "diff",
           args: [params.from, params.to],
+          cwd: this.cwd,
         });
       }
 
@@ -316,6 +332,7 @@ export class GitService extends BaseService {
       const output = await this.execGit({
         command: "diff",
         args: ["--cached", "--name-status"],
+        cwd: this.cwd,
       });
 
       return output
@@ -355,6 +372,7 @@ export class GitService extends BaseService {
           "--format=%H", // Include commit hash as delimiter
           ...hashes,
         ],
+        cwd: this.cwd,
       });
 
       // Split output by commit hash and parse changes
@@ -464,6 +482,7 @@ export class GitService extends BaseService {
       const result = await this.execGit({
         command: "rev-parse",
         args: ["--git-path", "hooks"],
+        cwd: this.cwd,
       });
       return result.trim();
     } catch (error) {
@@ -481,6 +500,7 @@ export class GitService extends BaseService {
       const modifiedOutput = await this.execGit({
         command: "diff",
         args: ["--numstat"],
+        cwd: this.cwd,
       });
 
       // Parse modified files
@@ -506,6 +526,7 @@ export class GitService extends BaseService {
       const untrackedOutput = await this.execGit({
         command: "ls-files",
         args: ["--others", "--exclude-standard"],
+        cwd: this.cwd,
       });
 
       // Parse untracked files
@@ -537,6 +558,7 @@ export class GitService extends BaseService {
       return await this.execGit({
         command: "diff",
         args: [],
+        cwd: this.cwd,
       });
     } catch (error) {
       this.logger.error("Failed to get unstaged diff:", error);
@@ -552,6 +574,7 @@ export class GitService extends BaseService {
       const diff = await this.execGit({
         command: "diff",
         args: ["--cached", "--no-color"],
+        cwd: this.cwd,
       });
 
       if (!diff) {
@@ -579,6 +602,7 @@ export class GitService extends BaseService {
       await this.execGit({
         command: "commit",
         args: ["-m", params.message],
+        cwd: this.cwd,
       });
       this.logger.debug("Commit created successfully");
     } catch (error) {
@@ -595,6 +619,7 @@ export class GitService extends BaseService {
       const output = await this.execGit({
         command: "diff",
         args: [`${baseBranch}...${params.branch}`],
+        cwd: this.cwd,
       });
 
       return output;
@@ -613,6 +638,7 @@ export class GitService extends BaseService {
       const branches = await this.execGit({
         command: "branch",
         args: ["--list", to],
+        cwd: this.cwd,
       });
 
       if (branches.trim()) {
@@ -623,12 +649,14 @@ export class GitService extends BaseService {
       await this.execGit({
         command: "branch",
         args: ["-m", from, to],
+        cwd: this.cwd,
       });
 
       // Check if the old branch was tracked remotely
       const remoteInfo = await this.execGit({
         command: "config",
         args: ["--get", `branch.${from}.remote`],
+        cwd: this.cwd,
       }).catch(() => "");
 
       if (remoteInfo.trim()) {
@@ -638,6 +666,7 @@ export class GitService extends BaseService {
         await this.execGit({
           command: "push",
           args: ["origin", "--delete", from],
+          cwd: this.cwd,
         }).catch((error) => {
           this.logger.debug("Failed to delete old remote branch:", error);
         });
@@ -646,6 +675,7 @@ export class GitService extends BaseService {
         await this.execGit({
           command: "push",
           args: ["-u", "origin", to],
+          cwd: this.cwd,
         });
 
         this.logger.debug("Remote branch updated successfully");
@@ -665,6 +695,7 @@ export class GitService extends BaseService {
       const result = await this.execGit({
         command: "branch",
         args: ["--list", params.branch],
+        cwd: this.cwd,
       });
       return Boolean(result.trim());
     } catch (error) {
@@ -679,6 +710,7 @@ export class GitService extends BaseService {
       const output = await this.execGit({
         command: "branch",
         args: ["--format=%(refname:short)"],
+        cwd: this.cwd,
       });
 
       const branches = output.split("\n").filter(Boolean);
