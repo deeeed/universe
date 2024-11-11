@@ -446,6 +446,8 @@ interface PromptActionChoice<T extends string> {
   label: string;
   value: T;
   isDefault?: boolean;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 export async function promptActionChoice<T extends string>(params: {
@@ -458,7 +460,10 @@ export async function promptActionChoice<T extends string>(params: {
   logger.info(`\n${message}`);
   choices.forEach((choice, index) => {
     const prefix = choice.isDefault ? chalk.yellow("*") : " ";
-    logger.info(`${prefix} ${index + 1}. ${choice.label}`);
+    const label = choice.disabled
+      ? `${chalk.gray(choice.label)} ${chalk.red("(disabled)")}`
+      : choice.label;
+    logger.info(`${prefix} ${index + 1}. ${label}`);
   });
 
   const defaultChoice = choices.findIndex((c) => c.isDefault) + 1;
@@ -471,9 +476,22 @@ export async function promptActionChoice<T extends string>(params: {
     logger,
   });
 
-  const selectedChoice =
-    choices[Number(answer) - 1] ??
-    choices.find((c) => c.isDefault) ??
-    choices[0];
-  return { action: selectedChoice.value };
+  const selectedIndex = Number(answer) - 1;
+  const selectedChoice = choices[selectedIndex];
+
+  if (selectedChoice?.disabled) {
+    logger.info(
+      chalk.yellow(
+        `\n⚠️  This option is currently disabled: ${selectedChoice.disabledReason ?? "No reason provided"}`,
+      ),
+    );
+    return promptActionChoice(params);
+  }
+
+  return {
+    action:
+      selectedChoice?.value ??
+      choices.find((c) => c.isDefault)?.value ??
+      choices[0].value,
+  };
 }

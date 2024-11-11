@@ -7,7 +7,7 @@ import { AIProvider, TokenUsage } from "../types/ai.types.js";
 import { Config } from "../types/config.types.js";
 import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
-import { checkAILimits, displayTokenInfo } from "./ai-limits.util.js";
+import { checkAILimits } from "./ai-limits.util.js";
 import { copyToClipboard } from "./clipboard.util.js";
 import { formatDiffForAI } from "./diff.util.js";
 import { promptActionChoice } from "./user-prompt.util.js";
@@ -45,6 +45,13 @@ export interface AIActionHandlerParams<T> {
   tokenUsage: TokenUsage;
   generateLabel?: string;
   actionHandler: (action: AIActionType) => Promise<T>;
+  choices?: Array<{
+    label: string;
+    value: AIActionType;
+    isDefault?: boolean;
+    disabled?: boolean;
+    disabledReason?: string;
+  }>;
 }
 
 export interface DiffGenerationParams {
@@ -209,42 +216,43 @@ export async function handleAIAction<T>({
   config,
   logger,
   ai,
+  choices: customChoices,
 }: AIActionHandlerParams<T> & BaseAIParams): Promise<T> {
-  if (ai) {
-    displayTokenInfo({
-      tokenUsage,
-      prompt,
-      maxTokens: config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
-      logger,
-    });
+  logger.info(`\n💰 Estimated cost: ${tokenUsage.estimatedCost}`);
+  logger.info(`📊 Estimated tokens: ${tokenUsage.count}/32000`);
+  logger.info(
+    `📝 Prompt size: ${(prompt.length / 1024).toFixed(1)} KB (${prompt.length} chars)`,
+  );
 
-    if (!checkAILimits({ tokenUsage, config, logger })) {
-      return actionHandler("skip");
-    }
+  if (ai && !checkAILimits({ tokenUsage, config, logger })) {
+    return actionHandler("skip");
   }
+
+  const { canGenerate, reason } = canGenerateAI(config, ai);
+  logger.debug("AI generation status:", { canGenerate, reason });
+
+  const defaultChoices = [
+    {
+      label: "Continue without AI assistance",
+      value: "skip" as const,
+      isDefault: true,
+    },
+    {
+      label: `${generateLabel} (${canGenerate ? `estimated cost: ${tokenUsage.estimatedCost}` : reason})`,
+      value: "generate" as const,
+      disabled: !canGenerate,
+      disabledReason: reason,
+    },
+    { label: "Copy API prompt to clipboard", value: "copy-api" as const },
+    {
+      label: "Copy human-friendly prompt to clipboard",
+      value: "copy-manual" as const,
+    },
+  ];
 
   const { action } = await promptActionChoice<AIActionType>({
     message: "Choose how to proceed:",
-    choices: [
-      {
-        label: "Continue without AI assistance",
-        value: "skip" as const,
-        isDefault: true,
-      },
-      ...(ai
-        ? [
-            {
-              label: `${generateLabel} (estimated cost: ${tokenUsage.estimatedCost})`,
-              value: "generate" as const,
-            },
-          ]
-        : []),
-      { label: "Copy API prompt to clipboard", value: "copy-api" as const },
-      {
-        label: "Copy human-friendly prompt to clipboard",
-        value: "copy-manual" as const,
-      },
-    ],
+    choices: customChoices ?? defaultChoices,
     logger,
   });
 
@@ -260,4 +268,53 @@ export async function handleAIAction<T>({
   }
 
   return actionHandler(action);
+}
+
+export function canGenerateAI(
+  config: Config,
+  ai?: AIProvider,
+): {
+  canGenerate: boolean;
+  reason?: string;
+} {
+  if (!ai) {
+    return {
+      canGenerate: false,
+      reason: "AI provider not configured",
+    };
+  }
+
+  if (!config.ai?.enabled) {
+    return {
+      canGenerate: false,
+      reason: "AI is disabled in configuration",
+    };
+  }
+
+  // Check both environment variables and config values
+  if (config.ai.provider === "openai") {
+    if (!process.env.OPENAI_API_KEY && !config.ai.openai?.apiKey) {
+      return {
+        canGenerate: false,
+        reason: "OpenAI API key not found",
+      };
+    }
+  }
+
+  if (config.ai.provider === "azure") {
+    if (!process.env.AZURE_OPENAI_API_KEY && !config.ai.azure?.apiKey) {
+      return {
+        canGenerate: false,
+        reason: "Azure OpenAI API key not found",
+      };
+    }
+    if (!process.env.AZURE_OPENAI_ENDPOINT && !config.ai.azure?.endpoint) {
+      return {
+        canGenerate: false,
+        reason: "Azure OpenAI endpoint not found",
+      };
+    }
+  }
+
+  return { canGenerate: true };
 }

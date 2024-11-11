@@ -109,7 +109,6 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
       maxPromptCost: defaultCfg.ai.maxPromptCost,
       openai: {
         model: "gpt-4-turbo",
-        organization: undefined,
       },
       azure: {
         endpoint: "https://YOURENDPOINT.openai.azure.com/",
