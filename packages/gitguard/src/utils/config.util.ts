@@ -1,4 +1,5 @@
 import { promises as fs } from "fs";
+import { parse as parseJsonc } from "jsonc-parser";
 import { homedir } from "os";
 import { join } from "path";
 import { ComplexityOptions } from "../types/analysis.types.js";
@@ -29,18 +30,20 @@ export interface LoadConfigOptions {
 async function loadJsonFile(path: string): Promise<Partial<Config>> {
   try {
     const content = await fs.readFile(path, "utf-8");
-    try {
-      return JSON.parse(content) as Partial<Config>;
-    } catch (parseError) {
-      throw new Error(`Invalid JSON in config file: ${path}`, {
-        cause: parseError,
-      });
+    const parsed = parseJsonc(content) as Partial<Config>;
+
+    // Check if parsing returned a valid object
+    if (typeof parsed !== "object" || parsed === null) {
+      throw new Error("Invalid JSON: must be an object");
     }
-  } catch (readError) {
-    if ((readError as NodeJS.ErrnoException).code === "ENOENT") {
+
+    return parsed;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return {};
     }
-    throw readError;
+    // Rethrow parsing errors
+    throw error;
   }
 }
 
@@ -205,16 +208,12 @@ export const DEFAULT_COMPLEXITY_OPTIONS: ComplexityOptions = {
   },
 };
 
-export function getDefaultConfig(cwd?: string): Config {
-  const effectiveCwd =
-    cwd ?? (isGitRepository() ? getGitRoot() : process.cwd());
-
+export function getDefaultConfig(): Config {
   return {
     git: {
       baseBranch: "main",
       monorepoPatterns: ["packages/", "apps/", "libs/"],
       ignorePatterns: ["*.lock", "dist/*"],
-      cwd: effectiveCwd,
     },
     analysis: {
       maxCommitSize: 500,
@@ -323,19 +322,101 @@ interface CreateConfigParams {
 
 export function createConfig({
   partial = {},
-  cwd,
 }: CreateConfigParams = {}): Config {
-  const merged = deepMerge(getDefaultConfig(cwd), partial);
-
-  if (cwd) {
-    return {
-      ...merged,
-      git: {
-        ...merged.git,
-        cwd,
-      },
-    };
-  }
+  const merged = deepMerge(getDefaultConfig(), partial);
 
   return merged;
+}
+
+interface ValidateConfigParams {
+  config: Partial<Config>;
+}
+
+export function validateConfig({ config }: ValidateConfigParams): void {
+  // Required fields validation
+  if (!config.git?.baseBranch) {
+    throw new Error("Configuration must include git.baseBranch");
+  }
+
+  validateAIConfig({ config });
+  validateSecurityConfig({ config });
+  validateAnalysisConfig({ config });
+}
+
+interface ValidateAIConfigParams {
+  config: Partial<Config>;
+}
+
+function validateAIConfig({ config }: ValidateAIConfigParams): void {
+  if (!config.ai?.enabled) return;
+
+  if (!config.ai.provider) {
+    throw new Error("AI provider must be specified when AI is enabled");
+  }
+
+  if (config.ai.provider === "openai" && !config.ai.openai) {
+    throw new Error("OpenAI configuration missing");
+  }
+
+  if (config.ai.provider === "azure" && !config.ai.azure) {
+    throw new Error("Azure configuration missing");
+  }
+
+  if (config.ai.maxPromptTokens && config.ai.maxPromptTokens < 1) {
+    throw new Error("maxPromptTokens must be greater than 0");
+  }
+
+  if (config.ai.maxPromptCost && config.ai.maxPromptCost < 0) {
+    throw new Error("maxPromptCost must be non-negative");
+  }
+}
+
+interface ValidateSecurityConfigParams {
+  config: Partial<Config>;
+}
+
+function validateSecurityConfig({
+  config,
+}: ValidateSecurityConfigParams): void {
+  if (!config.security?.enabled) return;
+
+  if (!config.security.rules) {
+    throw new Error("Security rules must be defined when security is enabled");
+  }
+
+  if (
+    config.security.rules.secrets?.enabled &&
+    !config.security.rules.secrets.severity
+  ) {
+    throw new Error(
+      "Secrets severity must be specified when secrets checking is enabled",
+    );
+  }
+
+  if (
+    config.security.rules.files?.enabled &&
+    !config.security.rules.files.severity
+  ) {
+    throw new Error(
+      "Files severity must be specified when file checking is enabled",
+    );
+  }
+}
+
+interface ValidateAnalysisConfigParams {
+  config: Partial<Config>;
+}
+
+function validateAnalysisConfig({
+  config,
+}: ValidateAnalysisConfigParams): void {
+  if (!config.analysis) return;
+
+  if (config.analysis.maxCommitSize && config.analysis.maxCommitSize < 1) {
+    throw new Error("maxCommitSize must be greater than 0");
+  }
+
+  if (config.analysis.maxFileSize && config.analysis.maxFileSize < 1) {
+    throw new Error("maxFileSize must be greater than 0");
+  }
 }

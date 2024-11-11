@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import { BranchCommandOptions } from "../../commands/branch.js";
 import { AIFactory } from "../../services/factories/ai.factory.js";
 import { GitService } from "../../services/git.service.js";
@@ -112,21 +113,52 @@ async function initializeServices({
 
   const isAIRequested = options.ai ?? config.ai?.enabled;
   if (isAIRequested) {
-    if (!config.ai?.provider) {
-      logger.warn("⚠️  AI requested but no provider configured in settings");
-    } else {
-      try {
+    try {
+      if (!config.ai?.provider) {
+        // Create default fallback config
+        const fallbackConfig: Config = {
+          ...config,
+          ai: {
+            ...config.ai, // Preserve any existing AI config
+            enabled: true,
+            provider: "openai",
+            openai: {
+              model: "gpt-4-turbo",
+            },
+          },
+        };
+
+        ai = AIFactory.create({ config: fallbackConfig, logger });
+
+        logger.warn(
+          "\n⚠️  AI requested but no provider configured in settings",
+        );
+        logger.info(
+          "\n💡 Using default OpenAI configuration for offline prompts. To configure AI properly:",
+        );
+        logger.info(chalk.cyan("\n1. Run setup command:"));
+        logger.info(chalk.dim("   gitguard init"));
+        logger.info(chalk.cyan("\n2. Or manually update your config file:"));
+        logger.info(
+          chalk.dim("   .gitguard/config.json or ~/.gitguard/config.json"),
+        );
+        logger.info(
+          chalk.dim("\nTip: Run 'gitguard init --help' for more options"),
+        );
+      } else {
         ai = AIFactory.create({ config, logger });
-        if (ai) {
-          logger.info(`✅ AI initialized using ${ai.getName()}`);
-        } else {
-          logger.warn(
-            `⚠️  AI configuration found for ${config.ai.provider} but initialization failed`,
-          );
-        }
-      } catch (error) {
-        logger.warn("⚠️  Failed to initialize AI provider:", error);
       }
+
+      if (ai) {
+        logger.info(`✅ AI initialized using ${ai.getName()}`);
+      } else {
+        logger.warn(
+          `⚠️  AI configuration found but initialization failed. Falling back to offline prompts.`,
+        );
+      }
+    } catch (error) {
+      logger.warn("⚠️  Failed to initialize AI provider:", error);
+      logger.info("💡 Falling back to offline prompts");
     }
   } else {
     logger.info("ℹ️  AI analysis disabled");

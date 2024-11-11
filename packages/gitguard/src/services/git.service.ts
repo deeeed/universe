@@ -2,13 +2,17 @@
 import { exec } from "child_process";
 import { promises as fs } from "fs";
 import { promisify } from "util";
-import { GitConfig } from "../types/config.types.js";
+import { GitConfig, RuntimeGitConfig } from "../types/config.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
 import { formatDiffForAI } from "../utils/diff.util.js";
 import { FileUtil } from "../utils/file.util.js";
-import { determineDefaultBranch, isGitRepository } from "../utils/git.util.js";
+import {
+  determineDefaultBranch,
+  getGitRoot,
+  isGitRepository,
+} from "../utils/git.util.js";
 import { BaseService } from "./base.service.js";
 
 interface GetDiffParams {
@@ -21,14 +25,14 @@ const execPromise = promisify(exec);
 
 export class GitService extends BaseService {
   private readonly parser: CommitParser;
-  private readonly gitConfig: GitConfig;
+  private readonly gitConfig: RuntimeGitConfig;
   private readonly cwd: string;
 
-  constructor(params: ServiceOptions & { gitConfig: GitConfig }) {
+  constructor(params: ServiceOptions & { gitConfig: RuntimeGitConfig }) {
     super(params);
     this.gitConfig = params.gitConfig;
     this.parser = new CommitParser();
-    this.cwd = this.gitConfig.cwd ?? process.cwd();
+    this.cwd = this.gitConfig.cwd ?? getGitRoot();
     this.logger.debug("GitService initialized with config:", this.gitConfig);
     this.logger.debug("Working directory:", this.cwd);
   }

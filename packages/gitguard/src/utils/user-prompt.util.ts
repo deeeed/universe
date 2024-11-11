@@ -143,23 +143,29 @@ export async function promptChoice<T extends string>(params: {
     value: T;
   }>;
   logger: Logger;
+  defaultValue?: T;
 }): Promise<T> {
-  const { choices, logger } = params;
+  const { choices, logger, defaultValue } = params;
 
   choices.forEach((choice, index) => {
-    logger.info(`${index + 1}. ${choice.label}`);
+    const prefix = choice.value === defaultValue ? chalk.yellow("*") : " ";
+    logger.info(`${prefix} ${index + 1}. ${choice.label}`);
   });
+
+  const defaultIndex = choices.findIndex((c) => c.value === defaultValue);
+  const defaultChoice =
+    defaultIndex !== -1 ? String(defaultIndex + 1) : undefined;
 
   const answer = await promptNumeric({
     message: "\nEnter your choice (number):",
-    allowEmpty: false,
+    allowEmpty: true,
     logger,
     maxValue: choices.length,
+    defaultValue: defaultChoice,
   });
 
   if (!answer) {
-    logger.error("Invalid selection. Please try again.");
-    return promptChoice(params);
+    return defaultValue ?? choices[0].value;
   }
 
   const index = parseInt(answer) - 1;
@@ -189,11 +195,12 @@ interface InitPromptResponses {
 export async function promptForInit(params: {
   logger: Logger;
   currentConfig: Partial<Config> | null;
+  detectedBaseBranch: string;
 }): Promise<InitPromptResponses> {
-  const { logger, currentConfig } = params;
+  const { logger, currentConfig, detectedBaseBranch } = params;
 
   logger.info(chalk.cyan("\n🔍 Base Branch Configuration"));
-  logger.info("Select the main branch for your repository:");
+  logger.info(`Detected base branch: ${chalk.cyan(detectedBaseBranch)}`);
 
   const baseBranch = await promptChoice({
     message: "Select base branch:",
@@ -202,6 +209,7 @@ export async function promptForInit(params: {
       { label: "master - Legacy default branch name", value: "master" },
       { label: "develop - Development branch (GitFlow)", value: "develop" },
     ],
+    defaultValue: detectedBaseBranch,
     logger,
   });
 
