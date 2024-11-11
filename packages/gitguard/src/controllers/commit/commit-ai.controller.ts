@@ -18,6 +18,7 @@ import {
   generateSplitSuggestionPrompt,
 } from "../../utils/ai-prompt.util.js";
 import {
+  canGenerateAI,
   DiffStrategy,
   handleAIAction,
   selectBestDiff,
@@ -228,6 +229,30 @@ export class CommitAIController {
       isWithinClipboardLimits: true,
     };
 
+    const { canGenerate, reason } = canGenerateAI(this.config, this.ai);
+    this.logger.debug("AI generation status:", { canGenerate, reason });
+
+    const choices = [
+      {
+        label: "Continue without AI assistance",
+        value: "skip" as const,
+        isDefault: true,
+      },
+      {
+        label: `Generate commit message suggestions${!canGenerate ? ` (${reason})` : ` (estimated cost: ${tokenUsage.estimatedCost})`}`,
+        value: "generate" as const,
+        disabled: !canGenerate,
+        disabledReason: reason,
+      },
+      { label: "Copy API prompt to clipboard", value: "copy-api" as const },
+      {
+        label: "Copy human-friendly prompt to clipboard",
+        value: "copy-manual" as const,
+      },
+    ];
+
+    this.logger.debug("AI action choices:", choices);
+
     return handleAIAction({
       prompt,
       humanFriendlyPrompt,
@@ -248,6 +273,7 @@ export class CommitAIController {
       config: this.config,
       logger: this.logger,
       ai: this.ai,
+      choices,
     });
   }
 

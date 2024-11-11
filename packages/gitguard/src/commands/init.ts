@@ -4,12 +4,15 @@ import { promises as fs } from "fs";
 import { join } from "path";
 import { LoggerService } from "../services/logger.service.js";
 import { Config } from "../types/config.types.js";
+import { Logger } from "../types/logger.types.js";
 import {
   getConfigPaths,
   getConfigStatus,
   getDefaultConfig,
+  validateConfig,
 } from "../utils/config.util.js";
 import { FileUtil } from "../utils/file.util.js";
+import { determineDefaultBranch } from "../utils/git.util.js";
 import { promptForInit } from "../utils/user-prompt.util.js";
 
 interface InitCommandOptions {
@@ -22,6 +25,26 @@ interface InitCommandOptions {
 
 interface InitAnalyzeParams {
   options: InitCommandOptions;
+}
+
+interface VerifyConfigParams {
+  configPath: string;
+  logger: Logger;
+}
+
+async function verifyConfig({
+  configPath,
+  logger,
+}: VerifyConfigParams): Promise<void> {
+  try {
+    const fileContent = await fs.readFile(configPath, "utf-8");
+    const savedConfig = JSON.parse(fileContent) as Partial<Config>;
+    validateConfig({ config: savedConfig });
+    logger.success("✓ Configuration validation passed");
+  } catch (verificationError) {
+    logger.error("Failed to verify saved configuration:", verificationError);
+    throw verificationError;
+  }
 }
 
 async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
@@ -41,63 +64,95 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
     ? status.global.config
     : status.local.config;
 
-  try {
-    const responses = await promptForInit({
-      logger,
-      currentConfig,
-    });
+  const detectedBaseBranch = determineDefaultBranch();
 
-    const configDir = join(configPath, "..");
-    await FileUtil.mkdirp(configDir);
+  const responses = await promptForInit({
+    logger,
+    currentConfig,
+    detectedBaseBranch,
+  });
 
-    const defaultCfg = getDefaultConfig();
-    const config: Partial<Config> = {
-      debug: options.debug,
-      colors: options.noColors ? false : defaultCfg.colors,
-      git: {
-        baseBranch: responses.baseBranch,
-        monorepoPatterns: defaultCfg.git.monorepoPatterns,
-        ignorePatterns: defaultCfg.git.ignorePatterns,
-        cwd: process.cwd(),
-      },
-      analysis: {
-        ...defaultCfg.analysis,
-        checkConventionalCommits: responses.conventionalCommits,
-      },
-      security: {
-        enabled: responses.security,
-        rules: {
-          secrets: {
-            enabled: responses.security,
-            severity: "high",
-            blockPR: true,
-          },
-          files: {
-            enabled: responses.security,
-            severity: "high",
-          },
+  const configDir = join(configPath, "..");
+  await FileUtil.mkdirp(configDir);
+
+  const defaultCfg = getDefaultConfig();
+  const config: Partial<Config> = {
+    debug: options.debug,
+    colors: options.noColors ? false : defaultCfg.colors,
+    git: {
+      baseBranch: detectedBaseBranch,
+      monorepoPatterns: defaultCfg.git.monorepoPatterns,
+      ignorePatterns: defaultCfg.git.ignorePatterns,
+    },
+    analysis: {
+      ...defaultCfg.analysis,
+      checkConventionalCommits: responses.conventionalCommits,
+    },
+    security: {
+      enabled: responses.security,
+      rules: {
+        secrets: {
+          enabled: responses.security,
+          severity: "high",
+          blockPR: true,
+        },
+        files: {
+          enabled: responses.security,
+          severity: "high",
         },
       },
-      ai: {
-        enabled: responses.ai.enabled,
-        provider: null,
-        maxPromptTokens: defaultCfg.ai.maxPromptTokens,
-        maxPromptCost: defaultCfg.ai.maxPromptCost,
+    },
+    ai: {
+      enabled: responses.ai.enabled,
+      provider: responses.ai.enabled ? "openai" : null,
+      maxPromptTokens: defaultCfg.ai.maxPromptTokens,
+      maxPromptCost: defaultCfg.ai.maxPromptCost,
+      openai: {
+        model: "gpt-4-turbo",
       },
-      pr: {
-        ...defaultCfg.pr,
-        template: {
-          ...defaultCfg.pr.template,
-          required: responses.prTemplate,
-        },
+      azure: {
+        endpoint: "https://YOURENDPOINT.openai.azure.com/",
+        deployment: "gpt-4o",
+        apiVersion: "2024-02-15-preview",
       },
-    };
+      ollama: {
+        host: "http://localhost:11434",
+        model: "codellama",
+      },
+    },
+    pr: {
+      ...defaultCfg.pr,
+      template: {
+        ...defaultCfg.pr.template,
+        required: responses.prTemplate,
+      },
+    },
+  };
 
-    await fs.writeFile(configPath, JSON.stringify(config, null, 2));
-    logger.success("\n✨ Configuration saved successfully!");
-  } catch (error) {
-    logger.error("Failed to save configuration:", error);
-    throw error;
+  // Validate and save configuration
+  validateConfig({ config });
+  await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  logger.success("\n✨ Configuration saved successfully!");
+
+  // Verify saved configuration
+  await verifyConfig({ configPath, logger });
+
+  if (responses.ai.enabled) {
+    logger.info(chalk.blue("\nAI Configuration Details:"));
+    logger.info(`- Default provider set to: ${chalk.cyan("openai")}`);
+    logger.info(`- Default model set to: ${chalk.cyan("gpt-4-turbo-preview")}`);
+    logger.info(
+      `- To use OpenAI, set your ${chalk.yellow("OPENAI_API_KEY")} environment variable`,
+    );
+    logger.info(
+      `- To use Azure OpenAI, set ${chalk.yellow("AZURE_OPENAI_API_KEY")}, ${chalk.yellow("AZURE_OPENAI_ENDPOINT")}, and ${chalk.yellow("AZURE_OPENAI_DEPLOYMENT")}`,
+    );
+    logger.info(
+      `- To use Ollama, ensure it's running at ${chalk.cyan("http://localhost:11434")}`,
+    );
+    logger.info(
+      `- You can change providers and settings in your config file: ${chalk.dim(configPath)}`,
+    );
   }
 }
 

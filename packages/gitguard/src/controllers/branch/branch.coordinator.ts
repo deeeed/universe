@@ -1,5 +1,4 @@
 import { BranchCommandOptions } from "../../commands/branch.js";
-import { AIFactory } from "../../services/factories/ai.factory.js";
 import { GitService } from "../../services/git.service.js";
 import { GitHubService } from "../../services/github.service.js";
 import { LoggerService } from "../../services/logger.service.js";
@@ -10,6 +9,7 @@ import { AIProvider } from "../../types/ai.types.js";
 import { PRAnalysisResult } from "../../types/analysis.types.js";
 import { Config, GitConfig } from "../../types/config.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
+import { initializeAI } from "../../utils/ai-init.util.js";
 import { loadConfig } from "../../utils/config.util.js";
 import { BranchAIController } from "./branch-ai.controller.js";
 import { BranchAnalysisController } from "./branch-analysis.controller.js";
@@ -107,30 +107,8 @@ async function initializeServices({
   const github = new GitHubService({ config, logger, git });
   const security = new SecurityService({ config, logger });
 
-  logger.info("\n🔍 Checking AI configuration...");
-  let ai: AIProvider | undefined;
-
   const isAIRequested = options.ai ?? config.ai?.enabled;
-  if (isAIRequested) {
-    if (!config.ai?.provider) {
-      logger.warn("⚠️  AI requested but no provider configured in settings");
-    } else {
-      try {
-        ai = AIFactory.create({ config, logger });
-        if (ai) {
-          logger.info(`✅ AI initialized using ${ai.getName()}`);
-        } else {
-          logger.warn(
-            `⚠️  AI configuration found for ${config.ai.provider} but initialization failed`,
-          );
-        }
-      } catch (error) {
-        logger.warn("⚠️  Failed to initialize AI provider:", error);
-      }
-    }
-  } else {
-    logger.info("ℹ️  AI analysis disabled");
-  }
+  const ai = initializeAI({ config, logger, isAIRequested });
 
   const prService = new PRService({
     config,

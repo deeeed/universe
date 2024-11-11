@@ -71,13 +71,6 @@ describe("Config Util", () => {
       const config = createConfig({ partial });
       expect(config.debug).toBe(true);
       expect(config.git.baseBranch).toBe("develop");
-      expect(config.git.cwd).toBe(mockGitRoot);
-    });
-
-    it("should override cwd when provided", () => {
-      const customCwd = "/custom/path";
-      const config = createConfig({ cwd: customCwd });
-      expect(config.git.cwd).toBe(customCwd);
     });
   });
 
@@ -93,7 +86,7 @@ describe("Config Util", () => {
       expect(status.global.exists).toBe(false);
       expect(status.local.exists).toBe(false);
 
-      const expectedConfig = getDefaultConfig(mockGitRoot);
+      const expectedConfig = getDefaultConfig();
       expect(status.effective).toEqual(expectedConfig);
     });
 
@@ -170,7 +163,12 @@ describe("Config Util", () => {
     });
 
     it("should throw error on invalid config", async () => {
-      (fs.readFile as jest.Mock).mockResolvedValue("invalid json");
+      (fs.readFile as jest.Mock).mockImplementation((path: string) => {
+        if (path === "custom/path") {
+          return Promise.resolve("invalid json");
+        }
+        return Promise.resolve("{}");
+      });
 
       await expect(loadConfig({ configPath: "custom/path" })).rejects.toThrow(
         "Failed to load configuration",

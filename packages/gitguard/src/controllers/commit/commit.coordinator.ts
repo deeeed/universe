@@ -1,6 +1,5 @@
 import chalk from "chalk";
 import { CommitCommandOptions } from "../../commands/commit.js";
-import { AIFactory } from "../../services/factories/ai.factory.js";
 import { GitService } from "../../services/git.service.js";
 import { LoggerService } from "../../services/logger.service.js";
 import { ReporterService } from "../../services/reporter.service.js";
@@ -9,11 +8,12 @@ import { AIProvider } from "../../types/ai.types.js";
 import { CommitAnalysisResult } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { FileChange } from "../../types/git.types.js";
+import { initializeAI } from "../../utils/ai-init.util.js";
 import { loadConfig } from "../../utils/config.util.js";
+import { promptYesNo } from "../../utils/user-prompt.util.js";
 import { CommitAIController } from "./commit-ai.controller.js";
 import { CommitAnalysisController } from "./commit-analysis.controller.js";
 import { CommitSecurityController } from "./commit-security.controller.js";
-import { promptYesNo } from "../../utils/user-prompt.util.js";
 
 interface CommitAnalyzeParams {
   options: CommitCommandOptions;
@@ -54,7 +54,6 @@ async function initializeServices(
   const config = await loadConfig({ configPath: options.configPath });
 
   if (options.cwd) {
-    config.git.cwd = options.cwd;
     logger.debug("Using custom working directory:", options.cwd);
   }
 
@@ -62,36 +61,15 @@ async function initializeServices(
     gitConfig: {
       ...config.git,
       baseBranch: config.git?.baseBranch ?? "main",
+      cwd: options.cwd,
     },
     logger,
   });
 
   const security = new SecurityService({ config, logger });
 
-  logger.info("\n🔍 Checking AI configuration...");
-  let ai: AIProvider | undefined;
-
   const isAIRequested = options.ai ?? config.ai?.enabled;
-  if (isAIRequested) {
-    if (!config.ai?.provider) {
-      logger.warn("AI requested but no provider configured in settings");
-    } else {
-      try {
-        ai = AIFactory.create({ config: { ...config }, logger });
-        if (ai) {
-          logger.info(`✅ AI initialized using ${ai.getName()}`);
-        } else {
-          logger.warn(
-            `⚠️  AI configuration found for ${config.ai.provider} but initialization failed`,
-          );
-        }
-      } catch (error) {
-        logger.warn("⚠️  Failed to initialize AI provider:", error);
-      }
-    }
-  } else {
-    logger.info("ℹ️  AI analysis disabled");
-  }
+  const ai = initializeAI({ config, logger, isAIRequested });
 
   logger.info("✅ Services initialized successfully");
   return { logger, reporter, git, security, ai, config };
@@ -228,7 +206,7 @@ async function handleAnalysis(
   }
 
   // Handle general AI suggestions if enabled
-  if (options.ai && services.ai && !result.splitSuggestion) {
+  if (options.ai) {
     result = await aiController.handleAISuggestions({
       result,
       files: filesToAnalyze,

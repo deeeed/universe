@@ -23,13 +23,16 @@ export interface GitConfig {
    * Example: build outputs, node_modules, etc.
    */
   ignorePatterns?: string[];
-  cwd?: string;
   github?: {
     token?: string;
     enterprise?: {
       url: string;
     };
   };
+}
+
+export interface RuntimeGitConfig extends GitConfig {
+  cwd?: string;
 }
 
 export interface SecurityConfig {
