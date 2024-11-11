@@ -23,6 +23,10 @@ function isDebugEnabled(): boolean {
   );
 }
 
+function disableColors(): void {
+  process.env.FORCE_COLOR = "0";
+}
+
 async function main(): Promise<void> {
   const debug: boolean = isDebugEnabled();
   const logger = new LoggerService({ debug });
@@ -114,6 +118,11 @@ ${chalk.blue("Options:")}
       const parentOpts = parent.opts<GlobalOptions>();
       Object.assign(currentOptions, parentOpts);
       parent = parent.parent;
+    }
+
+    // Handle color option
+    if (rootOptions.noColors || currentOptions.noColors) {
+      disableColors();
     }
 
     // Ensure debug is properly set

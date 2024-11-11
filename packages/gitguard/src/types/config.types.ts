@@ -98,6 +98,7 @@ export interface Config {
   git: GitConfig;
   analysis: AnalysisConfig;
   debug: boolean;
+  colors: boolean;
   security: SecurityConfig;
   ai: AIConfig;
   pr: PRConfig;
