@@ -106,7 +106,32 @@ async function initializeServices({
   const git = new GitService({ gitConfig, logger });
   const github = new GitHubService({ config, logger, git });
   const security = new SecurityService({ config, logger });
-  const ai = options.ai ? AIFactory.create({ config, logger }) : undefined;
+
+  logger.info("\n🔍 Checking AI configuration...");
+  let ai: AIProvider | undefined;
+
+  const isAIRequested = options.ai ?? config.ai?.enabled;
+  if (isAIRequested) {
+    if (!config.ai?.provider) {
+      logger.warn("⚠️  AI requested but no provider configured in settings");
+    } else {
+      try {
+        ai = AIFactory.create({ config, logger });
+        if (ai) {
+          logger.info(`✅ AI initialized using ${ai.getName()}`);
+        } else {
+          logger.warn(
+            `⚠️  AI configuration found for ${config.ai.provider} but initialization failed`,
+          );
+        }
+      } catch (error) {
+        logger.warn("⚠️  Failed to initialize AI provider:", error);
+      }
+    }
+  } else {
+    logger.info("ℹ️  AI analysis disabled");
+  }
+
   const prService = new PRService({
     config,
     logger,
@@ -116,7 +141,7 @@ async function initializeServices({
     ai,
   });
 
-  logger.debug("Services initialized successfully");
+  logger.debug("✅ Services initialized successfully");
   return { logger, reporter, git, github, security, ai, prService, config };
 }
 
@@ -285,6 +310,16 @@ async function processAIFeatures({
     needsGitHubAccess: Boolean(options.createPR || options.draft),
   });
 
+  if (!controllers.aiController.hasAIProvider()) {
+    logger.warn(
+      "\n⚠️  AI features requested but no valid AI provider configured",
+    );
+    logger.info(
+      "💡 To enable AI, configure a provider in your .gitguard/config.json or environment variables",
+    );
+    return analysisResult;
+  }
+
   const needsGitHubAccess = options.createPR || options.draft;
   let result = analysisResult;
 
@@ -297,6 +332,10 @@ async function processAIFeatures({
         analysisResult: result,
         options,
       });
+    } else {
+      logger.warn(
+        "⚠️  GitHub access required for PR creation but validation failed",
+      );
     }
   } else {
     result = await processAIWithoutGitHub({
