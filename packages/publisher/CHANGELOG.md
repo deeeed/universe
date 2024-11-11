@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- refactor(publisher): improve package version handling (#27) ([3c8f703](https://github.com/deeeed/universe/commit/3c8f703ce62a16e320a0346ac934c112a119f560))
+- chore(publisher): add optional relative path ([9e39762](https://github.com/deeeed/universe/commit/9e397628ed5a65c76f767a2e4806f5b5d1a67d64))
+- feat(publisher): add setup script for Publisher CLI ([4c1664d](https://github.com/deeeed/universe/commit/4c1664d1bb233a5d6a76134db6539a15d243a80a))
+- feat(git): enhance commit retrieval logic and handling ([c9ef55f](https://github.com/deeeed/universe/commit/c9ef55f12ee34d69f4b816ab2bb42a7930225104))
 
 
 ## [0.4.16] - 2024-11-04
