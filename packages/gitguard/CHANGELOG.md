@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- refactor(gitguard): migrate to project-based test setup and enhance configuration system (#25) ([98d12a0](https://github.com/deeeed/universe/commit/98d12a0ce58ab35aa923c58f2e377abc41bde2be))
 
 ## [0.4.0] - 2024-11-10
 - docs(gitguard): update changelog with smart package split detection feature ([b9397f1](https://github.com/deeeed/universe/commit/b9397f1dfbac509d180323a69df2e0f230838ba0))
