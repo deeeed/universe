@@ -1,6 +1,5 @@
 import chalk from "chalk";
 import { CommitCommandOptions } from "../../commands/commit.js";
-import { AIFactory } from "../../services/factories/ai.factory.js";
 import { GitService } from "../../services/git.service.js";
 import { LoggerService } from "../../services/logger.service.js";
 import { ReporterService } from "../../services/reporter.service.js";
@@ -9,6 +8,7 @@ import { AIProvider } from "../../types/ai.types.js";
 import { CommitAnalysisResult } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { FileChange } from "../../types/git.types.js";
+import { initializeAI } from "../../utils/ai-init.util.js";
 import { loadConfig } from "../../utils/config.util.js";
 import { promptYesNo } from "../../utils/user-prompt.util.js";
 import { CommitAIController } from "./commit-ai.controller.js";
@@ -68,61 +68,8 @@ async function initializeServices(
 
   const security = new SecurityService({ config, logger });
 
-  logger.info("\n🔍 Checking AI configuration...");
-  let ai: AIProvider | undefined;
-
   const isAIRequested = options.ai ?? config.ai?.enabled;
-  if (isAIRequested) {
-    try {
-      if (!config.ai?.provider) {
-        // Create default fallback config
-        const fallbackConfig: Config = {
-          ...config,
-          ai: {
-            ...config.ai, // Preserve any existing AI config
-            enabled: true,
-            provider: "openai",
-            openai: {
-              model: "gpt-4-turbo",
-            },
-          },
-        };
-
-        ai = AIFactory.create({ config: fallbackConfig, logger });
-
-        logger.warn(
-          "\n⚠️  AI requested but no provider configured in settings",
-        );
-        logger.info(
-          "\n💡 Using default OpenAI configuration for offline prompts. To configure AI properly:",
-        );
-        logger.info(chalk.cyan("\n1. Run setup command:"));
-        logger.info(chalk.dim("   gitguard init"));
-        logger.info(chalk.cyan("\n2. Or manually update your config file:"));
-        logger.info(
-          chalk.dim("   .gitguard/config.json or ~/.gitguard/config.json"),
-        );
-        logger.info(
-          chalk.dim("\nTip: Run 'gitguard init --help' for more options"),
-        );
-      } else {
-        ai = AIFactory.create({ config: { ...config }, logger });
-      }
-
-      if (ai) {
-        logger.info(`✅ AI initialized using ${ai.getName()}`);
-      } else {
-        logger.warn(
-          `⚠️  AI configuration found but initialization failed. Falling back to offline prompts.`,
-        );
-      }
-    } catch (error) {
-      logger.warn("⚠️  Failed to initialize AI provider:", error);
-      logger.info("💡 Falling back to offline prompts");
-    }
-  } else {
-    logger.info("ℹ️  AI analysis disabled");
-  }
+  const ai = initializeAI({ config, logger, isAIRequested });
 
   logger.info("✅ Services initialized successfully");
   return { logger, reporter, git, security, ai, config };
