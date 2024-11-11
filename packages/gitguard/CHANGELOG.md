@@ -3,6 +3,9 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+
+
+## [0.4.1] - 2024-11-11
 - refactor(gitguard): migrate to project-based test setup and enhance configuration system (#25) ([98d12a0](https://github.com/deeeed/universe/commit/98d12a0ce58ab35aa923c58f2e377abc41bde2be))
 
 ## [0.4.0] - 2024-11-10
@@ -12,9 +15,11 @@ All notable changes to this project will be documented in this file.
 - refactor(gitguard): modularize commit and branch handling with enhanced e2e logging and security configuration (#22) ([548c5d6](https://github.com/deeeed/universe/commit/548c5d67449674864a0e50f2155252b2c6fc1563))
 - feat/branchcommands (#19) ([95a5bbd](https://github.com/deeeed/universe/commit/95a5bbd90b8d8120adb30a69d0d1e567309b3e0b))
 
+
 ## [0.3.2] - 2024-11-06
 - feat(gitguard): add monorepoPatterns to init command configuration ([11995bd](https://github.com/deeeed/universe/commit/11995bdc661d9426b1af84fe80ac36806fca3011))
 - feat(cli): add commit option to analyze command ([c8755f5](https://github.com/deeeed/universe/commit/c8755f50198df1efa820f20af41aa282822445c2))
+
 
 
 ## [0.3.1] - 2024-11-04
@@ -27,12 +32,14 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.3.0] - 2024-11-04
 
 ### Changed
 - inititial version.
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.4.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.4.1...HEAD
+[0.4.1]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.4.0...@siteed/gitguard@0.4.1
 [0.4.0]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.3.2...@siteed/gitguard@0.4.0
 [0.3.2]: https://github.com/deeeed/universe/compare/gitguard@@siteed/gitguard@0.3.1...gitguard@@siteed/gitguard@0.3.2
 [0.3.1]: https://github.com/deeeed/universe/compare/gitguard@@siteed/gitguard@0.3.0...gitguard@@siteed/gitguard@0.3.1
