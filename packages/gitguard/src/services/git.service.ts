@@ -1,5 +1,5 @@
 // packages/gitguard/src/services/git.service.ts
-import { promises as fs } from "fs";
+import * as fs from "fs/promises";
 import { GitConfig, RuntimeGitConfig } from "../types/config.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { ServiceOptions } from "../types/service.types.js";
@@ -445,13 +445,28 @@ export class GitService extends BaseService {
   }
 
   async updateCommitMessage(params: {
-    file: string;
     message: string;
+    messageFile?: string;
   }): Promise<void> {
     try {
-      this.logger.debug(`Updating commit message in ${params.file}`);
-      await fs.writeFile(params.file, params.message, "utf-8");
-      this.logger.debug("Commit message updated successfully");
+      this.logger.debug("Updating commit message:", params.message);
+
+      if (params.messageFile) {
+        // If message file is provided, write to it
+        await fs.writeFile(params.messageFile, params.message, "utf-8");
+        await this.execGit({
+          command: "commit",
+          args: ["-F", params.messageFile],
+          cwd: this.cwd,
+        });
+      } else {
+        // For direct message, properly escape and quote
+        await this.execGit({
+          command: "commit",
+          args: ["-m", params.message], // execGit will handle escaping
+          cwd: this.cwd,
+        });
+      }
     } catch (error) {
       this.logger.error("Failed to update commit message:", error);
       throw error;

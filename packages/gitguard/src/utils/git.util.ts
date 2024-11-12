@@ -129,14 +129,29 @@ async function execGitWithBuffer({
   command,
   args,
   cwd,
-  maxBuffer = 100 * 1024 * 1024,
   logger,
+  maxBuffer = 1024 * 1024 * 10, // 10MB default
 }: GitExecOptions): Promise<GitExecResult> {
   try {
+    logger?.debug("Executing git command:", { command, args, cwd });
+
+    // Join args with proper escaping for shell
+    const escapedArgs = args.map((arg) => {
+      // Escape quotes and wrap argument in quotes if it contains spaces or special chars
+      if (arg.includes(" ") || /[<>|&;()$`\\"]/.test(arg)) {
+        return `"${arg.replace(/"/g, '\\"')}"`;
+      }
+      return arg;
+    });
+
     const { stdout, stderr } = await execPromise(
-      `git ${command} ${args.join(" ")}`,
-      { cwd, maxBuffer },
+      `git ${command} ${escapedArgs.join(" ")}`,
+      {
+        cwd,
+        maxBuffer,
+      },
     );
+
     return { stdout, stderr };
   } catch (error) {
     logger?.debug("Buffer execution failed:", error);
