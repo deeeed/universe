@@ -179,9 +179,6 @@ export class SecurityService extends BaseService {
   }): SecurityFinding[] {
     const findings: SecurityFinding[] = [];
     let currentFile: string | undefined;
-    let privateKeyContent: string[] = [];
-    let isCollectingPrivateKey = false;
-
     const patterns = params.patterns ?? SECRET_PATTERNS;
 
     this.logger.debug("=== Starting line analysis ===");
@@ -190,90 +187,142 @@ export class SecurityService extends BaseService {
       const line = params.lines[i];
       currentFile = params.filePathMap.get(i) ?? currentFile;
 
-      if (!currentFile || !params.validPaths.has(currentFile)) {
+      if (
+        !currentFile ||
+        !this.isValidLine(currentFile, params.validPaths, line)
+      ) {
         continue;
       }
 
-      if (!line.startsWith("+")) {
-        if (isCollectingPrivateKey && line.includes("END")) {
-          isCollectingPrivateKey = false;
-          const fullKey = privateKeyContent.join("\n");
+      const result = this.analyzeSingleLine({
+        line,
+        lineIndex: i,
+        currentFile,
+        patterns,
+      });
 
-          const privateKeyPattern = SECRET_PATTERNS.find(
-            (p) => p.name === "Private Key",
-          );
-          if (privateKeyPattern && privateKeyPattern.pattern.test(fullKey)) {
-            findings.push({
-              type: "secret",
-              severity: "high",
-              path: currentFile,
-              line: i - privateKeyContent.length + 1,
-              match: fullKey,
-              content: fullKey,
-              suggestion: "Remove Private Key and use a secret manager instead",
-            });
-          }
-          privateKeyContent = [];
-        }
-        continue;
-      }
-
-      const contentLine = line.substring(1);
-
-      if (contentLine.includes("BEGIN")) {
-        isCollectingPrivateKey = true;
-        privateKeyContent = [contentLine];
-        continue;
-      }
-
-      if (isCollectingPrivateKey) {
-        privateKeyContent.push(contentLine);
-        if (contentLine.includes("END")) {
-          isCollectingPrivateKey = false;
-          const fullKey = privateKeyContent.join("\n");
-
-          const privateKeyPattern = SECRET_PATTERNS.find(
-            (p) => p.name === "Private Key",
-          );
-          if (privateKeyPattern && privateKeyPattern.pattern.test(fullKey)) {
-            findings.push({
-              type: "secret",
-              severity: "high",
-              path: currentFile,
-              line: i - privateKeyContent.length + 1,
-              match: fullKey,
-              content: fullKey,
-              suggestion: "Remove Private Key and use a secret manager instead",
-            });
-          }
-          privateKeyContent = [];
-        }
-        continue;
-      }
-
-      for (const pattern of patterns) {
-        if (pattern.name === "Private Key") continue;
-
-        const match = pattern.pattern.exec(contentLine);
-        if (match) {
-          findings.push({
-            type: "secret",
-            severity: pattern.severity,
-            path: currentFile,
-            line: i + 1,
-            match: match[0],
-            content: this.maskSecret(contentLine),
-            suggestion:
-              pattern.name === "Custom Pattern"
-                ? "Remove this secret and use environment variables instead"
-                : `Detected ${pattern.name}. Use environment variables instead.`,
-          });
-        }
+      if (result.findings.length) {
+        findings.push(...result.findings);
       }
     }
 
     this.logger.debug(`Analysis complete. Found ${findings.length} secrets`);
     return findings;
+  }
+
+  private isValidLine(
+    currentFile: string,
+    validPaths: Set<string>,
+    line: string,
+  ): boolean {
+    return validPaths.has(currentFile) && line.startsWith("+");
+  }
+
+  private analyzeSingleLine(params: {
+    line: string;
+    lineIndex: number;
+    currentFile: string;
+    patterns: SecurityPattern[];
+  }): { findings: SecurityFinding[] } {
+    const findings: SecurityFinding[] = [];
+    const contentLine = params.line.substring(1);
+
+    // Handle private key detection
+    const privateKeyFindings = this.analyzePrivateKey({
+      contentLine,
+      currentFile: params.currentFile,
+      lineIndex: params.lineIndex,
+    });
+
+    if (privateKeyFindings.length) {
+      return { findings: privateKeyFindings };
+    }
+
+    // Handle regular pattern matching
+    findings.push(
+      ...this.analyzePatterns({
+        contentLine,
+        currentFile: params.currentFile,
+        lineIndex: params.lineIndex,
+        patterns: params.patterns,
+      }),
+    );
+
+    return { findings };
+  }
+
+  private analyzePrivateKey(params: {
+    contentLine: string;
+    currentFile: string;
+    lineIndex: number;
+  }): SecurityFinding[] {
+    // Remove the leading '+' if it exists
+    const line = params.contentLine.startsWith("+")
+      ? params.contentLine.substring(1)
+      : params.contentLine;
+
+    // Check for BEGIN marker of private keys
+    if (!line.includes("BEGIN")) {
+      return [];
+    }
+
+    // Look for the private key pattern
+    const privateKeyPattern = /-----BEGIN (?:RSA |DSA |EC )?PRIVATE KEY-----/;
+    const match = privateKeyPattern.exec(line);
+
+    if (!match) return [];
+
+    return [
+      {
+        type: "secret",
+        severity: "high",
+        path: params.currentFile,
+        line: params.lineIndex + 1,
+        match: match[0],
+        content: line,
+        suggestion: "Remove Private Key and use a secret manager instead",
+      },
+    ];
+  }
+
+  private analyzePatterns(params: {
+    contentLine: string;
+    currentFile: string;
+    lineIndex: number;
+    patterns: SecurityPattern[];
+  }): SecurityFinding[] {
+    const findings: SecurityFinding[] = [];
+
+    for (const pattern of params.patterns) {
+      if (pattern.name === "Private Key") continue;
+
+      let match: RegExpExecArray | null;
+      // Reset lastIndex to ensure we start from the beginning of the string
+      pattern.pattern.lastIndex = 0;
+
+      while ((match = pattern.pattern.exec(params.contentLine)) !== null) {
+        findings.push({
+          type: "secret",
+          severity: pattern.severity,
+          path: params.currentFile,
+          line: params.lineIndex + 1,
+          match: match[0],
+          content: this.maskSecret(params.contentLine),
+          suggestion: this.getPatternSuggestion(pattern.name),
+        });
+
+        // If the pattern is not global, break to avoid infinite loop
+        if (!pattern.pattern.global) break;
+      }
+    }
+
+    return findings;
+  }
+
+  private getPatternSuggestion(patternName: string): string {
+    return patternName === "Custom Pattern"
+      ? "Remove this secret and use environment variables instead"
+      : `Detected ${patternName}. Use environment variables instead.`;
   }
 
   private extractFilePath(diff: string, lineIndex: number): string | undefined {
