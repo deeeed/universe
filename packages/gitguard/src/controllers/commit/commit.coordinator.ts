@@ -14,6 +14,7 @@ import { promptYesNo } from "../../utils/user-prompt.util.js";
 import { CommitAIController } from "./commit-ai.controller.js";
 import { CommitAnalysisController } from "./commit-analysis.controller.js";
 import { CommitSecurityController } from "./commit-security.controller.js";
+import { SecurityCheckResult } from "../../types/security.types.js";
 
 interface CommitAnalyzeParams {
   options: CommitCommandOptions;
@@ -145,19 +146,46 @@ async function handleAnalysis(
   const { analysisController, securityController, aiController } = controllers;
   const { filesToAnalyze } = context;
 
-  // Security checks first
-  logger.info("\n🔒 Running security checks...");
-  const securityResult = await securityController.analyzeSecurity({
-    files: filesToAnalyze,
-    shouldAnalyzeStaged: context.shouldAnalyzeStaged,
-  });
+  // Initialize security result
+  let securityResult: SecurityCheckResult = {
+    secretFindings: [],
+    fileFindings: [],
+    filesToUnstage: [],
+    shouldBlock: false,
+    commands: [],
+  };
 
-  if (
-    securityResult.secretFindings.length > 0 ||
-    securityResult.fileFindings.length > 0
-  ) {
-    logger.info("\n⚠️  Security issues found - handling concerns...");
-    await securityController.handleSecurityIssues({ securityResult });
+  // Security checks first (if not skipped)
+  if (!options.skipSecurity) {
+    logger.info("\n🔒 Running security checks...");
+
+    // Filter ignored files first
+    const nonIgnoredFiles = filesToAnalyze.filter(
+      (file) => !services.security.shouldIgnoreFile(file.path),
+    );
+
+    if (nonIgnoredFiles.length === 0) {
+      logger.info("✓ No files to check after applying ignore patterns");
+    } else {
+      logger.info(
+        `Analyzing ${nonIgnoredFiles.length} files (${filesToAnalyze.length - nonIgnoredFiles.length} ignored)`,
+      );
+
+      securityResult = await securityController.analyzeSecurity({
+        files: nonIgnoredFiles,
+        shouldAnalyzeStaged: context.shouldAnalyzeStaged,
+      });
+
+      if (
+        securityResult.secretFindings.length > 0 ||
+        securityResult.fileFindings.length > 0
+      ) {
+        logger.info("\n⚠️  Security issues found - handling concerns...");
+        await securityController.handleSecurityIssues({ securityResult });
+      }
+    }
+  } else {
+    logger.debug("Security checks skipped via --skip-security flag");
   }
 
   // Initial analysis

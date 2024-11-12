@@ -49,6 +49,7 @@ export interface CommitAnalysisOptions {
   enablePrompts?: boolean;
   securityResult?: SecurityCheckResult;
   files?: FileChange[];
+  diff?: string;
 }
 
 export interface PRAnalysisResult {

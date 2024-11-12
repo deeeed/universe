@@ -1,5 +1,5 @@
 // packages/gitguard/src/services/git.service.ts
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import { promises as fs } from "fs";
 import { promisify } from "util";
 import { GitConfig, RuntimeGitConfig } from "../types/config.types.js";
@@ -22,6 +22,18 @@ interface GetDiffParams {
 }
 
 const execPromise = promisify(exec);
+
+interface ExecGitOptions {
+  command: string;
+  args: string[];
+  cwd?: string;
+  maxBuffer?: number;
+}
+
+interface ExecGitResult {
+  stdout: string;
+  stderr: string;
+}
 
 export class GitService extends BaseService {
   private readonly parser: CommitParser;
@@ -423,45 +435,83 @@ export class GitService extends BaseService {
     }
   }
 
-  async execGit(params: {
-    command: string;
-    args: string[];
-    cwd?: string; // Add optional cwd parameter
-  }): Promise<string> {
+  private async execGitWithBuffer({
+    command,
+    args,
+    cwd,
+    maxBuffer = 100 * 1024 * 1024,
+  }: ExecGitOptions): Promise<ExecGitResult> {
     try {
-      if (!params.cwd && !this.cwd) {
-        throw new Error("Git working directory not set");
-      }
-
-      const workingDir = params.cwd ?? this.cwd;
-
-      // Escape special characters in args
-      const escapedArgs = params.args.map((arg) => {
-        if (
-          arg.includes(" ") ||
-          arg.includes("(") ||
-          arg.includes(")") ||
-          arg.includes(":")
-        ) {
-          return `"${arg.replace(/"/g, '\\"')}"`;
-        }
-        return arg;
-      });
-
-      this.logger.debug(`Executing git command in ${workingDir}:`, {
-        command: params.command,
-        args: escapedArgs,
-      });
-
-      const { stdout } = await execPromise(
-        `git ${params.command} ${escapedArgs.join(" ")}`,
+      const { stdout, stderr } = await execPromise(
+        `git ${command} ${args.join(" ")}`,
         {
-          cwd: workingDir,
+          cwd: cwd || this.cwd,
+          maxBuffer,
         },
       );
-      return stdout;
+      return { stdout, stderr };
     } catch (error) {
-      this.logger.error(`Git command failed: ${params.command}`, error);
+      this.logger.debug("Buffer execution failed:", error);
+      throw error;
+    }
+  }
+
+  private async execGitWithStream({
+    command,
+    args,
+    cwd,
+  }: ExecGitOptions): Promise<ExecGitResult> {
+    return new Promise((resolve, reject) => {
+      const stdoutChunks: Buffer[] = [];
+      const stderrChunks: Buffer[] = [];
+
+      const git = spawn("git", [command, ...args], {
+        cwd: cwd || this.cwd,
+      });
+
+      git.stdout?.on("data", (chunk: Buffer) =>
+        stdoutChunks.push(Buffer.from(chunk)),
+      );
+      git.stderr?.on("data", (chunk: Buffer) =>
+        stderrChunks.push(Buffer.from(chunk)),
+      );
+
+      git.on("error", (error: Error) => {
+        this.logger.error("Git stream error:", error);
+        reject(error);
+      });
+
+      git.on("close", (code: number) => {
+        if (code === 0) {
+          resolve({
+            stdout: Buffer.concat(stdoutChunks).toString("utf8"),
+            stderr: Buffer.concat(stderrChunks).toString("utf8"),
+          });
+        } else {
+          reject(new Error(`Git process exited with code ${code}`));
+        }
+      });
+    });
+  }
+
+  async execGit({ command, args, cwd }: ExecGitOptions): Promise<string> {
+    try {
+      // First try with buffer
+      const bufferResult = await this.execGitWithBuffer({ command, args, cwd });
+      return bufferResult.stdout;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("maxBuffer")) {
+        this.logger.debug(
+          "Falling back to stream execution due to buffer size",
+        );
+        // Fallback to stream if buffer is exceeded
+        const streamResult = await this.execGitWithStream({
+          command,
+          args,
+          cwd,
+        });
+        return streamResult.stdout;
+      }
       throw error;
     }
   }

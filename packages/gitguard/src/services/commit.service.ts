@@ -13,10 +13,6 @@ import {
 import { Config } from "../types/config.types.js";
 import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
-import {
-  SecurityCheckResult,
-  SecurityFinding,
-} from "../types/security.types.js";
 import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
 import { formatDiffForAI } from "../utils/diff.util.js";
@@ -28,7 +24,7 @@ export class CommitService extends BaseService {
   private readonly git: GitService;
   private readonly security?: SecurityService;
   private readonly ai?: AIProvider;
-
+  private readonly config: Config;
   constructor(params: {
     config: Config;
     git: GitService;
@@ -37,6 +33,7 @@ export class CommitService extends BaseService {
     logger: Logger;
   }) {
     super({ logger: params.logger });
+    this.config = params.config;
     this.git = params.git;
     this.security = params.security;
     this.ai = params.ai;
@@ -47,15 +44,7 @@ export class CommitService extends BaseService {
       const branch = await this.git.getCurrentBranch();
       const baseBranch = this.git.config.baseBranch;
 
-      // Use the files passed in instead of getting staged changes
-      const files = params.files || (await this.git.getStagedChanges());
-
-      this.logger.debug("Analyzing files:", files);
-
-      if (files.length === 0) {
-        return this.createEmptyResult({ branch, baseBranch });
-      }
-
+      // Read message file if provided
       let originalMessage = "";
       if (params.messageFile) {
         originalMessage = await fs.readFile(params.messageFile, "utf-8");
@@ -63,57 +52,59 @@ export class CommitService extends BaseService {
         originalMessage = params.message;
       }
 
-      if (originalMessage.trim().startsWith("Merge")) {
+      // Get files and filter ignored ones using shouldIgnoreFile
+      const allFiles = params.files || (await this.git.getStagedChanges());
+      this.logger.debug(
+        "All files before filtering:",
+        allFiles.map((f) => f.path),
+      );
+
+      const files = allFiles.filter(
+        (file) => !this.shouldIgnoreFile(file.path),
+      );
+      this.logger.debug(
+        "Files after ignore patterns:",
+        files.map((f) => f.path),
+      );
+      const stats = this.calculateStats(files);
+
+      if (files.length === 0) {
         return this.createEmptyResult({ branch, baseBranch });
       }
 
-      // First analyze security and structure
+      // Run security checks if enabled
       const securityResult =
         params.securityResult ||
-        (this.security
+        (this.security && this.config.security.enabled
           ? this.security.analyzeSecurity({
               files,
-              diff: "",
+              diff: params.diff || "",
             })
           : undefined);
 
-      const warnings = this.getWarnings({ securityResult, files });
+      // Initialize warnings array
+      const warnings: AnalysisWarning[] = [];
 
-      // Analyze commit cohesion FIRST
+      // Add security warnings
+      if (securityResult?.secretFindings?.length) {
+        warnings.push(
+          ...securityResult.secretFindings.map((finding) => ({
+            type: "security" as const,
+            severity: finding.severity,
+            message: finding.suggestion,
+          })),
+        );
+      }
+
+      // Use existing methods for commit analysis
       const cohesionAnalysis = this.analyzeCommitCohesion({
         files,
         originalMessage: params.message ?? "",
       });
 
-      // Add cohesion warnings to result
       warnings.push(...cohesionAnalysis.warnings);
 
-      let suggestions: CommitSuggestion[] | undefined;
-      let splitSuggestion: CommitSplitSuggestion | undefined;
-      let shouldPromptUser = false;
-
-      // Only set splitSuggestion if needed
-      if (cohesionAnalysis.shouldSplit) {
-        splitSuggestion = cohesionAnalysis.splitSuggestion;
-        shouldPromptUser = true;
-      }
-
-      // Only prepare for AI if no structural issues need addressing first
-      if (
-        params.enableAI &&
-        this.ai &&
-        !cohesionAnalysis.shouldSplit &&
-        !securityResult?.shouldBlock
-      ) {
-        shouldPromptUser = true;
-      }
-
-      const parser = new CommitParser();
-      const complexity = parser.analyzeCommitComplexity({
-        files: files,
-      });
-
-      // Format the message if provided
+      // Format message using existing method
       const formattedMessage = params.message
         ? this.formatCommitMessage({
             message: params.message,
@@ -125,13 +116,19 @@ export class CommitService extends BaseService {
         branch,
         baseBranch,
         originalMessage,
-        formattedMessage, // Include the formatted message
-        stats: this.calculateStats(files),
+        formattedMessage,
+        stats,
         warnings,
-        suggestions,
-        splitSuggestion,
-        shouldPromptUser,
-        complexity,
+        suggestions: params.enableAI
+          ? await this.generateAISuggestions({
+              files,
+              message: params.message || "",
+              diff: params.diff || "",
+            })
+          : undefined,
+        splitSuggestion: cohesionAnalysis.splitSuggestion,
+        shouldPromptUser: cohesionAnalysis.shouldSplit,
+        complexity: new CommitParser().analyzeCommitComplexity({ files }),
       };
     } catch (error) {
       this.logger.error("Failed to analyze commit", error);
@@ -145,67 +142,6 @@ export class CommitService extends BaseService {
       additions: files.reduce((sum, file) => sum + file.additions, 0),
       deletions: files.reduce((sum, file) => sum + file.deletions, 0),
     };
-  }
-
-  private getWarnings(params: {
-    securityResult?: SecurityCheckResult;
-    files: FileChange[];
-  }): AnalysisWarning[] {
-    const warnings: AnalysisWarning[] = [];
-    const scopes = this.detectScopes(params.files);
-
-    if (params.securityResult) {
-      if (params.securityResult.secretFindings.length > 0) {
-        warnings.push(
-          ...this.mapSecurityToWarnings(params.securityResult.secretFindings),
-        );
-      }
-    }
-
-    if (params.files.length > 10) {
-      warnings.push({
-        type: "file",
-        message:
-          "Large number of files changed. Consider splitting the commit.",
-        severity: "medium",
-      });
-    }
-
-    if (scopes.length > 1) {
-      warnings.push({
-        type: "file",
-        message:
-          "Changes span multiple packages. Consider splitting the commit by package.",
-        severity: "medium",
-      });
-    }
-
-    return warnings;
-  }
-
-  private mapSecurityToWarnings(
-    findings: SecurityFinding[],
-  ): AnalysisWarning[] {
-    return findings.map((finding) => ({
-      type: "security",
-      severity: finding.severity,
-      message: finding.suggestion,
-    }));
-  }
-
-  private detectScopes(files: FileChange[]): string[] {
-    const scopes = new Set<string>();
-
-    for (const file of files) {
-      if (file.path.startsWith("packages/")) {
-        const parts = file.path.split("/");
-        if (parts.length >= 2) {
-          scopes.add(parts[1]);
-        }
-      }
-    }
-
-    return Array.from(scopes);
   }
 
   public async generateAISuggestions(params: {
@@ -296,9 +232,9 @@ export class CommitService extends BaseService {
     files: FileChange[];
     message: string;
   }): CommitSplitSuggestion | undefined {
-    const scopes = this.detectScopes(params.files);
+    const scopes = this.detectScope(params.files);
 
-    if (scopes.length <= 1) return undefined;
+    if (!scopes) return undefined;
 
     const filesByScope = params.files.reduce(
       (acc, file) => {
@@ -365,14 +301,14 @@ export class CommitService extends BaseService {
     /**
      * Regex for parsing conventional commits with ReDoS protection:
      * - ^: Start of string
-     * - (?:feat|fix|...): Non-capturing group of valid commit types
+     * - (feat|fix|...): Capturing group for valid commit types
      * - (?:\(([^\n()]{1,50})\))?: Optional scope limited to 50 chars, no newlines/nested parens
      * - (!)?: Optional breaking change indicator
      * - :\s+: Required separator
      * - (.{1,200}): Description limited to 200 chars
      * - $: End of string
      */
-    full: /^(?:feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(?:\(([^\n()]{1,50})\))?(!)?:\s+(.{1,200})$/,
+    full: /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(?:\(([^\n()]{1,50})\))?(!)?\s*:\s*(.{1,200})$/,
     // Valid commit types
     types: [
       "feat",
@@ -389,46 +325,35 @@ export class CommitService extends BaseService {
     ],
   } as const;
 
-  private isConventionalCommit(message: string): boolean {
-    return (
-      CommitService.CONVENTIONAL_COMMIT_PATTERN.full.exec(message) !== null
-    );
-  }
-
-  private parseConventionalCommit(message: string): {
+  public parseConventionalCommit(message: string): {
     type: string;
     scope?: string;
     breaking: boolean;
     description: string;
   } | null {
     const match = CommitService.CONVENTIONAL_COMMIT_PATTERN.full.exec(message);
-    if (!match) return null;
+    if (!match) {
+      const simpleMatch =
+        /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert):\s+(.+)$/i.exec(
+          message,
+        );
+      if (simpleMatch) {
+        return {
+          type: simpleMatch[1].toLowerCase(),
+          breaking: false,
+          description: simpleMatch[2],
+        };
+      }
+      return null;
+    }
 
     const [, type, scope, breaking, description] = match;
     return {
-      type,
-      scope,
+      type: type.toLowerCase(),
+      scope: scope || undefined,
       breaking: breaking === "!",
       description,
     };
-  }
-
-  private enhanceConventionalCommit(
-    message: string,
-    files: FileChange[],
-  ): string {
-    const parsed = this.parseConventionalCommit(message);
-    if (!parsed) return message;
-
-    // If already has a scope, keep it
-    if (parsed.scope) return message;
-
-    // Try to detect monorepo scope
-    const detectedScope = this.detectScope(files);
-    if (!detectedScope) return message;
-
-    // Reconstruct message with detected scope
-    return `${parsed.type}(${detectedScope})${parsed.breaking ? "!" : ""}: ${parsed.description}`;
   }
 
   public formatCommitMessage(params: {
@@ -437,46 +362,43 @@ export class CommitService extends BaseService {
   }): string {
     const { message, files } = params;
 
-    this.logger.debug("Formatting commit message:", {
-      originalMessage: message,
+    this.logger.debug("Formatting message input:", {
+      message,
       fileCount: files.length,
     });
 
-    // Check if it's conventional
-    if (this.isConventionalCommit(message)) {
-      // Even if conventional, check if it needs scope enhancement
-      const enhanced = this.enhanceConventionalCommit(message, files);
-      if (enhanced !== message) {
-        this.logger.debug("Enhanced conventional commit with scope:", {
-          original: message,
-          enhanced,
-        });
-      }
-      return enhanced;
+    const parsed = this.parseConventionalCommit(message);
+    this.logger.debug("Parsed conventional commit:", parsed);
+
+    if (parsed) {
+      const scope = parsed.scope || this.detectScope(files);
+      return scope
+        ? `${parsed.type}(${scope}): ${parsed.description}`
+        : `${parsed.type}: ${parsed.description}`;
     }
 
     const type = this.detectCommitType(files);
     const scope = this.detectScope(files);
-
-    this.logger.debug("Detected commit details:", {
-      type,
-      scope,
-      originalMessage: message,
-    });
-
     const description = message.trim();
-    const formattedMessage = scope
+
+    this.logger.debug("New conventional commit:", { type, scope, description });
+
+    return scope
       ? `${type}(${scope}): ${description}`
       : `${type}: ${description}`;
+  }
 
-    this.logger.debug("Formatted new conventional commit:", {
-      type,
-      scope,
-      description,
-      formattedMessage,
+  private shouldIgnoreFile(path: string): boolean {
+    const patterns = this.git.config.ignorePatterns || [];
+    return patterns.some((pattern) => {
+      const regexPattern = pattern
+        .replace(/\./g, "\\.")
+        .replace(/\*\*/g, ".*")
+        .replace(/\*/g, "[^/]*")
+        .replace(/\?/g, ".");
+      const regex = new RegExp(`^${regexPattern}`);
+      return regex.test(path);
     });
-
-    return formattedMessage;
   }
 
   public detectCommitType(files: FileChange[]): string {
