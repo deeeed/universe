@@ -15,6 +15,54 @@ interface SecurityTestEnvironment {
   cleanup: () => Promise<void>;
 }
 
+const TEST_FILES = {
+  secrets: {
+    stripe: {
+      path: "app.js",
+      content: 'const key = "sk_live_abcdefghijklmnopqrstuvwx";',
+    },
+    aws: {
+      path: "config.js",
+      content: `
+        const config = {
+          aws_secret: "abcdefghijklmnopqrstuvwxyz1234567890ABCD",
+          accessKeyId: "AKIAIOSFODNN7EXAMPLE"
+        };
+      `,
+    },
+    privateKey: {
+      path: "deploy/keys.ts",
+      content: `-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEA1234567890abcdefghijklmnopqrstuvwxyz
+ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnop
+QRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdef
+-----END RSA PRIVATE KEY-----`,
+    },
+  },
+  sensitive: {
+    env: {
+      path: ".env",
+      content: "SECRET_KEY=test",
+    },
+    envProd: {
+      path: ".env.production",
+      content: "PROD_KEY=test",
+    },
+    serverKey: {
+      path: "certs/server.key",
+      content: "key content",
+    },
+    serverCert: {
+      path: "certs/server.crt",
+      content: "cert content",
+    },
+    sshKey: {
+      path: "deploy/id_rsa",
+      content: "ssh key",
+    },
+  },
+} as const;
+
 describe("SecurityService Integration Tests", () => {
   let env: SecurityTestEnvironment;
 
@@ -47,20 +95,44 @@ describe("SecurityService Integration Tests", () => {
 
   describe("analyzeSecurity", () => {
     describe("Secret Detection", () => {
-      it("should detect Stripe API key", async () => {
-        await env.createFiles([
-          {
-            path: "app.js",
-            content: 'const key = "sk_live_abcdefghijklmnopqrstuvwx";',
+      it.each([
+        {
+          name: "should detect Stripe API key",
+          file: TEST_FILES.secrets.stripe,
+          expectedFindings: {
+            count: 1,
+            type: "secret",
+            severity: "high",
+            shouldBlock: true,
           },
-        ]);
-
+        },
+        {
+          name: "should detect AWS credentials",
+          file: TEST_FILES.secrets.aws,
+          expectedFindings: {
+            count: 2,
+            matches: ["AKIA"],
+            suggestions: ["AWS Secret Access Key"],
+          },
+        },
+        {
+          name: "should detect private keys",
+          file: TEST_FILES.secrets.privateKey,
+          expectedFindings: {
+            count: 1,
+            type: "secret",
+            suggestion: "Private Key",
+          },
+        },
+      ])("$name", async ({ file, expectedFindings }) => {
+        await env.createFiles([file]);
         const diff = await env.stageFiles();
+
         const result = env.securityService.analyzeSecurity({
           files: [
             {
-              path: "app.js",
-              additions: 1,
+              path: file.path,
+              additions: file.content.split("\n").length,
               deletions: 0,
               isTest: false,
               isConfig: false,
@@ -69,119 +141,56 @@ describe("SecurityService Integration Tests", () => {
           diff,
         });
 
-        expect(result.secretFindings).toHaveLength(1);
-        expect(result.secretFindings[0].type).toBe("secret");
-        expect(result.secretFindings[0].severity).toBe("high");
-        expect(result.shouldBlock).toBe(true);
-      });
+        expect(result.secretFindings).toHaveLength(expectedFindings.count);
 
-      it("should detect AWS credentials", async () => {
-        await env.createFiles([
-          {
-            path: "config.js",
-            content: `
-              const config = {
-                aws_secret: "abcdefghijklmnopqrstuvwxyz1234567890ABCD",
-                accessKeyId: "AKIAIOSFODNN7EXAMPLE"
-              };
-            `,
-          },
-        ]);
-
-        const diff = await env.stageFiles();
-        const result = env.securityService.analyzeSecurity({
-          files: [
-            {
-              path: "config.js",
-              additions: 6,
-              deletions: 0,
-              isTest: false,
-              isConfig: true,
-            },
-          ],
-          diff,
-        });
-
-        expect(result.secretFindings).toHaveLength(2);
-        expect(
-          result.secretFindings.some((f) => f.match?.includes("AKIA")),
-        ).toBe(true);
-        expect(
-          result.secretFindings.some((f) =>
-            f.suggestion.includes("AWS Secret Access Key"),
-          ),
-        ).toBe(true);
-      });
-
-      it("should detect private keys", async () => {
-        const privateKeyContent = `-----BEGIN RSA PRIVATE KEY-----
-MIIEpAIBAAKCAQEA1234567890abcdefghijklmnopqrstuvwxyz
-ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnop
-QRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdef
------END RSA PRIVATE KEY-----`;
-
-        await env.createFiles([
-          {
-            path: "deploy/keys.ts",
-            content: privateKeyContent,
-          },
-        ]);
-
-        const diff = await env.stageFiles();
-        console.log("Generated diff:", diff);
-
-        const files = [
-          {
-            path: "deploy/keys.ts",
-            additions: 5,
-            deletions: 0,
-            isTest: false,
-            isConfig: false,
-          },
-        ];
-
-        const result = env.securityService.analyzeSecurity({
-          files,
-          diff,
-        });
-
-        console.log("Security findings:", result.secretFindings);
-
-        expect(result.secretFindings).toHaveLength(1);
-        expect(result.secretFindings[0].type).toBe("secret");
-        expect(result.secretFindings[0].suggestion).toContain("Private Key");
+        if (expectedFindings.type) {
+          expect(result.secretFindings[0].type).toBe(expectedFindings.type);
+        }
+        if (expectedFindings.severity) {
+          expect(result.secretFindings[0].severity).toBe(
+            expectedFindings.severity,
+          );
+        }
+        if (expectedFindings.shouldBlock !== undefined) {
+          expect(result.shouldBlock).toBe(expectedFindings.shouldBlock);
+        }
+        if (expectedFindings.matches) {
+          expectedFindings.matches.forEach((match) => {
+            expect(
+              result.secretFindings.some((f) => f.match?.includes(match)),
+            ).toBe(true);
+          });
+        }
+        if (expectedFindings.suggestions) {
+          expectedFindings.suggestions.forEach((suggestion) => {
+            expect(
+              result.secretFindings.some((f) =>
+                f.suggestion.includes(suggestion),
+              ),
+            ).toBe(true);
+          });
+        }
       });
     });
 
     describe("Problematic File Detection", () => {
-      it("should detect environment files", async () => {
-        await env.createFiles([
-          { path: ".env", content: "SECRET_KEY=test" },
-          { path: ".env.production", content: "PROD_KEY=test" },
-        ]);
-
+      it("should detect sensitive files", async () => {
+        const files = Object.values(TEST_FILES.sensitive);
+        await env.createFiles(files);
         const diff = await env.stageFiles();
+
         const result = env.securityService.analyzeSecurity({
-          files: [
-            {
-              path: ".env",
-              additions: 1,
-              deletions: 0,
-              isTest: false,
-              isConfig: true,
-            },
-            {
-              path: ".env.production",
-              additions: 1,
-              deletions: 0,
-              isTest: false,
-              isConfig: true,
-            },
-          ],
+          files: files.map((file) => ({
+            path: file.path,
+            additions: 1,
+            deletions: 0,
+            isTest: false,
+            isConfig: true,
+          })),
           diff,
         });
 
-        expect(result.fileFindings).toHaveLength(2);
+        expect(result.fileFindings).toHaveLength(files.length);
         expect(
           result.fileFindings.every((f) => f.type === "sensitive_file"),
         ).toBe(true);
@@ -189,62 +198,19 @@ QRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdef
           true,
         );
       });
-
-      it("should detect key and certificate files", async () => {
-        await env.createFiles([
-          { path: "certs/server.key", content: "key content" },
-          { path: "certs/server.crt", content: "cert content" },
-          { path: "deploy/id_rsa", content: "ssh key" },
-        ]);
-
-        const diff = await env.stageFiles();
-        const result = env.securityService.analyzeSecurity({
-          files: [
-            {
-              path: "certs/server.key",
-              additions: 1,
-              deletions: 0,
-              isTest: false,
-              isConfig: true,
-            },
-            {
-              path: "certs/server.crt",
-              additions: 1,
-              deletions: 0,
-              isTest: false,
-              isConfig: true,
-            },
-            {
-              path: "deploy/id_rsa",
-              additions: 1,
-              deletions: 0,
-              isTest: false,
-              isConfig: true,
-            },
-          ],
-          diff,
-        });
-
-        expect(result.fileFindings).toHaveLength(3);
-        expect(result.fileFindings.every((f) => f.severity === "high")).toBe(
-          true,
-        );
-      });
     });
 
     describe("Ignore Patterns", () => {
-      it("should ignore files matching patterns", async () => {
+      it("should respect ignore patterns", async () => {
         const customConfig: Config = {
           ...defaultConfig,
           git: {
             ...defaultConfig.git,
-            ignorePatterns: ["build/*", "**/*.test.ts"],
+            ignorePatterns: ["build/*", "**/*.test.ts"] as string[],
           },
         };
 
-        const customEnv = await setupSecurityTestEnvironment(customConfig);
-
-        await customEnv.createFiles([
+        const testFiles = [
           {
             path: "src/config.js",
             content: 'const key = "sk_live_abcdefghijklmnopqrstuvwx";',
@@ -257,45 +223,36 @@ QRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdef
             path: "src/service.test.ts",
             content: 'const key = "sk_live_testabcdefghijklmnopqrst";',
           },
-        ]);
+        ];
 
-        const diff = await customEnv.stageFiles();
+        const customEnv = await setupSecurityTestEnvironment(customConfig);
 
-        const result = customEnv.securityService.analyzeSecurity({
-          files: [
-            {
-              path: "src/config.js",
+        try {
+          await customEnv.createFiles(testFiles);
+          const diff = await customEnv.stageFiles();
+
+          const result = customEnv.securityService.analyzeSecurity({
+            files: testFiles.map((file) => ({
+              path: file.path,
               additions: 1,
               deletions: 0,
-              isTest: false,
+              isTest: file.path.endsWith(".test.ts"),
               isConfig: false,
-            },
-            {
-              path: "build/output.js",
-              additions: 1,
-              deletions: 0,
-              isTest: false,
-              isConfig: false,
-            },
-            {
-              path: "src/service.test.ts",
-              additions: 1,
-              deletions: 0,
-              isTest: true,
-              isConfig: false,
-            },
-          ],
-          diff,
-        });
+            })),
+            diff,
+          });
 
-        expect(result.secretFindings).toHaveLength(1);
-        expect(result.secretFindings[0].path).toBe("src/config.js");
-        expect(
-          result.secretFindings.some((f) => f.path.startsWith("build/")),
-        ).toBe(false);
-        expect(
-          result.secretFindings.some((f) => f.path.endsWith(".test.ts")),
-        ).toBe(false);
+          expect(result.secretFindings).toHaveLength(1);
+          expect(result.secretFindings[0].path).toBe("src/config.js");
+          expect(
+            result.secretFindings.some((f) => f.path.startsWith("build/")),
+          ).toBe(false);
+          expect(
+            result.secretFindings.some((f) => f.path.endsWith(".test.ts")),
+          ).toBe(false);
+        } finally {
+          await customEnv.cleanup();
+        }
       });
     });
 
