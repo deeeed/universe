@@ -62,7 +62,7 @@ function getEnvConfig(): DeepPartial<Config> {
   const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT;
   const azureApiVersion = process.env.AZURE_OPENAI_API_VERSION;
 
-  if (azureEndpoint || azureDeployment || azureApiVersion) {
+  if (azureEndpoint ?? azureDeployment ?? azureApiVersion) {
     if (!config.ai) config.ai = {};
     config.ai.provider = "azure";
     config.ai.azure = {
@@ -124,21 +124,21 @@ export async function getConfigStatus(): Promise<ConfigStatus> {
   const envConfig = getEnvConfig();
   const effectiveConfig = deepMerge<Config>(
     getDefaultConfig(),
-    globalConfig || {},
-    localConfig || {},
+    globalConfig ?? {},
+    localConfig ?? {},
     envConfig,
   );
 
   return {
     global: {
-      exists: Object.keys(globalConfig || {}).length > 0,
+      exists: Object.keys(globalConfig ?? {}).length > 0,
       path: globalConfigPath,
-      config: Object.keys(globalConfig || {}).length > 0 ? globalConfig : null,
+      config: Object.keys(globalConfig ?? {}).length > 0 ? globalConfig : null,
     },
     local: {
-      exists: Object.keys(localConfig || {}).length > 0,
+      exists: Object.keys(localConfig ?? {}).length > 0,
       path: localConfigPath || "",
-      config: Object.keys(localConfig || {}).length > 0 ? localConfig : null,
+      config: Object.keys(localConfig ?? {}).length > 0 ? localConfig : null,
     },
     effective: effectiveConfig,
   };
@@ -273,8 +273,8 @@ export async function loadConfig(
 
     const finalConfig = deepMerge<Config>(
       getDefaultConfig(),
-      status.global.config || {},
-      status.local.config || {},
+      status.global.config ?? {},
+      status.local.config ?? {},
       getEnvConfig(),
       customConfig,
     );

@@ -121,7 +121,7 @@ export const commitMessageTest: E2ETest = {
     logger: LoggerService,
     selectedScenarios?: TestScenario[],
   ): Promise<TestResult[]> {
-    const scenariosToRun = selectedScenarios || scenarios;
+    const scenariosToRun = selectedScenarios ?? scenarios;
     const results: TestResult[] = [];
 
     for (const scenario of scenariosToRun) {

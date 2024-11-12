@@ -213,7 +213,7 @@ function displayTestResult(result: TestResult, logger: LoggerService): void {
 
     // Show file changes
     const changes = diffStates(
-      result.details.initialState?.files || [],
+      result.details.initialState?.files ?? [],
       result.details.finalState.files,
     );
     if (changes.length) {

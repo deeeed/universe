@@ -36,7 +36,7 @@ function buildCommandArgs(
     ...(scenario.input.command.subcommand
       ? [scenario.input.command.subcommand]
       : []),
-    ...(scenario.input.command.args || []),
+    ...(scenario.input.command.args ?? []),
   ];
 
   // Add boolean flags correctly

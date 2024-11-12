@@ -41,17 +41,17 @@ describe("Config Util", () => {
   });
 
   describe("getConfigPaths", () => {
-    it("should return correct paths in a git repository", async () => {
-      const paths = await getConfigPaths();
+    it("should return correct paths in a git repository", (): void => {
+      const paths = getConfigPaths();
       expect(paths).toEqual({
         global: join(mockHomedir, ".gitguard", "config.json"),
         local: join(mockGitRoot, ".gitguard", "config.json"),
       });
     });
 
-    it("should return only global path outside git repository", async () => {
+    it("should return only global path outside git repository", (): void => {
       (gitUtil.isGitRepositorySync as jest.Mock).mockReturnValue(false);
-      const paths = await getConfigPaths();
+      const paths = getConfigPaths();
       expect(paths).toEqual({
         global: join(mockHomedir, ".gitguard", "config.json"),
         local: null,

@@ -31,7 +31,7 @@ export class SecurityService extends BaseService {
           (file) =>
             !shouldIgnoreFile({
               path: file.path,
-              patterns: this.config.git.ignorePatterns || [],
+              patterns: this.config.git.ignorePatterns ?? [],
               logger: this.logger,
             }),
         )
@@ -100,8 +100,8 @@ export class SecurityService extends BaseService {
       this.config.security.rules.secrets.patterns?.map((pattern) => ({
         name: "Custom Pattern",
         pattern: new RegExp(pattern, "i"),
-        severity: this.config.security.rules.secrets.severity || "high",
-      })) || [];
+        severity: this.config.security.rules.secrets.severity ?? "high",
+      })) ?? [];
 
     const allPatterns = [...SECRET_PATTERNS, ...customPatterns];
 
@@ -182,7 +182,7 @@ export class SecurityService extends BaseService {
     let privateKeyContent: string[] = [];
     let isCollectingPrivateKey = false;
 
-    const patterns = params.patterns || SECRET_PATTERNS;
+    const patterns = params.patterns ?? SECRET_PATTERNS;
 
     this.logger.debug("=== Starting line analysis ===");
 
@@ -302,7 +302,7 @@ export class SecurityService extends BaseService {
     patterns?: ProblematicFilePattern[];
   }): SecurityFinding[] {
     const findings: SecurityFinding[] = [];
-    const patterns = params.patterns || PROBLEMATIC_FILE_PATTERNS;
+    const patterns = params.patterns ?? PROBLEMATIC_FILE_PATTERNS;
     const foundFiles = new Set<string>();
 
     this.logger.debug(

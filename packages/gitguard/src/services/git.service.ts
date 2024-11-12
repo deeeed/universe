@@ -424,7 +424,7 @@ export class GitService extends BaseService {
       // Map the changes back to commits
       return params.commits.map((commit) => ({
         ...commit,
-        files: changesByCommit.get(commit.hash) || [],
+        files: changesByCommit.get(commit.hash) ?? [],
       }));
     } catch (error) {
       this.logger.error("Failed to attach file changes:", error);

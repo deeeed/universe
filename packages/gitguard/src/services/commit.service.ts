@@ -54,7 +54,7 @@ export class CommitService extends BaseService {
       }
 
       // Get files and filter ignored ones using shouldIgnoreFile
-      const allFiles = params.files || (await this.git.getStagedChanges());
+      const allFiles = params.files ?? (await this.git.getStagedChanges());
       this.logger.debug(
         "All files before filtering:",
         allFiles.map((f) => f.path),
@@ -64,7 +64,7 @@ export class CommitService extends BaseService {
         (file) =>
           !shouldIgnoreFile({
             path: file.path,
-            patterns: this.git.config.ignorePatterns || [],
+            patterns: this.git.config.ignorePatterns ?? [],
             logger: this.logger,
           }),
       );
@@ -80,11 +80,11 @@ export class CommitService extends BaseService {
 
       // Run security checks if enabled
       const securityResult =
-        params.securityResult ||
+        params.securityResult ??
         (this.security && this.config.security.enabled
           ? this.security.analyzeSecurity({
               files,
-              diff: params.diff || "",
+              diff: params.diff ?? "",
             })
           : undefined);
 
@@ -128,8 +128,8 @@ export class CommitService extends BaseService {
         suggestions: params.enableAI
           ? await this.generateAISuggestions({
               files,
-              message: params.message || "",
-              diff: params.diff || "",
+              message: params.message ?? "",
+              diff: params.diff ?? "",
             })
           : undefined,
         splitSuggestion: cohesionAnalysis.splitSuggestion,
@@ -377,7 +377,7 @@ export class CommitService extends BaseService {
     this.logger.debug("Parsed conventional commit:", parsed);
 
     if (parsed) {
-      const scope = parsed.scope || this.detectScope(files);
+      const scope = parsed.scope ?? this.detectScope(files);
       return scope
         ? `${parsed.type}(${scope}): ${parsed.description}`
         : `${parsed.type}: ${parsed.description}`;

@@ -51,9 +51,9 @@ function calculateComplexity(params: {
 
   // Basic complexity indicators
   const lineCount = content.split("\n").length;
-  const logicComplexity = (content.match(/if|else|switch|for|while/g) || [])
+  const logicComplexity = (content.match(/if|else|switch|for|while/g) ?? [])
     .length;
-  const functionCount = (content.match(/function|=>/g) || []).length;
+  const functionCount = (content.match(/function|=>/g) ?? []).length;
 
   const complexity =
     file.additions * 1.2 + // New code has higher weight

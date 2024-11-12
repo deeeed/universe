@@ -183,12 +183,12 @@ ${chalk.blue("Options:")}
     }
 
     // Handle color option
-    if (rootOptions.noColors || currentOptions.noColors) {
+    if (rootOptions.noColors ?? currentOptions.noColors) {
       disableColors();
     }
 
     // Ensure debug is properly set
-    if (rootOptions.debug || currentOptions.debug) {
+    if (rootOptions.debug ?? currentOptions.debug) {
       Object.assign(currentOptions, { debug: true });
       thisCommand.setOptionValue("debug", true);
       process.env.GITGUARD_DEBUG = "true";
