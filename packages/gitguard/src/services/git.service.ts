@@ -706,7 +706,7 @@ export class GitService extends BaseService {
       this.logger.debug("Getting local branches");
       const output = await this.execGit({
         command: "branch",
-        args: ["'--format=%(refname:short)'"],
+        args: ["--format=%(refname:short)"],
         cwd: this.cwd,
       });
 

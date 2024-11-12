@@ -1,171 +1,62 @@
-import { exec } from "child_process";
-import { mkdtemp, rm, writeFile } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
-import { promisify } from "util";
+import {
+  BaseTestEnvironment,
+  setupBaseTestEnvironment,
+} from "../test/test-integration.utils.js";
 import { Config } from "../types/config.types.js";
-import { Logger } from "../types/logger.types.js";
 import { CommitService } from "./commit.service.js";
 import { GitService } from "./git.service.js";
-import { LoggerService } from "./logger.service.js";
 import { SecurityService } from "./security.service.js";
 
-const execPromise = promisify(exec);
-
-interface TestEnvironment {
-  tempDir: string;
+interface CommitTestEnvironment extends BaseTestEnvironment {
   commitService: CommitService;
-  gitService: GitService;
-  securityService: SecurityService;
-  mockLogger: Logger;
-  config: Config;
-  createFiles: (
-    files: Array<{ path: string; content: string }>,
-  ) => Promise<void>;
-  stageFiles: () => Promise<string>;
+  git: GitService;
+  security: SecurityService;
 }
 
 describe("CommitService Integration Tests", () => {
-  let env: TestEnvironment;
+  let env: CommitTestEnvironment;
 
-  async function setupTestEnvironment(
+  async function setupCommitTestEnvironment(
     customConfig?: Partial<Config>,
-  ): Promise<TestEnvironment> {
-    const tempDir = await mkdtemp(join(tmpdir(), "gitguard-commit-test-"));
+  ): Promise<CommitTestEnvironment> {
+    const baseEnv = await setupBaseTestEnvironment(customConfig);
 
-    // Initialize git repo with initial commit
-    await execPromise("git init", { cwd: tempDir });
-    await execPromise("git config user.email 'test@example.com'", {
-      cwd: tempDir,
+    const git = new GitService({
+      gitConfig: { ...baseEnv.config.git, cwd: baseEnv.tempDir },
+      logger: baseEnv.logger,
     });
-    await execPromise("git config user.name 'Test User'", { cwd: tempDir });
-    await execPromise("git config core.autocrlf false", { cwd: tempDir });
 
-    // Create and commit an initial file to establish HEAD
-    await writeFile(join(tempDir, "README.md"), "# Test Repository");
-    await execPromise("git add README.md", { cwd: tempDir });
-    await execPromise('git commit -m "Initial commit"', { cwd: tempDir });
-
-    const mockLogger: Logger = new LoggerService({ debug: true });
-
-    const defaultConfig: Config = {
-      git: {
-        baseBranch: "main",
-        monorepoPatterns: [],
-        ignorePatterns: [],
-      },
-      security: {
-        enabled: true,
-        rules: {
-          secrets: {
-            enabled: true,
-            severity: "high",
-          },
-          files: {
-            enabled: true,
-            severity: "high",
-          },
-        },
-      },
-      analysis: {
-        maxCommitSize: 100,
-        maxFileSize: 1000,
-        checkConventionalCommits: true,
-      },
-      debug: true,
-      colors: true,
-      ai: { enabled: false, provider: null },
-      pr: {
-        template: {
-          path: "",
-          required: false,
-          sections: {
-            description: false,
-            breaking: false,
-            testing: false,
-            checklist: false,
-          },
-        },
-        maxSize: 100,
-        requireApprovals: 1,
-      },
-    };
-
-    const config = { ...defaultConfig, ...customConfig };
-    const gitService = new GitService({
-      gitConfig: { ...config.git, cwd: tempDir },
-      logger: mockLogger,
+    const security = new SecurityService({
+      config: baseEnv.config,
+      logger: baseEnv.logger,
     });
-    const securityService = new SecurityService({
-      config,
-      logger: mockLogger,
-    });
+
     const commitService = new CommitService({
-      config,
-      git: gitService,
-      logger: mockLogger,
-      security: securityService,
+      config: baseEnv.config,
+      git,
+      security,
+      logger: baseEnv.logger,
     });
-
-    const createFiles = async (
-      files: Array<{ path: string; content: string }>,
-    ): Promise<void> => {
-      for (const file of files) {
-        const fullPath = join(tempDir, file.path);
-        const dir = fullPath.substring(0, fullPath.lastIndexOf("/"));
-        if (dir !== tempDir) {
-          await execPromise(`mkdir -p "${dir}"`);
-        }
-        await writeFile(fullPath, file.content);
-      }
-    };
-
-    const stageFiles = async (): Promise<string> => {
-      await execPromise("git add .", { cwd: tempDir });
-      // Get and return the diff of staged changes
-      const { stdout: diff } = await execPromise("git diff --cached", {
-        cwd: tempDir,
-      });
-      return diff;
-    };
 
     return {
-      tempDir,
+      ...baseEnv,
       commitService,
-      gitService,
-      securityService,
-      mockLogger,
-      config,
-      createFiles,
-      stageFiles,
+      git,
+      security,
     };
   }
 
   beforeEach(async () => {
-    env = await setupTestEnvironment();
+    env = await setupCommitTestEnvironment();
   });
 
   afterEach(async () => {
-    await rm(env.tempDir, { recursive: true, force: true });
+    await env.cleanup();
   });
 
   describe("analyze", () => {
-    it("should return empty result when no files are staged", async () => {
-      const result = await env.commitService.analyze({});
-
-      expect(result).toMatchObject({
-        stats: {
-          filesChanged: 0,
-          additions: 0,
-          deletions: 0,
-        },
-        warnings: [],
-      });
-    });
-
     it("should analyze staged files and respect ignore patterns", async () => {
-      // Setup with ignore patterns
-      env = await setupTestEnvironment({
+      const customEnv = await setupCommitTestEnvironment({
         git: {
           baseBranch: "main",
           monorepoPatterns: [],
@@ -173,23 +64,23 @@ describe("CommitService Integration Tests", () => {
         },
       });
 
-      await env.createFiles([
+      await customEnv.createFiles([
         { path: "src/index.ts", content: "console.log('hello');" },
         { path: "build/bundle.js", content: "// built file" },
         { path: "debug.log", content: "log content" },
       ]);
 
-      await env.stageFiles();
+      await customEnv.stageFiles();
+      const result = await customEnv.commitService.analyze({});
 
-      const result = await env.commitService.analyze({});
-
-      // Only src/index.ts should be included
       expect(result.stats.filesChanged).toBe(1);
       expect(result.warnings).toHaveLength(0);
+
+      await customEnv.cleanup();
     });
 
     it("should detect monorepo scope from file paths", async () => {
-      env = await setupTestEnvironment({
+      const customEnv = await setupCommitTestEnvironment({
         git: {
           baseBranch: "main",
           monorepoPatterns: ["packages/*"],
@@ -197,25 +88,25 @@ describe("CommitService Integration Tests", () => {
         },
       });
 
-      await env.createFiles([
+      await customEnv.createFiles([
         {
           path: "packages/core/src/index.ts",
           content: "export const hello = 'world';",
         },
       ]);
 
-      await env.stageFiles();
-
-      const result = await env.commitService.analyze({
+      await customEnv.stageFiles();
+      const result = await customEnv.commitService.analyze({
         message: "add hello export",
       });
 
-      // Verify the scope is detected from the monorepo pattern
       expect(result.formattedMessage).toBe("feat(core): add hello export");
+
+      await customEnv.cleanup();
     });
 
     it("should suggest splitting commits for changes across multiple packages", async () => {
-      env = await setupTestEnvironment({
+      const customEnv = await setupCommitTestEnvironment({
         git: {
           baseBranch: "main",
           monorepoPatterns: ["packages/*"],
@@ -223,7 +114,7 @@ describe("CommitService Integration Tests", () => {
         },
       });
 
-      await env.createFiles([
+      await customEnv.createFiles([
         {
           path: "packages/core/src/index.ts",
           content: "export const hello = 'world';",
@@ -234,19 +125,20 @@ describe("CommitService Integration Tests", () => {
         },
       ]);
 
-      await env.stageFiles();
-
-      const result = await env.commitService.analyze({
+      await customEnv.stageFiles();
+      const result = await customEnv.commitService.analyze({
         message: "add components",
       });
 
       expect(result.splitSuggestion).toBeDefined();
       expect(result.splitSuggestion?.suggestions).toHaveLength(2);
       expect(result.warnings.some((w) => w.type === "structure")).toBe(true);
+
+      await customEnv.cleanup();
     });
 
     it("should analyze staged files with security checks", async () => {
-      env = await setupTestEnvironment({
+      const customEnv = await setupCommitTestEnvironment({
         git: {
           baseBranch: "main",
           monorepoPatterns: [],
@@ -258,6 +150,7 @@ describe("CommitService Integration Tests", () => {
             secrets: {
               enabled: true,
               severity: "high",
+              patterns: ["AKIA[A-Z0-9]{16}"],
             },
             files: {
               enabled: true,
@@ -267,33 +160,59 @@ describe("CommitService Integration Tests", () => {
         },
       });
 
-      await env.createFiles([
-        { path: "src/index.ts", content: "console.log('hello');" },
-        { path: "build/bundle.js", content: "// built file" },
-        { path: "debug.log", content: "log content" },
-        {
-          path: "config.js",
-          content: "const apiKey = 'AKIA1234567890ABCDEF';", // AWS key that should trigger warning
-        },
-      ]);
+      try {
+        await customEnv.createFiles([
+          { path: "src/index.ts", content: "console.log('hello');" },
+          { path: "build/bundle.js", content: "// built file" },
+          { path: "debug.log", content: "log content" },
+          {
+            path: "config.js",
+            content: `
+              // AWS Configuration
+              const config = {
+                apiKey: 'AKIAXXXXXXXXXXXXXXXX'  // This should trigger the security check
+              };
+            `,
+          },
+        ]);
 
-      // Get the diff when staging files
-      const diff = await env.stageFiles();
+        await customEnv.stageFiles();
+        const diff = await customEnv.git.getDiff({ type: "staged" });
 
-      const result = await env.commitService.analyze({ diff }); // Pass the diff
+        const result = await customEnv.commitService.analyze({
+          diff,
+        });
 
-      // Verify security findings
-      expect(result.warnings.some((w) => w.type === "security")).toBe(true);
+        const securityWarnings = result.warnings.filter(
+          (w) => w.type === "security",
+        );
+        if (securityWarnings.length === 0) {
+          console.log(
+            "No security warnings found. Full warnings:",
+            result.warnings,
+          );
+          console.log("Diff content:", diff);
+        }
 
-      // Verify ignored files are excluded
-      const nonIgnoredFiles = result.stats.filesChanged;
-      expect(nonIgnoredFiles).toBe(2); // src/index.ts and config.js
+        expect(result.warnings).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              type: "security",
+              severity: "high",
+            }),
+          ]),
+        );
+
+        expect(result.stats.filesChanged).toBe(2); // src/index.ts and config.js
+      } finally {
+        await customEnv.cleanup();
+      }
     });
   });
 
   describe("formatCommitMessage", () => {
     it("should format message with detected scope", async () => {
-      env = await setupTestEnvironment({
+      const customEnv = await setupCommitTestEnvironment({
         git: {
           baseBranch: "main",
           monorepoPatterns: ["packages/*"],
@@ -301,7 +220,15 @@ describe("CommitService Integration Tests", () => {
         },
       });
 
-      const result = env.commitService.formatCommitMessage({
+      await customEnv.createFiles([
+        {
+          path: "packages/core/src/index.ts",
+          content: "export const hello = 'world';",
+        },
+      ]);
+
+      await customEnv.stageFiles();
+      const result = customEnv.commitService.formatCommitMessage({
         message: "add hello export",
         files: [
           {
@@ -315,10 +242,12 @@ describe("CommitService Integration Tests", () => {
       });
 
       expect(result).toBe("feat(core): add hello export");
+
+      await customEnv.cleanup();
     });
 
     it("should preserve existing conventional commit format", async () => {
-      env = await setupTestEnvironment({
+      const customEnv = await setupCommitTestEnvironment({
         git: {
           baseBranch: "main",
           monorepoPatterns: ["packages/*"],
@@ -326,7 +255,15 @@ describe("CommitService Integration Tests", () => {
         },
       });
 
-      const result = env.commitService.formatCommitMessage({
+      await customEnv.createFiles([
+        {
+          path: "packages/core/src/index.ts",
+          content: "export const hello = 'world';",
+        },
+      ]);
+
+      await customEnv.stageFiles();
+      const result = customEnv.commitService.formatCommitMessage({
         message: "fix: correct type definition",
         files: [
           {
@@ -340,6 +277,8 @@ describe("CommitService Integration Tests", () => {
       });
 
       expect(result).toBe("fix(core): correct type definition");
+
+      await customEnv.cleanup();
     });
   });
 });

@@ -1,137 +1,48 @@
-import { exec } from "child_process";
-import { mkdtemp, rm, writeFile } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
-import { promisify } from "util";
+import {
+  defaultConfig,
+  setupBaseTestEnvironment,
+} from "../test/test-integration.utils.js";
 import { Config } from "../types/config.types.js";
-import { Logger } from "../types/logger.types.js";
 import { SecurityService } from "./security.service.js";
 
-const execPromise = promisify(exec);
-
-interface TestEnvironment {
+interface SecurityTestEnvironment {
   tempDir: string;
   securityService: SecurityService;
-  mockLogger: Logger;
-  config: Config;
   createFiles: (
     files: Array<{ path: string; content: string }>,
   ) => Promise<void>;
   stageFiles: () => Promise<string>;
+  cleanup: () => Promise<void>;
 }
 
 describe("SecurityService Integration Tests", () => {
-  let env: TestEnvironment;
+  let env: SecurityTestEnvironment;
 
-  async function setupTestEnvironment(
+  async function setupSecurityTestEnvironment(
     customConfig?: Partial<Config>,
-  ): Promise<TestEnvironment> {
-    const tempDir = await mkdtemp(join(tmpdir(), "gitguard-security-test-"));
+  ): Promise<SecurityTestEnvironment> {
+    const baseEnv = await setupBaseTestEnvironment(customConfig);
 
-    // Initialize git repo
-    await execPromise("git init", { cwd: tempDir });
-    await execPromise("git config user.email 'test@example.com'", {
-      cwd: tempDir,
+    const securityService = new SecurityService({
+      config: baseEnv.config,
+      logger: baseEnv.logger,
     });
-    await execPromise("git config user.name 'Test User'", { cwd: tempDir });
-    await execPromise("git config core.autocrlf false", { cwd: tempDir });
-
-    const mockLogger: Logger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      success: jest.fn(),
-      warning: jest.fn(),
-      raw: jest.fn(),
-      newLine: jest.fn(),
-      table: jest.fn(),
-      isDebug: jest.fn(),
-    };
-
-    const defaultConfig: Config = {
-      git: {
-        baseBranch: "main",
-        monorepoPatterns: [],
-        ignorePatterns: [],
-      },
-      security: {
-        enabled: true,
-        rules: {
-          secrets: {
-            enabled: true,
-            severity: "high",
-          },
-          files: {
-            enabled: true,
-            severity: "high",
-          },
-        },
-      },
-      analysis: {
-        maxCommitSize: 100,
-        maxFileSize: 1000,
-        checkConventionalCommits: true,
-      },
-      debug: true,
-      colors: true,
-      ai: { enabled: false, provider: null },
-      pr: {
-        template: {
-          path: "",
-          required: false,
-          sections: {
-            description: false,
-            breaking: false,
-            testing: false,
-            checklist: false,
-          },
-        },
-        maxSize: 100,
-        requireApprovals: 1,
-      },
-    };
-
-    const config = { ...defaultConfig, ...customConfig };
-    const securityService = new SecurityService({ config, logger: mockLogger });
-
-    const createFiles = async (
-      files: Array<{ path: string; content: string }>,
-    ): Promise<void> => {
-      for (const file of files) {
-        const fullPath = join(tempDir, file.path);
-        const dir = fullPath.substring(0, fullPath.lastIndexOf("/"));
-        if (dir !== tempDir) {
-          await execPromise(`mkdir -p ${dir}`);
-        }
-        await writeFile(fullPath, file.content);
-      }
-    };
-
-    const stageFiles = async (): Promise<string> => {
-      await execPromise("git add .", { cwd: tempDir });
-      const { stdout } = await execPromise("git diff --cached", {
-        cwd: tempDir,
-      });
-      return stdout;
-    };
 
     return {
-      tempDir,
+      tempDir: baseEnv.tempDir,
       securityService,
-      mockLogger,
-      config,
-      createFiles,
-      stageFiles,
+      createFiles: baseEnv.createFiles,
+      stageFiles: baseEnv.stageFiles,
+      cleanup: baseEnv.cleanup,
     };
   }
 
   beforeEach(async () => {
-    env = await setupTestEnvironment();
+    env = await setupSecurityTestEnvironment();
   });
 
   afterEach(async () => {
-    await rm(env.tempDir, { recursive: true, force: true });
+    await env.cleanup();
   });
 
   describe("analyzeSecurity", () => {
@@ -324,14 +235,14 @@ QRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdef
     describe("Ignore Patterns", () => {
       it("should ignore files matching patterns", async () => {
         const customConfig: Config = {
-          ...env.config,
+          ...defaultConfig,
           git: {
-            ...env.config.git,
+            ...defaultConfig.git,
             ignorePatterns: ["build/*", "**/*.test.ts"],
           },
         };
 
-        const customEnv = await setupTestEnvironment(customConfig);
+        const customEnv = await setupSecurityTestEnvironment(customConfig);
 
         await customEnv.createFiles([
           {
@@ -390,11 +301,12 @@ QRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdef
 
     describe("Custom Patterns", () => {
       it("should detect secrets matching custom patterns", async () => {
-        const customEnv = await setupTestEnvironment({
+        const customConfig: Config = {
+          ...defaultConfig,
           security: {
-            ...env.config.security,
+            ...defaultConfig.security,
             rules: {
-              ...env.config.security.rules,
+              ...defaultConfig.security.rules,
               secrets: {
                 enabled: true,
                 severity: "high",
@@ -402,7 +314,9 @@ QRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdef
               },
             },
           },
-        });
+        };
+
+        const customEnv = await setupSecurityTestEnvironment(customConfig);
 
         await customEnv.createFiles([
           {
@@ -434,6 +348,8 @@ QRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdef
         expect(result.secretFindings.every((f) => f.severity === "high")).toBe(
           true,
         );
+
+        await customEnv.cleanup();
       });
     });
   });

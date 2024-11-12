@@ -16,10 +16,10 @@ import { Logger } from "../types/logger.types.js";
 import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
 import { formatDiffForAI } from "../utils/diff.util.js";
+import { shouldIgnoreFile } from "../utils/ignore-pattern.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
 import { SecurityService } from "./security.service.js";
-import { shouldIgnoreFile } from "../utils/ignore-pattern.util.js";
 
 export class CommitService extends BaseService {
   private readonly git: GitService;
@@ -61,7 +61,12 @@ export class CommitService extends BaseService {
       );
 
       const files = allFiles.filter(
-        (file) => !this.shouldIgnoreFile(file.path),
+        (file) =>
+          !shouldIgnoreFile({
+            path: file.path,
+            patterns: this.git.config.ignorePatterns || [],
+            logger: this.logger,
+          }),
       );
       this.logger.debug(
         "Files after ignore patterns:",
@@ -387,14 +392,6 @@ export class CommitService extends BaseService {
     return scope
       ? `${type}(${scope}): ${description}`
       : `${type}: ${description}`;
-  }
-
-  private shouldIgnoreFile(path: string): boolean {
-    return shouldIgnoreFile({
-      path,
-      patterns: this.git.config.ignorePatterns || [],
-      logger: this.logger,
-    });
   }
 
   public detectCommitType(files: FileChange[]): string {
