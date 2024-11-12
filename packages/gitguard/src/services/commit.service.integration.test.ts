@@ -22,7 +22,7 @@ interface TestEnvironment {
   createFiles: (
     files: Array<{ path: string; content: string }>,
   ) => Promise<void>;
-  stageFiles: () => Promise<void>;
+  stageFiles: () => Promise<string>;
 }
 
 describe("CommitService Integration Tests", () => {
@@ -120,8 +120,13 @@ describe("CommitService Integration Tests", () => {
       }
     };
 
-    const stageFiles = async (): Promise<void> => {
+    const stageFiles = async (): Promise<string> => {
       await execPromise("git add .", { cwd: tempDir });
+      // Get and return the diff of staged changes
+      const { stdout: diff } = await execPromise("git diff --cached", {
+        cwd: tempDir,
+      });
+      return diff;
     };
 
     return {
@@ -268,13 +273,14 @@ describe("CommitService Integration Tests", () => {
         { path: "debug.log", content: "log content" },
         {
           path: "config.js",
-          content: "const apiKey = 'AKIA1234567890ABCDEF';", // Should trigger security warning
+          content: "const apiKey = 'AKIA1234567890ABCDEF';", // AWS key that should trigger warning
         },
       ]);
 
-      await env.stageFiles();
+      // Get the diff when staging files
+      const diff = await env.stageFiles();
 
-      const result = await env.commitService.analyze({});
+      const result = await env.commitService.analyze({ diff }); // Pass the diff
 
       // Verify security findings
       expect(result.warnings.some((w) => w.type === "security")).toBe(true);

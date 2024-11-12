@@ -1,3 +1,4 @@
+import { minimatch } from "minimatch";
 import { Config } from "../types/config.types.js";
 import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
@@ -415,17 +416,28 @@ export class SecurityService extends BaseService {
 
   public shouldIgnoreFile(path: string): boolean {
     const patterns = this.config.git.ignorePatterns || [];
+    this.logger.debug(`Checking if should ignore path: ${path}`, { patterns });
+
     return patterns.some((pattern) => {
-      const regexPattern = pattern
-        .replace(/\./g, "\\.")
-        .replace(/\*\*/g, ".*")
-        .replace(/\*/g, "[^/]*")
-        .replace(/\?/g, ".");
-      const regex = new RegExp(`^${regexPattern}$`);
-      return regex.test(path);
+      try {
+        const matches = minimatch(path, pattern, {
+          matchBase: !pattern.includes("/"),
+          dot: true,
+        });
+
+        this.logger.debug(`Checking pattern match:`, {
+          path,
+          pattern,
+          matches,
+        });
+
+        return matches;
+      } catch (error) {
+        this.logger.warn(`Invalid ignore pattern: ${pattern}`, error);
+        return false;
+      }
     });
   }
-
   private maskSecret(line: string): string {
     return line.replace(
       /[a-zA-Z0-9+/=]{8,}/g,
