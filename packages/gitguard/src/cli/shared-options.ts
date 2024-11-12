@@ -5,6 +5,7 @@ export interface GlobalOptions {
   config?: string;
   configPath?: string;
   ai?: boolean;
+  skipSecurity?: boolean;
   split?: boolean;
   noColors?: boolean;
 }
@@ -24,6 +25,7 @@ export function addGlobalOptions(command: Command): Command {
       return value;
     })
     .option("--ai", "Enable AI-powered suggestions")
+    .option("--skip-security", "Skip security checks")
     .option("--no-colors", "Disable colors")
     .option("--split", "Suggest split changes using AI");
 }

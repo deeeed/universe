@@ -8,8 +8,10 @@ import { AIProvider } from "../../types/ai.types.js";
 import { CommitAnalysisResult } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { FileChange } from "../../types/git.types.js";
+import { SecurityCheckResult } from "../../types/security.types.js";
 import { initializeAI } from "../../utils/ai-init.util.js";
 import { loadConfig } from "../../utils/config.util.js";
+import { shouldIgnoreFile } from "../../utils/ignore-pattern.util.js";
 import { promptYesNo } from "../../utils/user-prompt.util.js";
 import { CommitAIController } from "./commit-ai.controller.js";
 import { CommitAnalysisController } from "./commit-analysis.controller.js";
@@ -42,11 +44,34 @@ interface AnalysisContext {
   baseBranch: string;
 }
 
+interface HandleSecurityParams {
+  options: CommitCommandOptions;
+  filesToAnalyze: FileChange[];
+  services: ServicesContext;
+  controllers: ControllersContext;
+  context: AnalysisContext;
+}
+
+interface HandleAIAnalysisParams {
+  result: CommitAnalysisResult & { securityResult?: SecurityCheckResult };
+  options: CommitCommandOptions;
+  filesToAnalyze: FileChange[];
+  services: ServicesContext;
+  controllers: ControllersContext;
+}
+
+interface HandleCommitExecutionParams {
+  result: CommitAnalysisResult;
+  options: CommitCommandOptions;
+  controllers: ControllersContext;
+  services: ServicesContext;
+}
+
 async function initializeServices(
   options: CommitCommandOptions,
 ): Promise<ServicesContext> {
   const logger = new LoggerService({
-    debug: options.debug || process.env.GITGUARD_DEBUG === "true",
+    debug: options.debug ?? process.env.GITGUARD_DEBUG === "true",
   });
   logger.info("\n🚀 Initializing GitGuard services...");
 
@@ -106,8 +131,8 @@ async function getAnalysisContext(
   const baseBranch = services.config.git.baseBranch;
 
   const shouldAnalyzeStaged =
-    options.all || options.staged || (!options.unstaged && !options.all);
-  const shouldAnalyzeUnstaged = options.all || options.unstaged;
+    options.all ?? options.staged ?? (!options.unstaged && !options.all);
+  const shouldAnalyzeUnstaged = options.all ?? options.unstaged;
 
   const filesToAnalyze = [
     ...(shouldAnalyzeStaged ? stagedFiles : []),
@@ -135,20 +160,52 @@ async function getAnalysisContext(
   };
 }
 
-async function handleAnalysis(
-  options: CommitCommandOptions,
-  context: AnalysisContext,
-  controllers: ControllersContext,
-  services: ServicesContext,
-): Promise<CommitAnalysisResult> {
-  const { logger, reporter } = services;
-  const { analysisController, securityController, aiController } = controllers;
-  const { filesToAnalyze } = context;
+async function handleSecurityChecks({
+  options,
+  filesToAnalyze,
+  services,
+  controllers,
+  context,
+}: HandleSecurityParams): Promise<SecurityCheckResult> {
+  const { logger } = services;
 
-  // Security checks first
+  if (options.skipSecurity) {
+    logger.debug("Security checks skipped via --skip-security flag");
+    return {
+      secretFindings: [],
+      fileFindings: [],
+      filesToUnstage: [],
+      shouldBlock: false,
+      commands: [],
+    };
+  }
+
   logger.info("\n🔒 Running security checks...");
-  const securityResult = await securityController.analyzeSecurity({
-    files: filesToAnalyze,
+  const nonIgnoredFiles = filesToAnalyze.filter(
+    (file) =>
+      !shouldIgnoreFile({
+        path: file.path,
+        patterns: services.config.git?.ignorePatterns ?? [],
+        logger: services.logger,
+      }),
+  );
+
+  if (nonIgnoredFiles.length === 0) {
+    logger.info("✓ No files to check after applying ignore patterns");
+    return {
+      secretFindings: [],
+      fileFindings: [],
+      filesToUnstage: [],
+      shouldBlock: false,
+      commands: [],
+    };
+  }
+
+  logger.info(
+    `Analyzing ${nonIgnoredFiles.length} files (${filesToAnalyze.length - nonIgnoredFiles.length} ignored)`,
+  );
+  const securityResult = await controllers.securityController.analyzeSecurity({
+    files: nonIgnoredFiles,
     shouldAnalyzeStaged: context.shouldAnalyzeStaged,
   });
 
@@ -157,35 +214,39 @@ async function handleAnalysis(
     securityResult.fileFindings.length > 0
   ) {
     logger.info("\n⚠️  Security issues found - handling concerns...");
-    await securityController.handleSecurityIssues({ securityResult });
+    await controllers.securityController.handleSecurityIssues({
+      securityResult,
+    });
   }
 
-  // Initial analysis
-  logger.info("\n🔍 Analyzing changes...");
-  let result = await analysisController.analyzeChanges({
-    files: filesToAnalyze,
-    message: options.message ?? "",
-    enablePrompts: true,
-    securityResult,
-  });
+  return securityResult;
+}
 
-  // Display initial analysis results
-  logger.info("\n📊 Initial Analysis Report");
-  analysisController.displayAnalysisResults(result);
-  reporter.generateReport({ result, options: {} });
+async function handleAIAnalysis({
+  result,
+  options,
+  filesToAnalyze,
+  services,
+  controllers,
+}: HandleAIAnalysisParams): Promise<
+  CommitAnalysisResult & { securityResult?: SecurityCheckResult }
+> {
+  const { logger } = services;
+  let updatedResult = result;
 
-  // If commit is complex and AI is requested but not available
-  if (options.ai && !services.ai && result.complexity.needsStructure) {
+  if (!options.ai) return updatedResult;
+
+  if (!services.ai && result.complexity.needsStructure) {
     logger.warn(
       "\n⚠️  AI assistance requested but no valid AI provider configured",
     );
     logger.info(
       "💡 To enable AI, configure a provider in your .gitguard/config.json or environment variables",
     );
+    return updatedResult;
   }
 
-  // If commit is complex and AI is available
-  else if (options.ai && services.ai && result.complexity.needsStructure) {
+  if (services.ai && result.complexity.needsStructure) {
     const shouldUseAI = await promptYesNo({
       message:
         "\n🤖 Would you like AI assistance to split this complex commit?",
@@ -195,8 +256,16 @@ async function handleAnalysis(
 
     if (shouldUseAI) {
       logger.info("\n🔄 Analyzing commit structure with AI...");
-      result = await aiController.handleSplitSuggestions({
-        result,
+      const securityResult: SecurityCheckResult = result.securityResult ?? {
+        secretFindings: [],
+        fileFindings: [],
+        filesToUnstage: [],
+        shouldBlock: false,
+        commands: [],
+      };
+
+      updatedResult = await controllers.aiController.handleSplitSuggestions({
+        result: updatedResult,
         files: filesToAnalyze,
         message: options.message,
         securityResult,
@@ -205,19 +274,92 @@ async function handleAnalysis(
     }
   }
 
-  // Handle general AI suggestions if enabled
-  if (options.ai) {
-    result = await aiController.handleAISuggestions({
-      result,
-      files: filesToAnalyze,
-      message: options.message,
-      shouldExecute: options.execute,
+  return controllers.aiController.handleAISuggestions({
+    result: updatedResult,
+    files: filesToAnalyze,
+    message: options.message,
+    shouldExecute: options.execute,
+  });
+}
+
+async function handleCommitExecution({
+  result,
+  options,
+  controllers,
+  services,
+}: HandleCommitExecutionParams): Promise<void> {
+  const { logger } = services;
+
+  if (!options.execute || !result.formattedMessage) return;
+
+  logger.info("\n💾 Creating commit...");
+  if (result.formattedMessage === result.originalMessage) {
+    await controllers.analysisController.executeCommit({
+      message: result.formattedMessage,
     });
+    return;
   }
 
-  // Final report after all modifications
+  const shouldProceed = await promptYesNo({
+    message: `\nCommit message will be changed from:
+${chalk.red(`"${result.originalMessage}"`)}
+to:
+${chalk.green(`"${result.formattedMessage}"`)}
+
+Proceed with formatted message?`,
+    logger,
+    defaultValue: true,
+  });
+
+  if (!shouldProceed) {
+    logger.info("\n⚠️ Commit cancelled by user");
+    return;
+  }
+
+  await controllers.analysisController.executeCommit({
+    message: result.formattedMessage,
+  });
+}
+
+async function handleAnalysis(
+  options: CommitCommandOptions,
+  context: AnalysisContext,
+  controllers: ControllersContext,
+  services: ServicesContext,
+): Promise<CommitAnalysisResult> {
+  const { logger, reporter } = services;
+  const { analysisController } = controllers;
+  const { filesToAnalyze } = context;
+
+  const securityResult = await handleSecurityChecks({
+    options,
+    filesToAnalyze,
+    services,
+    controllers,
+    context,
+  });
+
+  logger.info("\n🔍 Analyzing changes...");
+  let result = await analysisController.analyzeChanges({
+    files: filesToAnalyze,
+    message: options.message ?? "",
+    enablePrompts: true,
+    securityResult,
+  });
+
+  logger.info("\n📊 Initial Analysis Report");
+  analysisController.displayAnalysisResults(result);
+  reporter.generateReport({ result, options: {} });
+
+  result = await handleAIAnalysis({
+    result,
+    options,
+    filesToAnalyze,
+    services,
+    controllers,
+  });
+
   logger.info("\n📊 Final Analysis Report");
-  // Only show essential information, skip the detailed analysis
   if (result.formattedMessage) {
     logger.info(`\nCommit Message:
 Original: ${result.originalMessage}
@@ -226,31 +368,7 @@ Formatted: ${result.formattedMessage}
 ✅ No issues detected`);
   }
 
-  // Handle commit execution
-  if (options.execute && result.formattedMessage) {
-    logger.info("\n💾 Creating commit...");
-    if (result.formattedMessage !== result.originalMessage) {
-      const shouldProceed = await promptYesNo({
-        message: `\nCommit message will be changed from:
-${chalk.red(`"${result.originalMessage}"`)}
-to:
-${chalk.green(`"${result.formattedMessage}"`)}
-
-Proceed with formatted message?`,
-        logger,
-        defaultValue: true,
-      });
-
-      if (!shouldProceed) {
-        logger.info("\n⚠️ Commit cancelled by user");
-        return result;
-      }
-    }
-
-    await analysisController.executeCommit({
-      message: result.formattedMessage,
-    });
-  }
+  await handleCommitExecution({ result, options, controllers, services });
 
   return result;
 }

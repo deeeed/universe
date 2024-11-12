@@ -4,7 +4,7 @@ module.exports = {
     node: true,
   },
   parser: "@typescript-eslint/parser",
-  plugins: ["@typescript-eslint"],
+  plugins: ["@typescript-eslint", "regexp"],
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
@@ -22,6 +22,9 @@ module.exports = {
     "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/prefer-nullish-coalescing": "error",
+    "prefer-regex-literals": ["error", { disallowRedundantWrapping: true }],
+    "regexp/prefer-regexp-exec": "error",
     "no-console": ["error", { allow: ["warn", "error"] }],
     "prettier/prettier": "error",
   },

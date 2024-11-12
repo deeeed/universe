@@ -1,7 +1,5 @@
 // packages/gitguard/src/services/git.service.ts
-import { exec } from "child_process";
-import { promises as fs } from "fs";
-import { promisify } from "util";
+import * as fs from "fs/promises";
 import { GitConfig, RuntimeGitConfig } from "../types/config.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { ServiceOptions } from "../types/service.types.js";
@@ -10,8 +8,9 @@ import { formatDiffForAI } from "../utils/diff.util.js";
 import { FileUtil } from "../utils/file.util.js";
 import {
   determineDefaultBranch,
-  getGitRoot,
-  isGitRepository,
+  execGit,
+  getGitRootSync,
+  isGitRepositorySync,
 } from "../utils/git.util.js";
 import { BaseService } from "./base.service.js";
 
@@ -20,8 +19,6 @@ interface GetDiffParams {
   from?: string;
   to?: string;
 }
-
-const execPromise = promisify(exec);
 
 export class GitService extends BaseService {
   private readonly parser: CommitParser;
@@ -32,7 +29,14 @@ export class GitService extends BaseService {
     super(params);
     this.gitConfig = params.gitConfig;
     this.parser = new CommitParser();
-    this.cwd = this.gitConfig.cwd ?? getGitRoot();
+    this.cwd =
+      this.gitConfig.cwd ?? getGitRootSync({ cwd: this.gitConfig.cwd });
+
+    // Use sync versions for initialization
+    if (!isGitRepositorySync({ cwd: this.gitConfig.cwd })) {
+      throw new Error("Not a git repository");
+    }
+
     this.logger.debug("GitService initialized with config:", this.gitConfig);
     this.logger.debug("Working directory:", this.cwd);
   }
@@ -54,7 +58,12 @@ export class GitService extends BaseService {
 
       if (!hasCommits) {
         // Use determineDefaultBranch with cwd
-        const defaultBranch = determineDefaultBranch({ cwd: this.cwd });
+        const defaultBranch = await determineDefaultBranch({
+          command: "rev-parse",
+          args: ["--abbrev-ref", "HEAD"],
+          cwd: this.cwd,
+          logger: this.logger,
+        });
         this.logger.debug(
           `No commits yet, returning default branch: ${defaultBranch}`,
         );
@@ -166,7 +175,7 @@ export class GitService extends BaseService {
   async isMonorepo(): Promise<boolean> {
     try {
       // Check if we're in a git repo first
-      if (!isGitRepository({ cwd: this.cwd })) {
+      if (!isGitRepositorySync({ cwd: this.cwd })) {
         return false;
       }
 
@@ -415,7 +424,7 @@ export class GitService extends BaseService {
       // Map the changes back to commits
       return params.commits.map((commit) => ({
         ...commit,
-        files: changesByCommit.get(commit.hash) || [],
+        files: changesByCommit.get(commit.hash) ?? [],
       }));
     } catch (error) {
       this.logger.error("Failed to attach file changes:", error);
@@ -426,54 +435,38 @@ export class GitService extends BaseService {
   async execGit(params: {
     command: string;
     args: string[];
-    cwd?: string; // Add optional cwd parameter
+    cwd?: string;
   }): Promise<string> {
-    try {
-      if (!params.cwd && !this.cwd) {
-        throw new Error("Git working directory not set");
-      }
-
-      const workingDir = params.cwd ?? this.cwd;
-
-      // Escape special characters in args
-      const escapedArgs = params.args.map((arg) => {
-        if (
-          arg.includes(" ") ||
-          arg.includes("(") ||
-          arg.includes(")") ||
-          arg.includes(":")
-        ) {
-          return `"${arg.replace(/"/g, '\\"')}"`;
-        }
-        return arg;
-      });
-
-      this.logger.debug(`Executing git command in ${workingDir}:`, {
-        command: params.command,
-        args: escapedArgs,
-      });
-
-      const { stdout } = await execPromise(
-        `git ${params.command} ${escapedArgs.join(" ")}`,
-        {
-          cwd: workingDir,
-        },
-      );
-      return stdout;
-    } catch (error) {
-      this.logger.error(`Git command failed: ${params.command}`, error);
-      throw error;
-    }
+    return execGit({
+      ...params,
+      logger: this.logger,
+      cwd: params.cwd ?? this.cwd,
+    });
   }
 
   async updateCommitMessage(params: {
-    file: string;
     message: string;
+    messageFile?: string;
   }): Promise<void> {
     try {
-      this.logger.debug(`Updating commit message in ${params.file}`);
-      await fs.writeFile(params.file, params.message, "utf-8");
-      this.logger.debug("Commit message updated successfully");
+      this.logger.debug("Updating commit message:", params.message);
+
+      if (params.messageFile) {
+        // If message file is provided, write to it
+        await fs.writeFile(params.messageFile, params.message, "utf-8");
+        await this.execGit({
+          command: "commit",
+          args: ["-F", params.messageFile],
+          cwd: this.cwd,
+        });
+      } else {
+        // For direct message, properly escape and quote
+        await this.execGit({
+          command: "commit",
+          args: ["-m", params.message], // execGit will handle escaping
+          cwd: this.cwd,
+        });
+      }
     } catch (error) {
       this.logger.error("Failed to update commit message:", error);
       throw error;

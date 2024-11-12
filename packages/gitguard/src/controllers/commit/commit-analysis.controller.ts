@@ -55,8 +55,8 @@ export class CommitAnalysisController {
     stagedFiles,
     unstagedFiles,
   }: GetFilesToAnalyzeParams): GetFilesToAnalyzeResult {
-    const shouldAnalyzeStaged = options.all || options.staged !== false;
-    const shouldAnalyzeUnstaged = options.all || options.unstaged === true;
+    const shouldAnalyzeStaged = options.all ?? options.staged !== false;
+    const shouldAnalyzeUnstaged = options.all ?? options.unstaged === true;
 
     const filesToAnalyze = [
       ...(shouldAnalyzeStaged ? stagedFiles : []),

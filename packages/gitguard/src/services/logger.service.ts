@@ -10,7 +10,7 @@ export class LoggerService implements Logger {
     this.silent = options.silent ?? this.getSilentFromEnv() ?? false;
     this.level = options.level ?? this.getLogLevelFromEnv() ?? LogLevel.INFO;
 
-    if (options.debug || process.env.DEBUG) {
+    if (options.debug ?? process.env.DEBUG) {
       this.level = LogLevel.DEBUG;
     }
   }

@@ -89,7 +89,7 @@ interface ProcessAIWithGitHubParams {
 async function initializeServices({
   options,
 }: InitializeServicesParams): Promise<ServicesContext> {
-  const isDebug = options.debug || process.env.GITGUARD_DEBUG === "true";
+  const isDebug = options.debug ?? process.env.GITGUARD_DEBUG === "true";
   const logger = new LoggerService({ debug: isDebug });
   const reporter = new ReporterService({ logger });
 
@@ -204,7 +204,7 @@ export async function analyzeBranch({
         options,
         logger,
       });
-    } else if (options.createPR || options.draft) {
+    } else if (options.createPR ?? options.draft) {
       analysisResult = await handlePRCreation({
         controllers,
         options,
@@ -285,7 +285,7 @@ async function processAIFeatures({
 }: ProcessAIParams): Promise<PRAnalysisResult> {
   logger.debug("AI processing configuration:", {
     split: options.split,
-    needsGitHubAccess: Boolean(options.createPR || options.draft),
+    needsGitHubAccess: Boolean(options.createPR ?? options.draft),
   });
 
   if (!controllers.aiController.hasAIProvider()) {
@@ -298,7 +298,7 @@ async function processAIFeatures({
     return analysisResult;
   }
 
-  const needsGitHubAccess = options.createPR || options.draft;
+  const needsGitHubAccess = options.createPR ?? options.draft;
   let result = analysisResult;
 
   if (needsGitHubAccess) {

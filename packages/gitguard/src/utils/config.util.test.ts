@@ -23,8 +23,8 @@ jest.mock("os", () => ({
 }));
 
 jest.mock("./git.util.js", () => ({
-  isGitRepository: jest.fn(),
-  getGitRoot: jest.fn(),
+  isGitRepositorySync: jest.fn(),
+  getGitRootSync: jest.fn(),
 }));
 
 describe("Config Util", () => {
@@ -34,14 +34,14 @@ describe("Config Util", () => {
   beforeEach(() => {
     jest.resetAllMocks();
     (homedir as jest.Mock).mockReturnValue(mockHomedir);
-    (gitUtil.isGitRepository as jest.Mock).mockReturnValue(true);
-    (gitUtil.getGitRoot as jest.Mock).mockReturnValue(mockGitRoot);
+    (gitUtil.isGitRepositorySync as jest.Mock).mockReturnValue(true);
+    (gitUtil.getGitRootSync as jest.Mock).mockReturnValue(mockGitRoot);
     process.env = {};
     (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify({}));
   });
 
   describe("getConfigPaths", () => {
-    it("should return correct paths in a git repository", () => {
+    it("should return correct paths in a git repository", (): void => {
       const paths = getConfigPaths();
       expect(paths).toEqual({
         global: join(mockHomedir, ".gitguard", "config.json"),
@@ -49,8 +49,8 @@ describe("Config Util", () => {
       });
     });
 
-    it("should return only global path outside git repository", () => {
-      (gitUtil.isGitRepository as jest.Mock).mockReturnValue(false);
+    it("should return only global path outside git repository", (): void => {
+      (gitUtil.isGitRepositorySync as jest.Mock).mockReturnValue(false);
       const paths = getConfigPaths();
       expect(paths).toEqual({
         global: join(mockHomedir, ".gitguard", "config.json"),

@@ -67,7 +67,7 @@ export const largeCommitsTest: E2ETest = {
     selectedScenarios?: TestScenario[],
   ): Promise<TestResult[]> {
     const results: TestResult[] = [];
-    const scenariosToRun = selectedScenarios || scenarios;
+    const scenariosToRun = selectedScenarios ?? scenarios;
 
     for (const scenario of scenariosToRun) {
       results.push(await runScenario(scenario, logger));

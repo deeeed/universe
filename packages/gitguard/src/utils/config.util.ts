@@ -6,7 +6,7 @@ import { ComplexityOptions } from "../types/analysis.types.js";
 import { Config, DeepPartial } from "../types/config.types.js";
 import { Severity } from "../types/security.types.js";
 import { deepMerge } from "./deep-merge.js";
-import { getGitRoot, isGitRepository } from "./git.util.js";
+import { getGitRootSync, isGitRepositorySync } from "./git.util.js";
 
 export interface ConfigStatus {
   global: {
@@ -62,7 +62,7 @@ function getEnvConfig(): DeepPartial<Config> {
   const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT;
   const azureApiVersion = process.env.AZURE_OPENAI_API_VERSION;
 
-  if (azureEndpoint || azureDeployment || azureApiVersion) {
+  if (azureEndpoint ?? azureDeployment ?? azureApiVersion) {
     if (!config.ai) config.ai = {};
     config.ai.provider = "azure";
     config.ai.azure = {
@@ -110,35 +110,35 @@ function getEnvConfig(): DeepPartial<Config> {
 
 export async function getConfigStatus(): Promise<ConfigStatus> {
   const globalConfigPath = join(homedir(), ".gitguard", "config.json");
-  const isRepo = isGitRepository();
-  const gitRoot = isRepo ? getGitRoot() : null;
+  const isRepo = isGitRepositorySync({ cwd: process.cwd() });
+  const gitRoot = isRepo ? getGitRootSync({ cwd: process.cwd() }) : null;
   const localConfigPath = gitRoot
     ? join(gitRoot, ".gitguard", "config.json")
-    : "";
+    : join(process.cwd(), ".gitguard", "config.json");
 
   const [globalConfig, localConfig] = await Promise.all([
     loadJsonFile(globalConfigPath),
-    gitRoot ? loadJsonFile(localConfigPath) : Promise.resolve(null),
+    localConfigPath ? loadJsonFile(localConfigPath) : Promise.resolve(null),
   ]);
 
   const envConfig = getEnvConfig();
   const effectiveConfig = deepMerge<Config>(
     getDefaultConfig(),
-    globalConfig || {},
-    localConfig || {},
+    globalConfig ?? {},
+    localConfig ?? {},
     envConfig,
   );
 
   return {
     global: {
-      exists: Object.keys(globalConfig || {}).length > 0,
+      exists: Object.keys(globalConfig ?? {}).length > 0,
       path: globalConfigPath,
-      config: Object.keys(globalConfig || {}).length > 0 ? globalConfig : null,
+      config: Object.keys(globalConfig ?? {}).length > 0 ? globalConfig : null,
     },
     local: {
-      exists: Object.keys(localConfig || {}).length > 0,
-      path: localConfigPath,
-      config: Object.keys(localConfig || {}).length > 0 ? localConfig : null,
+      exists: Object.keys(localConfig ?? {}).length > 0,
+      path: localConfigPath || "",
+      config: Object.keys(localConfig ?? {}).length > 0 ? localConfig : null,
     },
     effective: effectiveConfig,
   };
@@ -273,8 +273,8 @@ export async function loadConfig(
 
     const finalConfig = deepMerge<Config>(
       getDefaultConfig(),
-      status.global.config || {},
-      status.local.config || {},
+      status.global.config ?? {},
+      status.local.config ?? {},
       getEnvConfig(),
       customConfig,
     );
@@ -297,14 +297,16 @@ export async function loadConfig(
   }
 }
 
-interface ConfigPaths {
+export interface ConfigPaths {
   global: string;
   local: string | null;
 }
 
-export function getConfigPaths(): ConfigPaths {
+export function getConfigPaths(params?: { cwd?: string }): ConfigPaths {
+  const isRepo = isGitRepositorySync({ cwd: params?.cwd });
+  const gitRoot = isRepo ? getGitRootSync({ cwd: params?.cwd }) : null;
+
   const globalConfigPath = join(homedir(), ".gitguard", "config.json");
-  const gitRoot = isGitRepository() ? getGitRoot() : null;
   const localConfigPath = gitRoot
     ? join(gitRoot, ".gitguard", "config.json")
     : null;

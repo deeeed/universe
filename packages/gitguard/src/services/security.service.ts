@@ -9,6 +9,7 @@ import {
   SecurityFinding,
   SecurityPattern,
 } from "../types/security.types.js";
+import { shouldIgnoreFile } from "../utils/ignore-pattern.util.js";
 import { BaseService } from "./base.service.js";
 
 export class SecurityService extends BaseService {
@@ -25,54 +26,138 @@ export class SecurityService extends BaseService {
   }): SecurityCheckResult {
     this.logger.debug("Running security analysis...");
 
+    const filesToCheck = this.config.git.ignorePatterns?.length
+      ? params.files.filter(
+          (file) =>
+            !shouldIgnoreFile({
+              path: file.path,
+              patterns: this.config.git.ignorePatterns ?? [],
+              logger: this.logger,
+            }),
+        )
+      : params.files;
+
+    if (filesToCheck.length === 0) {
+      this.logger.debug("No files to check after applying ignore patterns");
+      return {
+        secretFindings: [],
+        fileFindings: [],
+        filesToUnstage: [],
+        shouldBlock: false,
+        commands: [],
+      };
+    }
+
     const secretFindings =
       params.diff && this.config.security.rules.secrets.enabled
-        ? this.detectSecrets({ diff: params.diff })
+        ? this.detectSecrets({
+            diff: params.diff,
+            files: filesToCheck,
+          })
         : [];
 
     this.logger.debug(`Found ${secretFindings.length} secret findings`);
 
     const fileFindings = this.config.security.rules.files.enabled
       ? this.detectProblematicFiles({
-          files: params.files,
+          files: filesToCheck,
+          patterns: PROBLEMATIC_FILE_PATTERNS,
         })
       : [];
 
     this.logger.debug(`Found ${fileFindings.length} problematic files`);
 
-    const filesToUnstage = [...secretFindings, ...fileFindings].map(
-      (f) => f.path,
-    );
-
-    const shouldBlock = [...secretFindings, ...fileFindings].some(
-      (f) =>
-        f.severity === "high" &&
-        ((f.type === "secret" && this.config.security.rules.secrets.blockPR) ||
-          f.type === "sensitive_file"),
-    );
+    const filesToUnstage = [
+      ...new Set([
+        ...secretFindings.map((f) => f.path),
+        ...fileFindings.map((f) => f.path),
+      ]),
+    ];
 
     return {
       secretFindings,
       fileFindings,
       filesToUnstage,
-      shouldBlock,
+      shouldBlock:
+        secretFindings.some((f) => f.severity === "high") ||
+        fileFindings.some((f) => f.severity === "high"),
       commands: this.generateCommands({
         findings: [...secretFindings, ...fileFindings],
       }),
     };
   }
 
-  private detectSecrets(params: { diff: string }): SecurityFinding[] {
-    this.logger.debug(`Analyzing diff content: ${params.diff.length} lines`);
-    const lines = params.diff.split("\n");
-    const foundSecrets = new Set<string>();
-    const filePathMap = this.buildFilePathMap(lines, params.diff);
+  private detectSecrets(params: {
+    diff: string;
+    files: FileChange[];
+  }): SecurityFinding[] {
+    this.logger.debug("Analyzing diff content for secrets", {
+      filesCount: params.files.length,
+      diffLength: params.diff.length,
+    });
+
+    const customPatterns =
+      this.config.security.rules.secrets.patterns?.map((pattern) => ({
+        name: "Custom Pattern",
+        pattern: new RegExp(pattern, "i"),
+        severity: this.config.security.rules.secrets.severity ?? "high",
+      })) ?? [];
+
+    const allPatterns = [...SECRET_PATTERNS, ...customPatterns];
+
+    const validPaths = new Set(params.files.map((f) => f.path));
+    const filteredDiff = this.filterDiffForFiles(
+      params.diff,
+      Array.from(validPaths),
+    );
+    const lines = filteredDiff.split("\n");
+    const filePathMap = this.buildFilePathMap(lines, filteredDiff);
 
     return this.analyzeLines({
       lines,
       filePathMap,
-      foundSecrets,
+      foundSecrets: new Set<string>(),
+      validPaths,
+      patterns: allPatterns,
     });
+  }
+
+  private filterDiffForFiles(diff: string, validPaths: string[]): string {
+    this.logger.debug(`Original diff content:\n${diff}`);
+    this.logger.debug(`Valid paths: ${validPaths.join(", ")}`);
+
+    const lines = diff.split("\n");
+    const filteredLines: string[] = [];
+    let isValidFile = false;
+    let currentFile: string | undefined;
+
+    for (const line of lines) {
+      if (line.startsWith("diff --git")) {
+        const diffPattern = /diff --git [a-z]\/?(.*?) [a-z]\/?(.*?)$/;
+        const match = diffPattern.exec(line);
+        if (match) {
+          currentFile = match[2];
+          isValidFile = validPaths.includes(currentFile);
+          this.logger.debug(
+            `Found file in diff: ${currentFile} (valid: ${isValidFile})`,
+          );
+        }
+      }
+
+      if (
+        isValidFile ||
+        line.startsWith("diff --git") ||
+        line.startsWith("+++") ||
+        line.startsWith("---") ||
+        line.startsWith("@@")
+      ) {
+        filteredLines.push(line);
+      }
+    }
+
+    const filteredDiff = filteredLines.join("\n");
+    this.logger.debug(`Filtered diff content:\n${filteredDiff}`);
+    return filteredDiff;
   }
 
   private buildFilePathMap(lines: string[], diff: string): Map<number, string> {
@@ -90,106 +175,155 @@ export class SecurityService extends BaseService {
     lines: string[];
     filePathMap: Map<number, string>;
     foundSecrets: Set<string>;
+    validPaths: Set<string>;
+    patterns?: SecurityPattern[];
   }): SecurityFinding[] {
     const findings: SecurityFinding[] = [];
     let currentFile: string | undefined;
+    const patterns = params.patterns ?? SECRET_PATTERNS;
+
+    this.logger.debug("=== Starting line analysis ===");
 
     for (let i = 0; i < params.lines.length; i++) {
       const line = params.lines[i];
       currentFile = params.filePathMap.get(i) ?? currentFile;
 
-      if (!line.startsWith("+")) continue;
+      if (
+        !currentFile ||
+        !this.isValidLine(currentFile, params.validPaths, line)
+      ) {
+        continue;
+      }
 
-      const contentLine = line.substring(1);
-      this.checkCustomPatterns({
-        contentLine,
+      const result = this.analyzeSingleLine({
+        line,
+        lineIndex: i,
         currentFile,
-        lineNumber: i,
-        findings,
-        foundSecrets: params.foundSecrets,
+        patterns,
       });
 
-      this.checkBuiltInPatterns({
-        contentLine,
-        currentFile,
-        lineNumber: i,
-        findings,
-        foundSecrets: params.foundSecrets,
-      });
+      if (result.findings.length) {
+        findings.push(...result.findings);
+      }
     }
 
-    this.logger.debug(`Total secrets found: ${findings.length}`);
+    this.logger.debug(`Analysis complete. Found ${findings.length} secrets`);
     return findings;
   }
 
-  private checkCustomPatterns(params: {
+  private isValidLine(
+    currentFile: string,
+    validPaths: Set<string>,
+    line: string,
+  ): boolean {
+    return validPaths.has(currentFile) && line.startsWith("+");
+  }
+
+  private analyzeSingleLine(params: {
+    line: string;
+    lineIndex: number;
+    currentFile: string;
+    patterns: SecurityPattern[];
+  }): { findings: SecurityFinding[] } {
+    const findings: SecurityFinding[] = [];
+    const contentLine = params.line.substring(1);
+
+    // Handle private key detection
+    const privateKeyFindings = this.analyzePrivateKey({
+      contentLine,
+      currentFile: params.currentFile,
+      lineIndex: params.lineIndex,
+    });
+
+    if (privateKeyFindings.length) {
+      return { findings: privateKeyFindings };
+    }
+
+    // Handle regular pattern matching
+    findings.push(
+      ...this.analyzePatterns({
+        contentLine,
+        currentFile: params.currentFile,
+        lineIndex: params.lineIndex,
+        patterns: params.patterns,
+      }),
+    );
+
+    return { findings };
+  }
+
+  private analyzePrivateKey(params: {
     contentLine: string;
-    currentFile: string | undefined;
-    lineNumber: number;
-    findings: SecurityFinding[];
-    foundSecrets: Set<string>;
-  }): void {
-    const customPatterns = this.config.security.rules.secrets.patterns || [];
+    currentFile: string;
+    lineIndex: number;
+  }): SecurityFinding[] {
+    // Remove the leading '+' if it exists
+    const line = params.contentLine.startsWith("+")
+      ? params.contentLine.substring(1)
+      : params.contentLine;
 
-    for (const pattern of customPatterns) {
-      try {
-        const regex = new RegExp(pattern);
-        const match = regex.exec(params.contentLine);
-        if (!match) continue;
+    // Check for BEGIN marker of private keys
+    if (!line.includes("BEGIN")) {
+      return [];
+    }
 
-        const secretKey = `${params.currentFile ?? "unknown"}-${match[0]}`;
-        if (params.foundSecrets.has(secretKey)) continue;
+    // Look for the private key pattern
+    const privateKeyPattern = /-----BEGIN (?:RSA |DSA |EC )?PRIVATE KEY-----/;
+    const match = privateKeyPattern.exec(line);
 
-        params.foundSecrets.add(secretKey);
-        params.findings.push({
+    if (!match) return [];
+
+    return [
+      {
+        type: "secret",
+        severity: "high",
+        path: params.currentFile,
+        line: params.lineIndex + 1,
+        match: match[0],
+        content: line,
+        suggestion: "Remove Private Key and use a secret manager instead",
+      },
+    ];
+  }
+
+  private analyzePatterns(params: {
+    contentLine: string;
+    currentFile: string;
+    lineIndex: number;
+    patterns: SecurityPattern[];
+  }): SecurityFinding[] {
+    const findings: SecurityFinding[] = [];
+
+    for (const pattern of params.patterns) {
+      if (pattern.name === "Private Key") continue;
+
+      let match: RegExpExecArray | null;
+      // Reset lastIndex to ensure we start from the beginning of the string
+      pattern.pattern.lastIndex = 0;
+
+      while ((match = pattern.pattern.exec(params.contentLine)) !== null) {
+        findings.push({
           type: "secret",
-          severity: this.config.security.rules.secrets.severity,
-          path: params.currentFile ?? ".env",
-          line: params.lineNumber + 1,
+          severity: pattern.severity,
+          path: params.currentFile,
+          line: params.lineIndex + 1,
+          match: match[0],
           content: this.maskSecret(params.contentLine),
-          match: "Custom Pattern Match",
-          suggestion:
-            "Custom pattern detected. Consider using environment variables or a secret manager.",
+          suggestion: this.getPatternSuggestion(pattern.name),
         });
-      } catch (error) {
-        this.logger.error(`Invalid custom pattern: ${pattern}`, error);
+
+        // If the pattern is not global, break to avoid infinite loop
+        if (!pattern.pattern.global) break;
       }
     }
+
+    return findings;
   }
 
-  private checkBuiltInPatterns(params: {
-    contentLine: string;
-    currentFile: string | undefined;
-    lineNumber: number;
-    findings: SecurityFinding[];
-    foundSecrets: Set<string>;
-  }): void {
-    for (const pattern of SECRET_PATTERNS) {
-      const match = pattern.pattern.exec(params.contentLine);
-      if (!match) continue;
-
-      const secretKey = `${params.currentFile ?? "unknown"}-${match[0]}`;
-      if (params.foundSecrets.has(secretKey)) continue;
-
-      params.foundSecrets.add(secretKey);
-      params.findings.push({
-        type: "secret",
-        severity: pattern.severity,
-        path: params.currentFile ?? ".env",
-        line: params.lineNumber + 1,
-        content: this.maskSecret(params.contentLine),
-        match: pattern.name,
-        suggestion: `Detected ${pattern.name}. Consider using environment variables or a secret manager.`,
-      });
-    }
-  }
-
-  private maskSecret(line: string): string {
-    return line.replace(
-      /[a-zA-Z0-9+/=]{8,}/g,
-      (match) =>
-        `${match.slice(0, 4)}${"*".repeat(match.length - 8)}${match.slice(-4)}`,
-    );
+  private getPatternSuggestion(patternName: string): string {
+    return patternName === "Custom Pattern"
+      ? "Remove this secret and use environment variables instead"
+      : `Detected ${patternName}. Use environment variables instead.`;
   }
 
   private extractFilePath(diff: string, lineIndex: number): string | undefined {
@@ -197,30 +331,21 @@ export class SecurityService extends BaseService {
       .split("\n")
       .slice(0, lineIndex + 1)
       .reverse();
-
-    // Try different git diff formats
-    const patterns = [
-      /^\+\+\+ b\/(.+)$/,
-      /^\+\+\+ (.+)$/,
-      /^diff --git a\/(.+) b\/.+$/,
-      /^diff --git a\/(.+) b\/\1$/,
-      /^--- a\/(.+)$/,
-      /^--- (.+)$/,
-    ];
+    let currentFile: string | undefined;
 
     for (const line of lines) {
-      for (const pattern of patterns) {
-        const match = pattern.exec(line);
-        if (match?.[1]) {
-          // this.logger.debug(
-          //   `Extracted file path: ${match[1]} from line: ${line}`,
-          // );
-          return match[1];
+      if (line.startsWith("diff --git")) {
+        const diffPattern = /diff --git [a-z]\/?(.*?) [a-z]\/?(.*?)$/;
+        const match = diffPattern.exec(line);
+        if (match) {
+          currentFile = match[2];
+          this.logger.debug(`Found file path: ${currentFile}`);
+          return currentFile;
         }
       }
     }
 
-    return undefined;
+    return currentFile;
   }
 
   private detectProblematicFiles(params: {
@@ -228,7 +353,7 @@ export class SecurityService extends BaseService {
     patterns?: ProblematicFilePattern[];
   }): SecurityFinding[] {
     const findings: SecurityFinding[] = [];
-    const patterns = params.patterns || PROBLEMATIC_FILE_PATTERNS;
+    const patterns = params.patterns ?? PROBLEMATIC_FILE_PATTERNS;
     const foundFiles = new Set<string>();
 
     this.logger.debug(
@@ -272,6 +397,34 @@ export class SecurityService extends BaseService {
       return null;
     }
 
+    // Special handling for private keys - collect multiple lines
+    if (
+      params.pattern.name === "Private Key" &&
+      params.line.includes("BEGIN")
+    ) {
+      const keyLines = [params.line];
+      let lineCount = 1;
+      while (lineCount < 10 && !keyLines[keyLines.length - 1].includes("END")) {
+        lineCount++;
+        keyLines.push(`+${params.line}`);
+      }
+      const fullKey = keyLines.join("\n");
+      const match = params.pattern.pattern.exec(fullKey.substring(1));
+      if (match) {
+        return {
+          type: "secret",
+          severity: params.pattern.severity,
+          path: params.currentFile,
+          line: params.lineNumber + 1,
+          match: match[0],
+          content: fullKey.substring(1),
+          suggestion: "Remove Private Key and use a secret manager instead",
+        };
+      }
+      return null;
+    }
+
+    // Regular single-line pattern matching
     const match = params.pattern.pattern.exec(params.line.substring(1));
     if (!match) return null;
 
@@ -317,5 +470,13 @@ export class SecurityService extends BaseService {
     }
 
     return [`git reset HEAD ${filesToUnstage.map((f) => `"${f}"`).join(" ")}`];
+  }
+
+  private maskSecret(line: string): string {
+    return line.replace(
+      /[a-zA-Z0-9+/=]{8,}/g,
+      (match) =>
+        `${match.slice(0, 4)}${"*".repeat(match.length - 8)}${match.slice(-4)}`,
+    );
   }
 }

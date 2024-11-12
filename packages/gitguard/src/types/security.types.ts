@@ -102,7 +102,7 @@ export const SECRET_PATTERNS: SecurityPattern[] = [
   {
     name: "Private Key",
     pattern:
-      /-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY(?:\s+BLOCK)?-----[\s\S]+?-----END/,
+      /-----BEGIN\s+(?:RSA|DSA|EC|OPENSSH)\s+PRIVATE\s+KEY-----[A-Za-z0-9+/=\s]+-----END\s+(?:RSA|DSA|EC|OPENSSH)\s+PRIVATE\s+KEY-----/,
     severity: "high",
   },
   {

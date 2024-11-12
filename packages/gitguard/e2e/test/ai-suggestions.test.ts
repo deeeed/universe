@@ -615,7 +615,7 @@ export const aiSuggestionsTest: E2ETest = {
       !aiConfig.apiVersion ||
       !aiConfig.apiKey
     ) {
-      return (selectedScenarios || scenarios).map((scenario) => ({
+      return (selectedScenarios ?? scenarios).map((scenario) => ({
         scenario,
         success: true,
         skipped: true,
@@ -624,7 +624,7 @@ export const aiSuggestionsTest: E2ETest = {
     }
 
     // Use selectedScenarios if provided, otherwise use all scenarios
-    const scenariosToRun = selectedScenarios || scenarios;
+    const scenariosToRun = selectedScenarios ?? scenarios;
 
     // Type assertion to ensure config is fully defined
     const enhancedScenarios = scenariosToRun.map((scenario) => ({

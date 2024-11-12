@@ -36,16 +36,28 @@ export class CommitSecurityController {
     files,
     shouldAnalyzeStaged,
   }: AnalyzeSecurityParams): Promise<SecurityCheckResult> {
-    this.logger.debug("Running security analysis...");
+    this.logger.debug(`Running security analysis on ${files.length} files...`);
 
+    if (files.length > 50) {
+      this.logger.info(
+        chalk.yellow("\n⚠️  Analyzing large diff, this may take a moment..."),
+      );
+    }
+
+    const startTime = Date.now();
     const securityDiff = shouldAnalyzeStaged
       ? await this.git.getStagedDiff()
       : await this.git.getUnstagedDiff();
 
-    return this.security.analyzeSecurity({
+    const result = this.security.analyzeSecurity({
       files,
       diff: securityDiff,
     });
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    this.logger.debug(`Security analysis completed in ${duration}s`);
+
+    return result;
   }
 
   async handleSecurityIssues({
