@@ -19,7 +19,7 @@ import { formatDiffForAI } from "../utils/diff.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
 import { SecurityService } from "./security.service.js";
-import { minimatch } from "minimatch";
+import { shouldIgnoreFile } from "../utils/ignore-pattern.util.js";
 
 export class CommitService extends BaseService {
   private readonly git: GitService;
@@ -390,27 +390,10 @@ export class CommitService extends BaseService {
   }
 
   private shouldIgnoreFile(path: string): boolean {
-    const patterns = this.git.config.ignorePatterns || [];
-    this.logger.debug(`Checking if should ignore path: ${path}`, { patterns });
-
-    return patterns.some((pattern) => {
-      try {
-        const matches = minimatch(path, pattern, {
-          matchBase: !pattern.includes("/"),
-          dot: true,
-        });
-
-        this.logger.debug(`Checking pattern match:`, {
-          path,
-          pattern,
-          matches,
-        });
-
-        return matches;
-      } catch (error) {
-        this.logger.warn(`Invalid ignore pattern: ${pattern}`, error);
-        return false;
-      }
+    return shouldIgnoreFile({
+      path,
+      patterns: this.git.config.ignorePatterns || [],
+      logger: this.logger,
     });
   }
 

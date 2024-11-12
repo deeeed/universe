@@ -15,14 +15,11 @@ describe("GitService Integration Tests", () => {
     // Create a temporary directory for each test
     tempDir = await mkdtemp(join(tmpdir(), "gitguard-test-"));
 
+    // Initialize git repository first
+    await execPromise("git init", { cwd: tempDir });
+
     // Initialize git service with temp directory
     gitService = new GitService({
-      gitConfig: {
-        cwd: tempDir,
-        baseBranch: "main",
-        monorepoPatterns: [],
-        ignorePatterns: [],
-      },
       logger: {
         debug: jest.fn(),
         info: jest.fn(),
@@ -35,10 +32,13 @@ describe("GitService Integration Tests", () => {
         table: jest.fn(),
         isDebug: jest.fn(),
       },
+      gitConfig: {
+        cwd: tempDir,
+        baseBranch: "main",
+        monorepoPatterns: [],
+        ignorePatterns: [],
+      },
     });
-
-    // Initialize git repository
-    await execPromise("git init", { cwd: tempDir });
   });
 
   afterEach(async () => {

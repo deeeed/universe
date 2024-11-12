@@ -64,7 +64,7 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
     ? status.global.config
     : status.local.config;
 
-  const detectedBaseBranch = determineDefaultBranch();
+  const detectedBaseBranch = await determineDefaultBranch();
 
   const responses = await promptForInit({
     logger,

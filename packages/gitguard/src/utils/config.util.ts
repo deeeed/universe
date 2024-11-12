@@ -6,7 +6,7 @@ import { ComplexityOptions } from "../types/analysis.types.js";
 import { Config, DeepPartial } from "../types/config.types.js";
 import { Severity } from "../types/security.types.js";
 import { deepMerge } from "./deep-merge.js";
-import { getGitRoot, isGitRepository } from "./git.util.js";
+import { getGitRootSync, isGitRepositorySync } from "./git.util.js";
 
 export interface ConfigStatus {
   global: {
@@ -110,15 +110,15 @@ function getEnvConfig(): DeepPartial<Config> {
 
 export async function getConfigStatus(): Promise<ConfigStatus> {
   const globalConfigPath = join(homedir(), ".gitguard", "config.json");
-  const isRepo = isGitRepository();
-  const gitRoot = isRepo ? getGitRoot() : null;
+  const isRepo = isGitRepositorySync({ cwd: process.cwd() });
+  const gitRoot = isRepo ? getGitRootSync({ cwd: process.cwd() }) : null;
   const localConfigPath = gitRoot
     ? join(gitRoot, ".gitguard", "config.json")
-    : "";
+    : join(process.cwd(), ".gitguard", "config.json");
 
   const [globalConfig, localConfig] = await Promise.all([
     loadJsonFile(globalConfigPath),
-    gitRoot ? loadJsonFile(localConfigPath) : Promise.resolve(null),
+    localConfigPath ? loadJsonFile(localConfigPath) : Promise.resolve(null),
   ]);
 
   const envConfig = getEnvConfig();
@@ -137,7 +137,7 @@ export async function getConfigStatus(): Promise<ConfigStatus> {
     },
     local: {
       exists: Object.keys(localConfig || {}).length > 0,
-      path: localConfigPath,
+      path: localConfigPath || "",
       config: Object.keys(localConfig || {}).length > 0 ? localConfig : null,
     },
     effective: effectiveConfig,
@@ -297,14 +297,16 @@ export async function loadConfig(
   }
 }
 
-interface ConfigPaths {
+export interface ConfigPaths {
   global: string;
   local: string | null;
 }
 
-export function getConfigPaths(): ConfigPaths {
+export function getConfigPaths(params?: { cwd?: string }): ConfigPaths {
+  const isRepo = isGitRepositorySync({ cwd: params?.cwd });
+  const gitRoot = isRepo ? getGitRootSync({ cwd: params?.cwd }) : null;
+
   const globalConfigPath = join(homedir(), ".gitguard", "config.json");
-  const gitRoot = isGitRepository() ? getGitRoot() : null;
   const localConfigPath = gitRoot
     ? join(gitRoot, ".gitguard", "config.json")
     : null;

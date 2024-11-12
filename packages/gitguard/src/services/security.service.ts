@@ -1,4 +1,3 @@
-import { minimatch } from "minimatch";
 import { Config } from "../types/config.types.js";
 import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
@@ -10,6 +9,7 @@ import {
   SecurityFinding,
   SecurityPattern,
 } from "../types/security.types.js";
+import { shouldIgnoreFile } from "../utils/ignore-pattern.util.js";
 import { BaseService } from "./base.service.js";
 
 export class SecurityService extends BaseService {
@@ -27,7 +27,14 @@ export class SecurityService extends BaseService {
     this.logger.debug("Running security analysis...");
 
     const filesToCheck = this.config.git.ignorePatterns?.length
-      ? params.files.filter((file) => !this.shouldIgnoreFile(file.path))
+      ? params.files.filter(
+          (file) =>
+            !shouldIgnoreFile({
+              path: file.path,
+              patterns: this.config.git.ignorePatterns || [],
+              logger: this.logger,
+            }),
+        )
       : params.files;
 
     if (filesToCheck.length === 0) {
@@ -414,30 +421,6 @@ export class SecurityService extends BaseService {
     return [`git reset HEAD ${filesToUnstage.map((f) => `"${f}"`).join(" ")}`];
   }
 
-  public shouldIgnoreFile(path: string): boolean {
-    const patterns = this.config.git.ignorePatterns || [];
-    this.logger.debug(`Checking if should ignore path: ${path}`, { patterns });
-
-    return patterns.some((pattern) => {
-      try {
-        const matches = minimatch(path, pattern, {
-          matchBase: !pattern.includes("/"),
-          dot: true,
-        });
-
-        this.logger.debug(`Checking pattern match:`, {
-          path,
-          pattern,
-          matches,
-        });
-
-        return matches;
-      } catch (error) {
-        this.logger.warn(`Invalid ignore pattern: ${pattern}`, error);
-        return false;
-      }
-    });
-  }
   private maskSecret(line: string): string {
     return line.replace(
       /[a-zA-Z0-9+/=]{8,}/g,

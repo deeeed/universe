@@ -1,7 +1,5 @@
 // packages/gitguard/src/services/git.service.ts
-import { exec, spawn } from "child_process";
 import { promises as fs } from "fs";
-import { promisify } from "util";
 import { GitConfig, RuntimeGitConfig } from "../types/config.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { ServiceOptions } from "../types/service.types.js";
@@ -10,8 +8,9 @@ import { formatDiffForAI } from "../utils/diff.util.js";
 import { FileUtil } from "../utils/file.util.js";
 import {
   determineDefaultBranch,
-  getGitRoot,
-  isGitRepository,
+  execGit,
+  getGitRootSync,
+  isGitRepositorySync,
 } from "../utils/git.util.js";
 import { BaseService } from "./base.service.js";
 
@@ -19,20 +18,6 @@ interface GetDiffParams {
   type: "staged" | "range";
   from?: string;
   to?: string;
-}
-
-const execPromise = promisify(exec);
-
-interface ExecGitOptions {
-  command: string;
-  args: string[];
-  cwd?: string;
-  maxBuffer?: number;
-}
-
-interface ExecGitResult {
-  stdout: string;
-  stderr: string;
 }
 
 export class GitService extends BaseService {
@@ -44,7 +29,14 @@ export class GitService extends BaseService {
     super(params);
     this.gitConfig = params.gitConfig;
     this.parser = new CommitParser();
-    this.cwd = this.gitConfig.cwd ?? getGitRoot();
+    this.cwd =
+      this.gitConfig.cwd ?? getGitRootSync({ cwd: this.gitConfig.cwd });
+
+    // Use sync versions for initialization
+    if (!isGitRepositorySync({ cwd: this.gitConfig.cwd })) {
+      throw new Error("Not a git repository");
+    }
+
     this.logger.debug("GitService initialized with config:", this.gitConfig);
     this.logger.debug("Working directory:", this.cwd);
   }
@@ -66,7 +58,12 @@ export class GitService extends BaseService {
 
       if (!hasCommits) {
         // Use determineDefaultBranch with cwd
-        const defaultBranch = determineDefaultBranch({ cwd: this.cwd });
+        const defaultBranch = await determineDefaultBranch({
+          command: "rev-parse",
+          args: ["--abbrev-ref", "HEAD"],
+          cwd: this.cwd,
+          logger: this.logger,
+        });
         this.logger.debug(
           `No commits yet, returning default branch: ${defaultBranch}`,
         );
@@ -178,7 +175,7 @@ export class GitService extends BaseService {
   async isMonorepo(): Promise<boolean> {
     try {
       // Check if we're in a git repo first
-      if (!isGitRepository({ cwd: this.cwd })) {
+      if (!isGitRepositorySync({ cwd: this.cwd })) {
         return false;
       }
 
@@ -435,85 +432,16 @@ export class GitService extends BaseService {
     }
   }
 
-  private async execGitWithBuffer({
-    command,
-    args,
-    cwd,
-    maxBuffer = 100 * 1024 * 1024,
-  }: ExecGitOptions): Promise<ExecGitResult> {
-    try {
-      const { stdout, stderr } = await execPromise(
-        `git ${command} ${args.join(" ")}`,
-        {
-          cwd: cwd || this.cwd,
-          maxBuffer,
-        },
-      );
-      return { stdout, stderr };
-    } catch (error) {
-      this.logger.debug("Buffer execution failed:", error);
-      throw error;
-    }
-  }
-
-  private async execGitWithStream({
-    command,
-    args,
-    cwd,
-  }: ExecGitOptions): Promise<ExecGitResult> {
-    return new Promise((resolve, reject) => {
-      const stdoutChunks: Buffer[] = [];
-      const stderrChunks: Buffer[] = [];
-
-      const git = spawn("git", [command, ...args], {
-        cwd: cwd || this.cwd,
-      });
-
-      git.stdout?.on("data", (chunk: Buffer) =>
-        stdoutChunks.push(Buffer.from(chunk)),
-      );
-      git.stderr?.on("data", (chunk: Buffer) =>
-        stderrChunks.push(Buffer.from(chunk)),
-      );
-
-      git.on("error", (error: Error) => {
-        this.logger.error("Git stream error:", error);
-        reject(error);
-      });
-
-      git.on("close", (code: number) => {
-        if (code === 0) {
-          resolve({
-            stdout: Buffer.concat(stdoutChunks).toString("utf8"),
-            stderr: Buffer.concat(stderrChunks).toString("utf8"),
-          });
-        } else {
-          reject(new Error(`Git process exited with code ${code}`));
-        }
-      });
+  async execGit(params: {
+    command: string;
+    args: string[];
+    cwd?: string;
+  }): Promise<string> {
+    return execGit({
+      ...params,
+      logger: this.logger,
+      cwd: params.cwd ?? this.cwd,
     });
-  }
-
-  async execGit({ command, args, cwd }: ExecGitOptions): Promise<string> {
-    try {
-      // First try with buffer
-      const bufferResult = await this.execGitWithBuffer({ command, args, cwd });
-      return bufferResult.stdout;
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("maxBuffer")) {
-        this.logger.debug(
-          "Falling back to stream execution due to buffer size",
-        );
-        // Fallback to stream if buffer is exceeded
-        const streamResult = await this.execGitWithStream({
-          command,
-          args,
-          cwd,
-        });
-        return streamResult.stdout;
-      }
-      throw error;
-    }
   }
 
   async updateCommitMessage(params: {

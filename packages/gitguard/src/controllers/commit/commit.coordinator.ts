@@ -8,13 +8,14 @@ import { AIProvider } from "../../types/ai.types.js";
 import { CommitAnalysisResult } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { FileChange } from "../../types/git.types.js";
+import { SecurityCheckResult } from "../../types/security.types.js";
 import { initializeAI } from "../../utils/ai-init.util.js";
 import { loadConfig } from "../../utils/config.util.js";
+import { shouldIgnoreFile } from "../../utils/ignore-pattern.util.js";
 import { promptYesNo } from "../../utils/user-prompt.util.js";
 import { CommitAIController } from "./commit-ai.controller.js";
 import { CommitAnalysisController } from "./commit-analysis.controller.js";
 import { CommitSecurityController } from "./commit-security.controller.js";
-import { SecurityCheckResult } from "../../types/security.types.js";
 
 interface CommitAnalyzeParams {
   options: CommitCommandOptions;
@@ -161,7 +162,12 @@ async function handleAnalysis(
 
     // Filter ignored files first
     const nonIgnoredFiles = filesToAnalyze.filter(
-      (file) => !services.security.shouldIgnoreFile(file.path),
+      (file) =>
+        !shouldIgnoreFile({
+          path: file.path,
+          patterns: services.config.git?.ignorePatterns || [],
+          logger: services.logger,
+        }),
     );
 
     if (nonIgnoredFiles.length === 0) {
