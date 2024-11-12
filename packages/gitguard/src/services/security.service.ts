@@ -133,7 +133,8 @@ export class SecurityService extends BaseService {
 
     for (const line of lines) {
       if (line.startsWith("diff --git")) {
-        const match = line.match(/diff --git [a-z]?\/?(.+?) [a-z]?\/?(.+?)$/);
+        const diffPattern = /diff --git [a-z]\/?(.*?) [a-z]\/?(.*?)$/;
+        const match = diffPattern.exec(line);
         if (match) {
           currentFile = match[2];
           isValidFile = validPaths.includes(currentFile);
@@ -334,7 +335,8 @@ export class SecurityService extends BaseService {
 
     for (const line of lines) {
       if (line.startsWith("diff --git")) {
-        const match = line.match(/diff --git [a-z]\/?(.*?) [a-z]\/?(.*?)$/);
+        const diffPattern = /diff --git [a-z]\/?(.*?) [a-z]\/?(.*?)$/;
+        const match = diffPattern.exec(line);
         if (match) {
           currentFile = match[2];
           this.logger.debug(`Found file path: ${currentFile}`);
