@@ -31,7 +31,7 @@
     "test": "NODE_OPTIONS='--loader ts-node/esm' jest --config jest.config.cjs --selectProjects unit",
     "test:unit": "NODE_OPTIONS='--loader ts-node/esm' jest --config jest.config.cjs --selectProjects unit",
     "test:unit:watch": "NODE_OPTIONS='--loader ts-node/esm' jest --config jest.config.cjs --selectProjects unit --watch",
-    "test:integration": "NODE_OPTIONS='--loader ts-node/esm' jest --config jest.config.cjs --selectProjects integration",
+    "test:integration": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' TS_NODE_PROJECT=tsconfig.test.json jest --config jest.config.cjs --selectProjects integration",
     "test:integration:watch": "NODE_OPTIONS='--loader ts-node/esm' jest --config jest.config.cjs --selectProjects integration --watch",
     "test:all": "NODE_OPTIONS='--loader ts-node/esm' jest --config jest.config.cjs --selectProjects unit integration",
     "test:e2e": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm ./e2e/index.ts --interactive",

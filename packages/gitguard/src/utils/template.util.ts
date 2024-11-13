@@ -1,9 +1,17 @@
 import chalk from "chalk";
+import { promises as fs } from "node:fs";
 import { LoggerService } from "../services/logger.service.js";
 import { TemplateRegistry } from "../services/template/template-registry.js";
-import { PromptTemplate } from "../types/templates.type.js";
+import {
+  CommitSplitTemplateVariables,
+  CommitTemplateVariables,
+  PromptTemplate,
+  PromptType,
+  PRTemplateVariables,
+  TemplateVariables,
+  WithSource,
+} from "../types/templates.type.js";
 import { promptYesNo } from "./user-prompt.util.js";
-import { promises as fs } from "node:fs";
 
 export interface TemplateStatus {
   filename: string;
@@ -18,9 +26,11 @@ export interface TemplateUpdateResult {
   newTemplates: TemplateStatus[];
 }
 
+type LoadedPromptTemplate = PromptTemplate & WithSource;
+
 interface CompareTemplatesParams {
-  currentTemplates: PromptTemplate[];
-  defaultTemplates: Map<string, PromptTemplate>;
+  currentTemplates: LoadedPromptTemplate[];
+  defaultTemplates: Map<string, LoadedPromptTemplate>;
 }
 
 export function compareTemplateVersions(
@@ -64,41 +74,119 @@ export function compareTemplateVersions(
 }
 
 interface ValidateTemplateParams {
-  template: PromptTemplate;
+  template: LoadedPromptTemplate;
   registry: TemplateRegistry;
   logger: LoggerService;
+}
+
+function createSampleVariables(type: PromptType): TemplateVariables {
+  const baseData = {
+    files: [
+      {
+        path: "test.ts",
+        additions: 1,
+        deletions: 0,
+        isTest: false,
+        isConfig: false,
+      },
+    ],
+    diff: "sample diff",
+  };
+
+  switch (type) {
+    case "commit":
+      return {
+        ...baseData,
+        packages: {},
+        originalMessage: "test commit message",
+      } as CommitTemplateVariables;
+
+    case "split-commit":
+      return {
+        ...baseData,
+        message: "test commit message",
+      } as CommitSplitTemplateVariables;
+
+    case "pr":
+    case "split-pr":
+      return {
+        ...baseData,
+        commits: [],
+        baseBranch: "main",
+      } as PRTemplateVariables;
+  }
 }
 
 export function validateTemplate(params: ValidateTemplateParams): boolean {
   const { template, registry, logger } = params;
 
   try {
-    if (!template.type || !template.template) {
-      logger.error(`❌ Invalid template: ${template.id}`);
-      logger.error("   Missing required fields: type or template");
+    // Basic field validation
+    const requiredFields = {
+      id: template.id,
+      type: template.type,
+      format: template.format,
+      template: template.template,
+      ai: template.ai,
+    };
+
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
+      logger.error(`❌ Template "${template.id}" missing required fields:`);
+      missingFields.forEach((field) => {
+        logger.error(`   • ${field}`);
+      });
       return false;
     }
 
-    // Test template rendering with sample data
-    const sampleData = {
-      files: [
-        {
-          path: "test.ts",
-          additions: 1,
-          deletions: 0,
-          isTest: false,
-          isConfig: false,
-        },
-      ],
-      diff: "sample diff",
-      commits: [],
-      baseBranch: "main",
-    };
+    // Type-specific validation
+    const typeValidation =
+      {
+        commit: ["packages", "originalMessage"],
+        "split-commit": ["message"],
+        pr: ["commits", "baseBranch"],
+        "split-pr": ["commits", "baseBranch"],
+      }[template.type] ?? [];
 
-    registry.renderTemplate({
+    // Display template structure
+    logger.info(`\n📋 Template "${template.id}" structure:`);
+    logger.info(`   • Type: ${chalk.blue(template.type)}`);
+    logger.info(`   • Format: ${chalk.blue(template.format)}`);
+    logger.info(
+      `   • Version: ${chalk.blue(template.version ?? "not specified")}`,
+    );
+    logger.info(`   • Title: ${chalk.blue(template.title ?? "not specified")}`);
+    logger.info(
+      `   • Required Variables: ${chalk.blue(typeValidation.join(", "))}`,
+    );
+
+    // AI Configuration
+    logger.info(`   • AI Config:`);
+    logger.info(
+      `     - Provider: ${chalk.blue(template.ai.provider ?? "default")}`,
+    );
+    logger.info(`     - Model: ${chalk.blue(template.ai.model ?? "default")}`);
+
+    // Test template rendering with type-specific sample data
+    logger.info("\n🧪 Testing template rendering...");
+    const sampleData = createSampleVariables(template.type);
+
+    const renderedTemplate = registry.renderTemplate({
       template,
       variables: sampleData,
     });
+
+    logger.info(chalk.green("✓ Template renders successfully"));
+    logger.info("\n📝 Sample Output Preview:");
+    logger.info(chalk.dim("---"));
+    logger.info(
+      renderedTemplate.slice(0, 200) +
+        (renderedTemplate.length > 200 ? "..." : ""),
+    );
+    logger.info(chalk.dim("---"));
 
     return true;
   } catch (error) {
@@ -108,7 +196,7 @@ export function validateTemplate(params: ValidateTemplateParams): boolean {
 }
 
 interface FormatTemplateDisplayParams {
-  template: PromptTemplate;
+  template: LoadedPromptTemplate;
   choice?: {
     label: string;
     value: string;
@@ -120,20 +208,25 @@ export function formatTemplateDisplay(
   params: FormatTemplateDisplayParams,
 ): string {
   const { template, choice } = params;
+  const sourceIndicator =
+    template.source === "global"
+      ? chalk.yellow(" [global]")
+      : chalk.blue(" [project]");
+
   return (
-    `${chalk.green(choice?.label ?? template.id)} ${chalk.gray(`(${template.format})`)}` +
+    `${chalk.green(choice?.label ?? template.id)}${sourceIndicator} ${chalk.gray(`(${template.format})`)}` +
     (choice?.description ? chalk.yellow(` ${choice.description}`) : "") +
     (template.title ? `\n    ${chalk.dim(template.title)}` : "")
   );
 }
 
 interface GroupTemplatesByTypeParams {
-  templates: PromptTemplate[];
+  templates: LoadedPromptTemplate[];
   registry: TemplateRegistry;
 }
 
 export interface GroupedTemplate {
-  template: PromptTemplate;
+  template: LoadedPromptTemplate;
   choices: Array<{
     label: string;
     value: string;
@@ -177,7 +270,7 @@ export function displayTemplateStatus(
 
 interface HandleExistingTemplatesParams {
   templates: TemplateStatus[];
-  defaultTemplates: Map<string, PromptTemplate>;
+  defaultTemplates: Map<string, LoadedPromptTemplate>;
   force?: boolean;
   logger: LoggerService;
   registry: TemplateRegistry;
@@ -233,7 +326,7 @@ export async function handleExistingTemplates(
 
 interface UpdateTemplatesParams {
   templates: TemplateStatus[];
-  defaultTemplates: Map<string, PromptTemplate>;
+  defaultTemplates: Map<string, LoadedPromptTemplate>;
   registry: TemplateRegistry;
   templatePath: string;
   logger: LoggerService;
@@ -259,7 +352,7 @@ export async function updateTemplates(
 
 interface InstallNewTemplatesParams {
   templates: TemplateStatus[];
-  defaultTemplates: Map<string, PromptTemplate>;
+  defaultTemplates: Map<string, LoadedPromptTemplate>;
   registry: TemplateRegistry;
   templatePath: string;
   logger: LoggerService;
@@ -290,19 +383,21 @@ export async function validateTemplates(
   try {
     await registry.loadTemplates();
     const templates = registry.getAllTemplates();
-    logger.info(`\n🔍 Validating ${templates.length} templates...`);
+    logger.info(`\n🔍 Found ${templates.length} templates to validate\n`);
 
     for (const template of templates) {
+      logger.info(chalk.blue(`\n━━━ Validating "${template.id}" ━━━`));
       const templateIsValid = validateTemplate({ template, registry, logger });
-      if (templateIsValid) {
-        logger.success(`✅ Template "${template.id}" is valid`);
-      } else {
+      if (!templateIsValid) {
         isValid = false;
+        logger.error(
+          chalk.red(`✖ Template "${template.id}" failed validation\n`),
+        );
       }
     }
 
     if (isValid) {
-      logger.success("\n✨ All templates are valid!");
+      logger.success("\n✨ All templates passed validation!");
     } else {
       logger.error("\n⚠️  Some templates failed validation");
     }

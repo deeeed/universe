@@ -1,10 +1,11 @@
+import { jest } from "@jest/globals";
 import { exec } from "child_process";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { promisify } from "util";
 import { Config } from "../types/config.types.js";
-import { Logger } from "../types/logger.types.js";
+import { Logger, LogLevel } from "../types/logger.types.js";
 import { GitService } from "../services/git.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { CommitService } from "../services/commit.service.js";
@@ -97,14 +98,46 @@ async function setupGitRepo(tempDir: string): Promise<void> {
   await execPromise('git commit -m "Initial commit"', { cwd: tempDir });
 }
 
-export async function setupBaseTestEnvironment(
-  customConfig?: Partial<Config>,
-): Promise<BaseTestEnvironment> {
+interface SetupEnvironmentOptions {
+  logger?: Logger;
+  config?: Partial<Config>;
+  useRealLogger?: boolean;
+  loggerOptions?: {
+    level?: LogLevel;
+    silent?: boolean;
+    debug?: boolean;
+  };
+}
+
+// Create a mock logger factory
+function createMockLogger(): Logger {
+  return {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    success: jest.fn(),
+    warning: jest.fn(),
+    raw: jest.fn(),
+    newLine: jest.fn(),
+    table: jest.fn(),
+    isDebug: jest.fn(() => false),
+  };
+}
+
+export async function setupBaseTestEnvironment({
+  config: customConfig,
+  logger: customLogger,
+  useRealLogger = false,
+  loggerOptions = { silent: true },
+}: SetupEnvironmentOptions = {}): Promise<BaseTestEnvironment> {
   const tempDir = await mkdtemp(join(tmpdir(), "gitguard-test-"));
   await setupGitRepo(tempDir);
 
   const config = { ...defaultConfig, ...customConfig };
-  const logger = new LoggerService({ debug: true });
+  const logger =
+    customLogger ??
+    (useRealLogger ? new LoggerService(loggerOptions) : createMockLogger());
 
   const createFiles = async (files: TestFile[]): Promise<void> => {
     for (const file of files) {
@@ -130,10 +163,18 @@ export async function setupBaseTestEnvironment(
   return { tempDir, logger, config, createFiles, stageFiles, cleanup };
 }
 
-export async function setupGitTestEnvironment(
-  customConfig?: Partial<Config>,
-): Promise<GitTestEnvironment> {
-  const baseEnv = await setupBaseTestEnvironment(customConfig);
+export async function setupGitTestEnvironment({
+  config: customConfig,
+  logger: customLogger,
+  useRealLogger,
+  loggerOptions,
+}: SetupEnvironmentOptions = {}): Promise<GitTestEnvironment> {
+  const baseEnv = await setupBaseTestEnvironment({
+    config: customConfig,
+    logger: customLogger,
+    useRealLogger,
+    loggerOptions,
+  });
 
   const gitService = new GitService({
     gitConfig: { ...baseEnv.config.git, cwd: baseEnv.tempDir },
@@ -143,10 +184,18 @@ export async function setupGitTestEnvironment(
   return { ...baseEnv, gitService };
 }
 
-export async function setupSecurityTestEnvironment(
-  customConfig?: Partial<Config>,
-): Promise<SecurityTestEnvironment> {
-  const baseEnv = await setupBaseTestEnvironment(customConfig);
+export async function setupSecurityTestEnvironment({
+  config: customConfig,
+  logger: customLogger,
+  useRealLogger = false,
+  loggerOptions = { silent: true },
+}: SetupEnvironmentOptions = {}): Promise<SecurityTestEnvironment> {
+  const baseEnv = await setupBaseTestEnvironment({
+    config: customConfig,
+    logger: customLogger,
+    useRealLogger,
+    loggerOptions,
+  });
 
   const securityService = new SecurityService({
     config: baseEnv.config,
@@ -156,10 +205,18 @@ export async function setupSecurityTestEnvironment(
   return { ...baseEnv, securityService };
 }
 
-export async function setupCommitTestEnvironment(
-  customConfig?: Partial<Config>,
-): Promise<CommitTestEnvironment> {
-  const baseEnv = await setupBaseTestEnvironment(customConfig);
+export async function setupCommitTestEnvironment({
+  config: customConfig,
+  logger: customLogger,
+  useRealLogger = false,
+  loggerOptions = { silent: true },
+}: SetupEnvironmentOptions = {}): Promise<CommitTestEnvironment> {
+  const baseEnv = await setupBaseTestEnvironment({
+    config: customConfig,
+    logger: customLogger,
+    useRealLogger,
+    loggerOptions,
+  });
 
   const gitService = new GitService({
     gitConfig: { ...baseEnv.config.git, cwd: baseEnv.tempDir },

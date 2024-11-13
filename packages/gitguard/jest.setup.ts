@@ -1,3 +1,5 @@
+import { jest } from "@jest/globals";
+
 // Already has the timeout for unit tests
 jest.setTimeout(5000);
 

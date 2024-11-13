@@ -7,9 +7,11 @@ import { Logger } from "../../types/logger.types.js";
 
 import {
   BasePromptTemplate,
+  LoadedPromptTemplate,
   PromptFormat,
   PromptTemplate,
   PromptType,
+  TemplateVariables,
 } from "../../types/templates.type.js";
 
 interface TemplateRegistryOptions {
@@ -18,7 +20,7 @@ interface TemplateRegistryOptions {
 }
 
 export class TemplateRegistry {
-  private readonly templates: Map<string, PromptTemplate> = new Map();
+  private readonly templates: Map<string, LoadedPromptTemplate> = new Map();
   private readonly gitRoot: string;
   private readonly logger: Logger;
   private readonly handlebars: typeof Handlebars;
@@ -43,7 +45,10 @@ export class TemplateRegistry {
     return `${type}.${format}.${file.replace(/\.(ya?ml)$/, "")}`;
   }
 
-  private async loadTemplatesFromDirectory(directory: string): Promise<void> {
+  private async loadTemplatesFromDirectory(
+    directory: string,
+    source: "project" | "global",
+  ): Promise<void> {
     try {
       const files = await fs.readdir(directory);
       const yamlFiles = files.filter(
@@ -65,16 +70,11 @@ export class TemplateRegistry {
           const templateId =
             template.id ?? this.generateTemplateId(file, template);
 
-          const completeTemplate: PromptTemplate = {
-            ...template,
-            id: templateId,
-            variables: {
-              files: [],
-              diff: "",
-              commits: [],
-              baseBranch: "main",
-            },
-          } as PromptTemplate;
+          const completeTemplate: LoadedPromptTemplate = {
+            ...(template as PromptTemplate),
+            source,
+            path: join(directory, file),
+          };
 
           this.templates.set(templateId, completeTemplate);
 
@@ -98,18 +98,25 @@ export class TemplateRegistry {
 
   public async loadTemplates(): Promise<void> {
     const templatePaths = [
-      join(this.gitRoot, ".gitguard/templates"),
-      join(homedir(), ".gitguard/templates"),
+      {
+        path: join(this.gitRoot, ".gitguard/templates"),
+        source: "project" as const,
+      },
+      {
+        path: join(homedir(), ".gitguard/templates"),
+        source: "global" as const,
+      },
     ];
 
     this.logger.debug("🔍 Searching for templates in:", templatePaths);
 
     let templatesFound = false;
     let totalYamlFiles = 0;
-    const foundPaths: string[] = [];
+    const foundPaths: Array<{ path: string; source: "project" | "global" }> =
+      [];
 
     // First pass: check which directories have template files
-    for (const path of templatePaths) {
+    for (const { path, source } of templatePaths) {
       try {
         const files = await fs.readdir(path);
         const yamlFiles = files.filter(
@@ -119,7 +126,7 @@ export class TemplateRegistry {
         if (yamlFiles.length > 0) {
           templatesFound = true;
           totalYamlFiles += yamlFiles.length;
-          foundPaths.push(path);
+          foundPaths.push({ path, source });
           this.logger.debug(
             `📁 Found ${yamlFiles.length} template files in ${path}:`,
             yamlFiles.map((f) => `\n  - ${f}`).join(""),
@@ -135,14 +142,16 @@ export class TemplateRegistry {
         "⚠️  No template files found in any search location.\n" +
           "💡 Create templates in .gitguard/templates/ to enable advanced AI features.\n" +
           "📂 Search locations:\n" +
-          templatePaths.map((p) => `   - ${p}`).join("\n"),
+          templatePaths.map((p) => `   - ${p.path}`).join("\n"),
       );
       return;
     }
 
     // Second pass: load the templates from directories that had YAML files
     await Promise.all(
-      foundPaths.map((path) => this.loadTemplatesFromDirectory(path)),
+      foundPaths.map(({ path, source }) =>
+        this.loadTemplatesFromDirectory(path, source),
+      ),
     );
 
     const loadedTemplateCount = this.templates.size;
@@ -175,7 +184,7 @@ export class TemplateRegistry {
       this.logger.debug("📊 Template statistics:", {
         total: loadedTemplateCount,
         byType: templatesByType,
-        searchPaths: foundPaths,
+        searchPaths: foundPaths.map(({ path }) => path),
         successRate,
       });
     }
@@ -184,7 +193,7 @@ export class TemplateRegistry {
   public getTemplatesForType(params: {
     type: PromptType;
     format: PromptFormat;
-  }): PromptTemplate[] {
+  }): LoadedPromptTemplate[] {
     const templates = Array.from(this.templates.values()).filter(
       (t) => t.type === params.type && t.format === params.format,
     );
@@ -198,7 +207,9 @@ export class TemplateRegistry {
     return templates;
   }
 
-  public getTemplateById(params: { id: string }): PromptTemplate | undefined {
+  public getTemplateById(params: {
+    id: string;
+  }): LoadedPromptTemplate | undefined {
     return this.templates.get(params.id);
   }
 
@@ -221,19 +232,19 @@ export class TemplateRegistry {
   public getDefaultTemplate(params: {
     type: PromptType;
     format: PromptFormat;
-  }): PromptTemplate | undefined {
+  }): LoadedPromptTemplate | undefined {
     const templates = this.getTemplatesForType(params);
     return templates[0]; // Return first template as default
   }
 
   public renderTemplate(params: {
-    template: PromptTemplate;
-    variables: PromptTemplate["variables"];
+    template: LoadedPromptTemplate;
+    variables: TemplateVariables;
   }): string {
     const { template, variables } = params;
     try {
       const compiledTemplate = this.handlebars.compile(template.template);
-      return compiledTemplate(variables);
+      return compiledTemplate({ ...variables, logger: this.logger });
     } catch (error) {
       this.logger.error("Failed to render template:", error);
       throw new Error(`Failed to render template: ${(error as Error).message}`);
@@ -250,12 +261,14 @@ export class TemplateRegistry {
     });
   }
 
-  public getAllTemplates(): PromptTemplate[] {
+  public getAllTemplates(): LoadedPromptTemplate[] {
     return Array.from(this.templates.values());
   }
 
-  public async loadDefaultTemplates(): Promise<Map<string, PromptTemplate>> {
-    const defaultTemplates = new Map<string, PromptTemplate>();
+  public async loadDefaultTemplates(): Promise<
+    Map<string, LoadedPromptTemplate>
+  > {
+    const defaultTemplates = new Map<string, LoadedPromptTemplate>();
     const templatesDir = new URL("../../templates", import.meta.url).pathname;
 
     try {
@@ -276,7 +289,7 @@ export class TemplateRegistry {
 
           const templateId =
             template.id ?? this.generateTemplateId(file, template);
-          defaultTemplates.set(templateId, template as PromptTemplate);
+          defaultTemplates.set(templateId, template as LoadedPromptTemplate);
         } catch (error) {
           this.logger.warn(
             `❌ Failed to load default template ${file}:`,
@@ -292,7 +305,7 @@ export class TemplateRegistry {
   }
 
   public async saveTemplate(params: {
-    template: PromptTemplate;
+    template: LoadedPromptTemplate;
     path: string;
   }): Promise<void> {
     const { template, path } = params;

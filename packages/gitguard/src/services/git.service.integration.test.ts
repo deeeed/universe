@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { exec } from "child_process";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
@@ -30,7 +31,7 @@ describe("GitService Integration Tests", () => {
         raw: jest.fn(),
         newLine: jest.fn(),
         table: jest.fn(),
-        isDebug: jest.fn(),
+        isDebug: jest.fn(() => false),
       },
       gitConfig: {
         cwd: tempDir,

@@ -1,11 +1,56 @@
+/**
+ * @jest-environment node
+ * @module ES2022
+ */
+import { describe, expect, it } from "@jest/globals";
 import { stringify as stringifyYaml } from "yaml";
 import {
   BaseTestEnvironment,
   setupGitTestEnvironment,
 } from "../../test/test-integration.utils.js";
-import { CommitTemplate, PromptType } from "../../types/templates.type.js";
+import {
+  CommitSplitTemplateVariables,
+  CommitTemplate,
+  CommitTemplateVariables,
+  PromptType,
+  PRTemplateVariables,
+  TemplateVariables,
+} from "../../types/templates.type.js";
 import { GitService } from "../git.service.js";
 import { TemplateRegistry } from "./template-registry.js";
+
+// Add helper function for test variables
+function createTestVariables(
+  type: PromptType,
+  params: Partial<TemplateVariables> = {},
+): TemplateVariables {
+  switch (type) {
+    case "commit":
+      return {
+        files: [],
+        diff: "",
+        packages: {},
+        originalMessage: "",
+        ...params,
+      } as CommitTemplateVariables;
+    case "split-commit":
+      return {
+        files: [],
+        diff: "",
+        message: "",
+        ...params,
+      } as CommitSplitTemplateVariables;
+    case "pr":
+    case "split-pr":
+      return {
+        files: [],
+        diff: "",
+        commits: [],
+        baseBranch: "main",
+        ...params,
+      } as PRTemplateVariables;
+  }
+}
 
 describe("TemplateRegistry Integration", () => {
   const sampleTemplate: CommitTemplate = {
@@ -19,8 +64,8 @@ describe("TemplateRegistry Integration", () => {
     variables: {
       files: [],
       diff: "",
-      commits: [],
-      baseBranch: "main",
+      originalMessage: "",
+      packages: {},
     },
   };
 
@@ -102,7 +147,7 @@ describe("TemplateRegistry Integration", () => {
 
       const result = registry.renderTemplate({
         template,
-        variables: {
+        variables: createTestVariables("commit", {
           files: [
             {
               path: "test.txt",
@@ -113,9 +158,7 @@ describe("TemplateRegistry Integration", () => {
             },
           ],
           diff: "test diff",
-          commits: [],
-          baseBranch: "main",
-        },
+        }),
       });
 
       expect(result).toContain("Changes:");

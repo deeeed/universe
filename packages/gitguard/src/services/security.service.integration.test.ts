@@ -117,7 +117,9 @@ describe("SecurityService Integration Tests", () => {
   async function setupSecurityTestEnvironment(
     customConfig?: Partial<Config>,
   ): Promise<SecurityTestEnvironment> {
-    const baseEnv = await setupBaseTestEnvironment(customConfig);
+    const baseEnv = await setupBaseTestEnvironment({
+      config: customConfig,
+    });
 
     const securityService = new SecurityService({
       config: baseEnv.config,

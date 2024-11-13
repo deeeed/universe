@@ -72,7 +72,9 @@ describe("CommitService Integration Tests", () => {
   async function setupCommitTestEnvironment(
     customConfig?: Partial<Config>,
   ): Promise<CommitTestEnvironment> {
-    const baseEnv = await setupBaseTestEnvironment(customConfig);
+    const baseEnv = await setupBaseTestEnvironment({
+      config: customConfig,
+    });
 
     const git = new GitService({
       gitConfig: { ...baseEnv.config.git, cwd: baseEnv.tempDir },
