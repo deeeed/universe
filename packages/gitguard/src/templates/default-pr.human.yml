@@ -1,6 +1,5 @@
-id: pr-description
 type: pr
-format: api
+format: human
 title: Pull Request Description
 version: "1.0"
 ai:

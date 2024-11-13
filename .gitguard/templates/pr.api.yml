@@ -1,39 +1,11 @@
-id: pr-description
-type: pr
-format: api
-title: Pull Request Description
-version: "1.0"
-ai:
-  provider: openai
-  model: gpt-4
-template: |
-  Generate a detailed pull request description for the following changes.
-  
-  Base Branch: {{baseBranch}}
-  
-  Commits:
-  {{#each commits}}
-  - {{this.hash}}: {{this.message}}
-  {{/each}}
-  
-  Files changed:
-  {{#each files}}
-  - {{this.path}} ({{this.changeType}})
-  {{/each}}
-  
-  Diff:
-  {{diff}}
-  
-  {{#if options.includeTesting}}
-  Include testing instructions.
-  {{/if}}
-  
-  {{#if options.includeChecklist}}
-  Include a review checklist.
-  {{/if}}
-  
-  Respond with a JSON object in this format:
-  {
-    "title": "PR title",
-    "description": "Detailed PR description with markdown formatting"
-  } 
+{
+  "type": "pr",
+  "format": "api",
+  "title": "Pull Request Description",
+  "version": "1.0",
+  "ai": {
+    "provider": "openai",
+    "model": "gpt-4"
+  },
+  "template": "Generate a Pull Request description that clearly explains these changes:\n\nBase Branch: {{baseBranch}}\n\nCommits:\n{{#each commits}}\n- {{this.hash}}: {{this.message}}\n{{/each}}\n\nFiles Changed:\n{{#each files}}\n- {{this.path}} (+{{this.additions}} -{{this.deletions}})\n{{/each}}\n\n{{#if diff}}\nKey Changes:\n```diff\n{{diff}}\n```\n{{/if}}\n\n{{#if template}}\nFollow this PR template structure:\n{{template}}\n{{/if}}\n\nPlease provide suggestions in this JSON format:\n{\n  \"title\": \"concise and descriptive PR title\",\n  \"description\": \"detailed description explaining the changes\",\n  \"breaking\": \"boolean\",\n  \"branchName\": \"suggested-branch-name\",\n  \"commands\": [\n    \"git command to create and switch to the branch\",\n    \"git command to push the branch\",\n    \"git command to create PR (if applicable)\"\n  ]\n  {{#if options.includeTesting}},\n  \"testing\": \"specific testing scenarios and instructions\"\n  {{/if}}\n  {{#if options.includeChecklist}},\n  \"checklist\": [\n    \"implementation tasks\",\n    \"testing requirements\",\n    \"documentation needs\"\n  ]\n  {{/if}}\n}\n\nGuidelines:\n1. Title: Use clear, concise language following conventional commit format\n2. Description: \n   - Explain the purpose and impact of changes\n   - Highlight architectural decisions\n   - Note API changes or breaking changes\n   - Include migration steps if needed\n3. Focus on technical impact and implementation details\n4. Avoid listing commit hashes or file paths\n5. Provide a kebab-case branch name that reflects the changes\n6. Include exact git commands to execute the changes\n{{#if template}}\n7. Follow the provided template structure\n{{/if}} \n"
+}

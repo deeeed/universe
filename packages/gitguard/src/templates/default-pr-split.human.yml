@@ -1,0 +1,47 @@
+type: split-pr
+format: human
+title: PR Split Suggestions
+version: "1.0"
+ai:
+  provider: openai
+  model: gpt-4
+template: |
+  Analyze these git changes and determine if they should be split into multiple commits. If the changes are cohesive and make sense together, return empty suggestions.
+
+  Files Changed:
+  {{#each files}}
+  - {{this.path}} (+{{this.additions}} -{{this.deletions}})
+  {{/each}}
+
+  Original message: "{{message}}"
+
+  Git diff:
+  ```diff
+  {{diff}}
+  ```
+
+  Please provide analysis in this JSON format:
+  {
+    "reason": "explanation why changes should be split OR why they work well together (max 100 chars)",
+    "suggestions": [
+      {
+        "message": "conventional commit message",
+        "files": ["list of files"],
+        "order": 1,
+        "type": "commit type (feat|fix|refactor|etc)",
+        "scope": "affected component or area"
+      }
+    ],
+    "commands": [
+      "git commands to execute the split"
+    ]
+  }
+
+  Guidelines:
+  1. If changes are cohesive (e.g., single feature, related components), return empty suggestions array
+  2. Only suggest splits for truly separate concerns or unrelated changes
+  3. Keep related changes together (e.g., component + its types + its tests)
+  4. Follow conventional commits format
+  5. Order suggestions by importance (1 being most important)
+  6. Consider package boundaries in monorepo setups
+  7. Provide clear reasoning whether splitting or keeping together

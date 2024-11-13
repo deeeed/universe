@@ -1,70 +1,11 @@
-id: commit-conventional-human
-type: commit
-format: human
-title: "Conventional Commit Guide (Human)"
-version: "1.0"
-ai:
-  provider: openai
-  model: gpt-4
-template: |
-  You are a helpful AI assistant specializing in Git commits. Please help me create a good commit message for the following changes:
-
-  Context:
-  Files Changed:
-  {{#each files}}
-  - {{this.path}} (+{{this.additions}} -{{this.deletions}})
-  {{/each}}
-
-  {{#if stats}}
-  Package Changes:
-  {{#each stats.packages}}
-  - {{@key}}: {{this.files.length}} files ({{this.changes}} changes)
-  {{/each}}
-  {{/if}}
-
-  {{#if message}}
-  Original commit message draft:
-  {{message}}
-  {{/if}}
-
-  {{#if complexity}}
-  Complexity Analysis:
-  - Score: {{complexity.score}}
-  - Reasons: {{complexity.reasons}}
-  {{/if}}
-
-  {{#if scope}}
-  Suggested scope: {{scope}}
-  {{/if}}
-
-  {{#if includeDetails}}
-  Note: These changes are complex and would benefit from a detailed explanation.
-  {{/if}}
-
-  Changes:
-  ```diff
-  {{diff}}
-  ```
-
-  Please suggest a commit message following the Conventional Commits format (https://www.conventionalcommits.org/). 
-  The message should include:
-  1. Type (feat, fix, docs, style, refactor, test, chore)
-  2. Optional scope in parentheses
-  3. Clear, concise description
-  4. Optional detailed explanation for complex changes
-
-  Respond with:
-  1. Your reasoning for the suggested message
-  2. The complete commit message
-  3. The command to copy (no formatting, quotes, or backticks)
-
-  Example response format:
-  Reasoning: [your explanation]
-
-  Suggested message:
-  [complete commit message]
-
-  Command to copy:
-  git commit -m "type(scope): title" -m $'detailed message line 1\n• point 1\n• point 2\n• point 3'
-
-  Note: The command must use $'string' syntax with \n for newlines to create a properly formatted multi-line commit message. 
+{
+  "type": "commit",
+  "format": "human",
+  "title": "Conventional Commit Guide (Human)",
+  "version": "1.0",
+  "ai": {
+    "provider": "openai",
+    "model": "gpt-4"
+  },
+  "template": "You are a helpful AI assistant specializing in Git commits. Please help me create a good commit message for the following changes:\n\nContext:\nFiles Changed:\n{{#each files}}\n- {{this.path}} (+{{this.additions}} -{{this.deletions}})\n{{/each}}\n\n{{#if stats}}\nPackage Changes:\n{{#each stats.packages}}\n- {{@key}}: {{this.files.length}} files ({{this.changes}} changes)\n{{/each}}\n{{/if}}\n\n{{#if message}}\nOriginal commit message draft:\n{{message}}\n{{/if}}\n\n{{#if complexity}}\nComplexity Analysis:\n- Score: {{complexity.score}}\n- Reasons: {{complexity.reasons}}\n{{/if}}\n\n{{#if scope}}\nSuggested scope: {{scope}}\n{{/if}}\n\n{{#if includeDetails}}\nNote: These changes are complex and would benefit from a detailed explanation.\n{{/if}}\n\nChanges:\n```diff\n{{diff}}\n```\n\nPlease suggest a commit message following the Conventional Commits format (https://www.conventionalcommits.org/). \nThe message should include:\n1. Type (feat, fix, docs, style, refactor, test, chore)\n2. Optional scope in parentheses\n3. Clear, concise description\n4. Optional detailed explanation for complex changes\n\nRespond with:\n1. Your reasoning for the suggested message\n2. The complete commit message\n3. The command to copy (no formatting, quotes, or backticks)\n\nExample response format:\nReasoning: [your explanation]\n\nSuggested message:\n[complete commit message]\n\nCommand to copy:\ngit commit -m \"type(scope): title\" -m $'detailed message line 1\\n• point 1\\n• point 2\\n• point 3'\n\nNote: The command must use $'string' syntax with \\n for newlines to create a properly formatted multi-line commit message. \n"
+}

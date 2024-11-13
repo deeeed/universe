@@ -1,0 +1,11 @@
+{
+  "type": "commit-split",
+  "format": "human",
+  "title": "Conventional Commit Split",
+  "version": "1.0",
+  "ai": {
+    "provider": "openai",
+    "model": "gpt-4"
+  },
+  "template": "Analyze these git changes and suggest commit messages following conventional commits format.\n\nFiles Changed:\n{{#each files}}\n- {{this.path}} (+{{this.additions}} -{{this.deletions}})\n{{/each}}\n\n{{#if stats}}\nPackage Changes:\n{{#each stats.packages}}\n- {{@key}}: {{this.files.length}} files ({{this.changes}} changes)\n{{/each}}\n{{/if}}\n\n{{#if scope}}\nValid scope: \"{{scope}}\"\n{{else}}\nNo specific scope detected\n{{/if}}\n\n{{#if message}}\nOriginal message: \"{{message}}\"\n{{/if}}\n\n{{#if complexity}}\nComplexity Analysis:\n- Score: {{complexity.score}}\n- Reasons: {{complexity.reasons}}\n{{/if}}\n\n{{#if includeDetails}}\nPlease provide a bullet-point summary in the details field that includes:\n• Main architectural/structural changes\n• Key features added/removed\n• Important refactoring decisions\n• Breaking changes (if any)\n• Impact on existing functionality\n{{else}}\nDetails field is optional for this commit\n{{/if}}\n\nGit diff:\n```diff\n{{diff}}\n```\n\nPlease provide suggestions in this JSON format:\n{\n  \"suggestions\": [\n    {\n      \"title\": \"short descriptive title without scope or type\",\n      \"message\": \"detailed explanation of the changes\",\n      \"type\": \"commit type (feat|fix|docs|style|refactor|test|chore)\"\n    }\n  ]\n}\n\nGuidelines:\n1. Follow conventional commits format: type(scope): description\n2. Be specific about the changes\n3. Keep descriptions concise but informative\n4. Only use the provided scope if one is specified\n5. Use appropriate type based on the changes\n6. {{#if includeDetails}}Include detailed commit information in the details field{{else}}Details field is optional{{/if}}\n7. The \"title\" field should contain only the description without type or scope\n"
+}

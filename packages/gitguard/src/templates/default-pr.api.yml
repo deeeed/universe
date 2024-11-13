@@ -1,4 +1,3 @@
-id: pr-description
 type: pr
 format: api
 title: Pull Request Description
@@ -7,33 +6,66 @@ ai:
   provider: openai
   model: gpt-4
 template: |
-  Generate a detailed pull request description for the following changes.
-  
+  Generate a Pull Request description that clearly explains these changes:
+
   Base Branch: {{baseBranch}}
-  
+
   Commits:
   {{#each commits}}
   - {{this.hash}}: {{this.message}}
   {{/each}}
-  
-  Files changed:
+
+  Files Changed:
   {{#each files}}
-  - {{this.path}} ({{this.changeType}})
+  - {{this.path}} (+{{this.additions}} -{{this.deletions}})
   {{/each}}
-  
-  Diff:
+
+  {{#if diff}}
+  Key Changes:
+  ```diff
   {{diff}}
-  
-  {{#if options.includeTesting}}
-  Include testing instructions.
+  ```
   {{/if}}
-  
-  {{#if options.includeChecklist}}
-  Include a review checklist.
+
+  {{#if template}}
+  Follow this PR template structure:
+  {{template}}
   {{/if}}
-  
-  Respond with a JSON object in this format:
+
+  Please provide suggestions in this JSON format:
   {
-    "title": "PR title",
-    "description": "Detailed PR description with markdown formatting"
-  } 
+    "title": "concise and descriptive PR title",
+    "description": "detailed description explaining the changes",
+    "breaking": "boolean",
+    "branchName": "suggested-branch-name",
+    "commands": [
+      "git command to create and switch to the branch",
+      "git command to push the branch",
+      "git command to create PR (if applicable)"
+    ]
+    {{#if options.includeTesting}},
+    "testing": "specific testing scenarios and instructions"
+    {{/if}}
+    {{#if options.includeChecklist}},
+    "checklist": [
+      "implementation tasks",
+      "testing requirements",
+      "documentation needs"
+    ]
+    {{/if}}
+  }
+
+  Guidelines:
+  1. Title: Use clear, concise language following conventional commit format
+  2. Description: 
+     - Explain the purpose and impact of changes
+     - Highlight architectural decisions
+     - Note API changes or breaking changes
+     - Include migration steps if needed
+  3. Focus on technical impact and implementation details
+  4. Avoid listing commit hashes or file paths
+  5. Provide a kebab-case branch name that reflects the changes
+  6. Include exact git commands to execute the changes
+  {{#if template}}
+  7. Follow the provided template structure
+  {{/if}} 

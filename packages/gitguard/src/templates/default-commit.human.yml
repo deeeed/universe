@@ -1,4 +1,3 @@
-id: commit-conventional-human
 type: commit
 format: human
 title: "Conventional Commit Guide (Human)"

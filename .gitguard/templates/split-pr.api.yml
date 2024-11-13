@@ -1,37 +1,12 @@
-id: pr-split-suggestion
-type: split-pr
-format: api
-title: PR Split Suggestions
-version: "1.0"
-ai:
-  provider: openai
-  model: gpt-4
-template: |
-  Analyze the following changes and suggest how to split them into multiple focused pull requests.
-  
-  Base Branch: {{baseBranch}}
-  
-  Commits:
-  {{#each commits}}
-  - {{this.hash}}: {{this.message}}
-  {{/each}}
-  
-  Files changed:
-  {{#each files}}
-  - {{this.path}} ({{this.changeType}})
-  {{/each}}
-  
-  Diff:
-  {{diff}}
-  
-  Respond with a JSON object in this format:
-  {
-    "suggestions": [
-      {
-        "title": "Suggested PR title",
-        "description": "Why these changes should be grouped",
-        "files": ["file/path1", "file/path2"]
-      }
-    ],
-    "reasoning": "Explanation of the suggested split"
-  } 
+{
+  "id": "pr-split-suggestion",
+  "type": "split-pr",
+  "format": "api",
+  "title": "PR Split Suggestions",
+  "version": "1.0",
+  "ai": {
+    "provider": "openai",
+    "model": "gpt-4"
+  },
+  "template": "Analyze these changes and suggest how to split them into multiple PRs:\n\nBase Branch: {{baseBranch}}\n\nCommits:\n{{#each commits}}\n- {{this.hash}}: {{this.message}}\n{{/each}}\n\nFiles Changed:\n{{#each files}}\n- {{this.path}} (+{{this.additions}} -{{this.deletions}})\n{{/each}}\n\n{{#if diff}}\nKey Changes:\n```diff\n{{diff}}\n```\n{{/if}}\n\nPlease provide split suggestions in this JSON format:\n{\n  \"reason\": \"explanation why the changes should be split\",\n  \"suggestedPRs\": [\n    {\n      \"title\": \"descriptive PR title\",\n      \"description\": \"detailed description of changes\",\n      \"files\": [\"list\", \"of\", \"files\"],\n      \"order\": 1,\n      \"baseBranch\": \"branch to base PR on\",\n      \"dependencies\": [\"list of PR numbers this depends on\"]\n    }\n  ],\n  \"commands\": [\"git commands to execute the split\"]\n}\n\nGuidelines:\n1. Split by logical units of work\n2. Keep related changes together\n3. Consider package boundaries\n4. Maintain dependency order\n5. Follow conventional commit format for titles\n6. Include clear git commands for implementation\n"
+}

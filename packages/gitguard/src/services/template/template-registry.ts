@@ -253,4 +253,57 @@ export class TemplateRegistry {
   public getAllTemplates(): PromptTemplate[] {
     return Array.from(this.templates.values());
   }
+
+  public async loadDefaultTemplates(): Promise<Map<string, PromptTemplate>> {
+    const defaultTemplates = new Map<string, PromptTemplate>();
+    const templatesDir = new URL("../../templates", import.meta.url).pathname;
+
+    try {
+      const files = await fs.readdir(templatesDir);
+      const yamlFiles = files.filter(
+        (f) => f.endsWith(".yml") || f.endsWith(".yaml"),
+      );
+
+      for (const file of yamlFiles) {
+        try {
+          const content = await fs.readFile(join(templatesDir, file), "utf-8");
+          const template = parseYaml(content) as BasePromptTemplate;
+
+          if (!template.type || !template.template) {
+            this.logger.warn(`⚠️  Invalid default template in ${file}`);
+            continue;
+          }
+
+          const templateId =
+            template.id ?? this.generateTemplateId(file, template);
+          defaultTemplates.set(templateId, template as PromptTemplate);
+        } catch (error) {
+          this.logger.warn(
+            `❌ Failed to load default template ${file}:`,
+            error,
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.error("Failed to load default templates:", error);
+    }
+
+    return defaultTemplates;
+  }
+
+  public async saveTemplate(params: {
+    template: PromptTemplate;
+    path: string;
+  }): Promise<void> {
+    const { template, path } = params;
+    const filename = `${template.type}.${template.format}.yml`;
+    const filePath = join(path, filename);
+
+    try {
+      await fs.writeFile(filePath, JSON.stringify(template, null, 2));
+    } catch (error) {
+      this.logger.error(`Failed to save template ${filename}:`, error);
+      throw error;
+    }
+  }
 }

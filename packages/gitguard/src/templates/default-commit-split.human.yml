@@ -1,7 +1,6 @@
-id: commit-conventional
-type: commit
-format: api
-title: Conventional Commit Format
+type: commit-split
+format: human
+title: Conventional Commit Split
 version: "1.0"
 ai:
   provider: openai

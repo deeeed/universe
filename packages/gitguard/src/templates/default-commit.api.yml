@@ -1,4 +1,3 @@
-id: commit-conventional
 type: commit
 format: api
 title: Conventional Commit Format
@@ -14,12 +13,10 @@ template: |
   - {{this.path}} (+{{this.additions}} -{{this.deletions}})
   {{/each}}
 
-  {{#if stats}}
   Package Changes:
-  {{#each stats.packages}}
-  - {{@key}}: {{this.files.length}} files ({{this.changes}} changes)
+  {{#each packages}}
+  - {{@key}}: {{this.length}} files ({{sum this "additions" "deletions"}} changes)
   {{/each}}
-  {{/if}}
 
   {{#if scope}}
   Valid scope: "{{scope}}"
@@ -27,9 +24,7 @@ template: |
   No specific scope detected
   {{/if}}
 
-  {{#if message}}
   Original message: "{{message}}"
-  {{/if}}
 
   {{#if complexity}}
   Complexity Analysis:

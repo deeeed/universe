@@ -1,0 +1,11 @@
+{
+  "type": "pr",
+  "format": "human",
+  "title": "Pull Request Description",
+  "version": "1.0",
+  "ai": {
+    "provider": "openai",
+    "model": "gpt-4"
+  },
+  "template": "Generate a detailed pull request description for the following changes.\n\nBase Branch: {{baseBranch}}\n\nCommits:\n{{#each commits}}\n- {{this.hash}}: {{this.message}}\n{{/each}}\n\nFiles changed:\n{{#each files}}\n- {{this.path}} ({{this.changeType}})\n{{/each}}\n\nDiff:\n{{diff}}\n\n{{#if options.includeTesting}}\nInclude testing instructions.\n{{/if}}\n\n{{#if options.includeChecklist}}\nInclude a review checklist.\n{{/if}}\n\nRespond with a JSON object in this format:\n{\n  \"title\": \"PR title\",\n  \"description\": \"Detailed PR description with markdown formatting\"\n} \n"
+}

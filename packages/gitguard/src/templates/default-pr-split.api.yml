@@ -1,0 +1,53 @@
+id: pr-split-suggestion
+type: split-pr
+format: api
+title: PR Split Suggestions
+version: "1.0"
+ai:
+  provider: openai
+  model: gpt-4
+template: |
+  Analyze these changes and suggest how to split them into multiple PRs:
+
+  Base Branch: {{baseBranch}}
+
+  Commits:
+  {{#each commits}}
+  - {{this.hash}}: {{this.message}}
+  {{/each}}
+
+  Files Changed:
+  {{#each files}}
+  - {{this.path}} (+{{this.additions}} -{{this.deletions}})
+  {{/each}}
+
+  {{#if diff}}
+  Key Changes:
+  ```diff
+  {{diff}}
+  ```
+  {{/if}}
+
+  Please provide split suggestions in this JSON format:
+  {
+    "reason": "explanation why the changes should be split",
+    "suggestedPRs": [
+      {
+        "title": "descriptive PR title",
+        "description": "detailed description of changes",
+        "files": ["list", "of", "files"],
+        "order": 1,
+        "baseBranch": "branch to base PR on",
+        "dependencies": ["list of PR numbers this depends on"]
+      }
+    ],
+    "commands": ["git commands to execute the split"]
+  }
+
+  Guidelines:
+  1. Split by logical units of work
+  2. Keep related changes together
+  3. Consider package boundaries
+  4. Maintain dependency order
+  5. Follow conventional commit format for titles
+  6. Include clear git commands for implementation

@@ -1,0 +1,11 @@
+{
+  "type": "split-pr",
+  "format": "human",
+  "title": "PR Split Suggestions",
+  "version": "1.0",
+  "ai": {
+    "provider": "openai",
+    "model": "gpt-4"
+  },
+  "template": "Analyze these git changes and determine if they should be split into multiple commits. If the changes are cohesive and make sense together, return empty suggestions.\n\nFiles Changed:\n{{#each files}}\n- {{this.path}} (+{{this.additions}} -{{this.deletions}})\n{{/each}}\n\nOriginal message: \"{{message}}\"\n\nGit diff:\n```diff\n{{diff}}\n```\n\nPlease provide analysis in this JSON format:\n{\n  \"reason\": \"explanation why changes should be split OR why they work well together (max 100 chars)\",\n  \"suggestions\": [\n    {\n      \"message\": \"conventional commit message\",\n      \"files\": [\"list of files\"],\n      \"order\": 1,\n      \"type\": \"commit type (feat|fix|refactor|etc)\",\n      \"scope\": \"affected component or area\"\n    }\n  ],\n  \"commands\": [\n    \"git commands to execute the split\"\n  ]\n}\n\nGuidelines:\n1. If changes are cohesive (e.g., single feature, related components), return empty suggestions array\n2. Only suggest splits for truly separate concerns or unrelated changes\n3. Keep related changes together (e.g., component + its types + its tests)\n4. Follow conventional commits format\n5. Order suggestions by importance (1 being most important)\n6. Consider package boundaries in monorepo setups\n7. Provide clear reasoning whether splitting or keeping together\n"
+}
