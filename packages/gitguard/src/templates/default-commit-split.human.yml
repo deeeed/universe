@@ -1,0 +1,74 @@
+id: commit-conventional
+type: commit
+format: api
+title: Conventional Commit Format
+version: "1.0"
+ai:
+  provider: openai
+  model: gpt-4
+template: |
+  Analyze these git changes and suggest commit messages following conventional commits format.
+
+  Files Changed:
+  {{#each files}}
+  - {{this.path}} (+{{this.additions}} -{{this.deletions}})
+  {{/each}}
+
+  {{#if stats}}
+  Package Changes:
+  {{#each stats.packages}}
+  - {{@key}}: {{this.files.length}} files ({{this.changes}} changes)
+  {{/each}}
+  {{/if}}
+
+  {{#if scope}}
+  Valid scope: "{{scope}}"
+  {{else}}
+  No specific scope detected
+  {{/if}}
+
+  {{#if message}}
+  Original message: "{{message}}"
+  {{/if}}
+
+  {{#if complexity}}
+  Complexity Analysis:
+  - Score: {{complexity.score}}
+  - Reasons: {{complexity.reasons}}
+  {{/if}}
+
+  {{#if includeDetails}}
+  Please provide a bullet-point summary in the details field that includes:
+  • Main architectural/structural changes
+  • Key features added/removed
+  • Important refactoring decisions
+  • Breaking changes (if any)
+  • Impact on existing functionality
+  {{else}}
+  Details field is optional for this commit
+  {{/if}}
+
+  Git diff:
+  ```diff
+  {{diff}}
+  ```
+
+  Please provide suggestions in this JSON format:
+  {
+    "suggestions": [
+      {
+        "title": "short descriptive title without scope or type",
+        "message": "detailed explanation of the changes",
+        "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
+      }
+    ]
+  }
+
+  Guidelines:
+  1. Follow conventional commits format: type(scope): description
+  2. Be specific about the changes
+  3. Keep descriptions concise but informative
+  4. Only use the provided scope if one is specified
+  5. Use appropriate type based on the changes
+  6. {{#if includeDetails}}Include detailed commit information in the details field{{else}}Details field is optional{{/if}}
+  7. The "title" field should contain only the description without type or scope

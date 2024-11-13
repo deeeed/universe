@@ -53,16 +53,27 @@ GitGuard's template system provides type-safe, discoverable templates for AI ope
 
 2. Default Template Structure:
    ```
-   templates/
-     commit/
-       default.api.yaml    # JSON output
-       default.human.yaml  # Text output
-     pr/
-       default.api.yaml
-       default.human.yaml
-     split/
-       commit.api.yaml
-       pr.api.yaml
+   .gitguard/templates/
+     commit.api.yml         # API format commit suggestions
+     commit.human.yml       # Human-readable commit guide
+     pr.api.yml            # API format PR descriptions
+     split-commit.api.yml  # Commit split suggestions
+     split-pr.api.yml      # PR split suggestions
+   ```
+
+   Each template follows this structure:
+   ```yaml
+   id: unique-template-id
+   type: commit|pr|split-commit|split-pr
+   format: api|human
+   title: "Human readable title"
+   version: "1.0"
+   ai:
+     provider: openai
+     model: gpt-4
+     systemPrompt: "Role description"
+   template: |
+     The actual template content
    ```
 
 3. Integration Tasks:

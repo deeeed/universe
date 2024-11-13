@@ -6,6 +6,7 @@ import { parse as parseYaml } from "yaml";
 import { Logger } from "../../types/logger.types.js";
 
 import {
+  BasePromptTemplate,
   PromptFormat,
   PromptTemplate,
   PromptType,
@@ -17,7 +18,7 @@ interface TemplateRegistryOptions {
 }
 
 export class TemplateRegistry {
-  private templates: Map<string, PromptTemplate> = new Map();
+  private readonly templates: Map<string, PromptTemplate> = new Map();
   private readonly gitRoot: string;
   private readonly logger: Logger;
   private readonly handlebars: typeof Handlebars;
@@ -33,6 +34,15 @@ export class TemplateRegistry {
     });
   }
 
+  private generateTemplateId(
+    file: string,
+    template: Partial<PromptTemplate>,
+  ): string {
+    const type = template.type ?? file.split(".")[0];
+    const format = template.format ?? file.split(".")[1] ?? "api";
+    return `${type}.${format}.${file.replace(/\.(ya?ml)$/, "")}`;
+  }
+
   private async loadTemplatesFromDirectory(directory: string): Promise<void> {
     try {
       const files = await fs.readdir(directory);
@@ -43,20 +53,35 @@ export class TemplateRegistry {
       for (const file of yamlFiles) {
         try {
           const content = await fs.readFile(join(directory, file), "utf-8");
-          const template = parseYaml(content) as PromptTemplate;
+          const template = parseYaml(content) as BasePromptTemplate;
 
-          if (!template.id || !template.type || !template.template) {
+          if (!template.type || !template.template) {
             this.logger.warn(
-              `⚠️  Invalid template in ${file}: missing required fields (id, type, or template)`,
+              `⚠️  Invalid template in ${file}: missing required fields (type or template)`,
             );
             continue;
           }
 
-          this.templates.set(template.id, template);
+          const templateId =
+            template.id ?? this.generateTemplateId(file, template);
+
+          const completeTemplate: PromptTemplate = {
+            ...template,
+            id: templateId,
+            variables: {
+              files: [],
+              diff: "",
+              commits: [],
+              baseBranch: "main",
+            },
+          } as PromptTemplate;
+
+          this.templates.set(templateId, completeTemplate);
+
           this.logger.debug(
-            `📝 Loaded template "${template.title ?? template.id}"`,
+            `📝 Loaded template "${template.title ?? templateId}"`,
             {
-              id: template.id,
+              id: templateId,
               type: template.type,
               format: template.format,
               version: template.version,
@@ -223,5 +248,9 @@ export class TemplateRegistry {
     this.handlebars.registerHelper("includes", function (arr, value) {
       return Array.isArray(arr) && arr.includes(value);
     });
+  }
+
+  public getAllTemplates(): PromptTemplate[] {
+    return Array.from(this.templates.values());
   }
 }

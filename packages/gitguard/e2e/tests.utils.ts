@@ -4,7 +4,14 @@ import { tmpdir } from "os";
 import { dirname, join } from "path";
 import { main } from "../src/cli/gitguard.js";
 import { LoggerService } from "../src/services/logger.service.js";
-import { RepoState, TestResult, TestScenario } from "./tests.types.js";
+import { execGit } from "../src/utils/git.util.js";
+import {
+  ExpectedResult,
+  RepoState,
+  TestResult,
+  TestScenario,
+} from "./tests.types.js";
+import { existsSync } from "fs";
 
 function execGitCommand(command: string, cwd: string): string {
   return execSync(command, {
@@ -83,6 +90,140 @@ async function captureRepoState(testDir: string): Promise<RepoState> {
     files: await Promise.all(files),
     config,
   };
+}
+
+interface GitStatus {
+  staged: string[];
+  unstaged: string[];
+  untracked: string[];
+}
+
+// Update getGitStatus with proper typing
+async function getGitStatus(dir: string): Promise<GitStatus> {
+  const output = await execGit({
+    command: "status",
+    args: ["--porcelain"],
+    cwd: dir,
+  });
+
+  const lines = output.split("\n").filter((line: string) => line.length > 0);
+
+  return {
+    staged: lines
+      .filter((line: string) => line.startsWith("M ") || line.startsWith("A "))
+      .map((line: string) => line.slice(3)),
+    unstaged: lines
+      .filter((line: string) => line.startsWith(" M") || line.startsWith(" D"))
+      .map((line: string) => line.slice(3)),
+    untracked: lines
+      .filter((line: string) => line.startsWith("??"))
+      .map((line: string) => line.slice(3)),
+  };
+}
+
+/**
+ * Verifies that the test directory matches the expected result
+ */
+export async function verifyExpectedResult({
+  testDir,
+  expected,
+  logger,
+}: {
+  testDir: string;
+  expected: ExpectedResult;
+  logger: LoggerService;
+}): Promise<void> {
+  await verifyFiles(testDir, expected.files, logger);
+  await verifyGitState(testDir, expected.git, logger);
+}
+
+/**
+ * Verifies that files match the expected state
+ */
+async function verifyFiles(
+  testDir: string,
+  expectedFiles: ExpectedResult["files"],
+  logger: LoggerService,
+): Promise<void> {
+  if (!expectedFiles) {
+    return;
+  }
+
+  for (const file of expectedFiles) {
+    const fullPath = join(testDir, file.path);
+    const exists = existsSync(fullPath);
+    logger.debug(`Checking file ${file.path}, exists: ${exists}`);
+
+    if (file.exists && !exists) {
+      throw new Error(`Expected file ${file.path} to exist`);
+    }
+
+    if (!file.exists && exists) {
+      throw new Error(`Expected file ${file.path} to not exist`);
+    }
+
+    if (exists && file.content) {
+      const content = await readFile(fullPath, "utf-8");
+      verifyFileContent(file.path, content, file.content);
+    }
+  }
+}
+
+/**
+ * Verifies file content matches expected content
+ */
+function verifyFileContent(
+  filepath: string,
+  actual: string,
+  expected: string | RegExp,
+): void {
+  if (expected instanceof RegExp) {
+    if (!expected.test(actual)) {
+      throw new Error(
+        `File ${filepath} content does not match expected pattern`,
+      );
+    }
+  } else if (actual !== expected) {
+    throw new Error(`File ${filepath} content does not match expected content`);
+  }
+}
+
+/**
+ * Verifies git files match expected state
+ */
+function verifyGitFiles(
+  type: string,
+  actual: string[],
+  expected?: string[],
+): void {
+  if (!expected) {
+    return;
+  }
+
+  const missing = expected.filter((f) => !actual.includes(f));
+  if (missing.length > 0) {
+    throw new Error(`Missing ${type} files: ${missing.join(", ")}`);
+  }
+}
+
+/**
+ * Verifies git state matches expected state
+ */
+async function verifyGitState(
+  testDir: string,
+  expectedGit: ExpectedResult["git"],
+  logger: LoggerService,
+): Promise<void> {
+  if (!expectedGit?.status) {
+    return;
+  }
+
+  const status = await getGitStatus(testDir);
+  logger.debug("Current git status:", status);
+
+  verifyGitFiles("staged", status.staged, expectedGit.status.staged);
+  verifyGitFiles("unstaged", status.unstaged, expectedGit.status.unstaged);
+  verifyGitFiles("untracked", status.untracked, expectedGit.status.untracked);
 }
 
 async function setupTestRepo(
