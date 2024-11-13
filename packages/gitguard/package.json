@@ -72,11 +72,13 @@
     "@octokit/rest": "^21.0.2",
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
+    "handlebars": "^4.7.8",
     "inquirer": "^12.0.1",
     "js-tiktoken": "^1.0.15",
     "jsonc-parser": "^3.3.1",
     "minimatch": "^10.0.1",
-    "openai": "^4.70.2"
+    "openai": "^4.70.2",
+    "yaml": "^2.6.0"
   },
   "devDependencies": {
     "@jest/types": "^29.6.3",

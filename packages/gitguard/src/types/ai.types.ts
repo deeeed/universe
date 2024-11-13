@@ -2,9 +2,10 @@ import { CommitComplexity, FilesByType } from "./analysis.types.js";
 
 // types/ai.types.ts
 export interface BaseAIOptions {
-  temperature?: number;
-  maxTokens?: number;
-  customPrompt?: string;
+  temperature?: number; // e.g., 0.7
+  maxTokens?: number; // e.g., 4000
+  systemPrompt: string; // e.g., "You are a git commit message assistant..."
+  userPrompt?: string; // e.g., "Focus on security implications..."
 }
 
 // Add new interface

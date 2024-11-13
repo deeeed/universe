@@ -1,7 +1,7 @@
 // types/config.types.ts
 
-import { Severity } from "./security.types.js";
 import { ComplexityOptions } from "./analysis.types.js";
+import { Severity } from "./security.types.js";
 
 export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
@@ -96,7 +96,6 @@ export interface PRConfig {
   requireApprovals: number;
 }
 
-// Main config with required fields
 export interface Config {
   git: GitConfig;
   analysis: AnalysisConfig;
@@ -105,6 +104,9 @@ export interface Config {
   security: SecurityConfig;
   ai: AIConfig;
   pr: PRConfig;
+  templates?: {
+    paths?: string[];
+  };
 }
 
 // Partial config type for user input
