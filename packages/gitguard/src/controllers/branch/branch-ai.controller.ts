@@ -6,6 +6,7 @@ import {
 import { GitService } from "../../services/git.service.js";
 import { GitHubService } from "../../services/github.service.js";
 import { PRService } from "../../services/pr.service.js";
+import { TemplateRegistry } from "../../services/template/template-registry.js";
 import { AIProvider } from "../../types/ai.types.js";
 import {
   PRAnalysisResult,
@@ -32,6 +33,12 @@ interface BranchAIControllerParams {
   github: GitHubService;
   git: GitService;
   config: Config;
+  templateRegistry: TemplateRegistry;
+}
+
+interface PRTemplate {
+  title: string;
+  description: string;
 }
 
 export class BranchAIController {
@@ -41,6 +48,7 @@ export class BranchAIController {
   private readonly github: GitHubService;
   private readonly git: GitService;
   private readonly config: Config;
+  private readonly templateRegistry: TemplateRegistry;
 
   constructor({
     logger,
@@ -49,6 +57,7 @@ export class BranchAIController {
     github,
     git,
     config,
+    templateRegistry,
   }: BranchAIControllerParams) {
     this.logger = logger;
     this.ai = ai;
@@ -56,6 +65,7 @@ export class BranchAIController {
     this.github = github;
     this.git = git;
     this.config = config;
+    this.templateRegistry = templateRegistry;
   }
 
   private async generatePrompt(
@@ -129,6 +139,7 @@ export class BranchAIController {
       config: this.config,
       ai: this.ai,
       logger: this.logger,
+      templateRegistry: this.templateRegistry,
     });
 
     this.logger.info(
@@ -143,11 +154,12 @@ export class BranchAIController {
     );
     const tokenUsage = this.ai.calculateTokenUsage({ prompt });
 
-    return handleAIAction({
+    return handleAIAction<PRAnalysisResult>({
       prompt,
       humanFriendlyPrompt,
       tokenUsage,
       generateLabel: "Generate PR description",
+      type: "pr",
       actionHandler: async (action) => {
         if (action === "generate") {
           return this.handlePRGeneration(analysisResult, prompt);
@@ -157,6 +169,17 @@ export class BranchAIController {
       config: this.config,
       logger: this.logger,
       ai: this.ai,
+      templateRegistry: this.templateRegistry,
+      context: {
+        files: analysisResult.files,
+        diff: bestDiff.content,
+        commits: analysisResult.commits,
+        baseBranch: analysisResult.baseBranch,
+        options: {
+          includeTesting: false,
+          includeChecklist: true,
+        },
+      },
     });
   }
 
@@ -164,12 +187,12 @@ export class BranchAIController {
     analysisResult: PRAnalysisResult,
     prompt: string,
   ): Promise<PRAnalysisResult> {
-    const description = await this.prService.generateAIDescription({
+    const description = (await this.prService.generateAIDescription({
       commits: analysisResult.commits,
       files: analysisResult.files,
       baseBranch: analysisResult.baseBranch,
       prompt,
-    });
+    })) as PRTemplate | null;
 
     if (!description) {
       this.logger.warn("\n⚠️  No AI description could be generated.");
@@ -229,6 +252,7 @@ export class BranchAIController {
       config: this.config,
       ai: this.ai,
       logger: this.logger,
+      templateRegistry: this.templateRegistry,
     });
 
     this.logger.debug("Retrieved diff for split analysis:", {
@@ -252,11 +276,12 @@ export class BranchAIController {
       isWithinClipboardLimits: true,
     };
 
-    return handleAIAction({
+    return handleAIAction<PRAnalysisResult>({
       prompt,
       humanFriendlyPrompt: prompt,
       tokenUsage,
       generateLabel: "Generate split suggestions",
+      type: "split-pr",
       actionHandler: async (action) => {
         if (action === "generate" && this.ai) {
           const splitSuggestion =
@@ -274,6 +299,13 @@ export class BranchAIController {
       config: this.config,
       logger: this.logger,
       ai: this.ai,
+      templateRegistry: this.templateRegistry,
+      context: {
+        files: analysisResult.files,
+        diff: bestDiff.content,
+        commits: analysisResult.commits,
+        baseBranch: analysisResult.baseBranch,
+      },
     });
   }
 

@@ -1,0 +1,37 @@
+id: pr-split-suggestion
+type: split-pr
+format: api
+title: PR Split Suggestions
+version: "1.0"
+ai:
+  provider: openai
+  model: gpt-4
+template: |
+  Analyze the following changes and suggest how to split them into multiple focused pull requests.
+  
+  Base Branch: {{baseBranch}}
+  
+  Commits:
+  {{#each commits}}
+  - {{this.hash}}: {{this.message}}
+  {{/each}}
+  
+  Files changed:
+  {{#each files}}
+  - {{this.path}} ({{this.changeType}})
+  {{/each}}
+  
+  Diff:
+  {{diff}}
+  
+  Respond with a JSON object in this format:
+  {
+    "suggestions": [
+      {
+        "title": "Suggested PR title",
+        "description": "Why these changes should be grouped",
+        "files": ["file/path1", "file/path2"]
+      }
+    ],
+    "reasoning": "Explanation of the suggested split"
+  } 

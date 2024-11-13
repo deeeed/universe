@@ -16,6 +16,7 @@ import { promptYesNo } from "../../utils/user-prompt.util.js";
 import { CommitAIController } from "./commit-ai.controller.js";
 import { CommitAnalysisController } from "./commit-analysis.controller.js";
 import { CommitSecurityController } from "./commit-security.controller.js";
+import { TemplateRegistry } from "../../services/template/template-registry.js";
 
 interface CommitAnalyzeParams {
   options: CommitCommandOptions;
@@ -100,8 +101,18 @@ async function initializeServices(
   return { logger, reporter, git, security, ai, config };
 }
 
-function initializeControllers(services: ServicesContext): ControllersContext {
-  const { logger, git, security, config } = services;
+async function initializeControllers(
+  services: ServicesContext,
+): Promise<ControllersContext> {
+  const { logger, git, security, config, ai } = services;
+
+  const templateRegistry = new TemplateRegistry({
+    logger,
+    gitRoot: git.getCWD(),
+  });
+
+  await templateRegistry.loadTemplates();
+
   return {
     analysisController: new CommitAnalysisController({
       logger,
@@ -111,9 +122,10 @@ function initializeControllers(services: ServicesContext): ControllersContext {
     securityController: new CommitSecurityController({ logger, security, git }),
     aiController: new CommitAIController({
       logger,
-      ai: services.ai,
+      ai,
       git,
       config,
+      templateRegistry,
     }),
   };
 }
@@ -381,7 +393,7 @@ export async function analyzeCommit({
 
   try {
     logger.info("\n🎯 Starting commit analysis...");
-    const controllers = initializeControllers(services);
+    const controllers = await initializeControllers(services);
     const context = await getAnalysisContext(options, services);
     const { filesToAnalyze } = context;
 

@@ -9,6 +9,7 @@ import { AIProvider } from "../../types/ai.types.js";
 import { PRAnalysisResult } from "../../types/analysis.types.js";
 import { Config, GitConfig } from "../../types/config.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
+import { TemplateRegistry } from "../../services/template/template-registry.js";
 import { initializeAI } from "../../utils/ai-init.util.js";
 import { loadConfig } from "../../utils/config.util.js";
 import { BranchAIController } from "./branch-ai.controller.js";
@@ -126,7 +127,12 @@ async function initializeServices({
 function initializeControllers({
   services,
 }: InitializeControllersParams): ControllersContext {
-  const { logger, git, github, prService, config, ai, security } = services;
+  const { logger, git, github, prService, config, ai } = services;
+
+  const templateRegistry = new TemplateRegistry({
+    logger,
+    gitRoot: git.getCWD(),
+  });
 
   return {
     analysisController: new BranchAnalysisController({
@@ -143,6 +149,7 @@ function initializeControllers({
       prService,
       github,
       config,
+      templateRegistry,
     }),
     prController: new BranchPRController({
       logger,
@@ -153,7 +160,7 @@ function initializeControllers({
     }),
     securityController: new BranchSecurityController({
       logger,
-      security,
+      security: services.security,
       git,
     }),
   };

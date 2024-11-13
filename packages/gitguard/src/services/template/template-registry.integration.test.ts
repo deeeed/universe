@@ -3,9 +3,9 @@ import {
   BaseTestEnvironment,
   setupGitTestEnvironment,
 } from "../../test/test-integration.utils.js";
-import { CommitTemplate } from "../../types/templates.type.js";
-import { TemplateRegistry } from "./template-registry.js";
+import { CommitTemplate, PromptType } from "../../types/templates.type.js";
 import { GitService } from "../git.service.js";
+import { TemplateRegistry } from "./template-registry.js";
 
 describe("TemplateRegistry Integration", () => {
   const sampleTemplate: CommitTemplate = {
@@ -60,7 +60,7 @@ describe("TemplateRegistry Integration", () => {
 
   describe("template loading", () => {
     it("should load templates from project directory", () => {
-      const template = registry.getTemplate<CommitTemplate>("test-commit");
+      const template = registry.getTemplateById({ id: "test-commit" });
       expect(template).toBeDefined();
       expect(template?.id).toBe("test-commit");
       expect(template?.type).toBe("commit");
@@ -86,14 +86,14 @@ describe("TemplateRegistry Integration", () => {
       });
       await newRegistry.loadTemplates();
 
-      const template = newRegistry.getTemplate("test-commit");
+      const template = newRegistry.getTemplateById({ id: "test-commit" });
       expect(template).toBeDefined();
     });
   });
 
   describe("template rendering", () => {
     it("should render template with variables", () => {
-      const template = registry.getTemplate<CommitTemplate>("test-commit");
+      const template = registry.getTemplateById({ id: "test-commit" });
       expect(template).toBeDefined();
 
       if (!template) {
@@ -148,14 +148,14 @@ describe("TemplateRegistry Integration", () => {
       });
       await newRegistry.loadTemplates();
 
-      const template = newRegistry.getTemplate<CommitTemplate>("helper-test");
+      const template = newRegistry.getTemplateById({ id: "helper-test" });
       expect(template).toBeDefined();
 
       if (!template) {
         throw new Error("Template not found");
       }
 
-      const result = newRegistry.renderTemplate({
+      const result = registry.renderTemplate({
         template,
         variables: {
           files: [
@@ -179,22 +179,32 @@ describe("TemplateRegistry Integration", () => {
 
   describe("template discovery", () => {
     it("should list available templates", () => {
-      const templates = registry.getAvailableTemplates();
-      expect(templates).toContainEqual({
+      const templates = registry.getTemplatesForType({
+        type: "commit",
+        format: "api",
+      });
+      expect(templates).toHaveLength(1);
+      expect(templates[0]).toMatchObject({
         id: "test-commit",
         type: "commit",
       });
     });
 
     it("should find template by type and format", () => {
-      const template = registry.getTemplateByType("commit", "api");
-      expect(template).toBeDefined();
-      expect(template?.id).toBe("test-commit");
+      const templates = registry.getTemplatesForType({
+        type: "commit",
+        format: "api",
+      });
+      expect(templates[0]).toBeDefined();
+      expect(templates[0]?.id).toBe("test-commit");
     });
 
-    it("should return undefined for non-existent template type", () => {
-      const template = registry.getTemplateByType("split-commit", "api");
-      expect(template).toBeUndefined();
+    it("should return empty array for non-existent type", () => {
+      const templates = registry.getTemplatesForType({
+        type: "split-commit" as PromptType,
+        format: "api",
+      });
+      expect(templates).toHaveLength(0);
     });
   });
 });

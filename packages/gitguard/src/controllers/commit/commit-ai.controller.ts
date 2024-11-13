@@ -2,6 +2,7 @@ import chalk from "chalk";
 import { DEFAULT_MAX_PROMPT_TOKENS } from "../../constants.js";
 import { CommitService } from "../../services/commit.service.js";
 import { GitService } from "../../services/git.service.js";
+import { TemplateRegistry } from "../../services/template/template-registry.js";
 import { AIProvider } from "../../types/ai.types.js";
 import {
   CommitAnalysisResult,
@@ -18,7 +19,6 @@ import {
   generateSplitSuggestionPrompt,
 } from "../../utils/ai-prompt.util.js";
 import {
-  canGenerateAI,
   DiffStrategy,
   handleAIAction,
   selectBestDiff,
@@ -33,6 +33,7 @@ interface CommitAIControllerParams {
   ai?: AIProvider;
   git: GitService;
   config: Config;
+  templateRegistry: TemplateRegistry;
 }
 
 interface HandleAISuggestionsParams {
@@ -69,12 +70,20 @@ export class CommitAIController {
   private readonly git: GitService;
   private readonly config: Config;
   private readonly commitService: CommitService;
+  private readonly templateRegistry: TemplateRegistry;
 
-  constructor({ logger, ai, git, config }: CommitAIControllerParams) {
+  constructor({
+    logger,
+    ai,
+    git,
+    config,
+    templateRegistry,
+  }: CommitAIControllerParams) {
     this.logger = logger;
     this.ai = ai;
     this.git = git;
     this.config = config;
+    this.templateRegistry = templateRegistry;
     this.commitService = new CommitService({
       config,
       git,
@@ -142,6 +151,7 @@ export class CommitAIController {
           config: this.config,
           ai: this.ai,
           logger: this.logger,
+          templateRegistry: this.templateRegistry,
         });
 
         const prompt = generateSplitSuggestionPrompt({
@@ -159,11 +169,12 @@ export class CommitAIController {
           isWithinClipboardLimits: true,
         };
 
-        return handleAIAction({
+        return handleAIAction<CommitAnalysisResult>({
           prompt,
           humanFriendlyPrompt: prompt,
           tokenUsage,
           generateLabel: "Generate split suggestions",
+          type: "split-commit",
           actionHandler: async (action) => {
             if (action === "generate" && this.ai) {
               const aiSuggestions =
@@ -187,6 +198,12 @@ export class CommitAIController {
           config: this.config,
           logger: this.logger,
           ai: this.ai,
+          templateRegistry: this.templateRegistry,
+          context: {
+            files: params.files,
+            diff: bestDiff.content,
+            message: params.message,
+          },
         });
       } catch (error) {
         this.logger.error("Failed to get AI enhanced analysis:", error);
@@ -211,6 +228,7 @@ export class CommitAIController {
       config: this.config,
       ai: this.ai,
       logger: this.logger,
+      templateRegistry: this.templateRegistry,
     });
 
     const prompt = this.generatePrompt({ files, message, bestDiff, result });
@@ -229,35 +247,12 @@ export class CommitAIController {
       isWithinClipboardLimits: true,
     };
 
-    const { canGenerate, reason } = canGenerateAI(this.config, this.ai);
-    this.logger.debug("AI generation status:", { canGenerate, reason });
-
-    const choices = [
-      {
-        label: "Continue without AI assistance",
-        value: "skip" as const,
-        isDefault: true,
-      },
-      {
-        label: `Generate commit message suggestions${!canGenerate ? ` (${reason})` : ` (estimated cost: ${tokenUsage.estimatedCost})`}`,
-        value: "generate" as const,
-        disabled: !canGenerate,
-        disabledReason: reason,
-      },
-      { label: "Copy API prompt to clipboard", value: "copy-api" as const },
-      {
-        label: "Copy human-friendly prompt to clipboard",
-        value: "copy-manual" as const,
-      },
-    ];
-
-    this.logger.debug("AI action choices:", choices);
-
-    return handleAIAction({
+    return handleAIAction<CommitAnalysisResult>({
       prompt,
       humanFriendlyPrompt,
       tokenUsage,
       generateLabel: "Generate commit message suggestions",
+      type: "commit",
       actionHandler: async (action) => {
         if (action === "generate" && this.ai) {
           return this.handleCommitGeneration({
@@ -273,7 +268,16 @@ export class CommitAIController {
       config: this.config,
       logger: this.logger,
       ai: this.ai,
-      choices,
+      templateRegistry: this.templateRegistry,
+      context: {
+        files,
+        diff: bestDiff.content,
+        message,
+        options: {
+          includeTesting: false,
+          includeChecklist: true,
+        },
+      },
     });
   }
 

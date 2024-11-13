@@ -21,7 +21,7 @@ export interface BasePromptTemplate {
 }
 
 // Common variables shared across templates
-interface BaseTemplateVariables {
+export interface BaseTemplateVariables {
   files: FileChange[];
   diff: string;
 }

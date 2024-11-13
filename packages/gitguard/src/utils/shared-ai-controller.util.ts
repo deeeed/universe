@@ -3,13 +3,21 @@ import {
   DEFAULT_CONTEXT_LINES,
   DEFAULT_MAX_PROMPT_TOKENS,
 } from "../constants.js";
+import { TemplateRegistry } from "../services/template/template-registry.js";
 import { AIProvider, TokenUsage } from "../types/ai.types.js";
+import { PRStats } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
-import { FileChange } from "../types/git.types.js";
+import { CommitInfo, FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
+import {
+  BaseTemplateVariables,
+  PromptTemplate,
+  PromptType,
+} from "../types/templates.type.js";
 import { checkAILimits } from "./ai-limits.util.js";
 import { copyToClipboard } from "./clipboard.util.js";
 import { formatDiffForAI } from "./diff.util.js";
+import { getTemplateBasedChoices } from "./template-choice.util.js";
 import { promptActionChoice } from "./user-prompt.util.js";
 
 // Base interface for shared dependencies
@@ -17,6 +25,7 @@ interface BaseAIParams {
   config: Config;
   logger: Logger;
   ai?: AIProvider;
+  templateRegistry: TemplateRegistry;
 }
 
 // Specific interfaces extending the base
@@ -32,12 +41,21 @@ export interface SelectBestDiffParams extends BaseAIParams {
   isClipboardAction?: boolean;
 }
 
-export interface HandleClipboardCopyParams extends BaseAIParams {
+export interface HandleClipboardCopyParams {
   prompt: string;
   isApi: boolean;
+  ai?: AIProvider;
+  config: Config;
+  logger: Logger;
+  templateRegistry?: TemplateRegistry;
 }
 
-export type AIActionType = "generate" | "copy-api" | "copy-manual" | "skip";
+export type AIActionType =
+  | "generate"
+  | "copy-api"
+  | "copy-manual"
+  | "skip"
+  | `copy-${string}`;
 
 export interface AIActionHandlerParams<T> {
   prompt: string;
@@ -45,6 +63,7 @@ export interface AIActionHandlerParams<T> {
   tokenUsage: TokenUsage;
   generateLabel?: string;
   actionHandler: (action: AIActionType) => Promise<T>;
+  type: PromptType;
   choices?: Array<{
     label: string;
     value: AIActionType;
@@ -207,6 +226,68 @@ export async function handleClipboardCopy({
   }
 }
 
+function getTemplateVariables(params: {
+  template: PromptTemplate;
+  context: {
+    files: FileChange[];
+    diff: string;
+    commits?: CommitInfo[];
+    baseBranch?: string;
+    stats?: PRStats;
+    message?: string;
+    options?: {
+      includeTesting?: boolean;
+      includeChecklist?: boolean;
+    };
+  };
+}): PromptTemplate["variables"] {
+  const { template, context } = params;
+  const baseVars: BaseTemplateVariables = {
+    files: context.files,
+    diff: context.diff,
+  };
+
+  switch (template.type) {
+    case "commit":
+      return {
+        ...baseVars,
+        commits: context.commits ?? [],
+        baseBranch: context.baseBranch ?? "main",
+        stats: context.stats,
+        template: context.message,
+        options: context.options,
+      };
+
+    case "split-commit":
+      return {
+        ...baseVars,
+        message: context.message ?? "",
+      };
+
+    case "pr":
+      return {
+        ...baseVars,
+        commits: context.commits ?? [],
+        baseBranch: context.baseBranch ?? "main",
+        stats: context.stats,
+        template: context.message,
+        options: context.options,
+      };
+
+    case "split-pr":
+      return {
+        ...baseVars,
+        commits: context.commits ?? [],
+        baseBranch: context.baseBranch ?? "main",
+        stats: context.stats,
+      };
+
+    default: {
+      throw new Error(`Unhandled template type`);
+    }
+  }
+}
+
 export async function handleAIAction<T>({
   prompt,
   humanFriendlyPrompt,
@@ -217,7 +298,29 @@ export async function handleAIAction<T>({
   logger,
   ai,
   choices: customChoices,
-}: AIActionHandlerParams<T> & BaseAIParams): Promise<T> {
+  type,
+  templateRegistry,
+  context = {
+    files: [],
+    diff: "",
+    commits: [],
+    baseBranch: "main",
+  },
+}: AIActionHandlerParams<T> &
+  BaseAIParams & {
+    context?: {
+      files: FileChange[];
+      diff: string;
+      commits?: CommitInfo[];
+      baseBranch?: string;
+      stats?: PRStats;
+      message?: string;
+      options?: {
+        includeTesting?: boolean;
+        includeChecklist?: boolean;
+      };
+    };
+  }): Promise<T> {
   logger.info(`\n💰 Estimated cost: ${tokenUsage.estimatedCost}`);
   logger.info(`📊 Estimated tokens: ${tokenUsage.count}/32000`);
   logger.info(
@@ -231,30 +334,50 @@ export async function handleAIAction<T>({
   const { canGenerate, reason } = canGenerateAI(config, ai);
   logger.debug("AI generation status:", { canGenerate, reason });
 
-  const defaultChoices = [
-    {
-      label: "Continue without AI assistance",
-      value: "skip" as const,
-      isDefault: true,
-    },
-    {
-      label: `${generateLabel} (${canGenerate ? `estimated cost: ${tokenUsage.estimatedCost}` : reason})`,
-      value: "generate" as const,
-      disabled: !canGenerate,
+  const choices =
+    customChoices ??
+    getTemplateBasedChoices({
+      type,
+      generateLabel,
+      canGenerate,
       disabledReason: reason,
-    },
-    { label: "Copy API prompt to clipboard", value: "copy-api" as const },
-    {
-      label: "Copy human-friendly prompt to clipboard",
-      value: "copy-manual" as const,
-    },
-  ];
+      tokenUsage,
+      templateRegistry,
+      logger,
+    });
 
   const { action } = await promptActionChoice<AIActionType>({
     message: "Choose how to proceed:",
-    choices: customChoices ?? defaultChoices,
+    choices: choices.map((choice) => ({
+      ...choice,
+      value: choice.value as AIActionType,
+    })),
     logger,
   });
+
+  if (
+    action.startsWith("copy-") &&
+    action !== "copy-api" &&
+    action !== "copy-manual"
+  ) {
+    const templateId = action.replace("copy-", "");
+    const template = templateRegistry.getTemplateById({ id: templateId });
+    if (template) {
+      const variables = getTemplateVariables({ template, context });
+      const renderedPrompt = templateRegistry.renderTemplate({
+        template,
+        variables,
+      });
+      await handleClipboardCopy({
+        prompt: renderedPrompt,
+        isApi: false,
+        ai,
+        config,
+        logger,
+      });
+      return actionHandler("skip");
+    }
+  }
 
   if (action === "copy-api" || action === "copy-manual") {
     await handleClipboardCopy({
