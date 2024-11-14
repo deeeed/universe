@@ -331,20 +331,18 @@ export class SecurityService extends BaseService {
       .split("\n")
       .slice(0, lineIndex + 1)
       .reverse();
-    let currentFile: string | undefined;
 
     for (const line of lines) {
       if (line.startsWith("diff --git")) {
         const diffPattern = /diff --git [a-z]\/?(.*?) [a-z]\/?(.*?)$/;
         const match = diffPattern.exec(line);
         if (match) {
-          currentFile = match[2];
-          return currentFile;
+          return match[2];
         }
       }
     }
 
-    return currentFile;
+    return undefined;
   }
 
   private detectProblematicFiles(params: {

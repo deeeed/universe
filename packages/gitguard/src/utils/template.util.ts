@@ -428,13 +428,18 @@ export async function validateTemplates(
           "   • Global:  ~/.gitguard/templates/\n",
       );
     }
+    const pluralizedTemplate = templates.length === 1 ? "" : "s";
+    const pluralizedDefault = defaultTemplatesCount === 1 ? "" : "s";
+    const defaultsMessage =
+      defaultTemplatesCount > 0
+        ? ` (including ${defaultTemplatesCount} default${pluralizedDefault})`
+        : "";
+    const filterMessage = filter ? ` matching "${filter}"` : "";
 
     logger.info(
-      `\n🔍 Found ${templates.length} template${templates.length === 1 ? "" : "s"}` +
-        (defaultTemplatesCount > 0
-          ? ` (including ${defaultTemplatesCount} default${defaultTemplatesCount === 1 ? "" : "s"})`
-          : "") +
-        (filter ? ` matching "${filter}"` : "") +
+      `\n🔍 Found ${templates.length} template${pluralizedTemplate}` +
+        defaultsMessage +
+        filterMessage +
         " to validate\n",
     );
 

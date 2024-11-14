@@ -108,8 +108,6 @@ export class BranchAIController {
       actionHandler: async (action, prompt) => {
         if (action.startsWith("generate-") && this.ai && prompt) {
           return this.handlePRGeneration(analysisResult, prompt);
-        } else if (action.startsWith("split-")) {
-          // TODO: copy prompt handling from split-pr
         }
         return analysisResult;
       },
