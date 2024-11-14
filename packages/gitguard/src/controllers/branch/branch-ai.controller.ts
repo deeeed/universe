@@ -30,6 +30,11 @@ interface PRTemplate {
   description: string;
 }
 
+interface HandleSplitSuggestionsParams {
+  analysisResult: PRAnalysisResult;
+  enableAI?: boolean;
+}
+
 export class BranchAIController {
   private readonly logger: Logger;
   private readonly ai?: AIProvider;
@@ -163,9 +168,7 @@ export class BranchAIController {
 
   public async handleSplitSuggestions({
     analysisResult,
-  }: {
-    analysisResult: PRAnalysisResult;
-  }): Promise<PRAnalysisResult> {
+  }: HandleSplitSuggestionsParams): Promise<PRAnalysisResult> {
     this.logger.info("\n🤖 Analyzing PR structure...");
 
     const fullDiff = await this.git.getDiff({

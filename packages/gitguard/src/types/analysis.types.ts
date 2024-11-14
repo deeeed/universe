@@ -13,6 +13,7 @@ export interface CommitAnalysisResult {
   splitSuggestion?: CommitSplitSuggestion;
   shouldPromptUser?: boolean;
   complexity: CommitComplexity;
+  skipFurtherSuggestions?: boolean;
 }
 
 export interface CommitStats {

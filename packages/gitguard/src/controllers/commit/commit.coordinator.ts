@@ -76,8 +76,11 @@ async function initializeServices(
   });
   logger.info("\n🚀 Initializing GitGuard services...");
 
+  logger.debug("🔍 Loading config from:", options.configPath);
   const reporter = new ReporterService({ logger });
   const config = await loadConfig({ configPath: options.configPath });
+
+  logger.debug("🔍 Loaded config:", config);
 
   if (options.cwd) {
     logger.debug("Using custom working directory:", options.cwd);
@@ -94,8 +97,8 @@ async function initializeServices(
 
   const security = new SecurityService({ config, logger });
 
-  const isAIRequested = options.ai ?? config.ai?.enabled;
-  const ai = initializeAI({ config, logger, isAIRequested });
+  const isAIEnabled = options.ai ?? config.ai?.enabled ?? true; // assume AI is enabled if not explicitly disabled
+  const ai = initializeAI({ config, logger, isAIRequested: isAIEnabled });
 
   logger.info("✅ Services initialized successfully");
   return { logger, reporter, git, security, ai, config };
@@ -240,58 +243,59 @@ async function handleAIAnalysis({
   filesToAnalyze,
   services,
   controllers,
-}: HandleAIAnalysisParams): Promise<
-  CommitAnalysisResult & { securityResult?: SecurityCheckResult }
-> {
+}: HandleAIAnalysisParams): Promise<CommitAnalysisResult> {
   const { logger } = services;
   let updatedResult = result;
 
-  if (!options.ai) return updatedResult;
-
-  if (!services.ai && result.complexity.needsStructure) {
-    logger.warn(
-      "\n⚠️  AI assistance requested but no valid AI provider configured",
-    );
-    logger.info(
-      "💡 To enable AI, configure a provider in your .gitguard/config.json or environment variables",
-    );
+  if (updatedResult.skipFurtherSuggestions) {
+    logger.debug("Skipping AI analysis due to skipFurtherSuggestions flag");
     return updatedResult;
   }
 
-  if (services.ai && result.complexity.needsStructure) {
-    const shouldUseAI = await promptYesNo({
-      message:
-        "\n🤖 Would you like AI assistance to split this complex commit?",
-      logger,
-      defaultValue: false,
+  if (result.complexity.needsStructure) {
+    logger.info("\n🔄 Analyzing commit structure with AI...");
+    const securityResult: SecurityCheckResult = result.securityResult ?? {
+      secretFindings: [],
+      fileFindings: [],
+      filesToUnstage: [],
+      shouldBlock: false,
+      commands: [],
+    };
+
+    updatedResult = await controllers.aiController.handleSplitSuggestions({
+      result: updatedResult,
+      files: filesToAnalyze,
+      message: options.message,
+      securityResult,
+      enableAI: true,
     });
 
-    if (shouldUseAI) {
-      logger.info("\n🔄 Analyzing commit structure with AI...");
-      const securityResult: SecurityCheckResult = result.securityResult ?? {
-        secretFindings: [],
-        fileFindings: [],
-        filesToUnstage: [],
-        shouldBlock: false,
-        commands: [],
+    if (updatedResult.skipFurtherSuggestions) {
+      logger.info(
+        "\n✨ Analysis complete - please use the copied suggestions to split your commits.",
+      );
+      return {
+        ...updatedResult,
+        formattedMessage: updatedResult.originalMessage,
       };
-
-      updatedResult = await controllers.aiController.handleSplitSuggestions({
-        result: updatedResult,
-        files: filesToAnalyze,
-        message: options.message,
-        securityResult,
-        enableAI: options.ai,
-      });
     }
   }
 
-  return controllers.aiController.handleAISuggestions({
-    result: updatedResult,
-    files: filesToAnalyze,
-    message: options.message,
-    shouldExecute: options.execute,
-  });
+  if (!updatedResult.skipFurtherSuggestions) {
+    logger.debug("Proceeding with AI suggestions handling", {
+      hasFormattedMessage: !!updatedResult.formattedMessage,
+      willExecute: options.execute,
+    });
+
+    return controllers.aiController.handleAISuggestions({
+      result: updatedResult,
+      files: filesToAnalyze,
+      message: options.message,
+      shouldExecute: options.execute,
+    });
+  }
+
+  return updatedResult;
 }
 
 async function handleCommitExecution({
@@ -302,10 +306,34 @@ async function handleCommitExecution({
 }: HandleCommitExecutionParams): Promise<void> {
   const { logger } = services;
 
-  if (!options.execute || !result.formattedMessage) return;
+  if (
+    result.skipFurtherSuggestions ??
+    result.formattedMessage === result.originalMessage
+  ) {
+    logger.debug("Skipping commit execution:", {
+      skipFurtherSuggestions: result.skipFurtherSuggestions,
+      messageUnchanged: result.formattedMessage === result.originalMessage,
+    });
+    return;
+  }
+
+  logger.debug("Checking commit execution conditions:", {
+    shouldExecute: options.execute,
+    hasFormattedMessage: !!result.formattedMessage,
+  });
+
+  if (!options.execute || !result.formattedMessage) {
+    logger.debug("Skipping commit execution:", {
+      reason: !options.execute
+        ? "execute flag not set"
+        : "no formatted message",
+    });
+    return;
+  }
 
   logger.info("\n💾 Creating commit...");
   if (result.formattedMessage === result.originalMessage) {
+    logger.debug("Executing commit with unchanged message");
     await controllers.analysisController.executeCommit({
       message: result.formattedMessage,
     });
@@ -321,6 +349,12 @@ ${chalk.green(`"${result.formattedMessage}"`)}
 Proceed with formatted message?`,
     logger,
     defaultValue: true,
+  });
+
+  logger.debug("User decision for commit execution:", {
+    shouldProceed,
+    originalMessage: result.originalMessage,
+    formattedMessage: result.formattedMessage,
   });
 
   if (!shouldProceed) {

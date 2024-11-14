@@ -29,7 +29,7 @@ export function initializeAI({
       const fallbackConfig: Config = {
         ...config,
         ai: {
-          ...config.ai, // Preserve any existing AI config
+          ...config.ai,
           enabled: true,
           provider: "openai",
           openai: {
@@ -55,19 +55,71 @@ export function initializeAI({
         chalk.dim("\nTip: Run 'gitguard init --help' for more options"),
       );
     } else {
-      ai = AIFactory.create({ config, logger });
-    }
+      try {
+        ai = AIFactory.create({ config, logger });
+        if (ai) {
+          logger.info(`✅ AI initialized using ${config.ai.provider}`);
+        } else {
+          logger.warn(
+            `⚠️  Failed to initialize ${config.ai.provider} AI provider`,
+          );
+          if (
+            config.ai.provider === "openai" &&
+            !process.env.OPENAI_API_KEY &&
+            !config.ai.openai?.apiKey
+          ) {
+            logger.info("\n💡 Missing OpenAI API key. To fix this:");
+            logger.info(chalk.cyan("\n1. Set environment variable:"));
+            logger.info(chalk.dim("   export OPENAI_API_KEY=your_api_key"));
+            logger.info(chalk.cyan("\n2. Or update your config file:"));
+            logger.info(chalk.dim("   .gitguard/config.json:"));
+            logger.info(
+              chalk.dim('   "ai": { "openai": { "apiKey": "your_api_key" } }'),
+            );
+          }
+        }
+      } catch (error) {
+        logger.warn(
+          `⚠️  Failed to initialize ${config.ai.provider} AI provider`,
+        );
+        if (error instanceof Error) {
+          logger.debug("AI initialization error:", {
+            provider: config.ai.provider,
+            message: error.message,
+            stack: error.stack,
+          });
 
-    if (ai) {
-      logger.info(`✅ AI initialized using ${ai.getName()}`);
-    } else {
-      logger.warn(
-        `⚠️  AI configuration found but initialization failed. Falling back to offline prompts.`,
-      );
+          // Provide specific guidance based on the error
+          if (error.message.includes("API key")) {
+            logger.info("\n💡 API key issue detected. To fix this:");
+            if (config.ai.provider === "openai") {
+              logger.info(chalk.cyan("\n1. Set environment variable:"));
+              logger.info(chalk.dim("   export OPENAI_API_KEY=your_api_key"));
+              logger.info(chalk.cyan("\n2. Or update your config file:"));
+              logger.info(chalk.dim("   .gitguard/config.json:"));
+              logger.info(
+                chalk.dim(
+                  '   "ai": { "openai": { "apiKey": "your_api_key" } }',
+                ),
+              );
+            }
+          }
+        }
+        // Return undefined to indicate AI is not available
+        return undefined;
+      }
     }
   } catch (error) {
-    logger.warn("⚠️  Failed to initialize AI provider:", error);
-    logger.info("💡 Falling back to offline prompts");
+    // Log the error for debugging but don't prevent initialization
+    logger.debug("AI initialization warning:", error);
+    if (error instanceof Error) {
+      logger.debug("Details:", {
+        message: error.message,
+        stack: error.stack,
+      });
+    }
+    // Return undefined to indicate AI is not available
+    return undefined;
   }
 
   return ai;

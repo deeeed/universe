@@ -58,7 +58,6 @@ function createScenario(params: {
     setup: {
       files: [],
       config: {
-        debug: true,
         git: {
           monorepoPatterns: ["packages/*"],
         },
@@ -220,7 +219,6 @@ const scenarios: TestScenario[] = [
         },
       ],
       config: {
-        debug: true,
         git: {
           monorepoPatterns: ["packages/*"],
         },
@@ -394,7 +392,6 @@ export const Input = () => <input />;`,
         },
       ],
       config: {
-        debug: true,
         git: {
           monorepoPatterns: ["packages/*"],
         },

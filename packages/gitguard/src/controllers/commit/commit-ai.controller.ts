@@ -136,8 +136,19 @@ export class CommitAIController {
         return handleAIAction<CommitAnalysisResult>({
           type: "split-commit",
           variables,
+          skipAsDefault: true,
           generateLabel: "Generate split suggestions",
           actionHandler: async (action, prompt) => {
+            if (action.startsWith("copy-")) {
+              this.logger.info(
+                "\n✨ Use the copied suggestions to split your commits.",
+              );
+              return {
+                ...params.result,
+                skipFurtherSuggestions: true,
+              };
+            }
+
             if (action.startsWith("generate-") && this.ai && prompt) {
               const aiSuggestions =
                 await this.ai.generateCompletion<CommitSplitSuggestion>({
@@ -155,6 +166,7 @@ export class CommitAIController {
                 };
               }
             }
+
             return params.result;
           },
           config: this.config,
@@ -174,8 +186,12 @@ export class CommitAIController {
     result,
     files,
     message,
-    shouldExecute = false,
+    shouldExecute = true,
   }: HandleAISuggestionsParams): Promise<CommitAnalysisResult> {
+    if (result.skipFurtherSuggestions) {
+      return result;
+    }
+
     this.logger.info("\n🤖 Preparing AI suggestions...");
     const fullDiff = await this.git.getStagedDiff();
 
@@ -199,9 +215,17 @@ export class CommitAIController {
       },
     };
 
+    this.logger.debug("AI suggestion parameters:", {
+      hasMessage: !!message,
+      shouldExecute,
+      filesCount: files.length,
+      hasAI: !!this.ai,
+    });
+
     return handleAIAction<CommitAnalysisResult>({
       type: "commit",
       variables,
+      ai: this.ai,
       generateLabel: "Generate commit message suggestions",
       actionHandler: async (action, prompt) => {
         if (action.startsWith("generate-") && this.ai && prompt) {
@@ -245,7 +269,6 @@ export class CommitAIController {
       },
       config: this.config,
       logger: this.logger,
-      ai: this.ai,
       templateRegistry: this.templateRegistry,
     });
   }

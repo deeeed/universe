@@ -339,7 +339,6 @@ export class SecurityService extends BaseService {
         const match = diffPattern.exec(line);
         if (match) {
           currentFile = match[2];
-          this.logger.debug(`Found file path: ${currentFile}`);
           return currentFile;
         }
       }

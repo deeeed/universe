@@ -7,7 +7,8 @@
       "name": "Debug GitGuard Tests",
       "cwd": "${workspaceFolder}/packages/gitguard",
       "skipFiles": ["<node_internals>/**"],
-      "program": "${workspaceFolder}/packages/gitguard/scripts/test-commit-hooks.ts",
+      "program": "${workspaceFolder}/packages/gitguard/e2e/index.ts",
+      "args": ["--tests=commit-message", "--scenario=basic-formatting"],
       "runtimeArgs": [
         "--loader",
         "ts-node/esm",
@@ -28,6 +29,32 @@
       "skipFiles": ["<node_internals>/**"],
       "sourceMaps": true,
       "port": 9229
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug GitGuard",
+      "skipFiles": ["<node_internals>/**"],
+      "cwd": "${workspaceFolder}/packages/gitguard",
+      "program": "${workspaceFolder}/packages/gitguard/src/cli/gitguard.ts",
+      "args": ["commit"],
+      "runtimeArgs": [
+        "--loader",
+        "ts-node/esm",
+        "--experimental-specifier-resolution=node"
+      ],
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/packages/gitguard/dist/**/*.js"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/packages/gitguard/**",
+        "!**/node_modules/**"
+      ],
+      "env": {
+        "TS_NODE_PROJECT": "${workspaceFolder}/packages/gitguard/tsconfig.json",
+        "NODE_ENV": "development"
+      }
     }
   ]
 } 

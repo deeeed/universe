@@ -4,7 +4,7 @@ import {
   DEFAULT_MAX_PROMPT_TOKENS,
 } from "../constants.js";
 import { TemplateRegistry } from "../services/template/template-registry.js";
-import { AIProvider } from "../types/ai.types.js";
+import { AIProvider, TokenUsage } from "../types/ai.types.js";
 import { Config } from "../types/config.types.js";
 import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
@@ -61,6 +61,7 @@ export interface AIActionHandlerParams<TResult> {
     disabled?: boolean;
     disabledReason?: string;
   }>;
+  skipAsDefault?: boolean;
 }
 
 export interface DiffGenerationParams {
@@ -228,11 +229,13 @@ export async function handleClipboardCopy({
   }
 }
 
+// Update the interfaces to include AI and token usage
 interface GetTemplateOptionsParams {
   type: PromptType;
   templateRegistry: TemplateRegistry;
   logger: Logger;
   variables: TemplateVariables;
+  ai?: AIProvider;
 }
 
 interface HandleTemplateActionParams {
@@ -245,19 +248,19 @@ interface TemplateResult {
   renderedPrompt: string;
   isApi: boolean;
   label: string;
+  tokenUsage?: TokenUsage;
 }
 
 function getTemplateOptions(
   params: GetTemplateOptionsParams,
 ): TemplateResult[] {
-  const { type, templateRegistry, logger, variables } = params;
+  const { type, templateRegistry, logger, variables, ai } = params;
 
   logger.debug("Getting template options:", {
     type,
     variableKeys: Object.keys(variables),
   });
 
-  // Get all templates for this type (both API and human)
   const templates = templateRegistry.getTemplatesForType({
     type,
     format: "api",
@@ -267,23 +270,20 @@ function getTemplateOptions(
     format: "human",
   });
 
-  logger.debug("Found templates:", {
-    apiCount: templates.length,
-    humanCount: humanTemplates.length,
-    apiTemplateIds: templates.map((t) => t.id),
-    humanTemplateIds: humanTemplates.map((t) => t.id),
-  });
-
   return [...templates, ...humanTemplates].map((template) => {
-    logger.debug(`Rendering template ${template.id}:`, {
-      format: template.format,
-      title: template.title,
-    });
-
     const renderedPrompt = templateRegistry.renderTemplate({
       template,
       variables,
     });
+
+    // Calculate token usage only for API templates
+    const tokenUsage =
+      template.format === "api" && ai
+        ? ai.calculateTokenUsage({
+            prompt: renderedPrompt,
+            options: { isClipboardAction: false },
+          })
+        : undefined;
 
     return {
       template,
@@ -292,6 +292,7 @@ function getTemplateOptions(
       label: template.title
         ? `"${template.title}"`
         : `${template.type} (${template.format})`,
+      tokenUsage,
     };
   });
 }
@@ -308,6 +309,8 @@ export async function handleAIAction<TResult>(
     config,
     choices: customChoices,
     actionHandler,
+    generateLabel,
+    skipAsDefault = false,
   } = params;
 
   logger.debug("Starting AI action handler:", {
@@ -320,12 +323,13 @@ export async function handleAIAction<TResult>(
   // Check if AI generation is possible
   const aiStatus = canGenerateAI(config, ai);
 
-  // Get all available templates and their rendered prompts
+  // Pass AI to getTemplateOptions
   const templateOptions = getTemplateOptions({
     type,
     templateRegistry,
     logger,
     variables,
+    ai,
   });
 
   // If using default templates, show pro tip
@@ -371,9 +375,15 @@ export async function handleAIAction<TResult>(
   // Build choices for user prompt
   const defaultChoices = [
     ...apiTemplates.map((t) => ({
-      label: `Generate using ${t.label} ${!aiStatus.canGenerate ? `(${aiStatus.reason}. Fix by ${getFixSuggestion(aiStatus)})` : ""}`,
+      label: `${generateLabel ?? "Generate using"} ${t.label} ${
+        !aiStatus.canGenerate
+          ? `(${aiStatus.reason}. Fix by ${getFixSuggestion(aiStatus)})`
+          : t.tokenUsage
+            ? ` (estimated cost: ${t.tokenUsage.estimatedCost})`
+            : " (cost estimation unavailable)"
+      }`,
       value: `generate-${t.template.id}` as AIActionType,
-      isDefault: aiStatus.canGenerate,
+      isDefault: !skipAsDefault && aiStatus.canGenerate,
       disabled: !aiStatus.canGenerate,
       disabledReason: aiStatus.reason,
     })),
@@ -381,13 +391,15 @@ export async function handleAIAction<TResult>(
       label: `Copy ${t.label} to clipboard`,
       value: `copy-${t.template.id}` as AIActionType,
       isDefault:
+        !skipAsDefault &&
         !aiStatus.canGenerate &&
         humanTemplates[0]?.template.id === t.template.id,
     })),
     {
       label: "Skip",
       value: "skip" as AIActionType,
-      isDefault: !aiStatus.canGenerate && humanTemplates.length === 0,
+      isDefault:
+        skipAsDefault || (!aiStatus.canGenerate && humanTemplates.length === 0),
     },
   ];
 
@@ -422,10 +434,8 @@ export async function handleAIAction<TResult>(
           config,
           logger,
         });
-        return actionHandler("skip");
-      } else {
-        return actionHandler(action, templateResult.renderedPrompt);
       }
+      return actionHandler(action, templateResult.renderedPrompt);
     }
   }
 

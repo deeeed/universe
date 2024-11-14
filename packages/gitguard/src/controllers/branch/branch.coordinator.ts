@@ -108,8 +108,8 @@ async function initializeServices({
   const github = new GitHubService({ config, logger, git });
   const security = new SecurityService({ config, logger });
 
-  const isAIRequested = options.ai ?? config.ai?.enabled;
-  const ai = initializeAI({ config, logger, isAIRequested });
+  const isAIEnabled = options.ai ?? config.ai?.enabled ?? true;
+  const ai = initializeAI({ config, logger, isAIRequested: isAIEnabled });
 
   const prService = new PRService({
     config,
@@ -204,7 +204,7 @@ export async function analyzeBranch({
     });
 
     // Handle AI processing if enabled
-    if (options.ai && services.ai) {
+    if (services.ai) {
       analysisResult = await processAIFeatures({
         controllers,
         analysisResult,
