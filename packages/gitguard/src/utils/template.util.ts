@@ -77,6 +77,7 @@ interface ValidateTemplateParams {
   template: LoadedPromptTemplate;
   registry: TemplateRegistry;
   logger: LoggerService;
+  preview?: boolean;
 }
 
 function createSampleVariables(type: PromptType): TemplateVariables {
@@ -118,7 +119,7 @@ function createSampleVariables(type: PromptType): TemplateVariables {
 }
 
 export function validateTemplate(params: ValidateTemplateParams): boolean {
-  const { template, registry, logger } = params;
+  const { template, registry, logger, preview = true } = params;
 
   try {
     // Basic field validation
@@ -170,23 +171,26 @@ export function validateTemplate(params: ValidateTemplateParams): boolean {
     );
     logger.info(`     - Model: ${chalk.blue(template.ai.model ?? "default")}`);
 
-    // Test template rendering with type-specific sample data
-    logger.info("\n🧪 Testing template rendering...");
-    const sampleData = createSampleVariables(template.type);
+    // Only show preview if requested
+    if (preview) {
+      // Test template rendering with type-specific sample data
+      logger.info("\n🧪 Testing template rendering...");
+      const sampleData = createSampleVariables(template.type);
 
-    const renderedTemplate = registry.renderTemplate({
-      template,
-      variables: sampleData,
-    });
+      const renderedTemplate = registry.renderTemplate({
+        template,
+        variables: sampleData,
+      });
 
-    logger.info(chalk.green("✓ Template renders successfully"));
-    logger.info("\n📝 Sample Output Preview:");
-    logger.info(chalk.dim("---"));
-    logger.info(
-      renderedTemplate.slice(0, 200) +
-        (renderedTemplate.length > 200 ? "..." : ""),
-    );
-    logger.info(chalk.dim("---"));
+      logger.info(chalk.green("✓ Template renders successfully"));
+      logger.info("\n📝 Sample Output Preview:");
+      logger.info(chalk.dim("---"));
+      logger.info(
+        renderedTemplate.slice(0, 200) +
+          (renderedTemplate.length > 200 ? "..." : ""),
+      );
+      logger.info(chalk.dim("---"));
+    }
 
     return true;
   } catch (error) {
@@ -372,22 +376,57 @@ export async function installNewTemplates(
 interface ValidateTemplatesParams {
   logger: LoggerService;
   registry: TemplateRegistry;
+  preview?: boolean;
+  filter?: string;
 }
 
 export async function validateTemplates(
   params: ValidateTemplatesParams,
 ): Promise<boolean> {
-  const { logger, registry } = params;
+  const { logger, registry, preview, filter } = params;
   let isValid = true;
 
   try {
     await registry.loadTemplates();
-    const templates = registry.getAllTemplates();
-    logger.info(`\n🔍 Found ${templates.length} templates to validate\n`);
+    let templates = registry.getAllTemplates();
+
+    // Apply filter if provided
+    if (filter) {
+      const searchTerm = filter.toLowerCase();
+      templates = templates.filter((template) => {
+        const searchableText = [
+          template.id,
+          template.title,
+          template.type,
+          template.format,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return searchableText.includes(searchTerm);
+      });
+
+      if (templates.length === 0) {
+        logger.info(`No templates found matching filter: "${filter}"`);
+        return true;
+      }
+    }
+
+    logger.info(
+      `\n🔍 Found ${templates.length} template${templates.length === 1 ? "" : "s"}${filter ? ` matching "${filter}"` : ""} to validate\n`,
+    );
+
+    // Determine if we should show preview based on context
+    const shouldShowPreview = preview ?? templates.length === 1;
 
     for (const template of templates) {
       logger.info(chalk.blue(`\n━━━ Validating "${template.id}" ━━━`));
-      const templateIsValid = validateTemplate({ template, registry, logger });
+      const templateIsValid = validateTemplate({
+        template,
+        registry,
+        logger,
+        preview: shouldShowPreview,
+      });
       if (!templateIsValid) {
         isValid = false;
         logger.error(
@@ -398,6 +437,22 @@ export async function validateTemplates(
 
     if (isValid) {
       logger.success("\n✨ All templates passed validation!");
+
+      // Add pro tips for template validation
+      logger.info("\n💡 Pro Tips:");
+      logger.info("• To preview a specific template's output:");
+      logger.info(
+        chalk.dim("  $ gitguard template --validate --filter <template-name>"),
+      );
+      logger.info("• To validate a custom template with preview:");
+      logger.info(
+        chalk.dim(
+          "  $ gitguard template --validate --filter <your-template> --preview",
+        ),
+      );
+      logger.info(
+        "• Templates are stored in .gitguard/templates/ and can be edited or added manually",
+      );
     } else {
       logger.error("\n⚠️  Some templates failed validation");
     }

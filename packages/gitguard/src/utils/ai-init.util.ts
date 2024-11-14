@@ -40,7 +40,8 @@ export function initializeAI({
 
       ai = AIFactory.create({ config: fallbackConfig, logger });
 
-      logger.warn("\n⚠️  AI requested but no provider configured in settings");
+      logger.newLine();
+      logger.warn("AI requested but no provider configured in settings");
       logger.info(
         "\n💡 Using default OpenAI configuration for offline prompts. To configure AI properly:",
       );

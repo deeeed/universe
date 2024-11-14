@@ -13,7 +13,6 @@ import {
 import { Config } from "../types/config.types.js";
 import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
-import { generateCommitSuggestionPrompt } from "../utils/ai-prompt.util.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
 import { formatDiffForAI } from "../utils/diff.util.js";
 import { shouldIgnoreFile } from "../utils/ignore-pattern.util.js";
@@ -125,13 +124,7 @@ export class CommitService extends BaseService {
         formattedMessage,
         stats,
         warnings,
-        suggestions: params.enableAI
-          ? await this.generateAISuggestions({
-              files,
-              message: params.message ?? "",
-              diff: params.diff ?? "",
-            })
-          : undefined,
+        suggestions: undefined,
         splitSuggestion: cohesionAnalysis.splitSuggestion,
         shouldPromptUser: cohesionAnalysis.shouldSplit,
         complexity: new CommitParser().analyzeCommitComplexity({ files }),
@@ -154,6 +147,7 @@ export class CommitService extends BaseService {
     files: FileChange[];
     message: string;
     diff: string;
+    prompt: string;
     needsDetailedMessage?: boolean;
   }): Promise<CommitSuggestion[] | undefined> {
     if (!this.ai) {
@@ -173,19 +167,10 @@ export class CommitService extends BaseService {
         needsDetailedMessage: params.needsDetailedMessage ?? false,
       });
 
-      const prompt = generateCommitSuggestionPrompt({
-        files: params.files,
-        message: params.message,
-        diff: params.diff,
-        scope: detectedScope,
-        needsDetailedMessage: params.needsDetailedMessage ?? false,
-        logger: this.logger,
-      });
-
       const suggestions = await this.ai.generateCompletion<{
         suggestions: CommitSuggestion[];
       }>({
-        prompt,
+        prompt: params.prompt,
         options: {
           requireJson: true,
           temperature: 0.7,

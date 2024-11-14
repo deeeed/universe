@@ -1,8 +1,3 @@
-import chalk from "chalk";
-import {
-  DEFAULT_CONTEXT_LINES,
-  DEFAULT_MAX_PROMPT_TOKENS,
-} from "../../constants.js";
 import { GitService } from "../../services/git.service.js";
 import { GitHubService } from "../../services/github.service.js";
 import { PRService } from "../../services/pr.service.js";
@@ -15,12 +10,6 @@ import {
 import { Config } from "../../types/config.types.js";
 import { Logger } from "../../types/logger.types.js";
 import {
-  generatePRDescriptionPrompt,
-  generatePRSplitPrompt,
-} from "../../utils/ai-prompt.util.js";
-import { formatDiffForAI } from "../../utils/diff.util.js";
-import {
-  DiffStrategy,
   handleAIAction,
   selectBestDiff,
 } from "../../utils/shared-ai-controller.util.js";
@@ -68,56 +57,6 @@ export class BranchAIController {
     this.templateRegistry = templateRegistry;
   }
 
-  private async generatePrompt(
-    analysisResult: PRAnalysisResult,
-    bestDiff: DiffStrategy,
-    format: "api" | "human" = "api",
-  ): Promise<string> {
-    this.logger.info("\n📝 Loading PR template...");
-    const template = await this.prService.loadPRTemplate();
-
-    if (template) {
-      this.logger.info("✅ PR template loaded successfully");
-      this.logger.debug("Template details:", {
-        sections: template.match(/##\s+([^\n]+)/g)?.map((s) => s.trim()),
-        hasCheckboxes: template.includes("- [ ]"),
-        length: template.length,
-      });
-    } else {
-      this.logger.debug("No PR template found");
-    }
-
-    const diff =
-      bestDiff.content ||
-      (await this.git.getDiff({
-        type: "range",
-        from: this.git.config.baseBranch,
-        to: analysisResult.branch,
-      }));
-
-    const formattedDiff = formatDiffForAI({
-      files: analysisResult.files,
-      diff,
-      maxLength: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
-      logger: this.logger,
-      options: {
-        includeTests: false,
-        prioritizeCore: true,
-        contextLines: DEFAULT_CONTEXT_LINES,
-      },
-    });
-
-    return generatePRDescriptionPrompt({
-      commits: analysisResult.commits,
-      files: analysisResult.files,
-      baseBranch: analysisResult.baseBranch,
-      template,
-      diff: formattedDiff,
-      logger: this.logger,
-      format,
-    });
-  }
-
   async handleAISuggestions({
     analysisResult,
   }: {
@@ -142,27 +81,27 @@ export class BranchAIController {
       templateRegistry: this.templateRegistry,
     });
 
-    this.logger.info(
-      `Using ${chalk.cyan(bestDiff.name)} diff strategy (${chalk.bold(bestDiff.content.length)} chars)`,
-    );
-
-    const prompt = await this.generatePrompt(analysisResult, bestDiff, "api");
-    const humanFriendlyPrompt = await this.generatePrompt(
-      analysisResult,
-      bestDiff,
-      "human",
-    );
-    const tokenUsage = this.ai.calculateTokenUsage({ prompt });
+    const variables = {
+      commits: analysisResult.commits,
+      files: analysisResult.files,
+      baseBranch: analysisResult.baseBranch,
+      template: await this.prService.loadPRTemplate(),
+      diff: bestDiff.content,
+      options: {
+        includeTesting: false,
+        includeChecklist: true,
+      },
+    };
 
     return handleAIAction<PRAnalysisResult>({
-      prompt,
-      humanFriendlyPrompt,
-      tokenUsage,
-      generateLabel: "Generate PR description",
       type: "pr",
-      actionHandler: async (action) => {
-        if (action === "generate") {
+      variables,
+      generateLabel: "Generate PR description",
+      actionHandler: async (action, prompt) => {
+        if (action.startsWith("generate-") && this.ai && prompt) {
           return this.handlePRGeneration(analysisResult, prompt);
+        } else if (action.startsWith("split-")) {
+          // TODO: copy prompt handling from split-pr
         }
         return analysisResult;
       },
@@ -170,16 +109,6 @@ export class BranchAIController {
       logger: this.logger,
       ai: this.ai,
       templateRegistry: this.templateRegistry,
-      context: {
-        files: analysisResult.files,
-        diff: bestDiff.content,
-        commits: analysisResult.commits,
-        baseBranch: analysisResult.baseBranch,
-        options: {
-          includeTesting: false,
-          includeChecklist: true,
-        },
-      },
     });
   }
 
@@ -255,35 +184,19 @@ export class BranchAIController {
       templateRegistry: this.templateRegistry,
     });
 
-    this.logger.debug("Retrieved diff for split analysis:", {
-      diffSize: fullDiff.length,
-      fromBranch: this.git.config.baseBranch,
-      toBranch: analysisResult.branch,
-    });
-
-    const prompt = generatePRSplitPrompt({
+    const variables = {
       commits: analysisResult.commits,
       files: analysisResult.files,
       baseBranch: analysisResult.baseBranch,
       diff: bestDiff.content,
-      logger: this.logger,
-    });
-
-    const tokenUsage = this.ai?.calculateTokenUsage({ prompt }) ?? {
-      count: 0,
-      estimatedCost: "N/A (AI not configured)",
-      isWithinApiLimits: true,
-      isWithinClipboardLimits: true,
     };
 
     return handleAIAction<PRAnalysisResult>({
-      prompt,
-      humanFriendlyPrompt: prompt,
-      tokenUsage,
-      generateLabel: "Generate split suggestions",
       type: "split-pr",
-      actionHandler: async (action) => {
-        if (action === "generate" && this.ai) {
+      variables,
+      generateLabel: "Generate split suggestions",
+      actionHandler: async (action, prompt) => {
+        if (action.startsWith("generate-") && this.ai && prompt) {
           const splitSuggestion =
             await this.ai.generateCompletion<PRSplitSuggestion>({
               prompt,
@@ -300,12 +213,6 @@ export class BranchAIController {
       logger: this.logger,
       ai: this.ai,
       templateRegistry: this.templateRegistry,
-      context: {
-        files: analysisResult.files,
-        diff: bestDiff.content,
-        commits: analysisResult.commits,
-        baseBranch: analysisResult.baseBranch,
-      },
     });
   }
 

@@ -6,42 +6,60 @@ ai:
   provider: openai
   model: gpt-4
 template: |
-  Analyze these git changes and determine if they should be split into multiple commits. If the changes are cohesive and make sense together, return empty suggestions.
+  You are a helpful AI assistant specializing in Pull Requests. Please analyze these changes and create a migration script to split them into multiple PRs if needed:
+
+  Base Branch: {{baseBranch}}
 
   Files Changed:
   {{#each files}}
   - {{this.path}} (+{{this.additions}} -{{this.deletions}})
   {{/each}}
 
-  Original message: "{{message}}"
-
   Git diff:
   ```diff
   {{diff}}
   ```
 
-  Please provide analysis in this JSON format:
-  {
-    "reason": "explanation why changes should be split OR why they work well together (max 100 chars)",
-    "suggestions": [
-      {
-        "message": "conventional commit message",
-        "files": ["list of files"],
-        "order": 1,
-        "type": "commit type (feat|fix|refactor|etc)",
-        "scope": "affected component or area"
-      }
-    ],
-    "commands": [
-      "git commands to execute the split"
-    ]
-  }
+  If the changes should be split, provide your response in this format:
+
+  # Analysis
+  [Brief explanation of why these changes should be split]
+
+  # Migration Script
+  ```bash
+  # PR 1: feat(scope): descriptive title
+  git checkout -b pr1-feature-name {{baseBranch}}
+  git add [specific files]
+  git commit -m "feat(scope): descriptive title" -m "detailed description"
+  git push origin pr1-feature-name
+
+  # PR 2: fix(scope): another descriptive title
+  git checkout -b pr2-feature-name {{baseBranch}}
+  git add [specific files]
+  git commit -m "fix(scope): descriptive title" -m "detailed description"
+  git push origin pr2-feature-name
+
+  # [Additional PRs as needed...]
+  ```
+
+  # PR Dependencies
+  ```mermaid
+  graph TD
+    PR1[PR1: Feature Name] --> PR2[PR2: Another Feature]
+    PR2 --> PR3[PR3: Final Feature]
+  ```
 
   Guidelines:
-  1. If changes are cohesive (e.g., single feature, related components), return empty suggestions array
-  2. Only suggest splits for truly separate concerns or unrelated changes
-  3. Keep related changes together (e.g., component + its types + its tests)
-  4. Follow conventional commits format
-  5. Order suggestions by importance (1 being most important)
-  6. Consider package boundaries in monorepo setups
-  7. Provide clear reasoning whether splitting or keeping together
+  1. Each PR section in the script should include:
+     - Clear conventional commit title as a comment
+     - Branch creation
+     - Specific files to add
+     - Commit message with description
+     - Push command
+  2. Maintain proper dependency order in the script
+  3. Keep related changes together (components + types + tests)
+  4. Consider package boundaries
+  5. Make commands copy-paste ready
+  6. Include clear PR titles for reference
+
+  Note: If the changes are cohesive and should remain as a single PR, explain why and indicate that no split is necessary.

@@ -2,8 +2,9 @@ import Handlebars from "handlebars";
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "os";
-import { parse as parseYaml } from "yaml";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { Logger } from "../../types/logger.types.js";
+import { registerHandlebarsHelpers } from "../../utils/handlebars-helpers.util.js";
 
 import {
   BasePromptTemplate,
@@ -29,7 +30,7 @@ export class TemplateRegistry {
     this.logger = logger;
     this.gitRoot = gitRoot;
     this.handlebars = Handlebars.create();
-    this.registerHelpers();
+    registerHandlebarsHelpers({ handlebars: this.handlebars });
 
     this.logger.debug("Initializing TemplateRegistry", {
       gitRoot: this.gitRoot,
@@ -40,9 +41,17 @@ export class TemplateRegistry {
     file: string,
     template: Partial<PromptTemplate>,
   ): string {
-    const type = template.type ?? file.split(".")[0];
-    const format = template.format ?? file.split(".")[1] ?? "api";
-    return `${type}.${format}.${file.replace(/\.(ya?ml)$/, "")}`;
+    const baseName = file.replace(/\.(ya?ml)$/, "");
+
+    if (template.type && template.format) {
+      return `${template.type}.${template.format}.${baseName}`;
+    }
+
+    const parts = baseName.split(".");
+    const type = template.type ?? parts[0];
+    const format = template.format ?? parts[1] ?? "api";
+
+    return `${type}.${format}.${baseName}`;
   }
 
   private async loadTemplatesFromDirectory(
@@ -72,6 +81,7 @@ export class TemplateRegistry {
 
           const completeTemplate: LoadedPromptTemplate = {
             ...(template as PromptTemplate),
+            id: templateId,
             source,
             path: join(directory, file),
           };
@@ -79,12 +89,12 @@ export class TemplateRegistry {
           this.templates.set(templateId, completeTemplate);
 
           this.logger.debug(
-            `📝 Loaded template "${template.title ?? templateId}"`,
+            `📝 Loaded template "${completeTemplate.title ?? templateId}"`,
             {
               id: templateId,
-              type: template.type,
-              format: template.format,
-              version: template.version,
+              type: completeTemplate.type,
+              format: completeTemplate.format,
+              version: completeTemplate.version,
             },
           );
         } catch (error) {
@@ -251,16 +261,6 @@ export class TemplateRegistry {
     }
   }
 
-  private registerHelpers(): void {
-    this.handlebars.registerHelper("json", function (context) {
-      return JSON.stringify(context, null, 2);
-    });
-
-    this.handlebars.registerHelper("includes", function (arr, value) {
-      return Array.isArray(arr) && arr.includes(value);
-    });
-  }
-
   public getAllTemplates(): LoadedPromptTemplate[] {
     return Array.from(this.templates.values());
   }
@@ -289,7 +289,15 @@ export class TemplateRegistry {
 
           const templateId =
             template.id ?? this.generateTemplateId(file, template);
-          defaultTemplates.set(templateId, template as LoadedPromptTemplate);
+
+          const completeTemplate: LoadedPromptTemplate = {
+            ...(template as PromptTemplate),
+            id: templateId,
+            source: "project",
+            path: join(templatesDir, file),
+          };
+
+          defaultTemplates.set(templateId, completeTemplate);
         } catch (error) {
           this.logger.warn(
             `❌ Failed to load default template ${file}:`,
@@ -313,7 +321,18 @@ export class TemplateRegistry {
     const filePath = join(path, filename);
 
     try {
-      await fs.writeFile(filePath, JSON.stringify(template, null, 2));
+      // Create a clean template object without source and path
+      const {
+        source: _source,
+        path: _templatePath,
+        id: _id,
+        ...cleanTemplate
+      } = template;
+
+      // Convert to YAML with proper formatting
+      const yamlContent = stringifyYaml(cleanTemplate);
+
+      await fs.writeFile(filePath, yamlContent);
     } catch (error) {
       this.logger.error(`Failed to save template ${filename}:`, error);
       throw error;

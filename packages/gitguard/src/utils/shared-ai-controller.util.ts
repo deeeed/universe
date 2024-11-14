@@ -4,20 +4,18 @@ import {
   DEFAULT_MAX_PROMPT_TOKENS,
 } from "../constants.js";
 import { TemplateRegistry } from "../services/template/template-registry.js";
-import { AIProvider, TokenUsage } from "../types/ai.types.js";
-import { PRStats } from "../types/analysis.types.js";
+import { AIProvider } from "../types/ai.types.js";
 import { Config } from "../types/config.types.js";
-import { CommitInfo, FileChange } from "../types/git.types.js";
+import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
 import {
-  BaseTemplateVariables,
-  PromptTemplate,
+  LoadedPromptTemplate,
   PromptType,
+  TemplateVariables,
 } from "../types/templates.type.js";
 import { checkAILimits } from "./ai-limits.util.js";
 import { copyToClipboard } from "./clipboard.util.js";
 import { formatDiffForAI } from "./diff.util.js";
-import { getTemplateBasedChoices } from "./template-choice.util.js";
 import { promptActionChoice } from "./user-prompt.util.js";
 
 // Base interface for shared dependencies
@@ -47,23 +45,15 @@ export interface HandleClipboardCopyParams {
   ai?: AIProvider;
   config: Config;
   logger: Logger;
-  templateRegistry?: TemplateRegistry;
 }
 
-export type AIActionType =
-  | "generate"
-  | "copy-api"
-  | "copy-manual"
-  | "skip"
-  | `copy-${string}`;
+export type AIActionType = "skip" | `generate-${string}` | `copy-${string}`;
 
-export interface AIActionHandlerParams<T> {
-  prompt: string;
-  humanFriendlyPrompt: string;
-  tokenUsage: TokenUsage;
-  generateLabel?: string;
-  actionHandler: (action: AIActionType) => Promise<T>;
+export interface AIActionHandlerParams<TResult> {
   type: PromptType;
+  variables: TemplateVariables;
+  generateLabel?: string;
+  actionHandler: (action: AIActionType, prompt?: string) => Promise<TResult>;
   choices?: Array<{
     label: string;
     value: AIActionType;
@@ -89,15 +79,27 @@ function calculateDiffScore(params: {
 }): number {
   const { content, isClipboardAction, maxTokens, ai, logger } = params;
 
-  if (isClipboardAction) return 2;
+  logger?.debug("Calculating diff score:", {
+    contentLength: content.length,
+    isClipboardAction,
+    maxTokens,
+    hasAI: !!ai,
+  });
+
+  if (isClipboardAction) {
+    logger?.debug("Using clipboard action score");
+    return 2;
+  }
 
   const tokenCount = ai
     ? ai.calculateTokenUsage({ prompt: content }).count
     : Math.ceil(content.length / 4);
 
-  logger?.debug("Token count for diff:", {
-    content: content.length,
+  logger?.debug("Token calculation result:", {
+    contentLength: content.length,
     tokenCount,
+    maxTokens,
+    score: tokenCount <= maxTokens ? 1 : 0,
   });
 
   return tokenCount <= maxTokens ? 1 : 0;
@@ -226,184 +228,264 @@ export async function handleClipboardCopy({
   }
 }
 
-function getTemplateVariables(params: {
-  template: PromptTemplate;
-  context: {
-    files: FileChange[];
-    diff: string;
-    commits?: CommitInfo[];
-    baseBranch?: string;
-    stats?: PRStats;
-    message?: string;
-    options?: {
-      includeTesting?: boolean;
-      includeChecklist?: boolean;
-    };
-  };
-}): PromptTemplate["variables"] {
-  const { template, context } = params;
-  const baseVars: BaseTemplateVariables = {
-    files: context.files,
-    diff: context.diff,
-  };
-
-  switch (template.type) {
-    case "commit":
-      return {
-        ...baseVars,
-        commits: context.commits ?? [],
-        baseBranch: context.baseBranch ?? "main",
-        stats: context.stats,
-        template: context.message,
-        options: context.options,
-      };
-
-    case "split-commit":
-      return {
-        ...baseVars,
-        message: context.message ?? "",
-      };
-
-    case "pr":
-      return {
-        ...baseVars,
-        commits: context.commits ?? [],
-        baseBranch: context.baseBranch ?? "main",
-        stats: context.stats,
-        template: context.message,
-        options: context.options,
-      };
-
-    case "split-pr":
-      return {
-        ...baseVars,
-        commits: context.commits ?? [],
-        baseBranch: context.baseBranch ?? "main",
-        stats: context.stats,
-      };
-
-    default: {
-      throw new Error(`Unhandled template type`);
-    }
-  }
+interface GetTemplateOptionsParams {
+  type: PromptType;
+  templateRegistry: TemplateRegistry;
+  logger: Logger;
+  variables: TemplateVariables;
 }
 
-export async function handleAIAction<T>({
-  prompt,
-  humanFriendlyPrompt,
-  tokenUsage,
-  generateLabel = "Generate content",
-  actionHandler,
-  config,
-  logger,
-  ai,
-  choices: customChoices,
-  type,
-  templateRegistry,
-  context = {
-    files: [],
-    diff: "",
-    commits: [],
-    baseBranch: "main",
-  },
-}: AIActionHandlerParams<T> &
-  BaseAIParams & {
-    context?: {
-      files: FileChange[];
-      diff: string;
-      commits?: CommitInfo[];
-      baseBranch?: string;
-      stats?: PRStats;
-      message?: string;
-      options?: {
-        includeTesting?: boolean;
-        includeChecklist?: boolean;
-      };
-    };
-  }): Promise<T> {
-  logger.info(`\n💰 Estimated cost: ${tokenUsage.estimatedCost}`);
-  logger.info(`📊 Estimated tokens: ${tokenUsage.count}/32000`);
-  logger.info(
-    `📝 Prompt size: ${(prompt.length / 1024).toFixed(1)} KB (${prompt.length} chars)`,
-  );
+function getTemplateOptions(params: GetTemplateOptionsParams): Array<{
+  template: LoadedPromptTemplate;
+  renderedPrompt: string;
+  isApi: boolean;
+  label: string;
+}> {
+  const { type, templateRegistry, logger, variables } = params;
 
-  if (ai && !checkAILimits({ tokenUsage, config, logger })) {
-    return actionHandler("skip");
-  }
+  logger.debug("Getting template options:", {
+    type,
+    variableKeys: Object.keys(variables),
+  });
 
-  const { canGenerate, reason } = canGenerateAI(config, ai);
-  logger.debug("AI generation status:", { canGenerate, reason });
+  // Get all templates for this type (both API and human)
+  const templates = templateRegistry.getTemplatesForType({
+    type,
+    format: "api",
+  });
+  const humanTemplates = templateRegistry.getTemplatesForType({
+    type,
+    format: "human",
+  });
 
-  const choices =
-    customChoices ??
-    getTemplateBasedChoices({
-      type,
-      generateLabel,
-      canGenerate,
-      disabledReason: reason,
-      tokenUsage,
-      templateRegistry,
-      logger,
+  logger.debug("Found templates:", {
+    apiCount: templates.length,
+    humanCount: humanTemplates.length,
+    apiTemplateIds: templates.map((t) => t.id),
+    humanTemplateIds: humanTemplates.map((t) => t.id),
+  });
+
+  return [...templates, ...humanTemplates].map((template) => {
+    logger.debug(`Rendering template ${template.id}:`, {
+      format: template.format,
+      title: template.title,
     });
 
-  const { action } = await promptActionChoice<AIActionType>({
-    message: "Choose how to proceed:",
-    choices: choices.map((choice) => ({
-      ...choice,
-      value: choice.value as AIActionType,
+    const renderedPrompt = templateRegistry.renderTemplate({
+      template,
+      variables,
+    });
+
+    return {
+      template,
+      renderedPrompt,
+      isApi: template.format === "api",
+      label: template.title
+        ? `"${template.title}"`
+        : `${template.type} (${template.format})`,
+    };
+  });
+}
+
+export async function handleAIAction<TResult>(
+  params: AIActionHandlerParams<TResult> & BaseAIParams,
+): Promise<TResult> {
+  const {
+    type,
+    templateRegistry,
+    logger,
+    variables,
+    ai,
+    config,
+    choices: customChoices,
+    actionHandler,
+  } = params;
+
+  logger.debug("Starting AI action handler:", {
+    type,
+    hasAI: !!ai,
+    aiEnabled: config.ai?.enabled,
+    aiProvider: config.ai?.provider,
+  });
+
+  // Check if AI generation is possible
+  const aiStatus = canGenerateAI(config, ai);
+
+  // Get all available templates and their rendered prompts
+  const templateOptions = getTemplateOptions({
+    type,
+    templateRegistry,
+    logger,
+    variables,
+  });
+
+  // Group templates by format for easier handling
+  const apiTemplates = templateOptions.filter((t) => t.isApi);
+  const humanTemplates = templateOptions.filter((t) => !t.isApi);
+
+  logger.debug("Template options prepared:", {
+    totalTemplates: templateOptions.length,
+    apiTemplatesCount: apiTemplates.length,
+    humanTemplatesCount: humanTemplates.length,
+  });
+
+  // Build choices for user prompt
+  const defaultChoices = [
+    ...apiTemplates.map((t) => ({
+      label: `Generate using ${t.label} ${!aiStatus.canGenerate ? `(${aiStatus.reason}. Fix by ${getFixSuggestion(aiStatus)})` : ""}`,
+      value: `generate-${t.template.id}` as AIActionType,
+      isDefault: aiStatus.canGenerate,
+      disabled: !aiStatus.canGenerate,
+      disabledReason: aiStatus.reason,
     })),
+    ...humanTemplates.map((t) => ({
+      label: `Copy ${t.label} to clipboard`,
+      value: `copy-${t.template.id}` as AIActionType,
+      isDefault:
+        !aiStatus.canGenerate &&
+        humanTemplates[0]?.template.id === t.template.id,
+    })),
+    {
+      label: "Skip",
+      value: "skip" as AIActionType,
+      isDefault: !aiStatus.canGenerate && humanTemplates.length === 0,
+    },
+  ];
+
+  const choices = customChoices ?? defaultChoices;
+
+  // Get user choice
+  const { action } = await promptActionChoice({
+    message: "Choose an action:",
+    choices,
     logger,
   });
 
-  if (
-    action.startsWith("copy-") &&
-    action !== "copy-api" &&
-    action !== "copy-manual"
-  ) {
-    const templateId = action.replace("copy-", "");
-    const template = templateRegistry.getTemplateById({ id: templateId });
+  logger.debug("User selected action:", { action });
+
+  // Handle the selected action
+  if (action === "skip") {
+    logger.debug("Skipping AI action");
+    return actionHandler("skip");
+  }
+
+  interface TemplateResult {
+    template: LoadedPromptTemplate;
+    renderedPrompt: string;
+    isApi: boolean;
+    label: string;
+  }
+
+  interface HandleTemplateActionParams {
+    templateId: string;
+    requireApi?: boolean;
+  }
+
+  const handleTemplateAction = ({
+    templateId,
+    requireApi = false,
+  }: HandleTemplateActionParams): TemplateResult | null => {
+    const template = templateOptions.find(
+      (t) => t.template.id === templateId && (!requireApi || t.isApi),
+    );
     if (template) {
-      const variables = getTemplateVariables({ template, context });
-      const renderedPrompt = templateRegistry.renderTemplate({
-        template,
-        variables,
+      logger.debug("Found template:", {
+        id: template.template.id,
+        format: template.template.format,
       });
+      return template;
+    }
+    logger.warn(`Template not found:`, { templateId, requireApi });
+    return null;
+  };
+
+  if (action.startsWith("copy-")) {
+    const templateId = action.replace("copy-", "");
+    const template = handleTemplateAction({ templateId });
+    if (template) {
       await handleClipboardCopy({
-        prompt: renderedPrompt,
-        isApi: false,
+        prompt: template.renderedPrompt,
+        isApi: template.isApi,
         ai,
         config,
         logger,
       });
-      return actionHandler("skip");
     }
-  }
-
-  if (action === "copy-api" || action === "copy-manual") {
-    await handleClipboardCopy({
-      prompt: action === "copy-api" ? prompt : humanFriendlyPrompt,
-      isApi: action === "copy-api",
-      ai,
-      config,
-      logger,
-    });
     return actionHandler("skip");
   }
 
-  return actionHandler(action);
+  if (action.startsWith("generate-")) {
+    const templateId = action.replace("generate-", "");
+    const template = handleTemplateAction({ templateId, requireApi: true });
+    if (template) {
+      return actionHandler(action, template.renderedPrompt);
+    }
+  }
+
+  logger.debug("No matching action handler, falling back to skip");
+  return actionHandler("skip");
+}
+
+// Add helper function to provide fix suggestions
+function getFixSuggestion(aiStatus: AIGenerateResult): string {
+  if (!aiStatus.debug) return "checking AI configuration";
+
+  if (!aiStatus.debug.aiEnabled) {
+    return "setting ai.enabled=true in config";
+  }
+
+  if (aiStatus.debug.provider === "openai" && !aiStatus.debug.hasOpenAIKey) {
+    return "setting OPENAI_API_KEY or ai.openai.apiKey in config";
+  }
+
+  if (aiStatus.debug.provider === "azure") {
+    if (!aiStatus.debug.hasAzureKey) {
+      return "setting AZURE_OPENAI_API_KEY or ai.azure.apiKey in config";
+    }
+    if (!aiStatus.debug.hasAzureEndpoint) {
+      return "setting AZURE_OPENAI_ENDPOINT or ai.azure.endpoint in config";
+    }
+  }
+
+  return "checking AI configuration";
+}
+
+// Update the return type to include debug info
+interface AIGenerateResult {
+  canGenerate: boolean;
+  reason?: string;
+  debug?: {
+    hasAI: boolean;
+    aiEnabled: boolean;
+    provider: "azure" | "openai" | "ollama" | null;
+    hasOpenAIKey: boolean;
+    hasAzureKey: boolean;
+    hasAzureEndpoint: boolean;
+  };
 }
 
 export function canGenerateAI(
   config: Config,
   ai?: AIProvider,
-): {
-  canGenerate: boolean;
-  reason?: string;
-} {
+): AIGenerateResult {
+  const debug = {
+    hasAI: !!ai,
+    aiEnabled: config.ai?.enabled ?? false,
+    provider: config.ai?.provider,
+    hasOpenAIKey: !!(process.env.OPENAI_API_KEY ?? config.ai?.openai?.apiKey),
+    hasAzureKey: !!(
+      process.env.AZURE_OPENAI_API_KEY ?? config.ai?.azure?.apiKey
+    ),
+    hasAzureEndpoint: !!(
+      process.env.AZURE_OPENAI_ENDPOINT ?? config.ai?.azure?.endpoint
+    ),
+  };
+
   if (!ai) {
     return {
       canGenerate: false,
       reason: "AI provider not configured",
+      debug,
     };
   }
 
@@ -411,33 +493,37 @@ export function canGenerateAI(
     return {
       canGenerate: false,
       reason: "AI is disabled in configuration",
+      debug,
     };
   }
 
-  // Check both environment variables and config values
-  if (config.ai.provider === "openai") {
-    if (!process.env.OPENAI_API_KEY && !config.ai.openai?.apiKey) {
-      return {
-        canGenerate: false,
-        reason: "OpenAI API key not found",
-      };
-    }
+  if (config.ai.provider === "openai" && !debug.hasOpenAIKey) {
+    return {
+      canGenerate: false,
+      reason: "OpenAI API key not found",
+      debug,
+    };
   }
 
   if (config.ai.provider === "azure") {
-    if (!process.env.AZURE_OPENAI_API_KEY && !config.ai.azure?.apiKey) {
+    if (!debug.hasAzureKey) {
       return {
         canGenerate: false,
         reason: "Azure OpenAI API key not found",
+        debug,
       };
     }
-    if (!process.env.AZURE_OPENAI_ENDPOINT && !config.ai.azure?.endpoint) {
+    if (!debug.hasAzureEndpoint) {
       return {
         canGenerate: false,
         reason: "Azure OpenAI endpoint not found",
+        debug,
       };
     }
   }
 
-  return { canGenerate: true };
+  return {
+    canGenerate: true,
+    debug,
+  };
 }
