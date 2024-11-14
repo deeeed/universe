@@ -124,48 +124,46 @@ export class TemplateRegistry {
     this.logger.debug("🔍 Searching for templates in:", templatePaths);
     this.logger.debug("🔍 Include defaults:", includeDefaults);
 
-    let templatesFound = false;
-    let totalYamlFiles = 0;
-    const foundPaths: Array<{ path: string; source: "project" | "global" }> =
-      [];
-
-    // First pass: check which directories have template files
+    // First pass: load custom templates
     for (const { path, source } of templatePaths) {
-      try {
-        const files = await fs.readdir(path);
-        const yamlFiles = files.filter(
-          (file) => file.endsWith(".yml") || file.endsWith(".yaml"),
-        );
-
-        if (yamlFiles.length > 0) {
-          templatesFound = true;
-          totalYamlFiles += yamlFiles.length;
-          foundPaths.push({ path, source });
-          this.logger.debug(
-            `📁 Found ${yamlFiles.length} template files in ${path}:`,
-            yamlFiles.map((f) => `\n  - ${f}`).join(""),
-          );
-        }
-      } catch (error) {
-        this.logger.debug(`📁 No templates found in ${path}`);
-      }
+      await this.loadTemplatesFromDirectory(path, source);
     }
 
-    // Load default templates if requested
+    // Load default templates only for missing types/formats
     if (includeDefaults) {
       try {
         const defaultTemplates = await this.loadDefaultTemplates();
+
+        // Only add default templates if no custom template exists for that type/format
         defaultTemplates.forEach((template) => {
-          this.templates.set(template.id, template);
-          totalYamlFiles++; // Include default templates in the count
+          const existingTemplate = Array.from(this.templates.values()).find(
+            (t) => t.type === template.type && t.format === template.format,
+          );
+
+          if (!existingTemplate) {
+            this.templates.set(template.id, template);
+            this.logger.debug(
+              `📝 Added default template for ${template.type}.${template.format}`,
+              {
+                id: template.id,
+                type: template.type,
+                format: template.format,
+                version: template.version,
+              },
+            );
+          } else {
+            this.logger.debug(
+              `⏭️  Skipping default template for ${template.type}.${template.format} (custom template exists)`,
+            );
+          }
         });
-        templatesFound = templatesFound || defaultTemplates.size > 0;
       } catch (error) {
         this.logger.warn("Failed to load default templates:", error);
       }
     }
 
-    if (!templatesFound) {
+    const loadedTemplateCount = this.templates.size;
+    if (loadedTemplateCount === 0) {
       this.logger.warn(
         "⚠️  No template files found in any search location.\n" +
           "💡 Create templates in .gitguard/templates/ to enable advanced AI features.\n" +
@@ -175,47 +173,34 @@ export class TemplateRegistry {
       return;
     }
 
-    // Second pass: load the templates from directories that had YAML files
-    await Promise.all(
-      foundPaths.map(({ path, source }) =>
-        this.loadTemplatesFromDirectory(path, source),
-      ),
+    // Log success message and statistics
+    const loadedTemplates = Array.from(this.templates.values());
+    const templatesBySource = loadedTemplates.reduce(
+      (acc, t) => {
+        acc[t.source] = (acc[t.source] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
     );
 
-    const loadedTemplateCount = this.templates.size;
-    const loadedTemplates = Array.from(this.templates.values());
+    this.logger.info(
+      `✨ Successfully loaded ${loadedTemplateCount} templates:\n${loadedTemplates
+        .map((t) => `  - ${t.title ?? t.id} (${t.type}, ${t.format})`)
+        .join("\n")}`,
+    );
 
-    if (loadedTemplateCount === 0) {
-      this.logger.warn(
-        "⚠️  Found template files but none were valid.\n" +
-          "💡 Please check your template files for proper YAML formatting and required fields.",
-      );
-    } else {
-      const successRate = Math.round(
-        (loadedTemplateCount / totalYamlFiles) * 100,
-      );
-      this.logger.info(
-        `✨ Successfully loaded ${loadedTemplateCount}/${totalYamlFiles} templates (${successRate}%):\n${loadedTemplates
-          .map((t) => `  - ${t.title ?? t.id} (${t.type}, ${t.format})`)
-          .join("\n")}`,
-      );
-
-      // Log template statistics by type
-      const templatesByType = loadedTemplates.reduce(
-        (acc, template) => {
-          acc[template.type] = (acc[template.type] || 0) + 1;
+    // Log template statistics
+    this.logger.debug("📊 Template statistics:", {
+      total: loadedTemplateCount,
+      bySource: templatesBySource,
+      byType: loadedTemplates.reduce(
+        (acc, t) => {
+          acc[t.type] = (acc[t.type] || 0) + 1;
           return acc;
         },
-        {} as Record<PromptType, number>,
-      );
-
-      this.logger.debug("📊 Template statistics:", {
-        total: loadedTemplateCount,
-        byType: templatesByType,
-        searchPaths: foundPaths.map(({ path }) => path),
-        successRate,
-      });
-    }
+        {} as Record<string, number>,
+      ),
+    });
   }
 
   public getTemplatesForType(params: {
