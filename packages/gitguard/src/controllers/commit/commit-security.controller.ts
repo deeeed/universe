@@ -1,10 +1,10 @@
+import chalk from "chalk";
 import { GitService } from "../../services/git.service.js";
-import { Logger } from "../../types/logger.types.js";
 import { SecurityService } from "../../services/security.service.js";
 import { FileChange } from "../../types/git.types.js";
+import { Logger } from "../../types/logger.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
-import chalk from "chalk";
-import { promptChoice, promptYesNo } from "../../utils/user-prompt.util.js";
+import { promptChoice } from "../../utils/user-prompt.util.js";
 
 interface CommitSecurityControllerParams {
   logger: Logger;
@@ -136,19 +136,6 @@ export class CommitSecurityController {
         break;
 
       case "ignore":
-        if (securityResult.shouldBlock) {
-          const confirmed = await promptYesNo({
-            message:
-              "\n⚠️ High severity security issues found. Are you sure you want to proceed?",
-            defaultValue: false,
-            logger: this.logger,
-          });
-
-          if (!confirmed) {
-            this.logger.info("\n❌ Commit aborted");
-            process.exit(1);
-          }
-        }
         this.logger.info(
           chalk.yellow("\n⚠️ Proceeding despite security issues..."),
         );

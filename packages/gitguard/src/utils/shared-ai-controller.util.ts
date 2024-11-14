@@ -194,12 +194,12 @@ export async function handleClipboardCopy({
   const clipboardTokens = ai?.calculateTokenUsage({
     prompt,
     options: { isClipboardAction: true },
-  });
-
-  if (!clipboardTokens) {
-    logger.error("\n❌ Failed to calculate token usage for clipboard content");
-    return;
-  }
+  }) ?? {
+    count: Math.ceil(prompt.length / 4),
+    estimatedCost: "$0.00",
+    isWithinApiLimits: true,
+    isWithinClipboardLimits: true,
+  };
 
   if (
     checkAILimits({
