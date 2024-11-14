@@ -124,15 +124,16 @@ async function initializeServices({
   return { logger, reporter, git, github, security, ai, prService, config };
 }
 
-function initializeControllers({
+async function initializeControllers({
   services,
-}: InitializeControllersParams): ControllersContext {
+}: InitializeControllersParams): Promise<ControllersContext> {
   const { logger, git, github, prService, config, ai } = services;
 
   const templateRegistry = new TemplateRegistry({
     logger,
     gitRoot: git.getCWD(),
   });
+  await templateRegistry.loadTemplates({ includeDefaults: true });
 
   return {
     analysisController: new BranchAnalysisController({
@@ -180,7 +181,7 @@ export async function analyzeBranch({
     });
 
     logger.info("\n🎯 Starting branch analysis...");
-    const controllers = initializeControllers({ services });
+    const controllers = await initializeControllers({ services });
 
     const analysisContext = await initializeAnalysisContext({
       services,
@@ -368,6 +369,10 @@ async function processAIWithoutGitHub({
     result = await controllers.aiController.handleSplitSuggestions({
       analysisResult: result,
     });
+  }
+
+  if (result.skipFurtherSuggestions) {
+    return result;
   }
 
   return controllers.aiController.handleAISuggestions({

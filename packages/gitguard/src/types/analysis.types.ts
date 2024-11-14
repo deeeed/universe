@@ -74,6 +74,7 @@ export interface PRAnalysisResult {
   files: FileChange[];
   diff: string;
   existingPR?: GitHubPR | null;
+  skipFurtherSuggestions?: boolean;
 }
 
 export interface PRStats {

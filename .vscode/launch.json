@@ -8,7 +8,7 @@
       "cwd": "${workspaceFolder}/packages/gitguard",
       "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}/packages/gitguard/e2e/index.ts",
-      "args": ["--tests=commit-message", "--scenario=basic-formatting"],
+      "args": ["--tests=branch-features", "--scenario=branch-split-suggestion", "--debug"],
       "runtimeArgs": [
         "--loader",
         "ts-node/esm",
@@ -37,7 +37,7 @@
       "skipFiles": ["<node_internals>/**"],
       "cwd": "${workspaceFolder}/packages/gitguard",
       "program": "${workspaceFolder}/packages/gitguard/src/cli/gitguard.ts",
-      "args": ["commit"],
+      "args": ["branch", "analyze", "--split"],
       "runtimeArgs": [
         "--loader",
         "ts-node/esm",

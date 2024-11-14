@@ -13,7 +13,7 @@ import {
   PromptType,
   TemplateVariables,
 } from "../types/templates.type.js";
-import { checkAILimits } from "./ai-limits.util.js";
+import { checkAILimits, displayTokenInfo } from "./ai-limits.util.js";
 import { copyToClipboard } from "./clipboard.util.js";
 import { formatDiffForAI } from "./diff.util.js";
 import { promptActionChoice } from "./user-prompt.util.js";
@@ -379,7 +379,7 @@ export async function handleAIAction<TResult>(
         !aiStatus.canGenerate
           ? `(${aiStatus.reason}. Fix by ${getFixSuggestion(aiStatus)})`
           : t.tokenUsage
-            ? ` (estimated cost: ${t.tokenUsage.estimatedCost})`
+            ? ` (${t.tokenUsage.count} tokens, estimated cost: ${t.tokenUsage.estimatedCost})`
             : " (cost estimation unavailable)"
       }`,
       value: `generate-${t.template.id}` as AIActionType,
@@ -413,6 +413,21 @@ export async function handleAIAction<TResult>(
   });
 
   logger.debug("User selected action:", { action });
+
+  // After user selects an action, display detailed token info if it's a generation action
+  if (action.startsWith("generate-")) {
+    const templateId = action.replace(/^generate-/, "");
+    const template = templateOptions.find((t) => t.template.id === templateId);
+
+    if (template?.tokenUsage) {
+      displayTokenInfo({
+        tokenUsage: template.tokenUsage,
+        prompt: template.renderedPrompt,
+        maxTokens: config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
+        logger,
+      });
+    }
+  }
 
   // Handle the selected action
   if (action === "skip") {

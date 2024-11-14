@@ -1,3 +1,5 @@
+import chalk from "chalk";
+import { DEFAULT_MAX_PROMPT_TOKENS } from "../../constants.js";
 import { GitService } from "../../services/git.service.js";
 import { GitHubService } from "../../services/github.service.js";
 import { PRService } from "../../services/pr.service.js";
@@ -9,6 +11,7 @@ import {
 } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { Logger } from "../../types/logger.types.js";
+import { displayTokenInfo } from "../../utils/ai-limits.util.js";
 import {
   handleAIAction,
   selectBestDiff,
@@ -121,6 +124,19 @@ export class BranchAIController {
     analysisResult: PRAnalysisResult,
     prompt: string,
   ): Promise<PRAnalysisResult> {
+    if (this.ai) {
+      const tokenUsage = this.ai.calculateTokenUsage({ prompt });
+      const maxTokens =
+        this.config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS;
+
+      displayTokenInfo({
+        tokenUsage,
+        prompt,
+        maxTokens,
+        logger: this.logger,
+      });
+    }
+
     const description = (await this.prService.generateAIDescription({
       commits: analysisResult.commits,
       files: analysisResult.files,
@@ -192,6 +208,10 @@ export class BranchAIController {
       files: analysisResult.files,
       baseBranch: analysisResult.baseBranch,
       diff: bestDiff.content,
+      options: {
+        includeTesting: false,
+        includeChecklist: true,
+      },
     };
 
     return handleAIAction<PRAnalysisResult>({
@@ -199,6 +219,13 @@ export class BranchAIController {
       variables,
       generateLabel: "Generate split suggestions",
       actionHandler: async (action, prompt) => {
+        if (action.startsWith("copy-") && prompt) {
+          this.logger.info(
+            "\n✨ Use the copied suggestions to split your commits.",
+          );
+          return { ...analysisResult, skipFurtherSuggestions: true };
+        }
+
         if (action.startsWith("generate-") && this.ai && prompt) {
           const splitSuggestion =
             await this.ai.generateCompletion<PRSplitSuggestion>({
@@ -207,7 +234,20 @@ export class BranchAIController {
             });
 
           if (splitSuggestion) {
-            return { ...analysisResult, splitSuggestion };
+            this.logger.info("\n📝 AI generated split suggestions:");
+            if (splitSuggestion.suggestedPRs?.length) {
+              splitSuggestion.suggestedPRs.forEach((pr, index) => {
+                this.logger.info(`\n${index + 1}. ${pr.title}`);
+                if (pr.description) {
+                  this.logger.info(chalk.dim(pr.description));
+                }
+              });
+            }
+            return {
+              ...analysisResult,
+              splitSuggestion,
+              skipFurtherSuggestions: true,
+            };
           }
         }
         return analysisResult;
