@@ -235,12 +235,21 @@ interface GetTemplateOptionsParams {
   variables: TemplateVariables;
 }
 
-function getTemplateOptions(params: GetTemplateOptionsParams): Array<{
+interface HandleTemplateActionParams {
+  templateId: string;
+  requireApi?: boolean;
+}
+
+interface TemplateResult {
   template: LoadedPromptTemplate;
   renderedPrompt: string;
   isApi: boolean;
   label: string;
-}> {
+}
+
+function getTemplateOptions(
+  params: GetTemplateOptionsParams,
+): TemplateResult[] {
   const { type, templateRegistry, logger, variables } = params;
 
   logger.debug("Getting template options:", {
@@ -319,6 +328,17 @@ export async function handleAIAction<TResult>(
     variables,
   });
 
+  // If using default templates, show pro tip
+  if (templateOptions.some((t) => t.template.source === "default")) {
+    logger.info(
+      chalk.yellow(
+        "\n💡 Pro Tip: Using default templates. You can customize templates by running:",
+      ) +
+        "\n   gitguard template --init" +
+        "\n   This will create editable templates in .gitguard/templates/",
+    );
+  }
+
   // Group templates by format for easier handling
   const apiTemplates = templateOptions.filter((t) => t.isApi);
   const humanTemplates = templateOptions.filter((t) => !t.isApi);
@@ -328,6 +348,25 @@ export async function handleAIAction<TResult>(
     apiTemplatesCount: apiTemplates.length,
     humanTemplatesCount: humanTemplates.length,
   });
+
+  // Extract common template handling logic into a function
+  const handleTemplateAction = ({
+    templateId,
+    requireApi = false,
+  }: HandleTemplateActionParams): TemplateResult | null => {
+    const template = templateOptions.find(
+      (t) => t.template.id === templateId && (!requireApi || t.isApi),
+    );
+    if (template) {
+      logger.debug("Found template:", {
+        id: template.template.id,
+        format: template.template.format,
+      });
+      return template;
+    }
+    logger.warn(`Template not found:`, { templateId, requireApi });
+    return null;
+  };
 
   // Build choices for user prompt
   const defaultChoices = [
@@ -369,56 +408,24 @@ export async function handleAIAction<TResult>(
     return actionHandler("skip");
   }
 
-  interface TemplateResult {
-    template: LoadedPromptTemplate;
-    renderedPrompt: string;
-    isApi: boolean;
-    label: string;
-  }
+  if (action.startsWith("copy-") || action.startsWith("generate-")) {
+    const templateId = action.replace(/^(copy|generate)-/, "");
+    const requireApi = action.startsWith("generate-");
+    const templateResult = handleTemplateAction({ templateId, requireApi });
 
-  interface HandleTemplateActionParams {
-    templateId: string;
-    requireApi?: boolean;
-  }
-
-  const handleTemplateAction = ({
-    templateId,
-    requireApi = false,
-  }: HandleTemplateActionParams): TemplateResult | null => {
-    const template = templateOptions.find(
-      (t) => t.template.id === templateId && (!requireApi || t.isApi),
-    );
-    if (template) {
-      logger.debug("Found template:", {
-        id: template.template.id,
-        format: template.template.format,
-      });
-      return template;
-    }
-    logger.warn(`Template not found:`, { templateId, requireApi });
-    return null;
-  };
-
-  if (action.startsWith("copy-")) {
-    const templateId = action.replace("copy-", "");
-    const template = handleTemplateAction({ templateId });
-    if (template) {
-      await handleClipboardCopy({
-        prompt: template.renderedPrompt,
-        isApi: template.isApi,
-        ai,
-        config,
-        logger,
-      });
-    }
-    return actionHandler("skip");
-  }
-
-  if (action.startsWith("generate-")) {
-    const templateId = action.replace("generate-", "");
-    const template = handleTemplateAction({ templateId, requireApi: true });
-    if (template) {
-      return actionHandler(action, template.renderedPrompt);
+    if (templateResult) {
+      if (action.startsWith("copy-")) {
+        await handleClipboardCopy({
+          prompt: templateResult.renderedPrompt,
+          isApi: templateResult.isApi,
+          ai,
+          config,
+          logger,
+        });
+        return actionHandler("skip");
+      } else {
+        return actionHandler(action, templateResult.renderedPrompt);
+      }
     }
   }
 

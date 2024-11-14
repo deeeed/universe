@@ -387,7 +387,8 @@ export async function validateTemplates(
   let isValid = true;
 
   try {
-    await registry.loadTemplates();
+    // Load both custom and default templates
+    await registry.loadTemplates({ includeDefaults: true });
     let templates = registry.getAllTemplates();
 
     // Apply filter if provided
@@ -412,8 +413,29 @@ export async function validateTemplates(
       }
     }
 
+    // Check if we only have default templates
+    const customTemplates = templates.filter((t) => t.source !== "default");
+    const defaultTemplatesCount = templates.length - customTemplates.length;
+
+    if (customTemplates.length === 0) {
+      logger.warn(
+        "\n⚠️  No custom templates found. Using default templates only.\n" +
+          "💡 To customize templates, you can:\n" +
+          "   • Initialize project templates:  gitguard template --init\n" +
+          "   • Initialize global templates:   gitguard template --init --global\n" +
+          "📂 Search locations:\n" +
+          "   • Project: .gitguard/templates/\n" +
+          "   • Global:  ~/.gitguard/templates/\n",
+      );
+    }
+
     logger.info(
-      `\n🔍 Found ${templates.length} template${templates.length === 1 ? "" : "s"}${filter ? ` matching "${filter}"` : ""} to validate\n`,
+      `\n🔍 Found ${templates.length} template${templates.length === 1 ? "" : "s"}` +
+        (defaultTemplatesCount > 0
+          ? ` (including ${defaultTemplatesCount} default${defaultTemplatesCount === 1 ? "" : "s"})`
+          : "") +
+        (filter ? ` matching "${filter}"` : "") +
+        " to validate\n",
     );
 
     // Determine if we should show preview based on context
@@ -450,6 +472,13 @@ export async function validateTemplates(
           "  $ gitguard template --validate --filter <your-template> --preview",
         ),
       );
+      logger.info("• To create your own templates:");
+      logger.info(
+        chalk.dim("  $ gitguard template --init            # project level"),
+      );
+      logger.info(
+        chalk.dim("  $ gitguard template --init --global   # global level"),
+      );
       logger.info(
         "• Templates are stored in .gitguard/templates/ and can be edited or added manually",
       );
@@ -471,30 +500,71 @@ interface ListTemplatesParams {
 
 export function listTemplates(params: ListTemplatesParams): void {
   const { logger, registry } = params;
+  const templates = registry.getAllTemplates();
 
-  try {
-    const templates = registry.getAllTemplates();
-    if (templates.length === 0) {
-      logger.info("No templates found");
-      return;
-    }
-
-    logger.info("\n📝 Available Templates:\n");
-    const groupedTemplates = groupTemplatesByType({ templates, registry });
-
-    for (const [type, typeTemplates] of Object.entries(groupedTemplates)) {
-      logger.info(chalk.blue(`${type.toUpperCase()}`));
-
-      for (const { template, choices } of typeTemplates) {
-        const choice = choices.find((c) => c.value === template.id);
-        logger.info(formatTemplateDisplay({ template, choice }));
-      }
-      logger.info("");
-    }
-  } catch (error) {
-    logger.error("Failed to list templates:", error);
-    throw error;
+  if (templates.length === 0) {
+    logger.info(chalk.yellow("\nNo templates found."));
+    return;
   }
+
+  logger.info("\n📝 Available Templates:\n");
+
+  // Group templates by type
+  const groupedTemplates = templates.reduce(
+    (acc, template) => {
+      if (!acc[template.type]) {
+        acc[template.type] = [];
+      }
+      acc[template.type].push(template);
+      return acc;
+    },
+    {} as Record<PromptType, LoadedPromptTemplate[]>,
+  );
+
+  // Display templates by type
+  Object.entries(groupedTemplates).forEach(([type, typeTemplates]) => {
+    // Format type header
+    logger.info(chalk.bold.blue(`━━━ ${type} Templates ━━━`));
+
+    typeTemplates.forEach((template) => {
+      const sourceLabel = {
+        project: chalk.green("[custom]"),
+        global: chalk.yellow("[global]"),
+        default: chalk.dim("[default]"),
+      }[template.source];
+
+      // Format main template info
+      logger.info(
+        `${chalk.bold(template.title ?? template.id)} ${sourceLabel}` +
+          chalk.dim(` (${template.format})`) +
+          (template.version ? chalk.dim(` v${template.version}`) : ""),
+      );
+
+      // Only show ID if different from title
+      if (template.title && template.id !== template.title) {
+        logger.info(chalk.dim(`    ID: ${template.id}`));
+      }
+    });
+    logger.info(""); // Add spacing between groups
+  });
+
+  // Add helpful footer with expanded tips
+  logger.info(chalk.dim("💡 Tips:"));
+  logger.info(chalk.dim("• [custom] templates are in .gitguard/templates/"));
+  logger.info(chalk.dim("• [global] templates are in ~/.gitguard/templates/"));
+  logger.info(chalk.dim("\nCommon Commands:"));
+  logger.info(chalk.dim("• Initialize:  gitguard template --init"));
+  logger.info(
+    chalk.dim("• Validate:    gitguard template --validate --preview"),
+  );
+  logger.info(
+    chalk.dim("• Filter:      gitguard template --validate --filter commit"),
+  );
+  logger.info(
+    chalk.dim(
+      "• Quick Check: gitguard template --validate --preview --filter pr.api",
+    ),
+  );
 }
 
 interface DisplayProTipsParams {
@@ -529,8 +599,9 @@ export async function initializeTemplates(
     await fs.mkdir(templatePath, { recursive: true });
     logger.info(`📁 Created template directory: ${templatePath}`);
 
-    // Load both current and default templates
+    // Load only custom templates first
     await registry.loadTemplates();
+    // Then load defaults separately for comparison
     const defaultTemplates = await registry.loadDefaultTemplates();
 
     // Compare templates and determine status

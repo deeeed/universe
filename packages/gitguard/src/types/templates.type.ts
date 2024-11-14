@@ -55,19 +55,19 @@ export interface PRTemplateVariables extends BaseTemplateVariables {
 
 // Template Types with their specific variables
 export interface CommitTemplate extends BasePromptTemplate {
-  variables: CommitTemplateVariables;
+  variables?: CommitTemplateVariables;
 }
 
 export interface CommitSplitTemplate extends BasePromptTemplate {
-  variables: CommitSplitTemplateVariables;
+  variables?: CommitSplitTemplateVariables;
 }
 
 export interface PRDescriptionTemplate extends BasePromptTemplate {
-  variables: PRTemplateVariables;
+  variables?: PRTemplateVariables;
 }
 
 export interface PRSplitTemplate extends BasePromptTemplate {
-  variables: PRTemplateVariables;
+  variables?: PRTemplateVariables;
 }
 
 // Union types for template variables and templates
@@ -84,7 +84,7 @@ export type PromptTemplate =
 
 // Add source information to the base template
 export type WithSource = {
-  source: "project" | "global";
+  source: "project" | "global" | "default";
   path: string;
 };
 

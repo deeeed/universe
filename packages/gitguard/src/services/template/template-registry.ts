@@ -106,7 +106,10 @@ export class TemplateRegistry {
     }
   }
 
-  public async loadTemplates(): Promise<void> {
+  public async loadTemplates(params?: {
+    includeDefaults?: boolean;
+  }): Promise<void> {
+    const { includeDefaults = false } = params ?? {};
     const templatePaths = [
       {
         path: join(this.gitRoot, ".gitguard/templates"),
@@ -119,6 +122,7 @@ export class TemplateRegistry {
     ];
 
     this.logger.debug("🔍 Searching for templates in:", templatePaths);
+    this.logger.debug("🔍 Include defaults:", includeDefaults);
 
     let templatesFound = false;
     let totalYamlFiles = 0;
@@ -144,6 +148,20 @@ export class TemplateRegistry {
         }
       } catch (error) {
         this.logger.debug(`📁 No templates found in ${path}`);
+      }
+    }
+
+    // Load default templates if requested
+    if (includeDefaults) {
+      try {
+        const defaultTemplates = await this.loadDefaultTemplates();
+        defaultTemplates.forEach((template) => {
+          this.templates.set(template.id, template);
+          totalYamlFiles++; // Include default templates in the count
+        });
+        templatesFound = templatesFound || defaultTemplates.size > 0;
+      } catch (error) {
+        this.logger.warn("Failed to load default templates:", error);
       }
     }
 
@@ -293,11 +311,21 @@ export class TemplateRegistry {
           const completeTemplate: LoadedPromptTemplate = {
             ...(template as PromptTemplate),
             id: templateId,
-            source: "project",
+            source: "default",
             path: join(templatesDir, file),
           };
 
           defaultTemplates.set(templateId, completeTemplate);
+
+          this.logger.debug(
+            `📝 Loaded default template "${completeTemplate.title ?? templateId}"`,
+            {
+              id: templateId,
+              type: completeTemplate.type,
+              format: completeTemplate.format,
+              version: completeTemplate.version,
+            },
+          );
         } catch (error) {
           this.logger.warn(
             `❌ Failed to load default template ${file}:`,

@@ -102,7 +102,7 @@ Examples:
       }
 
       if (options.list) {
-        await registry.loadTemplates();
+        await registry.loadTemplates({ includeDefaults: true });
         listTemplates({ logger, registry });
       }
 

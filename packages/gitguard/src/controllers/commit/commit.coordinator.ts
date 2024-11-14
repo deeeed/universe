@@ -111,7 +111,7 @@ async function initializeControllers(
     gitRoot: git.getCWD(),
   });
 
-  await templateRegistry.loadTemplates();
+  await templateRegistry.loadTemplates({ includeDefaults: true });
 
   return {
     analysisController: new CommitAnalysisController({
