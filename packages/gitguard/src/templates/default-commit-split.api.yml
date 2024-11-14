@@ -1,0 +1,47 @@
+type: split-commit
+format: api
+title: Conventional Commit Split
+version: "1.0"
+ai:
+  provider: openai
+  model: gpt-4
+template: |
+  Analyze these git changes and determine if they should be split into multiple commits.
+
+  Files Changed:
+  {{#each files}}
+  - {{this.path}} (+{{this.additions}} -{{this.deletions}})
+  {{/each}}
+
+  Original message: "{{message}}"
+
+  Git diff:
+  ```diff
+  {{diff}}
+  ```
+
+  Please provide analysis in this JSON format:
+  {
+    "reason": "explanation why changes should be split OR why they work well together (max 100 chars)",
+    "suggestions": [
+      {
+        "message": "conventional commit message",
+        "files": ["list of files"],
+        "order": 1,
+        "type": "commit type (feat|fix|refactor|etc)",
+        "scope": "affected component or area"
+      }
+    ],
+    "commands": [
+      "git commands to execute the split"
+    ]
+  }
+
+  Guidelines:
+  1. If changes are cohesive, return empty suggestions array
+  2. Only suggest splits for truly separate concerns
+  3. Keep related changes together (e.g., component + types + tests)
+  4. Follow conventional commits format
+  5. Order suggestions by importance (1 being most important)
+  6. Consider package boundaries
+  7. Provide clear git commands for implementation

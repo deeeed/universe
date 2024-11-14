@@ -13,6 +13,7 @@ export interface CommitAnalysisResult {
   splitSuggestion?: CommitSplitSuggestion;
   shouldPromptUser?: boolean;
   complexity: CommitComplexity;
+  skipFurtherSuggestions?: boolean;
 }
 
 export interface CommitStats {
@@ -73,6 +74,7 @@ export interface PRAnalysisResult {
   files: FileChange[];
   diff: string;
   existingPR?: GitHubPR | null;
+  skipFurtherSuggestions?: boolean;
 }
 
 export interface PRStats {

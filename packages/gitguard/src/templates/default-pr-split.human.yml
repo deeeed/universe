@@ -1,0 +1,65 @@
+type: split-pr
+format: human
+title: PR Split Suggestions
+version: "1.0"
+ai:
+  provider: openai
+  model: gpt-4
+template: |
+  You are a helpful AI assistant specializing in Pull Requests. Please analyze these changes and create a migration script to split them into multiple PRs if needed:
+
+  Base Branch: {{baseBranch}}
+
+  Files Changed:
+  {{#each files}}
+  - {{this.path}} (+{{this.additions}} -{{this.deletions}})
+  {{/each}}
+
+  Git diff:
+  ```diff
+  {{diff}}
+  ```
+
+  If the changes should be split, provide your response in this format:
+
+  # Analysis
+  [Brief explanation of why these changes should be split]
+
+  # Migration Script
+  ```bash
+  # PR 1: feat(scope): descriptive title
+  git checkout -b pr1-feature-name {{baseBranch}}
+  git add [specific files]
+  git commit -m "feat(scope): descriptive title" -m "detailed description"
+  git push origin pr1-feature-name
+
+  # PR 2: fix(scope): another descriptive title
+  git checkout -b pr2-feature-name {{baseBranch}}
+  git add [specific files]
+  git commit -m "fix(scope): descriptive title" -m "detailed description"
+  git push origin pr2-feature-name
+
+  # [Additional PRs as needed...]
+  ```
+
+  # PR Dependencies
+  ```mermaid
+  graph TD
+    PR1[PR1: Feature Name] --> PR2[PR2: Another Feature]
+    PR2 --> PR3[PR3: Final Feature]
+  ```
+
+  Guidelines:
+  1. Each PR section in the script should include:
+     - Clear conventional commit title as a comment
+     - Branch creation
+     - Specific files to add
+     - Commit message with description
+     - Push command
+  2. Maintain proper dependency order in the script
+  3. Keep related changes together (components + types + tests)
+  4. Consider package boundaries
+  5. Make commands copy-paste ready
+  6. Include clear PR titles for reference
+
+  Note: If the changes are cohesive and should remain as a single PR, explain why and indicate that no split is necessary.

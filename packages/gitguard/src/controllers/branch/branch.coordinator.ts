@@ -9,6 +9,7 @@ import { AIProvider } from "../../types/ai.types.js";
 import { PRAnalysisResult } from "../../types/analysis.types.js";
 import { Config, GitConfig } from "../../types/config.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
+import { TemplateRegistry } from "../../services/template/template-registry.js";
 import { initializeAI } from "../../utils/ai-init.util.js";
 import { loadConfig } from "../../utils/config.util.js";
 import { BranchAIController } from "./branch-ai.controller.js";
@@ -107,8 +108,8 @@ async function initializeServices({
   const github = new GitHubService({ config, logger, git });
   const security = new SecurityService({ config, logger });
 
-  const isAIRequested = options.ai ?? config.ai?.enabled;
-  const ai = initializeAI({ config, logger, isAIRequested });
+  const isAIEnabled = options.ai ?? config.ai?.enabled ?? true;
+  const ai = initializeAI({ config, logger, isAIRequested: isAIEnabled });
 
   const prService = new PRService({
     config,
@@ -123,10 +124,16 @@ async function initializeServices({
   return { logger, reporter, git, github, security, ai, prService, config };
 }
 
-function initializeControllers({
+async function initializeControllers({
   services,
-}: InitializeControllersParams): ControllersContext {
-  const { logger, git, github, prService, config, ai, security } = services;
+}: InitializeControllersParams): Promise<ControllersContext> {
+  const { logger, git, github, prService, config, ai } = services;
+
+  const templateRegistry = new TemplateRegistry({
+    logger,
+    gitRoot: git.getCWD(),
+  });
+  await templateRegistry.loadTemplates({ includeDefaults: true });
 
   return {
     analysisController: new BranchAnalysisController({
@@ -143,6 +150,7 @@ function initializeControllers({
       prService,
       github,
       config,
+      templateRegistry,
     }),
     prController: new BranchPRController({
       logger,
@@ -153,7 +161,7 @@ function initializeControllers({
     }),
     securityController: new BranchSecurityController({
       logger,
-      security,
+      security: services.security,
       git,
     }),
   };
@@ -173,7 +181,7 @@ export async function analyzeBranch({
     });
 
     logger.info("\n🎯 Starting branch analysis...");
-    const controllers = initializeControllers({ services });
+    const controllers = await initializeControllers({ services });
 
     const analysisContext = await initializeAnalysisContext({
       services,
@@ -197,7 +205,7 @@ export async function analyzeBranch({
     });
 
     // Handle AI processing if enabled
-    if (options.ai && services.ai) {
+    if (services.ai) {
       analysisResult = await processAIFeatures({
         controllers,
         analysisResult,
@@ -361,6 +369,10 @@ async function processAIWithoutGitHub({
     result = await controllers.aiController.handleSplitSuggestions({
       analysisResult: result,
     });
+  }
+
+  if (result.skipFurtherSuggestions) {
+    return result;
   }
 
   return controllers.aiController.handleAISuggestions({

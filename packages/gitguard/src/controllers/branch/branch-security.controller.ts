@@ -4,7 +4,7 @@ import { SecurityService } from "../../services/security.service.js";
 import { PRAnalysisResult } from "../../types/analysis.types.js";
 import { Logger } from "../../types/logger.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
-import { promptChoice, promptYesNo } from "../../utils/user-prompt.util.js";
+import { promptChoice } from "../../utils/user-prompt.util.js";
 
 interface BranchSecurityControllerParams {
   logger: Logger;
@@ -119,19 +119,6 @@ export class BranchSecurityController {
         break;
 
       case "ignore":
-        if (securityResult.shouldBlock) {
-          const confirmed = await promptYesNo({
-            message:
-              "\n⚠️ High severity security issues found. Are you sure you want to proceed?",
-            defaultValue: false,
-            logger: this.logger,
-          });
-
-          if (!confirmed) {
-            this.logger.info("\n❌ PR creation aborted");
-            process.exit(1);
-          }
-        }
         this.logger.info(
           chalk.yellow("\n⚠️ Proceeding despite security issues..."),
         );

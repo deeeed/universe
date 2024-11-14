@@ -172,6 +172,10 @@ export class GitService extends BaseService {
     }
   }
 
+  public getCWD(): string {
+    return this.cwd;
+  }
+
   async isMonorepo(): Promise<boolean> {
     try {
       // Check if we're in a git repo first

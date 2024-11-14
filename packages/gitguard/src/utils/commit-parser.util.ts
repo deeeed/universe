@@ -63,7 +63,7 @@ export class CommitParser {
     return changes;
   }
 
-  private parseCommitMessage(params: { message: string }): ParsedCommit {
+  public parseCommitMessage(params: { message: string }): ParsedCommit {
     const pattern =
       /^(?<type>feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(?:\((?<scope>[^)]+)\))?(?<breaking>!)?: (?<description>.+)(?:\n\n(?<body>[\s\S]+))?$/;
 

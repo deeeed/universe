@@ -1,3 +1,4 @@
+import { TemplateRegistry } from "../services/template/template-registry.js";
 import {
   CommitComplexity,
   CommitSplitSuggestion,
@@ -5,6 +6,11 @@ import {
 } from "../types/analysis.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
+import {
+  PromptFormat,
+  PromptType,
+  TemplateVariables,
+} from "../types/templates.type.js";
 import { formatDiffForAI } from "./diff.util.js";
 
 export interface PRPromptParams {
@@ -15,7 +21,7 @@ export interface PRPromptParams {
   diff?: string;
   stats?: PRStats;
   logger: Logger;
-  format?: "api" | "human";
+  format?: PromptFormat;
   options?: {
     includeTesting?: boolean;
     includeChecklist?: boolean;
@@ -400,4 +406,99 @@ Guidelines:
 4. Maintain dependency order
 5. Follow conventional commit format for titles
 6. Include clear git commands for implementation`;
+}
+
+interface GetPromptParams {
+  type: PromptType;
+  format: PromptFormat;
+  variables: TemplateVariables & { logger: Logger };
+  templateRegistry: TemplateRegistry;
+  logger: Logger;
+}
+
+export function getPromptFromTemplate(params: GetPromptParams): string {
+  const { type, format, variables, templateRegistry, logger } = params;
+
+  const template = templateRegistry.getDefaultTemplate({ type, format });
+
+  if (!template) {
+    logger.warn(
+      `No template found for type=${type} format=${format}, using fallback`,
+    );
+    return getFallbackPrompt({
+      type,
+      format,
+      variables,
+    });
+  }
+
+  return templateRegistry.renderTemplate({
+    template,
+    variables,
+  });
+}
+
+// Add a base interface for template variables
+interface BaseTemplateVariables {
+  files: FileChange[];
+  diff: string;
+  logger: Logger;
+}
+
+// Add specific interfaces for each template type
+interface CommitTemplateVariables extends BaseTemplateVariables {
+  packages: Record<string, FileChange[]>;
+  originalMessage: string;
+  scope?: string;
+  complexity?: CommitComplexity;
+  includeDetails?: boolean;
+}
+
+interface CommitSplitTemplateVariables extends BaseTemplateVariables {
+  message: string;
+  basicSuggestion?: CommitSplitSuggestion;
+}
+
+interface PRTemplateVariables extends BaseTemplateVariables {
+  commits: CommitInfo[];
+  baseBranch: string;
+  stats?: PRStats;
+  template?: string;
+  options?: {
+    includeTesting?: boolean;
+    includeChecklist?: boolean;
+  };
+}
+
+// Update the getFallbackPrompt function
+function getFallbackPrompt(params: {
+  type: PromptType;
+  format: PromptFormat;
+  variables: BaseTemplateVariables &
+    (
+      | CommitTemplateVariables
+      | CommitSplitTemplateVariables
+      | PRTemplateVariables
+    );
+}): string {
+  const { type, format, variables } = params;
+
+  switch (type) {
+    case "commit":
+      return buildCommitPrompt(variables as CommitTemplateVariables);
+    case "split-commit":
+      return generateSplitSuggestionPrompt(
+        variables as CommitSplitTemplateVariables,
+      );
+    case "pr":
+      return generatePRDescriptionPrompt({
+        ...(variables as PRTemplateVariables),
+        format,
+        logger: variables.logger,
+      });
+    case "split-pr":
+      return generatePRSplitPrompt(variables as PRTemplateVariables);
+    default:
+      throw new Error(`Unknown prompt type: ${type as string}`);
+  }
 }

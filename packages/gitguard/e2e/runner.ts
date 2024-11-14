@@ -9,6 +9,7 @@ import { securityTest } from "./test/security.test.js";
 import { branchFeaturesTest } from "./test/branch-features.test.js";
 import { initTest } from "./test/init.test.js";
 import { statusTest } from "./test/status.test.js";
+import { templateTest } from "./test/template.test.js";
 import {
   E2ETest,
   TestResult,
@@ -25,6 +26,7 @@ const TEST_MAP = new Map<TestSuiteKey, E2ETest>([
   [TestSuites.BRANCH_FEATURES, branchFeaturesTest],
   [TestSuites.INIT, initTest],
   [TestSuites.STATUS, statusTest],
+  [TestSuites.TEMPLATE, templateTest],
 ]);
 
 interface ParsedArgs {

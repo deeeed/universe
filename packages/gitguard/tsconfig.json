@@ -24,6 +24,10 @@
         "./src/index.ts"
       ]
     },
+    "sourceMap": true,
+    "inlineSourceMap": false,
+    "inlineSources": true,
+    "declarationMap": true,
   },
   "ts-node": {
     "esm": true,

@@ -2,13 +2,37 @@ import { LoggerService } from "../src/services/logger.service.js";
 import { Config, DeepPartial } from "../src/types/config.types.js";
 import { Severity } from "../src/types/security.types.js";
 
-export type CommandName = "commit" | "branch" | "status" | "init";
+export type CommandName = "commit" | "branch" | "status" | "init" | "template";
 export type CommandSubcommand =
   | "pr"
   | "analyze"
   | "create"
   | "suggest"
   | "edit";
+
+export interface ExpectedResult {
+  files?: Array<{
+    path: string;
+    exists: boolean;
+    content?: string | RegExp;
+  }>;
+  git?: {
+    status?: {
+      staged?: string[];
+      unstaged?: string[];
+      untracked?: string[];
+    };
+    commits?: Array<{
+      message: string;
+      files?: string[];
+    }>;
+    currentBranch?: string;
+  };
+  error?: {
+    message: string | RegExp;
+    code?: number;
+  };
+}
 
 export interface TestScenario {
   id: string;
@@ -45,6 +69,7 @@ export interface TestScenario {
       args?: string[];
     };
   };
+  expected?: ExpectedResult;
 }
 
 export interface RepoState {
@@ -86,6 +111,7 @@ export const TestSuites = {
   BRANCH_FEATURES: "branch-features",
   INIT: "init",
   STATUS: "status",
+  TEMPLATE: "template",
 } as const;
 
 export type TestSuiteKey = (typeof TestSuites)[keyof typeof TestSuites];

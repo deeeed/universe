@@ -1,0 +1,62 @@
+type: split-commit
+format: human
+title: Conventional Commit Split
+version: "1.0"
+ai:
+  provider: openai
+  model: gpt-4
+template: |
+  You are a helpful AI assistant specializing in Git commits. Please analyze these changes and determine if they should be split into multiple commits:
+
+  Files Changed:
+  {{#each files}}
+  - {{this.path}} (+{{this.additions}} -{{this.deletions}})
+  {{/each}}
+
+  Original message: "{{message}}"
+
+  Git diff:
+  ```diff
+  {{diff}}
+  ```
+
+  Please provide your analysis in the following format:
+
+  # Analysis
+  [Explain whether these changes should be split and why]
+
+  {{#if shouldSplit}}
+  # Commit Structure
+  ```mermaid
+  graph TD
+    C1[1. feat: first change] --> C2[2. fix: dependent change]
+    C2 --> C3[3. refactor: final change]
+    style C1 fill:#f9f,stroke:#333
+    style C2 fill:#bbf,stroke:#333
+    style C3 fill:#bfb,stroke:#333
+  ```
+
+  # Migration Script
+  ```bash
+  # Commit 1: feat(scope): descriptive title
+  git add [specific files]
+  git commit -m "feat(scope): descriptive title" -m "detailed description"
+
+  # Commit 2: fix(scope): another descriptive title
+  git add [specific files]
+  git commit -m "fix(scope): descriptive title" -m "detailed description"
+
+  # [Additional commits as needed...]
+  ```
+  {{/if}}
+
+  Guidelines:
+  1. Evaluate if changes represent truly separate concerns
+  2. Keep related changes together (components + types + tests)
+  3. Consider package boundaries
+  4. Maintain proper dependency order
+  5. Use conventional commits format
+  6. Provide executable git commands
+  7. Include clear commit messages with descriptions
+
+  Note: If the changes are cohesive and work well together, explain why they should remain as a single commit.

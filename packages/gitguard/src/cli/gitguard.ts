@@ -10,6 +10,7 @@ import { commitCommand } from "../commands/commit.js";
 import { initCommand } from "../commands/init.js";
 import { statusCommand } from "../commands/status.js";
 import { LoggerService } from "../services/logger.service.js";
+import { createTemplateCommand } from "../commands/template.js";
 
 interface PackageJson {
   version: string;
@@ -152,6 +153,7 @@ ${chalk.blue("Commands:")}
   ${chalk.cyan("branch")} [options]              ${chalk.gray("Analyze branch-level changes and pull requests")}
   ${chalk.cyan("status")} [options]              ${chalk.gray("Show GitGuard status (hooks and configuration)")}
   ${chalk.cyan("init")} [options]                ${chalk.gray("Initialize GitGuard configuration")}
+  ${chalk.cyan("template")} [options]            ${chalk.gray("Manage GitGuard templates")}
 
 ${chalk.blue("Options:")}
   ${chalk.yellow("-d, --debug")}              Enable debug mode
@@ -162,7 +164,8 @@ ${chalk.blue("Options:")}
     .addCommand(commitCommand)
     .addCommand(branchCommand)
     .addCommand(statusCommand)
-    .addCommand(initCommand);
+    .addCommand(initCommand)
+    .addCommand(createTemplateCommand());
 
   // Add a default action when no command is provided
   program.action(() => {

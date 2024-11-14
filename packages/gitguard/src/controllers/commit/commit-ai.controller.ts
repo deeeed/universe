@@ -2,6 +2,7 @@ import chalk from "chalk";
 import { DEFAULT_MAX_PROMPT_TOKENS } from "../../constants.js";
 import { CommitService } from "../../services/commit.service.js";
 import { GitService } from "../../services/git.service.js";
+import { TemplateRegistry } from "../../services/template/template-registry.js";
 import { AIProvider } from "../../types/ai.types.js";
 import {
   CommitAnalysisResult,
@@ -13,13 +14,8 @@ import { Config } from "../../types/config.types.js";
 import { FileChange } from "../../types/git.types.js";
 import { Logger } from "../../types/logger.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
+import { generateSplitSuggestionPrompt } from "../../utils/ai-prompt.util.js";
 import {
-  generateCommitSuggestionPrompt,
-  generateSplitSuggestionPrompt,
-} from "../../utils/ai-prompt.util.js";
-import {
-  canGenerateAI,
-  DiffStrategy,
   handleAIAction,
   selectBestDiff,
 } from "../../utils/shared-ai-controller.util.js";
@@ -33,6 +29,7 @@ interface CommitAIControllerParams {
   ai?: AIProvider;
   git: GitService;
   config: Config;
+  templateRegistry: TemplateRegistry;
 }
 
 interface HandleAISuggestionsParams {
@@ -50,14 +47,6 @@ interface HandleSplitSuggestionsParams {
   enableAI: boolean;
 }
 
-interface GeneratePromptParams {
-  files: FileChange[];
-  message?: string;
-  bestDiff: DiffStrategy;
-  result: CommitAnalysisResult;
-  format?: "api" | "human";
-}
-
 interface ExecuteCommitParams {
   suggestion: CommitSuggestion;
   detectedScope?: string;
@@ -69,34 +58,25 @@ export class CommitAIController {
   private readonly git: GitService;
   private readonly config: Config;
   private readonly commitService: CommitService;
+  private readonly templateRegistry: TemplateRegistry;
 
-  constructor({ logger, ai, git, config }: CommitAIControllerParams) {
+  constructor({
+    logger,
+    ai,
+    git,
+    config,
+    templateRegistry,
+  }: CommitAIControllerParams) {
     this.logger = logger;
     this.ai = ai;
     this.git = git;
     this.config = config;
+    this.templateRegistry = templateRegistry;
     this.commitService = new CommitService({
       config,
       git,
       logger,
       ai,
-    });
-  }
-
-  private generatePrompt({
-    files,
-    message,
-    bestDiff,
-    result,
-    format = "api",
-  }: GeneratePromptParams): string {
-    return generateCommitSuggestionPrompt({
-      files,
-      message: message ?? "",
-      diff: bestDiff.content,
-      logger: this.logger,
-      needsDetailedMessage: result.complexity.needsStructure,
-      format,
     });
   }
 
@@ -142,30 +122,34 @@ export class CommitAIController {
           config: this.config,
           ai: this.ai,
           logger: this.logger,
+          templateRegistry: this.templateRegistry,
         });
 
-        const prompt = generateSplitSuggestionPrompt({
+        const variables = {
           files: params.files,
           message: params.message ?? "",
           diff: bestDiff.content,
           basicSuggestion: basicAnalysis.splitSuggestion,
           logger: this.logger,
-        });
-
-        const tokenUsage = this.ai?.calculateTokenUsage({ prompt }) ?? {
-          count: 0,
-          estimatedCost: "N/A (AI not configured)",
-          isWithinApiLimits: true,
-          isWithinClipboardLimits: true,
         };
 
-        return handleAIAction({
-          prompt,
-          humanFriendlyPrompt: prompt,
-          tokenUsage,
+        return handleAIAction<CommitAnalysisResult>({
+          type: "split-commit",
+          variables,
+          skipAsDefault: true,
           generateLabel: "Generate split suggestions",
-          actionHandler: async (action) => {
-            if (action === "generate" && this.ai) {
+          actionHandler: async (action, prompt) => {
+            if (action.startsWith("copy-")) {
+              this.logger.info(
+                "\n✨ Use the copied suggestions to split your commits.",
+              );
+              return {
+                ...params.result,
+                skipFurtherSuggestions: true,
+              };
+            }
+
+            if (action.startsWith("generate-") && this.ai && prompt) {
               const aiSuggestions =
                 await this.ai.generateCompletion<CommitSplitSuggestion>({
                   prompt,
@@ -182,11 +166,13 @@ export class CommitAIController {
                 };
               }
             }
+
             return params.result;
           },
           config: this.config,
           logger: this.logger,
           ai: this.ai,
+          templateRegistry: this.templateRegistry,
         });
       } catch (error) {
         this.logger.error("Failed to get AI enhanced analysis:", error);
@@ -200,8 +186,12 @@ export class CommitAIController {
     result,
     files,
     message,
-    shouldExecute = false,
+    shouldExecute = true,
   }: HandleAISuggestionsParams): Promise<CommitAnalysisResult> {
+    if (result.skipFurtherSuggestions) {
+      return result;
+    }
+
     this.logger.info("\n🤖 Preparing AI suggestions...");
     const fullDiff = await this.git.getStagedDiff();
 
@@ -211,115 +201,76 @@ export class CommitAIController {
       config: this.config,
       ai: this.ai,
       logger: this.logger,
+      templateRegistry: this.templateRegistry,
     });
 
-    const prompt = this.generatePrompt({ files, message, bestDiff, result });
-    const humanFriendlyPrompt = this.generatePrompt({
+    const variables = {
       files,
-      message,
-      bestDiff,
-      result,
-      format: "human",
-    });
-
-    const tokenUsage = this.ai?.calculateTokenUsage({ prompt }) ?? {
-      count: 0,
-      estimatedCost: "N/A (AI not configured)",
-      isWithinApiLimits: true,
-      isWithinClipboardLimits: true,
+      message: message ?? "",
+      diff: bestDiff.content,
+      needsDetailedMessage: result.complexity.needsStructure,
+      options: {
+        includeTesting: false,
+        includeChecklist: true,
+      },
     };
 
-    const { canGenerate, reason } = canGenerateAI(this.config, this.ai);
-    this.logger.debug("AI generation status:", { canGenerate, reason });
+    this.logger.debug("AI suggestion parameters:", {
+      hasMessage: !!message,
+      shouldExecute,
+      filesCount: files.length,
+      hasAI: !!this.ai,
+    });
 
-    const choices = [
-      {
-        label: "Continue without AI assistance",
-        value: "skip" as const,
-        isDefault: true,
-      },
-      {
-        label: `Generate commit message suggestions${!canGenerate ? ` (${reason})` : ` (estimated cost: ${tokenUsage.estimatedCost})`}`,
-        value: "generate" as const,
-        disabled: !canGenerate,
-        disabledReason: reason,
-      },
-      { label: "Copy API prompt to clipboard", value: "copy-api" as const },
-      {
-        label: "Copy human-friendly prompt to clipboard",
-        value: "copy-manual" as const,
-      },
-    ];
-
-    this.logger.debug("AI action choices:", choices);
-
-    return handleAIAction({
-      prompt,
-      humanFriendlyPrompt,
-      tokenUsage,
+    return handleAIAction<CommitAnalysisResult>({
+      type: "commit",
+      variables,
+      ai: this.ai,
       generateLabel: "Generate commit message suggestions",
-      actionHandler: async (action) => {
-        if (action === "generate" && this.ai) {
-          return this.handleCommitGeneration({
-            result,
+      actionHandler: async (action, prompt) => {
+        if (action.startsWith("generate-") && this.ai && prompt) {
+          const suggestions = await this.commitService.generateAISuggestions({
             files,
-            message,
-            bestDiff,
-            shouldExecute,
+            message: message ?? "",
+            diff: bestDiff.content,
+            needsDetailedMessage: result.complexity.needsStructure,
+            prompt,
           });
+
+          if (!suggestions?.length) {
+            this.logger.warn("\n⚠️  No AI suggestions could be generated.");
+            return result;
+          }
+
+          const detectedScope = this.commitService.detectScope(files);
+          displayAISuggestions({
+            suggestions,
+            detectedScope,
+            logger: this.logger,
+          });
+
+          if (shouldExecute) {
+            const selectedSuggestion = await promptCommitSuggestion({
+              suggestions,
+              logger: this.logger,
+            });
+
+            if (selectedSuggestion) {
+              await this.executeCommit({
+                suggestion: selectedSuggestion,
+                detectedScope,
+              });
+            }
+          }
+
+          return { ...result, suggestions };
         }
         return result;
       },
       config: this.config,
       logger: this.logger,
-      ai: this.ai,
-      choices,
+      templateRegistry: this.templateRegistry,
     });
-  }
-
-  private async handleCommitGeneration({
-    result,
-    files,
-    message,
-    bestDiff,
-    shouldExecute,
-  }: {
-    result: CommitAnalysisResult;
-    files: FileChange[];
-    message?: string;
-    bestDiff: DiffStrategy;
-    shouldExecute: boolean;
-  }): Promise<CommitAnalysisResult> {
-    const suggestions = await this.commitService.generateAISuggestions({
-      files,
-      message: message ?? "",
-      diff: bestDiff.content,
-      needsDetailedMessage: result.complexity.needsStructure,
-    });
-
-    if (!suggestions?.length) {
-      this.logger.warn("\n⚠️  No AI suggestions could be generated.");
-      return result;
-    }
-
-    const detectedScope = this.commitService.detectScope(files);
-    displayAISuggestions({ suggestions, detectedScope, logger: this.logger });
-
-    if (shouldExecute) {
-      const selectedSuggestion = await promptCommitSuggestion({
-        suggestions,
-        logger: this.logger,
-      });
-
-      if (selectedSuggestion) {
-        await this.executeCommit({
-          suggestion: selectedSuggestion,
-          detectedScope,
-        });
-      }
-    }
-
-    return { ...result, suggestions };
   }
 
   handleAISplitAnalysis(params: {
