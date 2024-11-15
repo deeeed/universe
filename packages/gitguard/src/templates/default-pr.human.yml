@@ -7,33 +7,52 @@ ai:
   provider: openai
   model: gpt-4
 template: |
-  Generate a detailed pull request description for the following changes.
-  
+  You are a helpful AI assistant specializing in Pull Requests. Please help me create a good PR description for these changes:
+
   Base Branch: {{baseBranch}}
-  
+
   Commits:
   {{#each commits}}
   - {{this.hash}}: {{this.message}}
   {{/each}}
-  
-  Files changed:
+
+  Files Changed:
   {{#each files}}
   - {{this.path}} ({{this.changeType}})
   {{/each}}
-  
-  Diff:
+
+  {{#if diff}}
+  Key Changes:
+  ```diff
   {{diff}}
-  
+  ```
+  {{/if}}
+
+  Please provide:
+  1. A clear PR title following conventional commits format
+  2. A comprehensive description that explains:
+     - The purpose and impact of changes
+     - Key implementation details
+     - Breaking changes (if any)
+     - Migration steps (if needed)
+  3. Any testing instructions or special considerations
+
+  Format your response in markdown with clear headings and sections, making it ready to copy directly into the PR description. Include:
+
+  # Title
+  [Your suggested title]
+
+  # Description
+  [Your comprehensive description]
+
   {{#if options.includeTesting}}
-  Include testing instructions.
+  # Testing Instructions
+  [Any testing steps or considerations]
   {{/if}}
-  
+
   {{#if options.includeChecklist}}
-  Include a review checklist.
+  # Review Checklist
+  - [ ] Implementation tasks
+  - [ ] Testing requirements
+  - [ ] Documentation needs
   {{/if}}
-  
-  Respond with a JSON object in this format:
-  {
-    "title": "PR title",
-    "description": "Detailed PR description with markdown formatting"
-  } 
