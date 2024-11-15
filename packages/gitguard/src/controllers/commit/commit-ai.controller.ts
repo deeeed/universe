@@ -1,12 +1,10 @@
 import chalk from "chalk";
-import { DEFAULT_MAX_PROMPT_TOKENS } from "../../constants.js";
 import { CommitService } from "../../services/commit.service.js";
 import { GitService } from "../../services/git.service.js";
 import { TemplateRegistry } from "../../services/template/template-registry.js";
 import { AIProvider } from "../../types/ai.types.js";
 import {
   CommitAnalysisResult,
-  CommitCohesionAnalysis,
   CommitSplitSuggestion,
   CommitSuggestion,
 } from "../../types/analysis.types.js";
@@ -14,7 +12,6 @@ import { Config } from "../../types/config.types.js";
 import { FileChange } from "../../types/git.types.js";
 import { Logger } from "../../types/logger.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
-import { generateSplitSuggestionPrompt } from "../../utils/ai-prompt.util.js";
 import {
   handleAIAction,
   selectBestDiff,
@@ -138,7 +135,7 @@ export class CommitAIController {
           variables,
           skipAsDefault: true,
           generateLabel: "Generate split suggestions",
-          actionHandler: async (action, prompt) => {
+          actionHandler: async (action, templateResult) => {
             if (action.startsWith("copy-")) {
               this.logger.info(
                 "\n✨ Use the copied suggestions to split your commits.",
@@ -149,11 +146,15 @@ export class CommitAIController {
               };
             }
 
-            if (action.startsWith("generate-") && this.ai && prompt) {
+            if (action.startsWith("generate-") && this.ai && templateResult) {
               const aiSuggestions =
                 await this.ai.generateCompletion<CommitSplitSuggestion>({
-                  prompt,
-                  options: { requireJson: true },
+                  prompt: templateResult.renderedPrompt,
+                  options: {
+                    requireJson: true,
+                    systemPrompt: templateResult.systemPrompt,
+                    temperature: templateResult.temperature,
+                  },
                 });
 
               if (aiSuggestions?.suggestions?.length) {
@@ -227,14 +228,14 @@ export class CommitAIController {
       variables,
       ai: this.ai,
       generateLabel: "Generate commit message suggestions",
-      actionHandler: async (action, prompt) => {
-        if (action.startsWith("generate-") && this.ai && prompt) {
+      actionHandler: async (action, templateResult) => {
+        if (action.startsWith("generate-") && this.ai && templateResult) {
           const suggestions = await this.commitService.generateAISuggestions({
             files,
             message: message ?? "",
             diff: bestDiff.content,
             needsDetailedMessage: result.complexity.needsStructure,
-            prompt,
+            prompt: templateResult.renderedPrompt,
           });
 
           if (!suggestions?.length) {
@@ -271,68 +272,5 @@ export class CommitAIController {
       logger: this.logger,
       templateRegistry: this.templateRegistry,
     });
-  }
-
-  handleAISplitAnalysis(params: {
-    files: FileChange[];
-    message?: string;
-    enablePrompts?: boolean;
-  }): CommitCohesionAnalysis {
-    if (!this.ai) {
-      return { shouldSplit: false, warnings: [] };
-    }
-
-    // Directly use analyzeCommitCohesion since we don't need the diff
-    return this.commitService.analyzeCommitCohesion({
-      files: params.files,
-      originalMessage: params.message ?? "",
-    });
-  }
-
-  async getAIEnhancedCohesionAnalysis(params: {
-    files: FileChange[];
-    message: string;
-    basicAnalysis: CommitCohesionAnalysis;
-  }): Promise<CommitCohesionAnalysis> {
-    if (!this.ai || !params.basicAnalysis.shouldSplit) {
-      return params.basicAnalysis;
-    }
-
-    try {
-      const diff = await this.git.getStagedDiff();
-      const prioritizedDiffs = this.commitService.getPrioritizedDiffs({
-        files: params.files,
-        diff,
-        maxLength: this.config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
-      });
-
-      const prompt = generateSplitSuggestionPrompt({
-        files: params.files,
-        message: params.message,
-        diff: prioritizedDiffs,
-        basicSuggestion: params.basicAnalysis.splitSuggestion,
-        logger: this.logger,
-      });
-
-      const aiSuggestions =
-        await this.ai.generateCompletion<CommitSplitSuggestion>({
-          prompt,
-          options: { requireJson: true },
-        });
-
-      if (aiSuggestions) {
-        return {
-          ...params.basicAnalysis,
-          splitSuggestion: {
-            ...aiSuggestions,
-            suggestions: aiSuggestions.suggestions,
-          },
-        };
-      }
-    } catch (error) {
-      this.logger.error("Failed to get AI enhanced analysis:", error);
-    }
-
-    return params.basicAnalysis;
   }
 }

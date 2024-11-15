@@ -15,6 +15,7 @@ import { displayTokenInfo } from "../../utils/ai-limits.util.js";
 import {
   handleAIAction,
   selectBestDiff,
+  TemplateResult,
 } from "../../utils/shared-ai-controller.util.js";
 import { promptYesNo } from "../../utils/user-prompt.util.js";
 
@@ -105,9 +106,9 @@ export class BranchAIController {
       type: "pr",
       variables,
       generateLabel: "Generate PR description",
-      actionHandler: async (action, prompt) => {
-        if (action.startsWith("generate-") && this.ai && prompt) {
-          return this.handlePRGeneration(analysisResult, prompt);
+      actionHandler: async (action, templateResult) => {
+        if (action.startsWith("generate-") && this.ai && templateResult) {
+          return this.handlePRGeneration({ analysisResult, templateResult });
         }
         return analysisResult;
       },
@@ -118,18 +119,23 @@ export class BranchAIController {
     });
   }
 
-  private async handlePRGeneration(
-    analysisResult: PRAnalysisResult,
-    prompt: string,
-  ): Promise<PRAnalysisResult> {
+  private async handlePRGeneration({
+    analysisResult,
+    templateResult,
+  }: {
+    analysisResult: PRAnalysisResult;
+    templateResult: TemplateResult;
+  }): Promise<PRAnalysisResult> {
     if (this.ai) {
-      const tokenUsage = this.ai.calculateTokenUsage({ prompt });
+      const tokenUsage = this.ai.calculateTokenUsage({
+        prompt: templateResult.renderedPrompt,
+      });
       const maxTokens =
         this.config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS;
 
       displayTokenInfo({
         tokenUsage,
-        prompt,
+        prompt: templateResult.renderedPrompt,
         maxTokens,
         logger: this.logger,
       });
@@ -139,7 +145,7 @@ export class BranchAIController {
       commits: analysisResult.commits,
       files: analysisResult.files,
       baseBranch: analysisResult.baseBranch,
-      prompt,
+      templateResult,
     })) as PRTemplate | null;
 
     if (!description) {
@@ -216,19 +222,23 @@ export class BranchAIController {
       type: "split-pr",
       variables,
       generateLabel: "Generate split suggestions",
-      actionHandler: async (action, prompt) => {
-        if (action.startsWith("copy-") && prompt) {
+      actionHandler: async (action, templateResult) => {
+        if (action.startsWith("copy-") && templateResult) {
           this.logger.info(
             "\n✨ Use the copied suggestions to split your commits.",
           );
           return { ...analysisResult, skipFurtherSuggestions: true };
         }
 
-        if (action.startsWith("generate-") && this.ai && prompt) {
+        if (action.startsWith("generate-") && this.ai && templateResult) {
           const splitSuggestion =
             await this.ai.generateCompletion<PRSplitSuggestion>({
-              prompt,
-              options: { requireJson: true },
+              prompt: templateResult.renderedPrompt,
+              options: {
+                requireJson: true,
+                systemPrompt: templateResult.systemPrompt,
+                temperature: templateResult.temperature,
+              },
             });
 
           if (splitSuggestion) {
