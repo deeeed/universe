@@ -71,8 +71,6 @@ export class BranchAIController {
   }: {
     analysisResult: PRAnalysisResult;
   }): Promise<PRAnalysisResult> {
-    if (!this.ai) return analysisResult;
-
     this.logger.info("\n🤖 Preparing AI suggestions...");
 
     const fullDiff = await this.git.getDiff({
