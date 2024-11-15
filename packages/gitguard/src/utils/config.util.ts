@@ -244,6 +244,7 @@ export function getDefaultConfig(): Config {
       provider: null,
       maxPromptTokens: 32000,
       maxPromptCost: 0.1,
+      apiClipboard: true,
     },
     pr: {
       template: {

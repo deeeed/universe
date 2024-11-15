@@ -68,6 +68,7 @@ export interface AIConfig {
   provider: "azure" | "openai" | "ollama" | null;
   maxPromptTokens?: number;
   maxPromptCost?: number;
+  apiClipboard?: boolean; // Also provide clipboard option for each API flow (useful for testing prompts)
   azure?: {
     endpoint: string;
     deployment: string;
