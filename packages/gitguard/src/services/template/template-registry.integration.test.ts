@@ -91,10 +91,11 @@ describe("TemplateRegistry Integration", () => {
     });
     await env.gitService.createCommit({ message: "Add template files" });
 
-    // Initialize registry with correct git root
+    // Initialize registry with correct git root and skipGlobal flag
     registry = new TemplateRegistry({
       logger: env.logger,
       gitRoot: env.tempDir,
+      skipGlobal: true,
     });
     await registry.loadTemplates();
   });

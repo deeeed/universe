@@ -4,6 +4,7 @@ import typescript from "@rollup/plugin-typescript";
 import commonjs from "@rollup/plugin-commonjs";
 import { nodeResolve } from "@rollup/plugin-node-resolve";
 import json from "@rollup/plugin-json";
+import copy from "rollup-plugin-copy";
 
 const external = [
   "commander",
@@ -26,6 +27,14 @@ const sharedPlugins = [
     transformMixedEsModules: true,
   }),
   json(),
+  copy({
+    targets: [
+      { src: "src/templates/*", dest: "dist/cjs/templates" },
+      { src: "src/templates/*", dest: "dist/esm/templates" },
+    ],
+    verbose: true,
+    hook: "writeBundle",
+  }),
 ];
 
 export default defineConfig([
@@ -85,5 +94,5 @@ export default defineConfig([
         outDir: "./dist/esm",
       }),
     ],
-  }
+  },
 ]);

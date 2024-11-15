@@ -1,6 +1,6 @@
 import Handlebars from "handlebars";
 import { promises as fs } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { homedir } from "os";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { Logger } from "../../types/logger.types.js";
@@ -18,6 +18,7 @@ import {
 interface TemplateRegistryOptions {
   logger: Logger;
   gitRoot: string;
+  skipGlobal?: boolean;
 }
 
 export class TemplateRegistry {
@@ -25,10 +26,16 @@ export class TemplateRegistry {
   private readonly gitRoot: string;
   private readonly logger: Logger;
   private readonly handlebars: typeof Handlebars;
+  private readonly skipGlobal: boolean;
 
-  constructor({ logger, gitRoot }: TemplateRegistryOptions) {
+  constructor({
+    logger,
+    gitRoot,
+    skipGlobal = false,
+  }: TemplateRegistryOptions) {
     this.logger = logger;
     this.gitRoot = gitRoot;
+    this.skipGlobal = skipGlobal;
     this.handlebars = Handlebars.create();
     registerHandlebarsHelpers({ handlebars: this.handlebars });
 
@@ -115,10 +122,14 @@ export class TemplateRegistry {
         path: join(this.gitRoot, ".gitguard/templates"),
         source: "project" as const,
       },
-      {
-        path: join(homedir(), ".gitguard/templates"),
-        source: "global" as const,
-      },
+      ...(!this.skipGlobal
+        ? [
+            {
+              path: join(homedir(), ".gitguard/templates"),
+              source: "global" as const,
+            },
+          ]
+        : []),
     ];
 
     this.logger.debug("🔍 Searching for templates in:", templatePaths);
@@ -272,7 +283,47 @@ export class TemplateRegistry {
     Map<string, LoadedPromptTemplate>
   > {
     const defaultTemplates = new Map<string, LoadedPromptTemplate>();
-    const templatesDir = new URL("../../templates", import.meta.url).pathname;
+
+    // Get the current file URL
+    const currentFileUrl = import.meta.url;
+    const isDev = currentFileUrl.includes("/src/");
+
+    // Define possible template locations
+    const templateLocations = isDev
+      ? [
+          // Development paths
+          new URL("../../templates", currentFileUrl).pathname,
+        ]
+      : [
+          // Production paths - try both ESM and CJS paths
+          join(dirname(currentFileUrl), "../templates"), // ESM path
+          join(dirname(currentFileUrl), "../../templates"), // CJS path
+          join(process.cwd(), "dist/esm/templates"), // Fallback ESM path
+          join(process.cwd(), "dist/cjs/templates"), // Fallback CJS path
+        ];
+
+    let templatesDir: string | undefined;
+
+    // Find first valid templates directory
+    for (const location of templateLocations) {
+      try {
+        await fs.access(location);
+        templatesDir = location;
+        this.logger.debug(`📁 Found templates directory at: ${location}`);
+        break;
+      } catch {
+        this.logger.debug(`📁 No templates found at: ${location}`);
+        continue;
+      }
+    }
+
+    if (!templatesDir) {
+      this.logger.warn(
+        "⚠️  Could not find templates directory in any location:",
+        templateLocations,
+      );
+      return defaultTemplates;
+    }
 
     try {
       const files = await fs.readdir(templatesDir);
