@@ -204,8 +204,10 @@ export async function analyzeBranch({
       options: { detailed: options.detailed ?? false },
     });
 
+    const isAIEnabled = options.ai ?? services.ai ?? true;
+
     // Handle AI processing if enabled
-    if (services.ai) {
+    if (isAIEnabled) {
       analysisResult = await processAIFeatures({
         controllers,
         analysisResult,
@@ -295,16 +297,6 @@ async function processAIFeatures({
     split: options.split,
     needsGitHubAccess: Boolean(options.createPR ?? options.draft),
   });
-
-  if (!controllers.aiController.hasAIProvider()) {
-    logger.warn(
-      "\n⚠️  AI features requested but no valid AI provider configured",
-    );
-    logger.info(
-      "💡 To enable AI, configure a provider in your .gitguard/config.json or environment variables",
-    );
-    return analysisResult;
-  }
 
   const needsGitHubAccess = options.createPR ?? options.draft;
   let result = analysisResult;

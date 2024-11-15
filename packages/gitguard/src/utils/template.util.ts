@@ -161,6 +161,9 @@ export function validateTemplate(params: ValidateTemplateParams): boolean {
     );
     logger.info(`   • Title: ${chalk.blue(template.title ?? "not specified")}`);
     logger.info(
+      `   • Active: ${template.active === false ? chalk.red("no") : chalk.green("yes")}`,
+    );
+    logger.info(
       `   • Required Variables: ${chalk.blue(typeValidation.join(", "))}`,
     );
 
@@ -217,8 +220,11 @@ export function formatTemplateDisplay(
       ? chalk.yellow(" [global]")
       : chalk.blue(" [project]");
 
+  const activeIndicator =
+    template.active === false ? chalk.red(" [inactive]") : "";
+
   return (
-    `${chalk.green(choice?.label ?? template.id)}${sourceIndicator} ${chalk.gray(`(${template.format})`)}` +
+    `${chalk.green(choice?.label ?? template.id)}${sourceIndicator}${activeIndicator} ${chalk.gray(`(${template.format})`)}` +
     (choice?.description ? chalk.yellow(` ${choice.description}`) : "") +
     (template.title ? `\n    ${chalk.dim(template.title)}` : "")
   );

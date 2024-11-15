@@ -18,6 +18,7 @@ import {
   generatePRDescriptionPrompt,
   generatePRSplitPrompt,
 } from "../utils/ai-prompt.util.js";
+import { TemplateResult } from "../utils/shared-ai-controller.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
 import { GitHubService } from "./github.service.js";
@@ -244,12 +245,12 @@ export class PRService extends BaseService {
     commits: CommitInfo[];
     files: FileChange[];
     baseBranch: string;
-    prompt?: string;
+    templateResult?: TemplateResult;
   }): Promise<PRDescription | undefined> {
     if (!this.ai) return undefined;
 
     const prompt =
-      params.prompt ??
+      params.templateResult?.renderedPrompt ??
       generatePRDescriptionPrompt({
         commits: params.commits,
         files: params.files,
@@ -263,8 +264,9 @@ export class PRService extends BaseService {
         prompt,
         options: {
           requireJson: true,
-          temperature: 0.7,
+          temperature: params.templateResult?.temperature ?? 0.7,
           systemPrompt:
+            params.templateResult?.systemPrompt ??
             "You are an expert code reviewer helping to write clear PR descriptions.",
         },
       });

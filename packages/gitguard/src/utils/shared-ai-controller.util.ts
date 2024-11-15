@@ -13,7 +13,7 @@ import {
   PromptType,
   TemplateVariables,
 } from "../types/templates.type.js";
-import { checkAILimits, displayTokenInfo } from "./ai-limits.util.js";
+import { checkAILimits } from "./ai-limits.util.js";
 import { copyToClipboard } from "./clipboard.util.js";
 import { formatDiffForAI } from "./diff.util.js";
 import { promptActionChoice } from "./user-prompt.util.js";
@@ -53,7 +53,10 @@ export interface AIActionHandlerParams<TResult> {
   type: PromptType;
   variables: TemplateVariables;
   generateLabel?: string;
-  actionHandler: (action: AIActionType, prompt?: string) => Promise<TResult>;
+  actionHandler: (
+    action: AIActionType,
+    templateResult?: TemplateResult,
+  ) => Promise<TResult>;
   choices?: Array<{
     label: string;
     value: AIActionType;
@@ -243,9 +246,11 @@ interface HandleTemplateActionParams {
   requireApi?: boolean;
 }
 
-interface TemplateResult {
+export interface TemplateResult {
   template: LoadedPromptTemplate;
   renderedPrompt: string;
+  systemPrompt?: string;
+  temperature?: number;
   isApi: boolean;
   label: string;
   tokenUsage?: TokenUsage;
@@ -357,36 +362,84 @@ export async function handleAIAction<TResult>(
   const handleTemplateAction = ({
     templateId,
     requireApi = false,
-  }: HandleTemplateActionParams): TemplateResult | null => {
-    const template = templateOptions.find(
-      (t) => t.template.id === templateId && (!requireApi || t.isApi),
-    );
+    isApiClipboard = false,
+  }: HandleTemplateActionParams & {
+    isApiClipboard?: boolean;
+  }): TemplateResult | null => {
+    logger.debug("Looking for template:", {
+      templateId,
+      requireApi,
+      isApiClipboard,
+      availableTemplates: templateOptions.map((t) => ({
+        id: t.template.id,
+        isApi: t.isApi,
+      })),
+    });
+
+    // For API clipboard and generate actions, look for the exact API template
+    const template = templateOptions.find((t) => {
+      if (isApiClipboard) {
+        // Remove the 'api-' prefix if it exists in the templateId
+        const searchId = templateId.replace(/^api-/, "");
+        return t.isApi && t.template.id === searchId;
+      }
+      return t.template.id === templateId && (!requireApi || t.isApi);
+    });
+
     if (template) {
       logger.debug("Found template:", {
         id: template.template.id,
         format: template.template.format,
+        isApi: template.isApi,
       });
       return template;
     }
-    logger.warn(`Template not found:`, { templateId, requireApi });
+
+    logger.warn(`Template not found:`, {
+      templateId,
+      requireApi,
+      isApiClipboard,
+      availableTemplates: templateOptions.map((t) => ({
+        id: t.template.id,
+        isApi: t.isApi,
+      })),
+    });
     return null;
   };
 
   // Build choices for user prompt
   const defaultChoices = [
-    ...apiTemplates.map((t) => ({
-      label: `${generateLabel ?? "Generate using"} ${t.label} ${
-        !aiStatus.canGenerate
-          ? `(${aiStatus.reason}. Fix by ${getFixSuggestion(aiStatus)})`
-          : t.tokenUsage
-            ? ` (${t.tokenUsage.count} tokens, estimated cost: ${t.tokenUsage.estimatedCost})`
-            : " (cost estimation unavailable)"
-      }`,
-      value: `generate-${t.template.id}` as AIActionType,
-      isDefault: !skipAsDefault && aiStatus.canGenerate,
-      disabled: !aiStatus.canGenerate,
-      disabledReason: aiStatus.reason,
-    })),
+    ...apiTemplates.flatMap((t) => {
+      const baseChoice = {
+        label: `${generateLabel ?? "Generate using"} ${t.label} ${
+          !aiStatus.canGenerate
+            ? `(${aiStatus.reason}. Fix by ${getFixSuggestion(aiStatus)})`
+            : t.tokenUsage
+              ? ` (${t.tokenUsage.count} tokens, estimated cost: ${t.tokenUsage.estimatedCost})`
+              : " (cost estimation unavailable)"
+        }`,
+        value: `generate-${t.template.id}` as AIActionType,
+        isDefault: !skipAsDefault && aiStatus.canGenerate,
+        disabled: !aiStatus.canGenerate,
+        disabledReason: aiStatus.reason,
+      };
+
+      // Create array with base choice and optional clipboard choice
+      return [
+        baseChoice,
+        // Add API clipboard option when enabled
+        ...(config.ai?.apiClipboard
+          ? [
+              {
+                label: `└─> Copy ${t.label} API prompt to clipboard`,
+                // Use the exact template ID without adding any prefix
+                value: `copy-api-${t.template.id}` as AIActionType,
+                isDefault: false,
+              },
+            ]
+          : []),
+      ];
+    }),
     ...humanTemplates.map((t) => ({
       label: `Copy ${t.label} to clipboard`,
       value: `copy-${t.template.id}` as AIActionType,
@@ -414,44 +467,43 @@ export async function handleAIAction<TResult>(
 
   logger.debug("User selected action:", { action });
 
-  // After user selects an action, display detailed token info if it's a generation action
-  if (action.startsWith("generate-")) {
-    const templateId = action.replace(/^generate-/, "");
-    const template = templateOptions.find((t) => t.template.id === templateId);
-
-    if (template?.tokenUsage) {
-      displayTokenInfo({
-        tokenUsage: template.tokenUsage,
-        prompt: template.renderedPrompt,
-        maxTokens: config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
-        logger,
-      });
-    }
-  }
-
   // Handle the selected action
   if (action === "skip") {
     logger.debug("Skipping AI action");
     return actionHandler("skip");
   }
 
-  if (action.startsWith("copy-") || action.startsWith("generate-")) {
-    const templateId = action.replace(/^(copy|generate)-/, "");
+  // Update action handling
+  if (
+    action.startsWith("copy-") ||
+    action.startsWith("generate-") ||
+    action.startsWith("copy-api-")
+  ) {
+    const templateId = action.replace(/^(copy|generate|copy-api)-/, "");
     const requireApi = action.startsWith("generate-");
-    const templateResult = handleTemplateAction({ templateId, requireApi });
+    const isApiClipboard = action.startsWith("copy-api-");
 
-    if (templateResult) {
-      if (action.startsWith("copy-")) {
-        await handleClipboardCopy({
-          prompt: templateResult.renderedPrompt,
-          isApi: templateResult.isApi,
-          ai,
-          config,
-          logger,
-        });
-      }
-      return actionHandler(action, templateResult.renderedPrompt);
+    const templateResult = handleTemplateAction({
+      templateId,
+      requireApi,
+      isApiClipboard,
+    });
+
+    if (!templateResult) {
+      logger.error("Failed to find template for action");
+      return actionHandler("skip"); // Exit on template not found
     }
+
+    if (action.startsWith("copy-") || action.startsWith("copy-api-")) {
+      await handleClipboardCopy({
+        prompt: templateResult.renderedPrompt,
+        isApi: action.startsWith("copy-api-") || templateResult.isApi,
+        ai,
+        config,
+        logger,
+      });
+    }
+    return actionHandler(action, templateResult);
   }
 
   logger.debug("No matching action handler, falling back to skip");

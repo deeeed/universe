@@ -56,6 +56,9 @@ function displayConfigFeatures(config: Partial<Config> | null): string[] {
   output.push(`  Status: ${formatEnabled(config?.ai?.enabled ?? false)}`);
   if (config?.ai?.enabled) {
     output.push(`  Provider: ${formatConfigValue(config.ai.provider)}`);
+    output.push(
+      `  API Clipboard: ${formatEnabled(config.ai?.apiClipboard ?? true)}`,
+    );
 
     if (config.ai.provider === "azure" && config.ai.azure) {
       output.push("  Azure OpenAI:");

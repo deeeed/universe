@@ -2,6 +2,7 @@ type: commit
 format: human
 title: "Conventional Commit Guide (Human)"
 version: "1.0"
+active: true
 ai:
   provider: openai
   model: gpt-4
@@ -26,12 +27,6 @@ template: |
   {{message}}
   {{/if}}
 
-  {{#if complexity}}
-  Complexity Analysis:
-  - Score: {{complexity.score}}
-  - Reasons: {{complexity.reasons}}
-  {{/if}}
-
   {{#if scope}}
   Suggested scope: {{scope}}
   {{/if}}
@@ -45,25 +40,40 @@ template: |
   {{diff}}
   ```
 
-  Please suggest a commit message following the Conventional Commits format (https://www.conventionalcommits.org/). 
-  The message should include:
+  Please suggest three different commit messages following the Conventional Commits format (https://www.conventionalcommits.org/). 
+  Each suggestion should have a different focus or perspective on the changes.
+  
+  For each suggestion include:
   1. Type (feat, fix, docs, style, refactor, test, chore)
   2. Optional scope in parentheses
   3. Clear, concise description
   4. Optional detailed explanation for complex changes
 
   Respond with:
-  1. Your reasoning for the suggested message
-  2. The complete commit message
-  3. The command to copy (no formatting, quotes, or backticks)
+  1. Brief explanation of each suggestion's focus
+  2. Three complete commit messages
+  3. The commands to copy (no formatting, quotes, or backticks)
 
   Example response format:
-  Reasoning: [your explanation]
-
+  # Option 1: [Brief explanation of focus]
   Suggested message:
   [complete commit message]
 
-  Command to copy:
-  git commit -m "type(scope): title" -m $'detailed message line 1\n• point 1\n• point 2\n• point 3'
+  Command:
+  git commit -m "type(scope): title" -m $'detailed message line 1\n• point 1\n• point 2'
 
-  Note: The command must use $'string' syntax with \n for newlines to create a properly formatted multi-line commit message. 
+  # Option 2: [Brief explanation of focus]
+  Suggested message:
+  [complete commit message]
+
+  Command:
+  git commit -m "type(scope): title" -m $'detailed message'
+
+  # Option 3: [Brief explanation of focus]
+  Suggested message:
+  [complete commit message]
+
+  Command:
+  git commit -m "type(scope): title"
+
+  Note: The commands must use $'string' syntax with \n for newlines to create properly formatted multi-line commit messages.

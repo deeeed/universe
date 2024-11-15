@@ -2,6 +2,7 @@ type: split-commit
 format: human
 title: Conventional Commit Split
 version: "1.0"
+active: true
 ai:
   provider: openai
   model: gpt-4

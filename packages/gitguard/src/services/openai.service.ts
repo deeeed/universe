@@ -97,6 +97,16 @@ export class OpenAIService extends BaseService implements AIProvider {
         { role: "user", content: params.prompt },
       ];
 
+      // Calculate and log token usage for input
+      const fullPrompt = messages.map((m) => m.content).join("\n");
+      const inputTokens = this.calculateTokenUsage({ prompt: fullPrompt });
+      this.logger.debug("Completion request details:", {
+        model: this.getModel(),
+        temperature: params.options?.temperature ?? 0.7,
+        requireJson: params.options?.requireJson,
+        inputTokens: inputTokens.count,
+      });
+
       const completion = await this.client.chat.completions.create({
         messages,
         model: this.getModel(),
@@ -105,6 +115,21 @@ export class OpenAIService extends BaseService implements AIProvider {
         response_format: params.options?.requireJson
           ? { type: "json_object" }
           : undefined,
+      });
+
+      // Log completion costs and token usage
+      const outputTokens = completion.usage?.completion_tokens ?? 0;
+      const pricing = this.getModelPricing(this.getModel());
+      const inputCost = (inputTokens.count / 1000) * pricing.input;
+      const outputCost = (outputTokens / 1000) * pricing.output;
+      const totalCost = inputCost + outputCost;
+
+      this.logger.info("Completion costs:", {
+        inputTokens: inputTokens.count,
+        outputTokens,
+        inputCost: `$${inputCost.toFixed(4)}`,
+        outputCost: `$${outputCost.toFixed(4)}`,
+        totalCost: `$${totalCost.toFixed(4)}`,
       });
 
       const content = completion.choices[0]?.message?.content;

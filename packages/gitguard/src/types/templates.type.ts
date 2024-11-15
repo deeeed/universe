@@ -16,9 +16,11 @@ export interface BasePromptTemplate {
   format: PromptFormat;
   title?: string;
   version?: string;
+  active?: boolean;
+  systemPrompt?: string;
   ai: BaseAIOptions & {
-    provider?: AIProvider;
-    model?: string;
+    provider?: AIProvider; // not implemented
+    model?: string; // not implemented
   };
   template: string;
 }
