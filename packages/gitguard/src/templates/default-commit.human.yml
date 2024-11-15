@@ -2,6 +2,7 @@ type: commit
 format: human
 title: "Conventional Commit Guide (Human)"
 version: "1.0"
+active: true
 ai:
   provider: openai
   model: gpt-4

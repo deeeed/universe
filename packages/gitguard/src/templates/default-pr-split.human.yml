@@ -2,6 +2,7 @@ type: split-pr
 format: human
 title: PR Split Suggestions
 version: "1.0"
+active: true
 ai:
   provider: openai
   model: gpt-4

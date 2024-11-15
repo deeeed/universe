@@ -2,6 +2,7 @@ type: commit
 format: api
 title: Conventional Commit Format
 version: "1.0"
+active: true
 ai:
   provider: openai
   model: gpt-4

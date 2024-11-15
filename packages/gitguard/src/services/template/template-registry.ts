@@ -219,12 +219,15 @@ export class TemplateRegistry {
     format: PromptFormat;
   }): LoadedPromptTemplate[] {
     const templates = Array.from(this.templates.values()).filter(
-      (t) => t.type === params.type && t.format === params.format,
+      (t) =>
+        t.type === params.type &&
+        t.format === params.format &&
+        t.active !== false, // Only return active templates
     );
 
     if (templates.length === 0) {
       this.logger.debug(
-        `ℹ️  No templates found for type="${params.type}" format="${params.format}"`,
+        `ℹ️  No active templates found for type="${params.type}" format="${params.format}"`,
       );
     }
 
@@ -384,7 +387,7 @@ export class TemplateRegistry {
     const filePath = join(path, filename);
 
     try {
-      // Create a clean template object without source and path
+      // Create a clean template object without source / path / id
       const {
         source: _source,
         path: _templatePath,

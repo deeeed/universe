@@ -250,5 +250,64 @@ describe("TemplateRegistry Integration", () => {
       });
       expect(templates).toHaveLength(0);
     });
+
+    it("should not return inactive templates", async () => {
+      // Create a new registry instance to start fresh
+      const newRegistry = new TemplateRegistry({
+        logger: env.logger,
+        gitRoot: env.tempDir,
+        skipGlobal: true, // Skip global to ensure we only test our test templates
+      });
+
+      // Create an inactive template
+      const inactiveTemplate: CommitTemplate = {
+        ...sampleTemplate,
+        id: "inactive-template",
+        active: false,
+      };
+
+      // Create an active template
+      const activeTemplate: CommitTemplate = {
+        ...sampleTemplate,
+        id: "active-template",
+        active: true, // Explicitly set active
+      };
+
+      // Add both templates
+      await env.createFiles([
+        {
+          path: ".gitguard/templates/inactive.yml",
+          content: stringifyYaml(inactiveTemplate),
+        },
+        {
+          path: ".gitguard/templates/active.yml",
+          content: stringifyYaml(activeTemplate),
+        },
+      ]);
+
+      await env.gitService.execGit({
+        command: "add",
+        args: [".gitguard"],
+      });
+      await env.gitService.createCommit({ message: "Add test templates" });
+
+      // Load templates
+      await newRegistry.loadTemplates();
+
+      // Test getTemplatesForType
+      const templates = newRegistry.getTemplatesForType({
+        type: "commit",
+        format: "api",
+      });
+
+      // Verify inactive template is not returned
+      expect(
+        templates.find((t) => t.id === "inactive-template"),
+      ).toBeUndefined();
+      expect(templates.every((t) => t.active !== false)).toBe(true);
+
+      // Verify at least one active template exists
+      expect(templates.some((t) => t.id === "active-template")).toBe(true);
+    });
   });
 });
