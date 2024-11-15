@@ -298,8 +298,7 @@ export class TemplateRegistry {
           // Production paths - try both ESM and CJS paths
           join(dirname(currentFileUrl), "../templates"), // ESM path
           join(dirname(currentFileUrl), "../../templates"), // CJS path
-          join(process.cwd(), "dist/esm/templates"), // Fallback ESM path
-          join(process.cwd(), "dist/cjs/templates"), // Fallback CJS path
+          join(process.cwd(), "dist/templates"), // Fallback path
         ];
 
     let templatesDir: string | undefined;

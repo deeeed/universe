@@ -27,14 +27,6 @@ const sharedPlugins = [
     transformMixedEsModules: true,
   }),
   json(),
-  copy({
-    targets: [
-      { src: "src/templates/*", dest: "dist/cjs/templates" },
-      { src: "src/templates/*", dest: "dist/esm/templates" },
-    ],
-    verbose: true,
-    hook: "writeBundle",
-  }),
 ];
 
 export default defineConfig([
@@ -51,9 +43,15 @@ export default defineConfig([
     external,
     plugins: [
       ...sharedPlugins,
+      copy({
+        targets: [{ src: "src/templates/*", dest: "dist/templates" }],
+        verbose: true,
+        hook: "writeBundle",
+      }),
       typescript({
         tsconfig: "./tsconfig.build.json",
         outDir: "./dist/cjs",
+        declaration: true,
       }),
     ],
   },
@@ -74,6 +72,7 @@ export default defineConfig([
       typescript({
         tsconfig: "./tsconfig.build.json",
         outDir: "./dist/cjs",
+        declaration: true,
       }),
     ],
   },
@@ -92,6 +91,7 @@ export default defineConfig([
       typescript({
         tsconfig: "./tsconfig.build.json",
         outDir: "./dist/esm",
+        declaration: true,
       }),
     ],
   },
