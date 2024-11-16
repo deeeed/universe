@@ -5,14 +5,14 @@ import {
   promptInquirerChoice,
   promptUser,
 } from "../src/utils/user-prompt.util.js";
-import { aiSuggestionsTest } from "./test/ai-suggestions.test.js";
-import { branchFeaturesTest } from "./test/branch-features.test.js";
-import { commitMessageTest } from "./test/commit-message.test.js";
-import { initTest } from "./test/init.test.js";
-import { largeCommitsTest } from "./test/large-commits.test.js";
-import { securityTest } from "./test/security.test.js";
-import { statusTest } from "./test/status.test.js";
-import { templateTest } from "./test/template.test.js";
+import { aiSuggestionsTest } from "./scenarios/ai-suggestions.test.js";
+import { branchFeaturesTest } from "./scenarios/branch-features.test.js";
+import { commitMessageTest } from "./scenarios/commit-message.test.js";
+import { initTest } from "./scenarios/init.test.js";
+import { largeCommitsTest } from "./scenarios/large-commits.test.js";
+import { securityTest } from "./scenarios/security.test.js";
+import { statusTest } from "./scenarios/status.test.js";
+import { templateTest } from "./scenarios/template.test.js";
 import {
   E2ETest,
   TestResult,
@@ -152,12 +152,60 @@ function diffStates(
   return changes;
 }
 
-export async function runTests(): Promise<void> {
+interface RunOptions {
+  [key: string]: string;
+}
+
+export async function runTests(options: RunOptions = {}): Promise<void> {
   const logger = new LoggerService({ debug: true });
 
   logger.info(chalk.green("Welcome to GitGuard E2E Tests!"));
 
   try {
+    // If specific test and scenario are provided, run them directly
+    if (options.tests && options.scenario) {
+      const testKey = options.tests as TestSuiteKey;
+      const selectedTest = TEST_MAP.get(testKey);
+
+      if (!selectedTest) {
+        const availableTests = Array.from(TEST_MAP.keys()).join(", ");
+        throw new Error(
+          `Test suite '${options.tests}' not found. Available tests: ${availableTests}`,
+        );
+      }
+
+      logger.info(
+        "Available scenarios:",
+        selectedTest.scenarios.map((s) => ({
+          id: s.id,
+          name: s.name,
+        })),
+      );
+      logger.info("Looking for scenario:", options.scenario);
+
+      const scenario = selectedTest.scenarios.find(
+        (s) => s.id === options.scenario,
+      );
+
+      if (!scenario) {
+        const availableScenarios = selectedTest.scenarios
+          .map((s) => s.id)
+          .join(", ");
+        throw new Error(
+          `Scenario '${options.scenario}' not found in test suite '${options.tests}'. Available scenarios: ${availableScenarios}`,
+        );
+      }
+
+      logger.info(
+        chalk.cyan(`\n🧪 Running: ${selectedTest.name} - ${scenario.name}\n`),
+      );
+      const results = await selectedTest.run(logger, [scenario]);
+      results.forEach((result) => displayTestResult(result, logger));
+
+      return;
+    }
+
+    // Otherwise, run interactive mode
     const running = true;
     while (running) {
       process.stdout.write("\x1Bc"); // Clear screen
