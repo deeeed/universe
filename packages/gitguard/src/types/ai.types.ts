@@ -21,6 +21,52 @@ export interface TokenUsage {
   isWithinClipboardLimits: boolean;
 }
 
+export interface BaseAIProviderConfig {
+  maxTokens?: number;
+}
+
+export interface AzureConfig extends BaseAIProviderConfig {
+  type: "azure";
+  azure: {
+    endpoint: string;
+    apiKey: string;
+    deployment: string;
+    apiVersion: string;
+  };
+}
+
+export interface OpenAIConfig extends BaseAIProviderConfig {
+  type: "openai";
+  openai: {
+    apiKey: string;
+    model: string;
+    organization?: string;
+  };
+}
+
+export interface AnthropicConfig extends BaseAIProviderConfig {
+  type: "anthropic";
+  anthropic: {
+    apiKey: string;
+    model: string;
+  };
+}
+
+export interface CustomAIConfig extends BaseAIProviderConfig {
+  type: "custom";
+  custom: {
+    host: string;
+    model: string;
+  };
+}
+
+// Union type for all provider configs
+export type AIProviderConfig =
+  | AzureConfig
+  | OpenAIConfig
+  | AnthropicConfig
+  | CustomAIConfig;
+
 // Main AI Provider Interface
 export interface AIProvider {
   getName(): string;
