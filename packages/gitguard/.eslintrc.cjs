@@ -33,6 +33,15 @@ module.exports = {
     "regexp/prefer-regexp-exec": "error",
     "no-console": ["error", { allow: ["warn", "error"] }],
     "prettier/prettier": "error",
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/no-misused-promises": [
+      "error",
+      {
+        checksVoidReturn: {
+          attributes: false,
+        },
+      },
+    ],
   },
   ignorePatterns: ["dist/", "node_modules/", "rollup.config.mjs"],
   overrides: [

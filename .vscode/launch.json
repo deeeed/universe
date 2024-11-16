@@ -37,7 +37,7 @@
       "skipFiles": ["<node_internals>/**"],
       "cwd": "${workspaceFolder}/packages/gitguard",
       "program": "${workspaceFolder}/packages/gitguard/src/cli/gitguard.ts",
-      "args": ["branch", "edit", "--ai"],
+      "args": ["commit",  "--ai", "--debug"],
       "runtimeArgs": [
         "--loader",
         "ts-node/esm",

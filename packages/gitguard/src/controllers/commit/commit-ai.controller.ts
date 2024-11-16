@@ -16,10 +16,7 @@ import {
   handleAIAction,
   selectBestDiff,
 } from "../../utils/shared-ai-controller.util.js";
-import {
-  displayAISuggestions,
-  promptCommitSuggestion,
-} from "../../utils/user-prompt.util.js";
+import { promptAISuggestions } from "../../utils/user-prompt.util.js";
 
 interface CommitAIControllerParams {
   logger: Logger;
@@ -244,15 +241,11 @@ export class CommitAIController {
           }
 
           const detectedScope = this.commitService.detectScope(files);
-          displayAISuggestions({
-            suggestions,
-            detectedScope,
-            logger: this.logger,
-          });
 
           if (shouldExecute) {
-            const selectedSuggestion = await promptCommitSuggestion({
+            const selectedSuggestion = await promptAISuggestions({
               suggestions,
+              detectedScope,
               logger: this.logger,
             });
 

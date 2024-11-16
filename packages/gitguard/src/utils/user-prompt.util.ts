@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import readline from "readline/promises";
+import { confirm, input, select } from "@inquirer/prompts";
 import { AIProvider } from "../types/ai.types.js";
 import { CommitSuggestion } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
@@ -15,27 +15,36 @@ export async function displaySuggestions(params: {
   allowEmpty?: boolean;
   originalMessage?: string;
 }): Promise<string | undefined> {
-  const { suggestions, logger, originalMessage } = params;
+  const { suggestions, logger, originalMessage, allowEmpty = true } = params;
 
   if (originalMessage) {
     logger.info(`\nOriginal message: "${originalMessage}"`);
   }
 
-  suggestions.forEach((suggestion, index) => {
-    logger.info(`\n${index + 1}. ${suggestion.message}`);
-    logger.info(`   Explanation: ${suggestion.explanation}`);
-  });
+  try {
+    const choices = suggestions.map((suggestion) => ({
+      name: `${suggestion.message}\n   ${chalk.gray(`Explanation: ${suggestion.explanation}`)}`,
+      value: suggestion.message,
+    }));
 
-  const answer = await promptNumeric({
-    message: "\nChoose a suggestion number or press Enter to skip:",
-    allowEmpty: params.allowEmpty ?? true,
-    logger,
-  });
+    if (allowEmpty) {
+      choices.push({
+        name: "Skip",
+        value: "",
+      });
+    }
 
-  if (!answer) return undefined;
+    const selected = await select({
+      message: "Choose a suggestion:",
+      choices,
+      pageSize: 10, // Show reasonable number of choices at once
+    });
 
-  const index = parseInt(answer) - 1;
-  return suggestions[index]?.message;
+    return selected || undefined;
+  } catch (error) {
+    logger.error("Failed to prompt for suggestion:", error);
+    return undefined;
+  }
 }
 
 export async function displayChoicesWithActions<T extends string>(params: {
@@ -47,19 +56,27 @@ export async function displayChoicesWithActions<T extends string>(params: {
   }>;
   logger: Logger;
 }): Promise<void> {
-  const { choices, logger } = params;
+  const { choices, logger, message } = params;
 
-  const selectedValue = await promptChoice<T>({
-    message: params.message,
-    choices: choices.map(({ label, value }) => ({ label, value })),
-    logger,
-  });
+  try {
+    const inquirerChoices = choices.map(({ label, value }) => ({
+      name: label,
+      value,
+    }));
 
-  const selectedChoice = choices.find(
-    (choice) => choice.value === selectedValue,
-  );
-  if (selectedChoice) {
-    await selectedChoice.action();
+    const selectedValue = await select({
+      message,
+      choices: inquirerChoices,
+    });
+
+    const selectedChoice = choices.find(
+      (choice) => choice.value === selectedValue,
+    );
+    if (selectedChoice) {
+      await selectedChoice.action();
+    }
+  } catch (error) {
+    logger.error("Failed to prompt for choice:", error);
   }
 }
 
@@ -69,24 +86,16 @@ export async function promptYesNo(params: {
   defaultValue?: boolean;
   forceTTY?: boolean;
 }): Promise<boolean> {
-  const { message, logger, defaultValue = false } = params;
-  const rl = createReadlineInterface();
+  const { message, defaultValue = false, logger } = params;
 
   try {
-    const answer = await rl.question(
-      `${message} [${defaultValue ? "Y/n" : "y/N"}] `,
-    );
-    const response = answer.trim().toLowerCase();
-
-    if (response === "") {
-      return defaultValue;
-    }
-    return response === "y" || response === "yes";
+    return await confirm({
+      message,
+      default: defaultValue,
+    });
   } catch (error) {
     logger.info("\nNon-interactive environment detected, using default value.");
     return defaultValue;
-  } finally {
-    rl.close();
   }
 }
 
@@ -95,44 +104,31 @@ export async function promptNumeric(params: {
   logger: Logger;
   allowEmpty?: boolean;
   defaultValue?: string;
-  forceTTY?: boolean;
   maxValue?: number;
 }): Promise<string | undefined> {
   const { message, logger, allowEmpty = true, defaultValue, maxValue } = params;
-  const rl = createReadlineInterface();
 
   try {
-    const answer = await rl.question(`${message} `);
-    const response = answer.trim();
+    const result = await input({
+      message,
+      default: defaultValue,
+      validate: (value) => {
+        if (allowEmpty && value === "") return true;
+        const num = parseInt(value, 10);
+        if (
+          isNaN(num) ||
+          (maxValue !== undefined && (num < 0 || num > maxValue))
+        ) {
+          return "Please enter a valid number";
+        }
+        return true;
+      },
+    });
 
-    // Handle empty input
-    if (response === "") {
-      if (allowEmpty) {
-        return defaultValue;
-      }
-      logger.error("Please enter a value.");
-      return promptNumeric(params);
-    }
-
-    // Handle cancellation
-    if (response.toLowerCase() === "c") {
-      logger.info("\nCommit cancelled by user.");
-      process.exit(1);
-    }
-
-    // Validate numeric input
-    const num = parseInt(response, 10);
-    if (isNaN(num) || (maxValue !== undefined && (num < 0 || num > maxValue))) {
-      logger.error("Please enter a valid number.");
-      return promptNumeric(params);
-    }
-
-    return String(num);
+    return result || undefined;
   } catch (error) {
     logger.info("\nNon-interactive environment detected, using default value.");
     return defaultValue;
-  } finally {
-    rl.close();
   }
 }
 
@@ -145,38 +141,23 @@ export async function promptChoice<T extends string>(params: {
   logger: Logger;
   defaultValue?: T;
 }): Promise<T> {
-  const { choices, logger, defaultValue } = params;
+  const { choices, defaultValue } = params;
 
-  choices.forEach((choice, index) => {
-    const prefix = choice.value === defaultValue ? chalk.yellow("*") : " ";
-    logger.info(`${prefix} ${index + 1}. ${choice.label}`);
-  });
+  try {
+    const inquirerChoices = choices.map((choice) => ({
+      name: `${choice.value === defaultValue ? chalk.yellow("* ") : ""}${choice.label}`,
+      value: choice.value,
+    }));
 
-  const defaultIndex = choices.findIndex((c) => c.value === defaultValue);
-  const defaultChoice =
-    defaultIndex !== -1 ? String(defaultIndex + 1) : undefined;
-
-  const answer = await promptNumeric({
-    message: "\nEnter your choice (number):",
-    allowEmpty: true,
-    logger,
-    maxValue: choices.length,
-    defaultValue: defaultChoice,
-  });
-
-  if (!answer) {
+    return await select({
+      message: params.message,
+      choices: inquirerChoices,
+      default: choices.findIndex((c) => c.value === defaultValue),
+    });
+  } catch (error) {
+    params.logger.error("Failed to prompt for choice:", error);
     return defaultValue ?? choices[0].value;
   }
-
-  const index = parseInt(answer) - 1;
-  const choice = choices[index];
-
-  if (!choice) {
-    logger.error(`Please select a number between 1 and ${choices.length}`);
-    return promptChoice(params);
-  }
-
-  return choice.value;
 }
 
 export type AIProviderName = "azure" | "openai" | "ollama" | "skip";
@@ -271,14 +252,14 @@ export async function promptInput(params: {
   defaultValue?: string;
 }): Promise<string> {
   const { message, defaultValue } = params;
-  const rl = createReadlineInterface();
 
   try {
-    const prompt = `${message}${defaultValue ? ` (${defaultValue})` : ""}\n`;
-    const response = await rl.question(prompt);
-    return (response.trim() || defaultValue) ?? "";
-  } finally {
-    rl.close();
+    return await input({
+      message,
+      default: defaultValue,
+    });
+  } catch (error) {
+    return defaultValue ?? "";
   }
 }
 
@@ -320,14 +301,6 @@ export async function promptUser(
 // Add new interface and function for AI prompts
 export type AIAction = "generate" | "copy-api" | "copy-manual" | "skip";
 
-// Add new helper function for creating readline interface
-function createReadlineInterface(): readline.Interface {
-  return readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-}
-
 interface AICostConfirmationParams {
   logger: Logger;
   provider: AIProvider;
@@ -359,24 +332,31 @@ export async function promptSplitChoice(params: {
 }): Promise<{ selection: number }> {
   const { suggestions, logger } = params;
 
-  const choices = [
-    `${chalk.yellow("0.")} Keep all changes together`,
-    ...suggestions.map(
-      (suggestion, index) =>
-        `${chalk.green(`${index + 1}.`)} Keep only ${chalk.cyan(suggestion.scope ?? "root")} changes and unstage others`,
-    ),
-  ];
+  try {
+    const choices = [
+      {
+        name: `${chalk.yellow("0.")} Keep all changes together`,
+        value: 0,
+        description: "Proceed with the commit as is",
+      },
+      ...suggestions.map((suggestion, index) => ({
+        name: `${chalk.green(`${index + 1}.`)} Keep only ${chalk.cyan(suggestion.scope ?? "root")} changes and unstage others`,
+        value: index + 1,
+        description: `${suggestion.files.length} files`,
+      })),
+    ];
 
-  logger.info("\n📋 Choose how to proceed:");
-  choices.forEach((choice) => logger.info(choice));
+    const selection = await select({
+      message: "Choose how to proceed:",
+      choices,
+      pageSize: 10,
+    });
 
-  const answer = await promptNumeric({
-    message: `\nEnter choice (0-${suggestions.length}):`,
-    maxValue: suggestions.length,
-    logger,
-  });
-
-  return { selection: answer ? parseInt(answer) : 0 };
+    return { selection };
+  } catch (error) {
+    logger.error("Failed to prompt for split choice:", error);
+    return { selection: 0 };
+  }
 }
 
 export async function promptCommitSuggestion(params: {
@@ -419,30 +399,50 @@ export function displaySplitSuggestions(params: {
   });
 }
 
-export function displayAISuggestions(params: {
+export async function promptAISuggestions(params: {
   suggestions: CommitSuggestion[];
   detectedScope?: string;
   logger: Logger;
-}): void {
+}): Promise<CommitSuggestion | undefined> {
   const { suggestions, detectedScope, logger } = params;
   const scopeDisplay = detectedScope ? `(${detectedScope})` : "";
 
-  logger.info("\n🤖 AI Suggestions:");
-  suggestions.forEach((suggestion, index) => {
-    const formattedTitle = `${suggestion.type}${scopeDisplay}: ${suggestion.title}`;
+  try {
+    const choices = [
+      ...suggestions.map((suggestion, index) => {
+        const formattedTitle = `${chalk.green(`${index + 1}.`)} ${suggestion.type}${scopeDisplay}: ${suggestion.title}`;
+        const description = suggestion.message
+          ? suggestion.message.split("\n").join(" ")
+          : undefined;
 
-    logger.info(
-      `\n${chalk.bold.green(`${index + 1}.`)} ${chalk.bold(formattedTitle)}`,
-    );
-    if (suggestion.message) {
-      suggestion.message.split("\n").forEach((paragraph) => {
-        logger.info(`   ${chalk.gray(paragraph)}`);
-      });
-    }
-  });
+        return {
+          name: chalk.bold(formattedTitle),
+          value: suggestion,
+          description: description ? chalk.gray(description) : undefined,
+        };
+      }),
+      {
+        name: `${chalk.yellow("0.")} Skip - Don't use any suggestion`,
+        value: undefined,
+        description: "Skip the commit suggestion selection",
+      },
+    ] as const;
+
+    const selected = await select<CommitSuggestion | undefined>({
+      message: "🤖 Select an AI suggestion to commit:",
+      choices,
+      pageSize: 10,
+    });
+
+    return selected;
+  } catch (error) {
+    logger.error("Failed to prompt for AI suggestion:", error);
+    return undefined;
+  }
 }
 
-interface PromptActionChoice<T extends string> {
+// Update PromptActionChoice interface to include isDefault
+export interface PromptActionChoice<T> {
   label: string;
   value: T;
   isDefault?: boolean;
@@ -450,48 +450,32 @@ interface PromptActionChoice<T extends string> {
   disabledReason?: string;
 }
 
-export async function promptActionChoice<T extends string>(params: {
+// Update promptInquirerChoice to use @inquirer/prompts
+export async function promptInquirerChoice<T>(params: {
   message: string;
   choices: PromptActionChoice<T>[];
   logger: Logger;
+  pageSize?: number;
 }): Promise<{ action: T }> {
   const { message, choices, logger } = params;
 
-  logger.info(`\n${message}`);
-  choices.forEach((choice, index) => {
-    const prefix = choice.isDefault ? chalk.yellow("*") : " ";
-    const label = choice.disabled
-      ? `${chalk.gray(choice.label)} ${chalk.red("(disabled)")}`
-      : choice.label;
-    logger.info(`${prefix} ${index + 1}. ${label}`);
-  });
+  try {
+    const inquirerChoices = choices.map((choice, index) => ({
+      name: `${chalk.cyan(`${index + 1}.`)} ${choice.label}`,
+      value: choice.value,
+      disabled: choice.disabled ? (choice.disabledReason ?? true) : false,
+    }));
 
-  const defaultChoice = choices.findIndex((c) => c.isDefault) + 1;
+    const selected = await select({
+      message,
+      choices: inquirerChoices,
+      pageSize: params.pageSize ?? 20,
+      default: choices.findIndex((c) => c.isDefault),
+    });
 
-  const answer = await promptNumeric({
-    message: "\nEnter your choice (number):",
-    allowEmpty: true,
-    maxValue: choices.length,
-    defaultValue: defaultChoice ? String(defaultChoice) : "1",
-    logger,
-  });
-
-  const selectedIndex = Number(answer) - 1;
-  const selectedChoice = choices[selectedIndex];
-
-  if (selectedChoice?.disabled) {
-    logger.info(
-      chalk.yellow(
-        `\n⚠️  This option is currently disabled: ${selectedChoice.disabledReason ?? "No reason provided"}`,
-      ),
-    );
-    return promptActionChoice(params);
+    return { action: selected };
+  } catch (error) {
+    logger.error("Failed to prompt for choice:", error);
+    process.exit(1);
   }
-
-  return {
-    action:
-      selectedChoice?.value ??
-      choices.find((c) => c.isDefault)?.value ??
-      choices[0].value,
-  };
 }

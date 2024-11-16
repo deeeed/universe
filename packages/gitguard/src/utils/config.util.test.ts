@@ -9,7 +9,7 @@ import {
   getDefaultConfig,
   loadConfig,
 } from "./config.util.js";
-import * as gitUtil from "./git.util.js";
+import { getGitRootSync, isGitRepositorySync } from "./git.util.js";
 
 // Mock dependencies
 jest.mock("fs", () => ({
@@ -34,8 +34,8 @@ describe("Config Util", () => {
   beforeEach(() => {
     jest.resetAllMocks();
     (homedir as jest.Mock).mockReturnValue(mockHomedir);
-    (gitUtil.isGitRepositorySync as jest.Mock).mockReturnValue(true);
-    (gitUtil.getGitRootSync as jest.Mock).mockReturnValue(mockGitRoot);
+    (isGitRepositorySync as jest.Mock).mockReturnValue(true);
+    (getGitRootSync as jest.Mock).mockReturnValue(mockGitRoot);
     process.env = {};
     (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify({}));
   });
@@ -50,7 +50,7 @@ describe("Config Util", () => {
     });
 
     it("should return only global path outside git repository", (): void => {
-      (gitUtil.isGitRepositorySync as jest.Mock).mockReturnValue(false);
+      (isGitRepositorySync as jest.Mock).mockReturnValue(false);
       const paths = getConfigPaths();
       expect(paths).toEqual({
         global: join(mockHomedir, ".gitguard", "config.json"),
