@@ -1,4 +1,5 @@
 import { select } from "@inquirer/prompts";
+import chalk from "chalk";
 import { TemplateRegistry } from "../services/template/template-registry.js";
 import { Logger } from "../types/logger.types.js";
 import {
@@ -44,23 +45,27 @@ export async function selectTemplateChoice(
 
   // If no templates are available, ensure defaults are loaded
   if (choices.length <= 1) {
-    // Only has skip option
     await params.templateRegistry.loadTemplates({ includeDefaults: true });
-    // Regenerate choices after loading defaults
     choices = getTemplateBasedChoices(params);
   }
 
-  const inquirerChoices: InquirerTemplateChoice[] = choices.map((choice) => ({
-    name: choice.label,
-    value: choice.value,
-    disabled: choice.disabled ? (choice.disabledReason ?? true) : false,
-  }));
+  const inquirerChoices: InquirerTemplateChoice[] = choices
+    .filter((choice) => !choice.disabled)
+    .map((choice) => ({
+      name: choice.label,
+      value: choice.value,
+      disabled: false,
+    }));
 
   try {
+    const defaultIndex = choices
+      .filter((choice) => !choice.disabled)
+      .findIndex((c) => c.isDefault);
+
     return await select({
       message: "Choose an action:",
       choices: inquirerChoices,
-      default: choices.findIndex((c) => c.isDefault),
+      default: defaultIndex + 1,
     });
   } catch (error) {
     params.logger.error("Failed to prompt for choice:", error);
@@ -81,7 +86,7 @@ function formatTemplateLabel(params: {
   const prefix = isNested ? "└─> " : "";
   const scope = template?.source ?? source ?? "default";
   const type = template?.format ?? format ?? "api";
-  const costInfo = cost ? ` • ${cost}` : "";
+  const costInfo = cost ? ` • ${chalk.yellow(cost)}` : "";
 
   return `${index}. ${prefix}${title} [${scope}/${type}${costInfo}]`;
 }
@@ -100,7 +105,6 @@ export function getTemplateBasedChoices(
     skipAsDefault = false,
   } = params;
 
-  let choiceIndex = 1;
   const choices: TemplateChoice[] = [
     {
       label: "Format: Title [source/type • cost]",
@@ -108,12 +112,16 @@ export function getTemplateBasedChoices(
       disabled: true,
       disabledReason: "source: default|project|global, type: api|human",
     },
-    {
-      label: `${choiceIndex++}. Continue without AI assistance`,
-      value: "skip",
-      isDefault: false,
-    },
   ];
+
+  // Start indexing after the legend
+  let displayIndex = 1;
+
+  choices.push({
+    label: `${displayIndex++}. Continue without AI assistance`,
+    value: "skip",
+    isDefault: false,
+  });
 
   const apiTemplates = templateRegistry.getTemplatesForType({
     type,
@@ -134,7 +142,7 @@ export function getTemplateBasedChoices(
     // Add main generate choice
     choices.push({
       label: formatTemplateLabel({
-        index: choiceIndex++,
+        index: displayIndex++,
         template: defaultTemplate,
         title: generateLabel,
         cost: tokenUsage.estimatedCost,
@@ -150,7 +158,7 @@ export function getTemplateBasedChoices(
     if (clipboardEnabled && defaultTemplate) {
       choices.push({
         label: formatTemplateLabel({
-          index: choiceIndex++,
+          index: displayIndex++,
           template: defaultTemplate,
           title: defaultTemplate.title ?? "API prompt",
           isNested: true,
@@ -165,7 +173,7 @@ export function getTemplateBasedChoices(
   humanTemplates.forEach((template) => {
     choices.push({
       label: formatTemplateLabel({
-        index: choiceIndex++,
+        index: displayIndex++,
         template,
         title: template.title ?? "human-friendly prompt",
       }),
