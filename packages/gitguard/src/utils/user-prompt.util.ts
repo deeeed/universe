@@ -22,22 +22,26 @@ export async function displaySuggestions(params: {
   }
 
   try {
-    const choices = suggestions.map((suggestion) => ({
-      name: `${suggestion.message}\n   ${chalk.gray(`Explanation: ${suggestion.explanation}`)}`,
-      value: suggestion.message,
-    }));
+    const choices: InquirerChoiceWithDescription<string>[] = suggestions.map(
+      (suggestion) => ({
+        name: suggestion.message,
+        value: suggestion.message,
+        description: suggestion.explanation,
+      }),
+    );
 
     if (allowEmpty) {
       choices.push({
         name: "Skip",
         value: "",
+        description: "Continue without selecting a suggestion",
       });
     }
 
     const selected = await select({
       message: "Choose a suggestion:",
       choices,
-      pageSize: 10, // Show reasonable number of choices at once
+      pageSize: 10,
     });
 
     return selected || undefined;
@@ -408,25 +412,20 @@ export async function promptAISuggestions(params: {
   const scopeDisplay = detectedScope ? `(${detectedScope})` : "";
 
   try {
-    const choices = [
-      ...suggestions.map((suggestion, index) => {
-        const formattedTitle = `${chalk.green(`${index + 1}.`)} ${suggestion.type}${scopeDisplay}: ${suggestion.title}`;
-        const description = suggestion.message
-          ? suggestion.message.split("\n").join(" ")
-          : undefined;
-
-        return {
-          name: chalk.bold(formattedTitle),
-          value: suggestion,
-          description: description ? chalk.gray(description) : undefined,
-        };
-      }),
+    const choices: InquirerChoiceWithDescription<
+      CommitSuggestion | undefined
+    >[] = [
+      ...suggestions.map((suggestion) => ({
+        name: `${suggestion.type}${scopeDisplay}: ${suggestion.title}`,
+        value: suggestion,
+        description: suggestion.message ?? undefined,
+      })),
       {
-        name: `${chalk.yellow("0.")} Skip - Don't use any suggestion`,
+        name: "Skip",
         value: undefined,
-        description: "Skip the commit suggestion selection",
+        description: "Continue without using any AI suggestion",
       },
-    ] as const;
+    ];
 
     const selected = await select<CommitSuggestion | undefined>({
       message: "🤖 Select an AI suggestion to commit:",
@@ -450,7 +449,7 @@ export interface PromptActionChoice<T> {
   disabledReason?: string;
 }
 
-// Update promptInquirerChoice to use @inquirer/prompts
+// Update promptInquirerChoice to use description
 export async function promptInquirerChoice<T>(params: {
   message: string;
   choices: PromptActionChoice<T>[];
@@ -460,11 +459,14 @@ export async function promptInquirerChoice<T>(params: {
   const { message, choices, logger } = params;
 
   try {
-    const inquirerChoices = choices.map((choice, index) => ({
-      name: `${chalk.cyan(`${index + 1}.`)} ${choice.label}`,
-      value: choice.value,
-      disabled: choice.disabled ? (choice.disabledReason ?? true) : false,
-    }));
+    const inquirerChoices: InquirerChoiceWithDescription<T>[] = choices.map(
+      (choice) => ({
+        name: choice.label,
+        value: choice.value,
+        description: choice.disabledReason,
+        disabled: choice.disabled,
+      }),
+    );
 
     const selected = await select({
       message,
@@ -478,4 +480,11 @@ export async function promptInquirerChoice<T>(params: {
     logger.error("Failed to prompt for choice:", error);
     process.exit(1);
   }
+}
+
+interface InquirerChoiceWithDescription<T> {
+  name: string;
+  value: T;
+  description?: string;
+  disabled?: boolean | string;
 }
