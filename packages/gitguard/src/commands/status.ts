@@ -74,10 +74,13 @@ function displayConfigFeatures(config: Partial<Config> | null): string[] {
     } else if (config.ai.provider === "openai" && config.ai.openai) {
       output.push("  OpenAI:");
       output.push(`    Model: ${formatConfigValue(config.ai.openai.model)}`);
-    } else if (config.ai.provider === "ollama" && config.ai.ollama) {
-      output.push("  Ollama:");
-      output.push(`    Host: ${formatConfigValue(config.ai.ollama.host)}`);
-      output.push(`    Model: ${formatConfigValue(config.ai.ollama.model)}`);
+    } else if (config.ai.provider === "anthropic" && config.ai.anthropic) {
+      output.push("  Anthropic:");
+      output.push(`    Model: ${formatConfigValue(config.ai.anthropic.model)}`);
+    } else if (config.ai.provider === "custom" && config.ai.custom) {
+      output.push("  Custom:");
+      output.push(`    Host: ${formatConfigValue(config.ai.custom.host)}`);
+      output.push(`    Model: ${formatConfigValue(config.ai.custom.model)}`);
     }
   }
 

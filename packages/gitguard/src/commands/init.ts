@@ -112,12 +112,15 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
       },
       azure: {
         endpoint: "https://YOURENDPOINT.openai.azure.com/",
-        deployment: "gpt-4o",
+        deployment: "gpt-4",
         apiVersion: "2024-02-15-preview",
       },
-      ollama: {
+      anthropic: {
+        model: "claude-3-opus-20240229",
+      },
+      custom: {
         host: "http://localhost:11434",
-        model: "codellama",
+        model: "custom-model",
       },
     },
     pr: {
@@ -140,7 +143,7 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
   if (responses.ai.enabled) {
     logger.info(chalk.blue("\nAI Configuration Details:"));
     logger.info(`- Default provider set to: ${chalk.cyan("openai")}`);
-    logger.info(`- Default model set to: ${chalk.cyan("gpt-4-turbo-preview")}`);
+    logger.info(`- Default model set to: ${chalk.cyan("gpt-4-turbo")}`);
     logger.info(
       `- To use OpenAI, set your ${chalk.yellow("OPENAI_API_KEY")} environment variable`,
     );
@@ -148,7 +151,10 @@ async function initializeConfig({ options }: InitAnalyzeParams): Promise<void> {
       `- To use Azure OpenAI, set ${chalk.yellow("AZURE_OPENAI_API_KEY")}, ${chalk.yellow("AZURE_OPENAI_ENDPOINT")}, and ${chalk.yellow("AZURE_OPENAI_DEPLOYMENT")}`,
     );
     logger.info(
-      `- To use Ollama, ensure it's running at ${chalk.cyan("http://localhost:11434")}`,
+      `- To use Anthropic, set your ${chalk.yellow("ANTHROPIC_API_KEY")} environment variable`,
+    );
+    logger.info(
+      `- To use Custom AI, set your ${chalk.yellow("CUSTOM_AI_HOST")} environment variable`,
     );
     logger.info(
       `- You can change providers and settings in your config file: ${chalk.dim(configPath)}`,

@@ -477,10 +477,12 @@ interface AIGenerateResult {
   debug?: {
     hasAI: boolean;
     aiEnabled: boolean;
-    provider: "azure" | "openai" | "ollama" | null;
+    provider: "azure" | "openai" | "anthropic" | "custom" | null;
     hasOpenAIKey: boolean;
     hasAzureKey: boolean;
     hasAzureEndpoint: boolean;
+    hasAnthropicKey: boolean;
+    hasCustomHost: boolean;
   };
 }
 
@@ -499,6 +501,10 @@ export function canGenerateAI(
     hasAzureEndpoint: !!(
       process.env.AZURE_OPENAI_ENDPOINT ?? config.ai?.azure?.endpoint
     ),
+    hasAnthropicKey: !!(
+      process.env.ANTHROPIC_API_KEY ?? config.ai?.anthropic?.apiKey
+    ),
+    hasCustomHost: !!(process.env.CUSTOM_AI_HOST ?? config.ai?.custom?.host),
   };
 
   if (!ai) {

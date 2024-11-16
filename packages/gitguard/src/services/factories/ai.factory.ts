@@ -1,8 +1,10 @@
-import { OpenAIService } from "../openai.service.js";
-import { Config } from "../../types/config.types.js";
-import { AIProvider } from "../../types/ai.types.js";
-import { Logger } from "../../types/logger.types.js";
 import chalk from "chalk";
+import { AIProvider } from "../../types/ai.types.js";
+import { Config } from "../../types/config.types.js";
+import { Logger } from "../../types/logger.types.js";
+import { AnthropicService } from "../anthropic.service.js";
+import { CustomAIService } from "../customai.service.js";
+import { OpenAIService } from "../openai.service.js";
 
 interface AIFactoryOptions {
   config: Config;
@@ -24,6 +26,10 @@ export class AIFactory {
           return AIFactory.createAzureProvider(config, logger);
         case "openai":
           return AIFactory.createOpenAIProvider(config, logger);
+        case "anthropic":
+          return AIFactory.createAnthropicProvider(config, logger);
+        case "custom":
+          return AIFactory.createCustomProvider(config, logger);
         default:
           return AIFactory.handleUnsupportedProvider(
             config.ai.provider ?? "unknown",
@@ -103,6 +109,63 @@ export class AIFactory {
     });
   }
 
+  private static createAnthropicProvider(
+    config: Config,
+    logger: Logger,
+  ): AIProvider | undefined {
+    if (!config.ai?.anthropic) {
+      logger.warn("Anthropic configuration missing");
+      return undefined;
+    }
+
+    const anthropicApiKey =
+      config.ai.anthropic.apiKey ?? process.env.ANTHROPIC_API_KEY;
+
+    if (!anthropicApiKey) {
+      AIFactory.logAnthropicKeyMissing(logger);
+      return undefined;
+    }
+
+    return new AnthropicService({
+      logger,
+      config: {
+        type: "anthropic",
+        anthropic: {
+          apiKey: anthropicApiKey,
+          model: config.ai.anthropic.model ?? "claude-3-opus-20240229",
+        },
+      },
+    });
+  }
+
+  private static createCustomProvider(
+    config: Config,
+    logger: Logger,
+  ): AIProvider | undefined {
+    if (!config.ai?.custom) {
+      logger.warn("Custom AI configuration missing");
+      return undefined;
+    }
+
+    const customHost = config.ai.custom.host ?? process.env.CUSTOM_AI_HOST;
+
+    if (!customHost) {
+      AIFactory.logCustomHostMissing(logger);
+      return undefined;
+    }
+
+    return new CustomAIService({
+      logger,
+      config: {
+        type: "custom",
+        custom: {
+          host: customHost,
+          model: config.ai.custom.model,
+        },
+      },
+    });
+  }
+
   private static handleUnsupportedProvider(
     provider: string,
     logger: Logger,
@@ -111,6 +174,8 @@ export class AIFactory {
     logger.info("\n💡 Supported providers are:");
     logger.info(chalk.dim("   - openai"));
     logger.info(chalk.dim("   - azure"));
+    logger.info(chalk.dim("   - anthropic"));
+    logger.info(chalk.dim("   - custom"));
     return undefined;
   }
 
@@ -157,6 +222,30 @@ export class AIFactory {
     logger.info(chalk.dim("   .gitguard/config.json:"));
     logger.info(
       chalk.dim('   "ai": { "openai": { "apiKey": "your_api_key" } }'),
+    );
+  }
+
+  private static logAnthropicKeyMissing(logger: Logger): void {
+    logger.warn("\n⚠️  Anthropic API key missing");
+    logger.info("\n💡 To enable Anthropic, you need to:");
+    logger.info(chalk.cyan("\n1. Set environment variable:"));
+    logger.info(chalk.dim("   export ANTHROPIC_API_KEY=your_api_key"));
+    logger.info(chalk.cyan("\n2. Or update your config file:"));
+    logger.info(chalk.dim("   .gitguard/config.json:"));
+    logger.info(
+      chalk.dim('   "ai": { "anthropic": { "apiKey": "your_api_key" } }'),
+    );
+  }
+
+  private static logCustomHostMissing(logger: Logger): void {
+    logger.warn("\n⚠️  Custom AI host missing");
+    logger.info("\n💡 To configure Custom AI host:");
+    logger.info(chalk.cyan("\n1. Set environment variable:"));
+    logger.info(chalk.dim("   export CUSTOM_AI_HOST=your_host_url"));
+    logger.info(chalk.cyan("\n2. Or update your config file:"));
+    logger.info(chalk.dim("   .gitguard/config.json:"));
+    logger.info(
+      chalk.dim('   "ai": { "custom": { "host": "your_host_url" } }'),
     );
   }
 }
