@@ -34,6 +34,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@anthropic-ai/sdk@npm:^0.32.1":
+  version: 0.32.1
+  resolution: "@anthropic-ai/sdk@npm:0.32.1"
+  dependencies:
+    "@types/node": "npm:^18.11.18"
+    "@types/node-fetch": "npm:^2.6.4"
+    abort-controller: "npm:^3.0.0"
+    agentkeepalive: "npm:^4.2.1"
+    form-data-encoder: "npm:1.7.2"
+    formdata-node: "npm:^4.3.2"
+    node-fetch: "npm:^2.6.7"
+  checksum: 10c0/a8924ada337b676e473d4fe1a06a0099f9ae6e50ffeca62ed01a5a1bf6d465cd0ee10d64c0f45b85d849836e9221b399b33d697acae7fe1c5a7f18c9949959e1
+  languageName: node
+  linkType: hard
+
 "@babel/cli@npm:^7.1.2":
   version: 7.25.9
   resolution: "@babel/cli@npm:7.25.9"
@@ -6300,6 +6315,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@siteed/gitguard@workspace:packages/gitguard"
   dependencies:
+    "@anthropic-ai/sdk": "npm:^0.32.1"
     "@inquirer/prompts": "npm:^7.1.0"
     "@jest/types": "npm:^29.6.3"
     "@octokit/rest": "npm:^21.0.2"
