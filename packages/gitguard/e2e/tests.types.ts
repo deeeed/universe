@@ -112,6 +112,7 @@ export const TestSuites = {
   INIT: "init",
   STATUS: "status",
   TEMPLATE: "template",
+  AI_PROVIDERS: "ai-providers",
 } as const;
 
 export type TestSuiteKey = (typeof TestSuites)[keyof typeof TestSuites];

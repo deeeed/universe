@@ -13,6 +13,7 @@ import { largeCommitsTest } from "./scenarios/large-commits.e2e.test.js";
 import { securityTest } from "./scenarios/security.e2e.test.js";
 import { statusTest } from "./scenarios/status.e2e.test.js";
 import { templateTest } from "./scenarios/template.e2e.test.js";
+import { aiProvidersTest } from "./scenarios/ai-providers.e2e.test.js";
 import {
   E2ETest,
   TestResult,
@@ -30,6 +31,7 @@ const TEST_MAP = new Map<TestSuiteKey, E2ETest>([
   [TestSuites.INIT, initTest],
   [TestSuites.STATUS, statusTest],
   [TestSuites.TEMPLATE, templateTest],
+  [TestSuites.AI_PROVIDERS, aiProvidersTest],
 ]);
 
 export async function promptForTestSuite(
