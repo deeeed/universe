@@ -5,14 +5,14 @@ import {
   promptInquirerChoice,
   promptUser,
 } from "../src/utils/user-prompt.util.js";
-import { aiSuggestionsTest } from "./scenarios/ai-suggestions.test.js";
-import { branchFeaturesTest } from "./scenarios/branch-features.test.js";
-import { commitMessageTest } from "./scenarios/commit-message.test.js";
-import { initTest } from "./scenarios/init.test.js";
-import { largeCommitsTest } from "./scenarios/large-commits.test.js";
-import { securityTest } from "./scenarios/security.test.js";
-import { statusTest } from "./scenarios/status.test.js";
-import { templateTest } from "./scenarios/template.test.js";
+import { aiSuggestionsTest } from "./scenarios/ai-suggestions.e2e.test.js";
+import { branchFeaturesTest } from "./scenarios/branch-features.e2e.test.js";
+import { commitMessageTest } from "./scenarios/commit-message.e2e.test.js";
+import { initTest } from "./scenarios/init.test.e2e.js";
+import { largeCommitsTest } from "./scenarios/large-commits.e2e.test.js";
+import { securityTest } from "./scenarios/security.e2e.test.js";
+import { statusTest } from "./scenarios/status.e2e.test.js";
+import { templateTest } from "./scenarios/template.e2e.test.js";
 import {
   E2ETest,
   TestResult,
