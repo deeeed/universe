@@ -45,6 +45,9 @@ template: |
   # Ensure we're in the git repository root
   cd $(git rev-parse --show-toplevel)
 
+  # Reset the current commit to unstage changes
+  git reset HEAD^
+
   # Commit 1: feat(scope): descriptive title
   git add [specific files]
   git commit -m "feat(scope): descriptive title" -m "detailed description"
