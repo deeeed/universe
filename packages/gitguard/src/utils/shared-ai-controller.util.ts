@@ -16,7 +16,7 @@ import {
 import { checkAILimits } from "./ai-limits.util.js";
 import { copyToClipboard } from "./clipboard.util.js";
 import { formatDiffForAI } from "./diff.util.js";
-import { promptActionChoice } from "./user-prompt.util.js";
+import { selectTemplateChoice } from "./template-choice.util.js";
 
 // Base interface for shared dependencies
 interface BaseAIParams {
@@ -312,10 +312,8 @@ export async function handleAIAction<TResult>(
     variables,
     ai,
     config,
-    choices: customChoices,
-    actionHandler,
     generateLabel,
-    skipAsDefault = false,
+    actionHandler,
   } = params;
 
   logger.debug("Starting AI action handler:", {
@@ -407,63 +405,23 @@ export async function handleAIAction<TResult>(
     return null;
   };
 
-  // Build choices for user prompt
-  const defaultChoices = [
-    ...apiTemplates.flatMap((t) => {
-      const baseChoice = {
-        label: `${generateLabel ?? "Generate using"} ${t.label} ${
-          !aiStatus.canGenerate
-            ? `(${aiStatus.reason}. Fix by ${getFixSuggestion(aiStatus)})`
-            : t.tokenUsage
-              ? ` (${t.tokenUsage.count} tokens, estimated cost: ${t.tokenUsage.estimatedCost})`
-              : " (cost estimation unavailable)"
-        }`,
-        value: `generate-${t.template.id}` as AIActionType,
-        isDefault: !skipAsDefault && aiStatus.canGenerate,
-        disabled: !aiStatus.canGenerate,
-        disabledReason: aiStatus.reason,
-      };
-
-      // Create array with base choice and optional clipboard choice
-      return [
-        baseChoice,
-        // Add API clipboard option when enabled
-        ...(config.ai?.apiClipboard
-          ? [
-              {
-                label: `└─> Copy ${t.label} API prompt to clipboard`,
-                // Use the exact template ID without adding any prefix
-                value: `copy-api-${t.template.id}` as AIActionType,
-                isDefault: false,
-              },
-            ]
-          : []),
-      ];
-    }),
-    ...humanTemplates.map((t) => ({
-      label: `Copy ${t.label} to clipboard`,
-      value: `copy-${t.template.id}` as AIActionType,
-      isDefault:
-        !skipAsDefault &&
-        !aiStatus.canGenerate &&
-        humanTemplates[0]?.template.id === t.template.id,
-    })),
-    {
-      label: "Skip",
-      value: "skip" as AIActionType,
-      isDefault:
-        skipAsDefault || (!aiStatus.canGenerate && humanTemplates.length === 0),
+  // Use the new selectTemplateChoice instead of building choices manually
+  const selectedAction = await selectTemplateChoice({
+    type,
+    generateLabel: generateLabel ?? "Generate using AI",
+    canGenerate: aiStatus.canGenerate,
+    disabledReason: aiStatus.reason,
+    tokenUsage: {
+      estimatedCost: templateOptions[0]?.tokenUsage?.estimatedCost ?? "$0.00",
     },
-  ];
-
-  const choices = customChoices ?? defaultChoices;
-
-  // Get user choice
-  const { action } = await promptActionChoice({
-    message: "Choose an action:",
-    choices,
+    templateRegistry,
     logger,
+    useKeyboard: true,
+    clipboardEnabled: config.ai?.apiClipboard ?? false,
   });
+
+  // Convert string action to AIActionType to maintain type safety
+  const action = selectedAction as AIActionType;
 
   logger.debug("User selected action:", { action });
 
@@ -473,7 +431,7 @@ export async function handleAIAction<TResult>(
     return actionHandler("skip");
   }
 
-  // Update action handling
+  // Rest of the action handling remains the same...
   if (
     action.startsWith("copy-") ||
     action.startsWith("generate-") ||
@@ -491,7 +449,7 @@ export async function handleAIAction<TResult>(
 
     if (!templateResult) {
       logger.error("Failed to find template for action");
-      return actionHandler("skip"); // Exit on template not found
+      return actionHandler("skip");
     }
 
     if (action.startsWith("copy-") || action.startsWith("copy-api-")) {
@@ -508,30 +466,6 @@ export async function handleAIAction<TResult>(
 
   logger.debug("No matching action handler, falling back to skip");
   return actionHandler("skip");
-}
-
-// Add helper function to provide fix suggestions
-function getFixSuggestion(aiStatus: AIGenerateResult): string {
-  if (!aiStatus.debug) return "checking AI configuration";
-
-  if (!aiStatus.debug.aiEnabled) {
-    return "setting ai.enabled=true in config";
-  }
-
-  if (aiStatus.debug.provider === "openai" && !aiStatus.debug.hasOpenAIKey) {
-    return "setting OPENAI_API_KEY or ai.openai.apiKey in config";
-  }
-
-  if (aiStatus.debug.provider === "azure") {
-    if (!aiStatus.debug.hasAzureKey) {
-      return "setting AZURE_OPENAI_API_KEY or ai.azure.apiKey in config";
-    }
-    if (!aiStatus.debug.hasAzureEndpoint) {
-      return "setting AZURE_OPENAI_ENDPOINT or ai.azure.endpoint in config";
-    }
-  }
-
-  return "checking AI configuration";
 }
 
 // Update the return type to include debug info
