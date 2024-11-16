@@ -19,6 +19,8 @@ import { shouldIgnoreFile } from "../utils/ignore-pattern.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
 import { SecurityService } from "./security.service.js";
+import { DEFAULT_TEMPERATURE } from "../constants.js";
+import { TemplateResult } from "../utils/shared-ai-controller.util.js";
 
 export class CommitService extends BaseService {
   private readonly git: GitService;
@@ -147,7 +149,7 @@ export class CommitService extends BaseService {
     files: FileChange[];
     message: string;
     diff: string;
-    prompt: string;
+    templateResult?: TemplateResult;
     needsDetailedMessage?: boolean;
   }): Promise<CommitSuggestion[] | undefined> {
     if (!this.ai) {
@@ -170,11 +172,14 @@ export class CommitService extends BaseService {
       const suggestions = await this.ai.generateCompletion<{
         suggestions: CommitSuggestion[];
       }>({
-        prompt: params.prompt,
+        prompt: params.templateResult?.renderedPrompt ?? "",
         options: {
           requireJson: true,
-          temperature: 0.7,
-          systemPrompt: `You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. 
+          temperature:
+            params.templateResult?.temperature ?? DEFAULT_TEMPERATURE,
+          systemPrompt:
+            params.templateResult?.systemPrompt ??
+            `You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. 
             Each suggestion must include:
             - title: the description without type/scope
             - message: optional detailed explanation (${params.needsDetailedMessage ? "required" : "optional"} for this commit)

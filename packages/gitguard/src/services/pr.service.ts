@@ -23,6 +23,7 @@ import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
 import { GitHubService } from "./github.service.js";
 import { SecurityService } from "./security.service.js";
+import { DEFAULT_TEMPERATURE } from "../constants.js";
 
 export interface CreatePRFromBranchParams {
   branch?: string;
@@ -280,6 +281,7 @@ export class PRService extends BaseService {
     commits: CommitInfo[];
     files: FileChange[];
     baseBranch: string;
+    templateResult?: TemplateResult;
   }): Promise<PRSplitSuggestion | undefined> {
     if (!this.ai) return undefined;
 
@@ -291,6 +293,7 @@ export class PRService extends BaseService {
       stats,
       baseBranch: params.baseBranch,
       logger: this.logger,
+      template: params.templateResult?.renderedPrompt ?? "",
     });
 
     try {
@@ -298,7 +301,11 @@ export class PRService extends BaseService {
         prompt,
         options: {
           requireJson: true,
-          temperature: 0.7,
+          temperature:
+            params.templateResult?.temperature ?? DEFAULT_TEMPERATURE,
+          systemPrompt:
+            params.templateResult?.systemPrompt ??
+            "You are an expert code reviewer helping to write clear PR descriptions.",
         },
       });
     } catch (error) {

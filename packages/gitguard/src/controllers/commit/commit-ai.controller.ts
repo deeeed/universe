@@ -232,7 +232,7 @@ export class CommitAIController {
             message: message ?? "",
             diff: bestDiff.content,
             needsDetailedMessage: result.complexity.needsStructure,
-            prompt: templateResult.renderedPrompt,
+            templateResult,
           });
 
           if (!suggestions?.length) {
