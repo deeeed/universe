@@ -2,6 +2,64 @@ import { LoggerService } from "../../src/services/logger.service.js";
 import { E2ETest, TestResult, TestScenario } from "../tests.types.js";
 import { runScenario } from "../tests.utils.js";
 
+interface TemplateContentParams {
+  type: string;
+  format: string;
+  id: string;
+  title: string;
+  template?: string;
+  ai?: { provider: string; model: string };
+}
+
+interface ExpectedFileResult {
+  path: string;
+  exists: boolean;
+  content?: RegExp;
+}
+
+// Common template content builders
+function createTemplateContent(params: TemplateContentParams): string {
+  const { type, format, id, title, template, ai } = params;
+  return `
+type: ${type}
+format: ${format}
+id: ${id}
+title: ${title}
+${
+  ai
+    ? `ai:
+  provider: ${ai.provider}
+  model: ${ai.model}`
+    : ""
+}
+${
+  template
+    ? `template: |
+  ${template}`
+    : ""
+}`;
+}
+
+// Common expected file checker
+function createExpectedFile(
+  path: string,
+  contentRegex?: RegExp,
+): ExpectedFileResult {
+  return {
+    path,
+    exists: true,
+    ...(contentRegex && { content: contentRegex }),
+  };
+}
+
+const DEFAULT_TEMPLATE_TYPES = [
+  "commit",
+  "pr",
+  "split-commit",
+  "split-pr",
+] as const;
+const DEFAULT_FORMATS = ["api", "human"] as const;
+
 const scenarios: TestScenario[] = [
   {
     id: "template-init-basic",
@@ -19,31 +77,18 @@ const scenarios: TestScenario[] = [
     },
     expected: {
       files: [
-        {
-          path: ".gitguard/templates/commit.api.yml",
-          exists: true,
-          content: /type:\s*commit\s*\nformat:\s*api/,
-        },
-        {
-          path: ".gitguard/templates/commit.human.yml",
-          exists: true,
-          content: /type:\s*commit\s*\nformat:\s*human/,
-        },
-        {
-          path: ".gitguard/templates/pr.api.yml",
-          exists: true,
-          content: /type:\s*pr\s*\nformat:\s*api/,
-        },
-        {
-          path: ".gitguard/templates/split-commit.api.yml",
-          exists: true,
-          content: /type:\s*split-commit\s*\nformat:\s*api/,
-        },
-        {
-          path: ".gitguard/templates/split-pr.api.yml",
-          exists: true,
-          content: /type:\s*split-pr\s*\nformat:\s*api/,
-        },
+        // Generate expected files for all default templates
+        ...DEFAULT_TEMPLATE_TYPES.flatMap((type) =>
+          DEFAULT_FORMATS.map((format) =>
+            createExpectedFile(
+              `.gitguard/templates/${type}.${format}.yml`,
+              new RegExp(`type:\\s*${type}\\s*\\nformat:\\s*${format}`),
+            ),
+          ),
+        ).filter(
+          (file) =>
+            !file.path.includes("split-") || file.path.includes(".api."),
+        ),
       ],
       git: {
         status: {
@@ -59,20 +104,15 @@ const scenarios: TestScenario[] = [
       files: [
         {
           path: ".gitguard/templates/commit.api.yml",
-          content: `
-type: commit
-format: api
-id: commit-conventional
-title: Conventional Commit Format
-ai:
-  provider: openai
-  model: gpt-4
-template: |
-  {{#if files}}
-  feat: update {{files.0.path}}
-  {{else}}
-  feat: initial commit
-  {{/if}}`,
+          content: createTemplateContent({
+            type: "commit",
+            format: "api",
+            id: "commit-conventional",
+            title: "Conventional Commit Format",
+            ai: { provider: "openai", model: "gpt-4" },
+            template:
+              "{{#if files}}\nfeat: update {{files.0.path}}\n{{else}}\nfeat: initial commit\n{{/if}}",
+          }),
         },
       ],
       config: {},
@@ -85,12 +125,7 @@ template: |
       },
     },
     expected: {
-      files: [
-        {
-          path: ".gitguard/templates/commit.api.yml",
-          exists: true,
-        },
-      ],
+      files: [createExpectedFile(".gitguard/templates/commit.api.yml")],
       git: {
         status: {
           untracked: [".gitguard/templates/"],
@@ -124,12 +159,7 @@ title: Invalid Template
       },
     },
     expected: {
-      files: [
-        {
-          path: ".gitguard/templates/invalid.api.yml",
-          exists: true,
-        },
-      ],
+      files: [createExpectedFile(".gitguard/templates/invalid.api.yml")],
       error: {
         message: /Invalid template|Missing required fields/,
         code: 1,
@@ -143,36 +173,26 @@ title: Invalid Template
       files: [
         {
           path: ".gitguard/templates/commit.api.yml",
-          content: `
-type: commit
-format: api
-id: commit-conventional
-title: Conventional Commit Format
-ai:
-  provider: openai
-  model: gpt-4
-template: |
-  {{#if files}}
-  feat: update {{files.0.path}}
-  {{else}}
-  feat: initial commit
-  {{/if}}`,
+          content: createTemplateContent({
+            type: "commit",
+            format: "api",
+            id: "commit-conventional",
+            title: "Conventional Commit Format",
+            ai: { provider: "openai", model: "gpt-4" },
+            template:
+              "{{#if files}}\nfeat: update {{files.0.path}}\n{{else}}\nfeat: initial commit\n{{/if}}",
+          }),
         },
         {
           path: ".gitguard/templates/pr.api.yml",
-          content: `
-type: pr
-format: api
-id: pr-description
-title: PR Description Template
-ai:
-  provider: openai
-  model: gpt-4
-template: |
-  ## Changes
-  {{#each files}}
-  - {{this.path}}
-  {{/each}}`,
+          content: createTemplateContent({
+            type: "pr",
+            format: "api",
+            id: "pr-description",
+            title: "PR Description Template",
+            ai: { provider: "openai", model: "gpt-4" },
+            template: "## Changes\n{{#each files}}\n- {{this.path}}\n{{/each}}",
+          }),
         },
       ],
       config: {},
@@ -186,14 +206,8 @@ template: |
     },
     expected: {
       files: [
-        {
-          path: ".gitguard/templates/commit.api.yml",
-          exists: true,
-        },
-        {
-          path: ".gitguard/templates/pr.api.yml",
-          exists: true,
-        },
+        createExpectedFile(".gitguard/templates/commit.api.yml"),
+        createExpectedFile(".gitguard/templates/pr.api.yml"),
       ],
     },
   },
@@ -212,18 +226,12 @@ template: |
       },
     },
     expected: {
-      files: [
-        {
-          path: "custom-templates/commit.api.yml",
-          exists: true,
-          content: /type:\s*commit\s*\nformat:\s*api/,
-        },
-        {
-          path: "custom-templates/commit.human.yml",
-          exists: true,
-          content: /type:\s*commit\s*\nformat:\s*human/,
-        },
-      ],
+      files: DEFAULT_FORMATS.map((format) =>
+        createExpectedFile(
+          `custom-templates/commit.${format}.yml`,
+          new RegExp(`type:\\s*commit\\s*\\nformat:\\s*${format}`),
+        ),
+      ),
       git: {
         status: {
           untracked: ["custom-templates/"],
