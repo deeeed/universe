@@ -3,7 +3,10 @@ import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { AIProvider, TokenUsage } from "../types/ai.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import { BaseService } from "./base.service.js";
-import { DEFAULT_MAX_PROMPT_TOKENS } from "../constants.js";
+import {
+  DEFAULT_MAX_PROMPT_TOKENS,
+  DEFAULT_TEMPERATURE,
+} from "../constants.js";
 
 export interface CustomAIConfig {
   type: "custom";
@@ -52,20 +55,28 @@ export class CustomAIService extends BaseService implements AIProvider {
         { role: "user", content: params.prompt },
       ];
 
+      // Log the API endpoint being used
+      this.logger.info("Making API request to:", {
+        baseURL: this.client.baseURL,
+        model: this.getModel(),
+      });
+
       // Calculate and log token usage for input
       const fullPrompt = messages.map((m) => m.content).join("\n");
       const inputTokens = this.calculateTokenUsage({ prompt: fullPrompt });
+
       this.logger.debug("Completion request details:", {
         model: this.getModel(),
         temperature: params.options?.temperature ?? 0.7,
         requireJson: params.options?.requireJson,
         inputTokens: inputTokens.count,
+        messages, // Log the full messages being sent
       });
 
       const completion = await this.client.chat.completions.create({
         messages,
         model: this.getModel(),
-        temperature: params.options?.temperature ?? 0.7,
+        temperature: params.options?.temperature ?? DEFAULT_TEMPERATURE,
         max_tokens: 2000,
         response_format: params.options?.requireJson
           ? { type: "json_object" }
@@ -77,17 +88,35 @@ export class CustomAIService extends BaseService implements AIProvider {
         throw new Error("No content in response");
       }
 
+      // Add detailed debug logging
+      this.logger.debug("Raw API response content:", {
+        content,
+        contentType: typeof content,
+        contentLength: content.length,
+        requireJson: params.options?.requireJson,
+      });
+
       if (params.options?.requireJson) {
         try {
           return JSON.parse(content) as T;
         } catch (error) {
+          this.logger.error("JSON parsing failed:", {
+            rawContent: content,
+            error,
+          });
           throw new Error("Failed to parse JSON response", { cause: error });
         }
       }
 
       return { content } as T;
     } catch (error) {
-      this.logger.error("Custom AI API error:", error);
+      this.logger.error("Custom AI API error:", {
+        error,
+        requestConfig: {
+          baseURL: this.client.baseURL,
+          model: this.getModel(),
+        },
+      });
       throw error;
     }
   }
