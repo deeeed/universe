@@ -85,7 +85,7 @@ const scenarios: TestScenario[] = [
       command: {
         name: "branch",
         subcommand: "analyze",
-        args: ["--ai", "--debug"],
+        args: ["--ai"],
       },
     },
   },

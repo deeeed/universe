@@ -5,10 +5,7 @@ import { GitHubService } from "../../services/github.service.js";
 import { PRService } from "../../services/pr.service.js";
 import { TemplateRegistry } from "../../services/template/template-registry.js";
 import { AIProvider } from "../../types/ai.types.js";
-import {
-  PRAnalysisResult,
-  PRSplitSuggestion,
-} from "../../types/analysis.types.js";
+import { PRAnalysisResult } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
 import { Logger } from "../../types/logger.types.js";
 import { displayTokenInfo } from "../../utils/ai-limits.util.js";
@@ -140,9 +137,6 @@ export class BranchAIController {
     }
 
     const description = (await this.prService.generateAIDescription({
-      commits: analysisResult.commits,
-      files: analysisResult.files,
-      baseBranch: analysisResult.baseBranch,
       templateResult,
     })) as PRTemplate | null;
 
@@ -229,15 +223,9 @@ export class BranchAIController {
         }
 
         if (action.startsWith("generate-") && this.ai && templateResult) {
-          const splitSuggestion =
-            await this.ai.generateCompletion<PRSplitSuggestion>({
-              prompt: templateResult.renderedPrompt,
-              options: {
-                requireJson: true,
-                systemPrompt: templateResult.systemPrompt,
-                temperature: templateResult.temperature,
-              },
-            });
+          const splitSuggestion = await this.prService.generateSplitSuggestion({
+            templateResult,
+          });
 
           if (splitSuggestion) {
             this.logger.info("\n📝 AI generated split suggestions:");

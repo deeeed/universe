@@ -5,7 +5,6 @@ import { TemplateRegistry } from "../../services/template/template-registry.js";
 import { AIProvider } from "../../types/ai.types.js";
 import {
   CommitAnalysisResult,
-  CommitSplitSuggestion,
   CommitSuggestion,
 } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
@@ -145,13 +144,8 @@ export class CommitAIController {
 
             if (action.startsWith("generate-") && this.ai && templateResult) {
               const aiSuggestions =
-                await this.ai.generateCompletion<CommitSplitSuggestion>({
-                  prompt: templateResult.renderedPrompt,
-                  options: {
-                    requireJson: true,
-                    systemPrompt: templateResult.systemPrompt,
-                    temperature: templateResult.temperature,
-                  },
+                await this.commitService.generateAISplitSuggestion({
+                  templateResult,
                 });
 
               if (aiSuggestions?.suggestions?.length) {
@@ -228,11 +222,8 @@ export class CommitAIController {
       actionHandler: async (action, templateResult) => {
         if (action.startsWith("generate-") && this.ai && templateResult) {
           const suggestions = await this.commitService.generateAISuggestions({
-            files,
-            message: message ?? "",
-            diff: bestDiff.content,
             needsDetailedMessage: result.complexity.needsStructure,
-            prompt: templateResult.renderedPrompt,
+            templateResult,
           });
 
           if (!suggestions?.length) {

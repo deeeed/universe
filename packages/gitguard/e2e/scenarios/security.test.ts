@@ -11,10 +11,8 @@ import { runScenario } from "../tests.utils.js";
 
 function createSecurityConfig({
   rules = {},
-  debug,
 }: CreateSecurityConfigParams = {}): DeepPartial<Config> {
   return {
-    ...(debug && { debug: true }),
     security: {
       enabled: true,
       rules: {
@@ -53,7 +51,6 @@ const scenarios: TestScenario[] = [
         },
       ],
       config: {
-        debug: true,
         ...createSecurityConfig(),
       },
     },
@@ -62,7 +59,7 @@ const scenarios: TestScenario[] = [
       command: createCommand({
         name: "commit",
         subcommand: "analyze",
-        args: ["--unstaged", "--debug"],
+        args: ["--unstaged"],
       }),
     },
   },
@@ -83,7 +80,7 @@ const scenarios: TestScenario[] = [
       command: createCommand({
         name: "commit",
         subcommand: "analyze",
-        args: ["--all", "--debug"],
+        args: ["--all"],
       }),
     },
   },
@@ -116,7 +113,7 @@ const scenarios: TestScenario[] = [
       command: createCommand({
         name: "branch",
         subcommand: "analyze",
-        args: ["--security", "--debug"],
+        args: ["--security"],
       }),
     },
   },

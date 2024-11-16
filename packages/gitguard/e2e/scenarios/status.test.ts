@@ -8,9 +8,7 @@ const scenarios: TestScenario[] = [
     name: "Basic Status - No Configuration",
     setup: {
       files: [],
-      config: {
-        debug: true,
-      },
+      config: {},
     },
     input: {
       message: "check status without configuration",
@@ -26,7 +24,6 @@ const scenarios: TestScenario[] = [
     setup: {
       files: [],
       config: {
-        debug: true,
         git: {
           baseBranch: "main",
           monorepoPatterns: ["packages/*"],
@@ -60,7 +57,6 @@ const scenarios: TestScenario[] = [
     setup: {
       files: [],
       config: {
-        debug: true,
         git: {
           baseBranch: "develop",
           monorepoPatterns: ["apps/*", "libs/*"],
@@ -85,7 +81,6 @@ const scenarios: TestScenario[] = [
     setup: {
       files: [],
       config: {
-        debug: true,
         ai: {
           enabled: true,
           provider: "azure",
@@ -118,7 +113,6 @@ const scenarios: TestScenario[] = [
     setup: {
       files: [],
       config: {
-        debug: true,
         git: {
           baseBranch: "main",
         },

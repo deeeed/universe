@@ -19,6 +19,8 @@ import { shouldIgnoreFile } from "../utils/ignore-pattern.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
 import { SecurityService } from "./security.service.js";
+import { DEFAULT_TEMPERATURE } from "../constants.js";
+import { TemplateResult } from "../utils/shared-ai-controller.util.js";
 
 export class CommitService extends BaseService {
   private readonly git: GitService;
@@ -144,37 +146,29 @@ export class CommitService extends BaseService {
   }
 
   public async generateAISuggestions(params: {
-    files: FileChange[];
-    message: string;
-    diff: string;
-    prompt: string;
     needsDetailedMessage?: boolean;
+    templateResult?: TemplateResult;
   }): Promise<CommitSuggestion[] | undefined> {
     if (!this.ai) {
       this.logger.debug("AI service not configured");
       return undefined;
     }
 
+    const { template, renderedPrompt } = params.templateResult ?? {};
+
+    if (!renderedPrompt) throw new Error("No prompt provided");
+
     try {
-      const detectedScope = this.detectScope(params.files);
-
-      this.logger.debug("Generating AI suggestions for files:", {
-        fileCount: params.files.length,
-        diffLength: params.diff.length,
-        message: params.message,
-        aiProvider: this.ai.constructor.name,
-        detectedScope,
-        needsDetailedMessage: params.needsDetailedMessage ?? false,
-      });
-
       const suggestions = await this.ai.generateCompletion<{
         suggestions: CommitSuggestion[];
       }>({
-        prompt: params.prompt,
+        prompt: renderedPrompt,
         options: {
           requireJson: true,
-          temperature: 0.7,
-          systemPrompt: `You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. 
+          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
+          systemPrompt:
+            template?.systemPrompt ??
+            `You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. 
             Each suggestion must include:
             - title: the description without type/scope
             - message: optional detailed explanation (${params.needsDetailedMessage ? "required" : "optional"} for this commit)
@@ -196,12 +190,6 @@ export class CommitService extends BaseService {
       return suggestions.suggestions;
     } catch (error) {
       this.logger.error("Failed to generate AI suggestions:", error);
-      this.logger.debug("Error details:", {
-        files: params.files.map((f) => f.path),
-        messageLength: params.message.length,
-        diffLength: params.diff.length,
-        error: error instanceof Error ? error.message : error,
-      });
       return undefined;
     }
   }
@@ -263,6 +251,33 @@ export class CommitService extends BaseService {
       suggestions,
       commands,
     };
+  }
+
+  public async generateAISplitSuggestion(params: {
+    templateResult?: TemplateResult;
+  }): Promise<CommitSplitSuggestion | undefined> {
+    if (!this.ai) {
+      this.logger.debug("AI service not configured");
+      return undefined;
+    }
+
+    const { template, renderedPrompt } = params.templateResult ?? {};
+
+    if (!renderedPrompt) throw new Error("No prompt provided");
+
+    try {
+      return await this.ai.generateCompletion<CommitSplitSuggestion>({
+        prompt: renderedPrompt,
+        options: {
+          requireJson: true,
+          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
+          systemPrompt: template?.systemPrompt ?? "",
+        },
+      });
+    } catch (error) {
+      this.logger.error("Failed to generate AI split suggestion:", error);
+      return undefined;
+    }
   }
 
   private createEmptyResult(params: {

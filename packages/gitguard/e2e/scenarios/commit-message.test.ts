@@ -9,7 +9,9 @@ const scenarios: TestScenario[] = [
     setup: {
       files: [{ path: "src/feature.ts", content: "console.log('test');" }],
       config: {
-        debug: true,
+        ai: {
+          enabled: false,
+        },
         git: {
           monorepoPatterns: ["packages/*"],
         },
@@ -22,7 +24,7 @@ const scenarios: TestScenario[] = [
       command: {
         name: "commit",
         subcommand: "create",
-        args: ["-m", "add new feature", "--staged"],
+        args: ["-m", "add new feature"],
       },
       options: {
         staged: true,
@@ -41,7 +43,9 @@ const scenarios: TestScenario[] = [
         },
       ],
       config: {
-        debug: true,
+        ai: {
+          enabled: false,
+        },
         git: {
           monorepoPatterns: ["packages/*"],
         },
@@ -59,11 +63,10 @@ const scenarios: TestScenario[] = [
       command: {
         name: "commit",
         subcommand: "create",
-        args: ["-m", "add new feature", "--staged", "--debug"],
+        args: ["-m", "add new feature"],
       },
       options: {
         staged: true,
-        debug: true,
       },
     },
   },
@@ -83,7 +86,9 @@ const scenarios: TestScenario[] = [
         },
       ],
       config: {
-        debug: true,
+        ai: {
+          enabled: false,
+        },
         git: {
           monorepoPatterns: ["packages/*"],
         },
@@ -105,7 +110,7 @@ const scenarios: TestScenario[] = [
       command: {
         name: "commit",
         subcommand: "create",
-        args: ["-m", "update features", "--staged"],
+        args: ["-m", "update features"],
       },
       options: {
         staged: true,

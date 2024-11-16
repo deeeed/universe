@@ -267,11 +267,22 @@ export class TemplateRegistry {
   public renderTemplate(params: {
     template: LoadedPromptTemplate;
     variables: TemplateVariables;
-  }): string {
+  }): { userPrompt: string; systemPrompt: string } {
     const { template, variables } = params;
     try {
-      const compiledTemplate = this.handlebars.compile(template.template);
-      return compiledTemplate({ ...variables, logger: this.logger });
+      const compiledUserTemplate = this.handlebars.compile(template.template);
+      const userPrompt = compiledUserTemplate({
+        ...variables,
+        logger: this.logger,
+      });
+      const compiledSystemTemplate = this.handlebars.compile(
+        template.systemPrompt ?? "",
+      );
+      const systemPrompt = compiledSystemTemplate({
+        ...variables,
+        logger: this.logger,
+      });
+      return { userPrompt, systemPrompt };
     } catch (error) {
       this.logger.error("Failed to render template:", error);
       throw new Error(`Failed to render template: ${(error as Error).message}`);

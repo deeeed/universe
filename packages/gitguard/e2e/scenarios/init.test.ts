@@ -8,9 +8,7 @@ const scenarios: TestScenario[] = [
     name: "Basic Init - Default Configuration",
     setup: {
       files: [],
-      config: {
-        debug: true,
-      },
+      config: {},
     },
     input: {
       message: "initialize with defaults",
@@ -25,9 +23,7 @@ const scenarios: TestScenario[] = [
     name: "Global Init - Custom Configuration",
     setup: {
       files: [],
-      config: {
-        debug: true,
-      },
+      config: {},
     },
     input: {
       message: "initialize global configuration",
@@ -57,9 +53,7 @@ const scenarios: TestScenario[] = [
           }),
         },
       ],
-      config: {
-        debug: true,
-      },
+      config: {},
     },
     input: {
       message: "initialize in monorepo",
@@ -74,9 +68,7 @@ const scenarios: TestScenario[] = [
     name: "Init Create Command - Custom Configuration",
     setup: {
       files: [],
-      config: {
-        debug: true,
-      },
+      config: {},
     },
     input: {
       message: "create new configuration",
@@ -92,9 +84,7 @@ const scenarios: TestScenario[] = [
     name: "Init with AI Configuration",
     setup: {
       files: [],
-      config: {
-        debug: true,
-      },
+      config: {},
       changes: [
         {
           path: ".env",

@@ -39,6 +39,12 @@ template: |
 
   # Migration Script
   ```bash
+  # Store current directory to return to it later
+  CURRENT_DIR=$(pwd)
+
+  # Ensure we're in the git repository root
+  cd $(git rev-parse --show-toplevel)
+
   # Commit 1: feat(scope): descriptive title
   git add [specific files]
   git commit -m "feat(scope): descriptive title" -m "detailed description"
@@ -48,6 +54,9 @@ template: |
   git commit -m "fix(scope): descriptive title" -m "detailed description"
 
   # [Additional commits as needed...]
+
+  # Return to original directory
+  cd "$CURRENT_DIR"
   ```
   {{/if}}
 
@@ -57,7 +66,8 @@ template: |
   3. Consider package boundaries
   4. Maintain proper dependency order
   5. Use conventional commits format
-  6. Provide executable git commands
+  6. Provide executable git commands from repository root
   7. Include clear commit messages with descriptions
+  8. Always start commands from git repository root using cd $(git rev-parse --show-toplevel)
 
   Note: If the changes are cohesive and work well together, explain why they should remain as a single commit.

@@ -180,17 +180,23 @@ export function validateTemplate(params: ValidateTemplateParams): boolean {
       logger.info("\n🧪 Testing template rendering...");
       const sampleData = createSampleVariables(template.type);
 
-      const renderedTemplate = registry.renderTemplate({
+      const { userPrompt, systemPrompt } = registry.renderTemplate({
         template,
         variables: sampleData,
       });
 
       logger.info(chalk.green("✓ Template renders successfully"));
       logger.info("\n📝 Sample Output Preview:");
+      logger.info(chalk.dim("System Prompt:"));
       logger.info(chalk.dim("---"));
       logger.info(
-        renderedTemplate.slice(0, 200) +
-          (renderedTemplate.length > 200 ? "..." : ""),
+        systemPrompt.slice(0, 200) + (systemPrompt.length > 200 ? "..." : ""),
+      );
+      logger.info(chalk.dim("---"));
+      logger.info(chalk.dim("User Prompt:"));
+      logger.info(chalk.dim("---"));
+      logger.info(
+        userPrompt.slice(0, 200) + (userPrompt.length > 200 ? "..." : ""),
       );
       logger.info(chalk.dim("---"));
     }

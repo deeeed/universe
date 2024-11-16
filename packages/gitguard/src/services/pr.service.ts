@@ -1,5 +1,6 @@
 // services/pr.service.ts
 import * as fs from "fs/promises";
+import { DEFAULT_TEMPERATURE } from "../constants.js";
 import { AIProvider } from "../types/ai.types.js";
 import {
   AnalysisWarning,
@@ -14,10 +15,6 @@ import { Config } from "../types/config.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { SecurityCheckResult } from "../types/security.types.js";
 import { ServiceOptions } from "../types/service.types.js";
-import {
-  generatePRDescriptionPrompt,
-  generatePRSplitPrompt,
-} from "../utils/ai-prompt.util.js";
 import { TemplateResult } from "../utils/shared-ai-controller.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
@@ -242,31 +239,21 @@ export class PRService extends BaseService {
   }
 
   public async generateAIDescription(params: {
-    commits: CommitInfo[];
-    files: FileChange[];
-    baseBranch: string;
     templateResult?: TemplateResult;
   }): Promise<PRDescription | undefined> {
     if (!this.ai) return undefined;
 
-    const prompt =
-      params.templateResult?.renderedPrompt ??
-      generatePRDescriptionPrompt({
-        commits: params.commits,
-        files: params.files,
-        baseBranch: params.baseBranch,
-        template: await this.loadPRTemplate(),
-        logger: this.logger,
-      });
+    const { template, renderedPrompt } = params.templateResult ?? {};
 
+    if (!renderedPrompt) throw new Error("No prompt provided");
     try {
       return await this.ai.generateCompletion<PRDescription>({
-        prompt,
+        prompt: renderedPrompt,
         options: {
           requireJson: true,
-          temperature: params.templateResult?.temperature ?? 0.7,
+          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
           systemPrompt:
-            params.templateResult?.systemPrompt ??
+            template?.systemPrompt ??
             "You are an expert code reviewer helping to write clear PR descriptions.",
         },
       });
@@ -276,29 +263,24 @@ export class PRService extends BaseService {
     }
   }
 
-  private async generateSplitSuggestion(params: {
-    commits: CommitInfo[];
-    files: FileChange[];
-    baseBranch: string;
+  public async generateSplitSuggestion(params: {
+    templateResult?: TemplateResult;
   }): Promise<PRSplitSuggestion | undefined> {
     if (!this.ai) return undefined;
 
-    const stats = this.calculateStats({ commits: params.commits });
+    const { template, renderedPrompt } = params.templateResult ?? {};
 
-    const prompt = generatePRSplitPrompt({
-      commits: params.commits,
-      files: params.files,
-      stats,
-      baseBranch: params.baseBranch,
-      logger: this.logger,
-    });
+    if (!renderedPrompt) throw new Error("No prompt provided");
 
     try {
       return await this.ai.generateCompletion<PRSplitSuggestion>({
-        prompt,
+        prompt: renderedPrompt,
         options: {
           requireJson: true,
-          temperature: 0.7,
+          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
+          systemPrompt:
+            template?.systemPrompt ??
+            "You are an expert code reviewer helping to write clear PR descriptions.",
         },
       });
     } catch (error) {
@@ -431,28 +413,12 @@ export class PRService extends BaseService {
       // Always check if PR should be split
       const shouldSplit = this.shouldSplitPR({ stats, warnings });
 
-      // Generate AI-powered content if enabled
-      if (params.enableAI && this.ai) {
-        description = await this.generateAIDescription({
-          commits,
-          files: commits.flatMap((c) => c.files),
-          baseBranch,
-        });
-      }
-
       // Always provide split suggestion if needed
       if (shouldSplit) {
-        splitSuggestion =
-          params.enableAI && this.ai
-            ? await this.generateSplitSuggestion({
-                commits,
-                files: commits.flatMap((c) => c.files),
-                baseBranch,
-              })
-            : this.createBasicSplitSuggestion({
-                commits,
-                baseBranch,
-              });
+        splitSuggestion = this.createBasicSplitSuggestion({
+          commits,
+          baseBranch,
+        });
       }
 
       return {
