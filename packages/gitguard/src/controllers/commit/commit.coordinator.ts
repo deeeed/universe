@@ -97,7 +97,10 @@ async function initializeServices(
 
   const security = new SecurityService({ config, logger });
 
-  const isAIEnabled = options.ai ?? config.ai?.enabled ?? true; // assume AI is enabled if not explicitly disabled
+  const isAIEnabled =
+    options.ai === undefined
+      ? (config.ai?.enabled ?? false)
+      : (options.ai ?? true);
   const ai = initializeAI({ config, logger, isAIRequested: isAIEnabled });
 
   logger.info("✅ Services initialized successfully");
