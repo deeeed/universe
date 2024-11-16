@@ -1,9 +1,11 @@
 import chalk from "chalk";
+import { clearScreenDown, emitKeypressEvents } from "node:readline";
 import readline from "readline/promises";
 import { AIProvider } from "../types/ai.types.js";
 import { CommitSuggestion } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
 import { Logger } from "../types/logger.types.js";
+import { select } from "@inquirer/prompts";
 
 // Common patterns helpers
 export async function displaySuggestions(params: {
@@ -442,7 +444,8 @@ export function displayAISuggestions(params: {
   });
 }
 
-interface PromptActionChoice<T extends string> {
+// Update PromptActionChoice interface to include isDefault
+export interface PromptActionChoice<T> {
   label: string;
   value: T;
   isDefault?: boolean;
@@ -450,11 +453,102 @@ interface PromptActionChoice<T extends string> {
   disabledReason?: string;
 }
 
-export async function promptActionChoice<T extends string>(params: {
+// Add type for keyboard events
+interface KeyboardEvent {
+  name?: string;
+  ctrl?: boolean;
+}
+
+// Update renderChoices to be generic
+function renderChoices<T>(params: {
+  choices: PromptActionChoice<T>[];
+  selectedIndex: number;
+  message: string;
+  logger: Logger;
+}): void {
+  const { choices, selectedIndex, message, logger } = params;
+
+  clearScreenDown(process.stdout);
+
+  logger.info(`\n${message}`);
+  choices.forEach((choice, index) => {
+    const isSelected = index === selectedIndex;
+    const prefix = isSelected ? chalk.cyan("❯ ") : "  ";
+    const label = choice.disabled
+      ? `${chalk.gray(choice.label)} ${chalk.red("(disabled)")}`
+      : choice.label;
+    logger.info(`${prefix}${label}`);
+  });
+}
+
+// Update keyboard prompt function with proper generic constraint
+async function promptActionChoiceWithKeyboard<T>(params: {
   message: string;
   choices: PromptActionChoice<T>[];
   logger: Logger;
 }): Promise<{ action: T }> {
+  const { message, choices, logger } = params;
+
+  emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+  }
+
+  return new Promise((resolve) => {
+    let selectedIndex = 0;
+
+    renderChoices({
+      choices,
+      selectedIndex,
+      message,
+      logger,
+    });
+
+    process.stdin.on("keypress", (_str: string, key: KeyboardEvent) => {
+      if (key?.name === "up" && selectedIndex > 0) {
+        selectedIndex--;
+        renderChoices({
+          choices,
+          selectedIndex,
+          message,
+          logger,
+        });
+      } else if (key?.name === "down" && selectedIndex < choices.length - 1) {
+        selectedIndex++;
+        renderChoices({
+          choices,
+          selectedIndex,
+          message,
+          logger,
+        });
+      } else if (key?.name === "return") {
+        const selectedChoice = choices[selectedIndex];
+        if (!selectedChoice.disabled) {
+          process.stdin.setRawMode(false);
+          process.stdin.removeAllListeners("keypress");
+
+          resolve({ action: selectedChoice.value });
+        }
+      } else if (key?.name === "c" && key?.ctrl) {
+        process.exit(0);
+      }
+    });
+  });
+}
+
+// Update main promptActionChoice function with proper generic handling
+export async function promptActionChoice<T>(params: {
+  message: string;
+  choices: PromptActionChoice<T>[];
+  logger: Logger;
+  useKeyboard?: boolean;
+}): Promise<{ action: T }> {
+  const { useKeyboard, ...rest } = params;
+
+  if (useKeyboard) {
+    return promptActionChoiceWithKeyboard<T>(rest);
+  }
+
   const { message, choices, logger } = params;
 
   logger.info(`\n${message}`);
@@ -482,7 +576,7 @@ export async function promptActionChoice<T extends string>(params: {
   if (selectedChoice?.disabled) {
     logger.info(
       chalk.yellow(
-        `\n⚠️  This option is currently disabled: ${selectedChoice.disabledReason ?? "No reason provided"}`,
+        `\n️  This option is currently disabled: ${selectedChoice.disabledReason ?? "No reason provided"}`,
       ),
     );
     return promptActionChoice(params);
@@ -494,4 +588,34 @@ export async function promptActionChoice<T extends string>(params: {
       choices.find((c) => c.isDefault)?.value ??
       choices[0].value,
   };
+}
+
+// Update promptInquirerChoice to use @inquirer/prompts
+export async function promptInquirerChoice<T>(params: {
+  message: string;
+  choices: PromptActionChoice<T>[];
+  logger: Logger;
+  pageSize?: number;
+}): Promise<{ action: T }> {
+  const { message, choices, logger } = params;
+
+  try {
+    const inquirerChoices = choices.map((choice, index) => ({
+      name: `${chalk.cyan(`${index + 1}.`)} ${choice.label}`,
+      value: choice.value,
+      disabled: choice.disabled ? (choice.disabledReason ?? true) : false,
+    }));
+
+    const selected = await select({
+      message,
+      choices: inquirerChoices,
+      pageSize: params.pageSize ?? 20,
+      default: choices.findIndex((c) => c.isDefault),
+    });
+
+    return { action: selected };
+  } catch (error) {
+    logger.error("Failed to prompt for choice:", error);
+    process.exit(1);
+  }
 }
