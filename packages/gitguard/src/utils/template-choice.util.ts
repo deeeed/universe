@@ -1,7 +1,11 @@
 import { select } from "@inquirer/prompts";
 import { TemplateRegistry } from "../services/template/template-registry.js";
 import { Logger } from "../types/logger.types.js";
-import { PromptTemplate, PromptType } from "../types/templates.type.js";
+import {
+  LoadedPromptTemplate,
+  PromptTemplate,
+  PromptType,
+} from "../types/templates.type.js";
 
 interface GetTemplateChoicesParams {
   type: PromptType;
@@ -36,7 +40,15 @@ interface InquirerTemplateChoice {
 export async function selectTemplateChoice(
   params: GetTemplateChoicesParams,
 ): Promise<string> {
-  const choices = getTemplateBasedChoices(params);
+  let choices = getTemplateBasedChoices(params);
+
+  // If no templates are available, ensure defaults are loaded
+  if (choices.length <= 1) {
+    // Only has skip option
+    await params.templateRegistry.loadTemplates({ includeDefaults: true });
+    // Regenerate choices after loading defaults
+    choices = getTemplateBasedChoices(params);
+  }
 
   const inquirerChoices: InquirerTemplateChoice[] = choices.map((choice) => ({
     name: choice.label,
@@ -52,9 +64,26 @@ export async function selectTemplateChoice(
     });
   } catch (error) {
     params.logger.error("Failed to prompt for choice:", error);
-    // Return the default choice as fallback
     return choices.find((c) => c.isDefault)?.value ?? "skip";
   }
+}
+
+function formatTemplateLabel(params: {
+  index: number;
+  template?: LoadedPromptTemplate;
+  title: string;
+  source?: "default" | "project" | "global";
+  format?: "api" | "human";
+  cost?: string;
+  isNested?: boolean;
+}): string {
+  const { index, template, title, source, format, cost, isNested } = params;
+  const prefix = isNested ? "└─> " : "";
+  const scope = template?.source ?? source ?? "default";
+  const type = template?.format ?? format ?? "api";
+  const costInfo = cost ? ` • ${cost}` : "";
+
+  return `${index}. ${prefix}${title} [${scope}/${type}${costInfo}]`;
 }
 
 export function getTemplateBasedChoices(
@@ -67,12 +96,25 @@ export function getTemplateBasedChoices(
     disabledReason,
     tokenUsage,
     templateRegistry,
-    logger,
-    skipAsDefault = false,
     clipboardEnabled = false,
+    skipAsDefault = false,
   } = params;
 
-  // Get available templates for both formats
+  let choiceIndex = 1;
+  const choices: TemplateChoice[] = [
+    {
+      label: "Format: Title [source/type • cost]",
+      value: "legend",
+      disabled: true,
+      disabledReason: "source: default|project|global, type: api|human",
+    },
+    {
+      label: `${choiceIndex++}. Continue without AI assistance`,
+      value: "skip",
+      isDefault: false,
+    },
+  ];
+
   const apiTemplates = templateRegistry.getTemplatesForType({
     type,
     format: "api",
@@ -81,21 +123,6 @@ export function getTemplateBasedChoices(
     type,
     format: "human",
   });
-
-  logger.debug("Available templates:", {
-    api: apiTemplates.length,
-    human: humanTemplates.length,
-  });
-
-  const choices: TemplateChoice[] = [
-    {
-      label: `1. Continue without AI assistance`,
-      value: "skip",
-      isDefault: skipAsDefault,
-    },
-  ];
-
-  let choiceIndex = 2; // Start from 2 since we already used 1
 
   // Add API template choice if available
   if (apiTemplates.length > 0) {
@@ -106,7 +133,12 @@ export function getTemplateBasedChoices(
 
     // Add main generate choice
     choices.push({
-      label: `${choiceIndex++}. ${generateLabel}${!canGenerate ? ` (${disabledReason})` : ` (estimated cost: ${tokenUsage.estimatedCost})`}`,
+      label: formatTemplateLabel({
+        index: choiceIndex++,
+        template: defaultTemplate,
+        title: generateLabel,
+        cost: tokenUsage.estimatedCost,
+      }),
       value: `generate-${defaultTemplate?.id}`,
       isDefault: !skipAsDefault && canGenerate,
       disabled: !canGenerate,
@@ -114,10 +146,15 @@ export function getTemplateBasedChoices(
       template: defaultTemplate,
     });
 
-    // Add API clipboard option when enabled via params
+    // Add API clipboard option when enabled
     if (clipboardEnabled && defaultTemplate) {
       choices.push({
-        label: `${choiceIndex++}. └─> Copy ${defaultTemplate.title ?? "API"} prompt to clipboard`,
+        label: formatTemplateLabel({
+          index: choiceIndex++,
+          template: defaultTemplate,
+          title: defaultTemplate.title ?? "API prompt",
+          isNested: true,
+        }),
         value: `copy-api-${defaultTemplate.id}`,
         isDefault: false,
       });
@@ -127,31 +164,15 @@ export function getTemplateBasedChoices(
   // Add human template choices
   humanTemplates.forEach((template) => {
     choices.push({
-      label: `${choiceIndex++}. Copy ${template.title ?? "human-friendly"} prompt`,
+      label: formatTemplateLabel({
+        index: choiceIndex++,
+        template,
+        title: template.title ?? "human-friendly prompt",
+      }),
       value: `copy-${template.id}`,
       template,
     });
   });
-
-  // Add fallback choices if no templates
-  if (apiTemplates.length === 0 && humanTemplates.length === 0) {
-    choices.push(
-      {
-        label: `${choiceIndex++}. ${generateLabel}${!canGenerate ? ` (${disabledReason})` : ` (estimated cost: ${tokenUsage.estimatedCost})`}`,
-        value: "generate-default",
-        disabled: !canGenerate,
-        disabledReason,
-      },
-      {
-        label: `${choiceIndex++}. Copy API prompt to clipboard`,
-        value: "copy-api",
-      },
-      {
-        label: `${choiceIndex++}. Copy human-friendly prompt to clipboard`,
-        value: "copy-manual",
-      },
-    );
-  }
 
   return choices;
 }
