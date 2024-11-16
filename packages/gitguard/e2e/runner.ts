@@ -158,7 +158,7 @@ export async function runTests(): Promise<void> {
   logger.info(chalk.green("Welcome to GitGuard E2E Tests!"));
 
   try {
-    let running = true;
+    const running = true;
     while (running) {
       process.stdout.write("\x1Bc"); // Clear screen
 
@@ -166,7 +166,6 @@ export async function runTests(): Promise<void> {
 
       if (selectedTest === "exit") {
         logger.info(chalk.yellow("\nExiting test runner..."));
-        running = false;
         break;
       }
 
@@ -176,7 +175,6 @@ export async function runTests(): Promise<void> {
 
         const scenario = await promptForScenario(selectedTest, logger);
         if (scenario === "back") {
-          selectingScenarios = false;
           break;
         }
 
