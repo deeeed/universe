@@ -24,7 +24,6 @@ export interface BranchCommandOptions extends GlobalOptions {
 const analyze = new Command("analyze")
   .description("Analyze current branch changes")
   .option("--detailed", "Generate a detailed report")
-  .option("--format <format>", "Output format (console, json, markdown)")
   .option("--security", "Include security analysis")
   .action(async (_cmdOptions: BranchCommandOptions, command: Command) => {
     const options = getCommandOptions<BranchCommandOptions>(command);

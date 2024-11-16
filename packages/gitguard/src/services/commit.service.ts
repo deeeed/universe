@@ -146,39 +146,28 @@ export class CommitService extends BaseService {
   }
 
   public async generateAISuggestions(params: {
-    files: FileChange[];
-    message: string;
-    diff: string;
-    templateResult?: TemplateResult;
     needsDetailedMessage?: boolean;
+    templateResult?: TemplateResult;
   }): Promise<CommitSuggestion[] | undefined> {
     if (!this.ai) {
       this.logger.debug("AI service not configured");
       return undefined;
     }
 
+    const { template, renderedPrompt } = params.templateResult ?? {};
+
+    if (!renderedPrompt) throw new Error("No prompt provided");
+
     try {
-      const detectedScope = this.detectScope(params.files);
-
-      this.logger.debug("Generating AI suggestions for files:", {
-        fileCount: params.files.length,
-        diffLength: params.diff.length,
-        message: params.message,
-        aiProvider: this.ai.constructor.name,
-        detectedScope,
-        needsDetailedMessage: params.needsDetailedMessage ?? false,
-      });
-
       const suggestions = await this.ai.generateCompletion<{
         suggestions: CommitSuggestion[];
       }>({
-        prompt: params.templateResult?.renderedPrompt ?? "",
+        prompt: renderedPrompt,
         options: {
           requireJson: true,
-          temperature:
-            params.templateResult?.temperature ?? DEFAULT_TEMPERATURE,
+          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
           systemPrompt:
-            params.templateResult?.systemPrompt ??
+            template?.systemPrompt ??
             `You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. 
             Each suggestion must include:
             - title: the description without type/scope
@@ -201,12 +190,6 @@ export class CommitService extends BaseService {
       return suggestions.suggestions;
     } catch (error) {
       this.logger.error("Failed to generate AI suggestions:", error);
-      this.logger.debug("Error details:", {
-        files: params.files.map((f) => f.path),
-        messageLength: params.message.length,
-        diffLength: params.diff.length,
-        error: error instanceof Error ? error.message : error,
-      });
       return undefined;
     }
   }
@@ -268,6 +251,33 @@ export class CommitService extends BaseService {
       suggestions,
       commands,
     };
+  }
+
+  public async generateAISplitSuggestion(params: {
+    templateResult?: TemplateResult;
+  }): Promise<CommitSplitSuggestion | undefined> {
+    if (!this.ai) {
+      this.logger.debug("AI service not configured");
+      return undefined;
+    }
+
+    const { template, renderedPrompt } = params.templateResult ?? {};
+
+    if (!renderedPrompt) throw new Error("No prompt provided");
+
+    try {
+      return await this.ai.generateCompletion<CommitSplitSuggestion>({
+        prompt: renderedPrompt,
+        options: {
+          requireJson: true,
+          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
+          systemPrompt: template?.systemPrompt ?? "",
+        },
+      });
+    } catch (error) {
+      this.logger.error("Failed to generate AI split suggestion:", error);
+      return undefined;
+    }
   }
 
   private createEmptyResult(params: {

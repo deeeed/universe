@@ -115,7 +115,7 @@ export function getTemplateBasedChoices(
   choices.push({
     label: `${displayIndex++}. Continue without AI assistance`,
     value: "skip",
-    isDefault: false,
+    isDefault: skipAsDefault,
   });
 
   const apiTemplates = templateRegistry.getTemplatesForType({
@@ -141,7 +141,7 @@ export function getTemplateBasedChoices(
         "Generate using AI API (Note: Actual costs may be higher due to response tokens)",
       isDefault: !skipAsDefault && canGenerate,
       disabledReason,
-      value: template.id,
+      value: `generate-${template.id}`,
     });
 
     if (clipboardEnabled) {
@@ -171,7 +171,6 @@ export function getTemplateBasedChoices(
       value: `copy-${template.id}`,
       description:
         "Human-readable format suitable for pasting into ChatGPT or similar",
-
       template,
     });
   });

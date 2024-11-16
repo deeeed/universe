@@ -249,8 +249,7 @@ interface HandleTemplateActionParams {
 export interface TemplateResult {
   template: LoadedPromptTemplate;
   renderedPrompt: string;
-  systemPrompt?: string;
-  temperature?: number;
+  renderedSystemPrompt: string;
   isApi: boolean;
   label: string;
   tokenUsage?: TokenUsage;
@@ -276,7 +275,7 @@ function getTemplateOptions(
   });
 
   return [...templates, ...humanTemplates].map((template) => {
-    const renderedPrompt = templateRegistry.renderTemplate({
+    const { userPrompt, systemPrompt } = templateRegistry.renderTemplate({
       template,
       variables,
     });
@@ -285,14 +284,15 @@ function getTemplateOptions(
     const tokenUsage =
       template.format === "api" && ai
         ? ai.calculateTokenUsage({
-            prompt: renderedPrompt,
+            prompt: systemPrompt + userPrompt,
             options: { isClipboardAction: false },
           })
         : undefined;
 
     return {
       template,
-      renderedPrompt,
+      renderedPrompt: userPrompt,
+      renderedSystemPrompt: systemPrompt,
       isApi: template.format === "api",
       label: template.title
         ? `"${template.title}"`
@@ -446,6 +446,8 @@ export async function handleAIAction<TResult>(
       requireApi,
       isApiClipboard,
     });
+
+    logger.debug("Template result:", { templateResult });
 
     if (!templateResult) {
       logger.error("Failed to find template for action");
