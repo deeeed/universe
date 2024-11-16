@@ -38,13 +38,13 @@ export async function promptForTestSuite(
   const testEntries = Array.from(TEST_MAP.entries());
 
   const choices: PromptActionChoice<E2ETest | "exit">[] = [
-    ...testEntries.map(([key, test]) => ({
-      label: `${test.name} ${chalk.gray(`(${key})`)}`,
+    ...testEntries.map(([key, test], index) => ({
+      label: `${index + 1}. ${test.name} ${chalk.gray(`(${key})`)}`,
       value: test,
       disabled: false,
     })),
     {
-      label: chalk.red("Exit"),
+      label: `${testEntries.length + 1}. ${chalk.red("Exit")}`,
       value: "exit",
       disabled: false,
     },
@@ -64,13 +64,13 @@ export async function promptForScenario(
   logger: LoggerService,
 ): Promise<TestScenario | "back"> {
   const choices: PromptActionChoice<TestScenario | "back">[] = [
-    ...test.scenarios.map((scenario) => ({
-      label: scenario.name,
+    ...test.scenarios.map((scenario, index) => ({
+      label: `${index + 1}. ${scenario.name}`,
       value: scenario,
       disabled: false,
     })),
     {
-      label: chalk.yellow("← Back to Test Suites"),
+      label: `${test.scenarios.length + 1}. ${chalk.yellow("← Back to Test Suites")}`,
       value: "back",
       disabled: false,
     },
@@ -156,103 +156,140 @@ interface RunOptions {
   [key: string]: string;
 }
 
-export async function runTests(options: RunOptions = {}): Promise<void> {
-  const logger = new LoggerService({ debug: true });
+interface RunSpecificTestParams {
+  options: RunOptions;
+  logger: LoggerService;
+}
 
+interface RunTestScenariosParams {
+  test: E2ETest;
+  logger: LoggerService;
+}
+
+interface RunInteractiveModeParams {
+  logger: LoggerService;
+}
+
+interface RunTestsParams {
+  options?: RunOptions;
+}
+
+async function runInteractiveMode({
+  logger,
+}: RunInteractiveModeParams): Promise<void> {
+  let isRunning = true;
+  while (isRunning) {
+    clearScreen();
+    const selectedTest = await promptForTestSuite(logger);
+
+    if (selectedTest === "exit") {
+      logger.info(chalk.yellow("\nExiting test runner..."));
+      isRunning = false;
+      continue;
+    }
+
+    await runTestScenarios({ test: selectedTest, logger });
+  }
+}
+
+async function runTestScenarios({
+  test,
+  logger,
+}: RunTestScenariosParams): Promise<void> {
+  let shouldContinueScenarios = true;
+  while (shouldContinueScenarios) {
+    clearScreen();
+    const scenario = await promptForScenario(test, logger);
+
+    if (scenario === "back") {
+      shouldContinueScenarios = false;
+      continue;
+    }
+
+    clearScreen();
+    logger.info(chalk.cyan(`\n🧪 Running: ${test.name} - ${scenario.name}\n`));
+
+    const results = await test.run(logger, [scenario]);
+    results.forEach((result) => displayTestResult(result, logger));
+    logger.info(
+      `\n📊 Result: ${
+        results[0].success ? chalk.green("✅ Passed") : chalk.red("❌ Failed")
+      }`,
+    );
+
+    const shouldContinue = await promptUser({
+      type: "yesno",
+      message: "\nRun another scenario?",
+      logger,
+      defaultYes: true,
+    });
+
+    if (!shouldContinue) {
+      shouldContinueScenarios = false;
+    }
+  }
+}
+
+async function runSpecificTest({
+  options,
+  logger,
+}: RunSpecificTestParams): Promise<void> {
+  const testKey = options.tests as TestSuiteKey;
+  const selectedTest = TEST_MAP.get(testKey);
+
+  if (!selectedTest) {
+    const availableTests = Array.from(TEST_MAP.keys()).join(", ");
+    throw new Error(
+      `Test suite '${options.tests}' not found. Available tests: ${availableTests}`,
+    );
+  }
+
+  logger.info(
+    "Available scenarios:",
+    selectedTest.scenarios.map((s) => ({
+      id: s.id,
+      name: s.name,
+    })),
+  );
+  logger.info("Looking for scenario:", options.scenario);
+
+  const scenario = selectedTest.scenarios.find(
+    (s) => s.id === options.scenario,
+  );
+  if (!scenario) {
+    const availableScenarios = selectedTest.scenarios
+      .map((s) => s.id)
+      .join(", ");
+    throw new Error(
+      `Scenario '${options.scenario}' not found in test suite '${options.tests}'. Available scenarios: ${availableScenarios}`,
+    );
+  }
+
+  logger.info(
+    chalk.cyan(`\n🧪 Running: ${selectedTest.name} - ${scenario.name}\n`),
+  );
+  const results = await selectedTest.run(logger, [scenario]);
+  results.forEach((result) => displayTestResult(result, logger));
+}
+
+export async function runTests({
+  options = {},
+}: RunTestsParams): Promise<void> {
+  const logger = new LoggerService({ debug: true });
   logger.info(chalk.green("Welcome to GitGuard E2E Tests!"));
 
   try {
-    // If specific test and scenario are provided, run them directly
     if (options.tests && options.scenario) {
-      const testKey = options.tests as TestSuiteKey;
-      const selectedTest = TEST_MAP.get(testKey);
-
-      if (!selectedTest) {
-        const availableTests = Array.from(TEST_MAP.keys()).join(", ");
-        throw new Error(
-          `Test suite '${options.tests}' not found. Available tests: ${availableTests}`,
-        );
-      }
-
-      logger.info(
-        "Available scenarios:",
-        selectedTest.scenarios.map((s) => ({
-          id: s.id,
-          name: s.name,
-        })),
-      );
-      logger.info("Looking for scenario:", options.scenario);
-
-      const scenario = selectedTest.scenarios.find(
-        (s) => s.id === options.scenario,
-      );
-
-      if (!scenario) {
-        const availableScenarios = selectedTest.scenarios
-          .map((s) => s.id)
-          .join(", ");
-        throw new Error(
-          `Scenario '${options.scenario}' not found in test suite '${options.tests}'. Available scenarios: ${availableScenarios}`,
-        );
-      }
-
-      logger.info(
-        chalk.cyan(`\n🧪 Running: ${selectedTest.name} - ${scenario.name}\n`),
-      );
-      const results = await selectedTest.run(logger, [scenario]);
-      results.forEach((result) => displayTestResult(result, logger));
-
+      await runSpecificTest({ options, logger });
       return;
     }
-
-    // Otherwise, run interactive mode
-    const running = true;
-    while (running) {
-      process.stdout.write("\x1Bc"); // Clear screen
-
-      const selectedTest = await promptForTestSuite(logger);
-
-      if (selectedTest === "exit") {
-        logger.info(chalk.yellow("\nExiting test runner..."));
-        break;
-      }
-
-      let selectingScenarios = true;
-      while (selectingScenarios) {
-        process.stdout.write("\x1Bc");
-
-        const scenario = await promptForScenario(selectedTest, logger);
-        if (scenario === "back") {
-          break;
-        }
-
-        // Clear screen before running test
-        process.stdout.write("\x1Bc");
-        logger.info(
-          chalk.cyan(`\n🧪 Running: ${selectedTest.name} - ${scenario.name}\n`),
-        );
-
-        const results = await selectedTest.run(logger, [scenario]);
-        results.forEach((result) => displayTestResult(result, logger));
-
-        logger.info(
-          `\n📊 Result: ${results[0].success ? chalk.green("✅ Passed") : chalk.red("❌ Failed")}`,
-        );
-
-        const shouldContinue = await promptUser({
-          type: "yesno",
-          message: "\nRun another scenario?",
-          logger,
-          defaultYes: true,
-        });
-
-        if (!shouldContinue) {
-          selectingScenarios = false;
-        }
-      }
-    }
+    await runInteractiveMode({ logger });
   } catch (error) {
     logger.error("Test suite failed:", error);
     process.exit(1);
   }
+}
+
+function clearScreen(): void {
+  process.stdout.write("\x1Bc");
 }
