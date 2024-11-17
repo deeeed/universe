@@ -142,7 +142,7 @@ export interface PRSplitSuggestion {
   suggestedPRs: Array<{
     title: string;
     description: string;
-    files: FileChange[];
+    files: string[];
     order: number;
     baseBranch: string;
     dependencies?: string[];

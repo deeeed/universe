@@ -16,6 +16,7 @@ import { BranchAIController } from "./branch-ai.controller.js";
 import { BranchAnalysisController } from "./branch-analysis.controller.js";
 import { BranchPRController } from "./branch-pr.controller.js";
 import { BranchSecurityController } from "./branch-security.controller.js";
+import { BranchSplitController } from "./branch-split.controller.js";
 
 interface AnalyzeParams {
   options: BranchCommandOptions;
@@ -37,6 +38,7 @@ interface ControllersContext {
   aiController: BranchAIController;
   prController: BranchPRController;
   securityController: BranchSecurityController;
+  splitController: BranchSplitController;
 }
 
 interface InitializeServicesParams {
@@ -166,6 +168,12 @@ async function initializeControllers({
       logger,
       security: services.security,
       git,
+    }),
+    splitController: new BranchSplitController({
+      logger,
+      git,
+      prService,
+      config,
     }),
   };
 }
@@ -343,6 +351,17 @@ async function processAIWithGitHub({
     result = await controllers.aiController.handleSplitSuggestions({
       analysisResult: result,
     });
+
+    if (result.splitSuggestion) {
+      const splitResult =
+        await controllers.splitController.handleSplitSuggestion({
+          analysisResult: result,
+        });
+
+      if (splitResult.skipFurtherSuggestions) {
+        return splitResult;
+      }
+    }
   }
 
   result = await controllers.aiController.handleAISuggestions({
@@ -367,6 +386,17 @@ async function processAIWithoutGitHub({
     result = await controllers.aiController.handleSplitSuggestions({
       analysisResult: result,
     });
+
+    if (result.splitSuggestion) {
+      const splitResult =
+        await controllers.splitController.handleSplitSuggestion({
+          analysisResult: result,
+        });
+
+      if (splitResult.skipFurtherSuggestions) {
+        return splitResult;
+      }
+    }
   }
 
   if (result.skipFurtherSuggestions) {

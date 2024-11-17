@@ -37,6 +37,7 @@ export interface FileChange {
   path: string;
   additions: number;
   deletions: number;
+  status?: "added" | "deleted" | "modified" | "untracked" | "renamed";
   isTest: boolean;
   isConfig: boolean;
 }
