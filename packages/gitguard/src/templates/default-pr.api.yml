@@ -7,7 +7,7 @@ ai:
   provider: openai
   model: gpt-4
 template: |
-  Generate a Pull Request description that clearly explains these changes:
+  Generate a Pull Request description that clearly explains these changes. Use markdown formatting for the description.
 
   Base Branch: {{baseBranch}}
 
@@ -36,37 +36,42 @@ template: |
   Please provide suggestions in this JSON format:
   {
     "title": "concise and descriptive PR title",
-    "description": "detailed description explaining the changes",
+    "description": "markdown-formatted description explaining the changes",
     "breaking": "boolean",
-    "branchName": "suggested-branch-name",
-    "commands": [
-      "git command to create and switch to the branch",
-      "git command to push the branch",
-      "git command to create PR (if applicable)"
-    ]
-    {{#if options.includeTesting}},
-    "testing": "specific testing scenarios and instructions"
-    {{/if}}
-    {{#if options.includeChecklist}},
-    "checklist": [
-      "implementation tasks",
-      "testing requirements",
-      "documentation needs"
-    ]
-    {{/if}}
+    "type": "feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert",
+    "scope": "optional affected package or component"
   }
 
+  Description Structure (in markdown):
+  ## 📝 Overview
+  [Clear overview of the changes]
+
+  ## 🎯 Purpose
+  [Why these changes are needed]
+
+  ## 🔄 Changes
+  - Change 1
+  - Change 2
+
+  ## 🧪 Testing
+  [Testing instructions]
+
+  Additional sections when relevant:
+  - Screenshots (for UI changes)
+  - Breaking Changes (with migration steps)
+  - Performance Impact
+  - Documentation Updates
+  - Related Issues
+
   Guidelines:
-  1. Title: Use clear, concise language following conventional commit format
-  2. Description: 
-     - Explain the purpose and impact of changes
-     - Highlight architectural decisions
-     - Note API changes or breaking changes
-     - Include migration steps if needed
-  3. Focus on technical impact and implementation details
-  4. Avoid listing commit hashes or file paths
-  5. Provide a kebab-case branch name that reflects the changes
-  6. Include exact git commands to execute the changes
+  1. Use clear markdown formatting with headers (##) and lists (-)
+  2. Include emojis for section headers
+  3. Explain the purpose and impact of changes
+  4. Highlight architectural decisions
+  5. Note API changes or breaking changes
+  6. Include migration steps if needed
+  7. Focus on technical impact and implementation details
+  8. Avoid listing commit hashes or file paths
   {{#if template}}
-  7. Follow the provided template structure
+  9. Follow the provided template structure
   {{/if}} 
