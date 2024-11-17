@@ -181,7 +181,6 @@ async function runInteractiveMode({
 }: RunInteractiveModeParams): Promise<void> {
   let isRunning = true;
   while (isRunning) {
-    clearScreen();
     const selectedTest = await promptForTestSuite(logger);
 
     if (selectedTest === "exit") {
@@ -191,6 +190,7 @@ async function runInteractiveMode({
     }
 
     await runTestScenarios({ test: selectedTest, logger });
+    clearScreen();
   }
 }
 
@@ -200,7 +200,6 @@ async function runTestScenarios({
 }: RunTestScenariosParams): Promise<void> {
   let shouldContinueScenarios = true;
   while (shouldContinueScenarios) {
-    clearScreen();
     const scenario = await promptForScenario(test, logger);
 
     if (scenario === "back") {
@@ -281,11 +280,27 @@ export async function runTests({
   logger.info(chalk.green("Welcome to GitGuard E2E Tests!"));
 
   try {
+    // Check if we have both test suite and scenario specified
     if (options.tests && options.scenario) {
       await runSpecificTest({ options, logger });
-      return;
+    } else if (options.tests) {
+      // If only test suite is specified, run all scenarios for that suite
+      const testKey = options.tests as TestSuiteKey;
+      const selectedTest = TEST_MAP.get(testKey);
+      if (!selectedTest) {
+        throw new Error(
+          `Test suite '${options.tests}' not found. Available tests: ${Array.from(TEST_MAP.keys()).join(", ")}`,
+        );
+      }
+      logger.info(
+        chalk.cyan(`\n🧪 Running all scenarios for: ${selectedTest.name}\n`),
+      );
+      const results = await selectedTest.run(logger, selectedTest.scenarios);
+      results.forEach((result) => displayTestResult(result, logger));
+    } else {
+      // If no specific test is specified, run interactive mode
+      await runInteractiveMode({ logger });
     }
-    await runInteractiveMode({ logger });
   } catch (error) {
     logger.error("Test suite failed:", error);
     process.exit(1);
