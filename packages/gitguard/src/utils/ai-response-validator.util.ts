@@ -25,7 +25,7 @@ const commitSuggestionSchema: z.ZodType<CommitSuggestion> = z.object({
   title: z.string(),
   type: z.string(),
   scope: z.string().optional(),
-  message: z.string().optional(),
+  message: z.string().nullish(),
 });
 
 // New schema for array of suggestions

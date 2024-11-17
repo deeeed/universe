@@ -663,16 +663,22 @@ Expected response format:
 }
 
 Key principles:
-1. Atomic commits: Each commit should be self-contained and independently functional
-2. Related changes: Keep together files that implement a single change
-3. Clear boundaries: Respect package and component boundaries
-4. Logical ordering: Order commits from most foundational to most dependent
-5. Descriptive messages: Explain what and why, not how
-6. Complete changes: Include all necessary files for each change
+1. Prefer fewer, meaningful commits over many granular ones
+2. Group related changes by feature or purpose, not just by file type
+3. Keep changes that implement a single feature or fix together
+4. Split only when changes serve distinctly different purposes
+5. Respect package boundaries only when changes are truly independent
+6. Include all dependent files (tests, types, stories) with their primary changes
 
-Common patterns:
-- Component changes: Group component + types + tests + stories
-- Package changes: Keep package-specific changes together
-- Cross-cutting changes: Split by affected subsystem
-- Infrastructure changes: Group related config files`;
+Common grouping patterns:
+- Feature changes: Group all files implementing a single feature
+- Package changes: Group package changes only if truly independent
+- Cross-cutting changes: Prefer grouping by purpose over location
+- Infrastructure changes: Group related config changes together
+
+Guidelines for consolidation:
+- Keep component changes with their tests, types, and stories
+- Group related refactoring across multiple files
+- Combine small related changes into meaningful units
+- Split only when changes have different semantic purposes`;
 }

@@ -8,14 +8,15 @@ ai:
   provider: openai
   model: gpt-4
 template: |
-  Analyze these git changes and determine if they should be split into multiple atomic commits.
+  Analyze these git changes and suggest how to organize them into meaningful, atomic commits.
+  Prefer fewer, well-organized commits over many granular ones.
 
   Files Changed:
   {{#each files}}
   - {{this.path}} (+{{this.additions}} -{{this.deletions}})
   {{/each}}
 
-  Original message: "{{message}}"
+  {{#if message}}Original message: "{{message}}"{{/if}}
 
   Git diff:
   ```diff
@@ -37,10 +38,10 @@ template: |
   }
 
   Guidelines:
-  1. Each commit must be atomic and self-contained
-  2. Group related changes together (e.g., component + types + tests)
-  3. Use descriptive messages that explain the change
-  4. Follow conventional commit types strictly
-  5. Order suggestions by logical dependency (1 being most foundational)
-  6. Consider package boundaries when detecting scope
-  7. Include all files from original commit
+  1. Group changes by feature or purpose, not just by file type
+  2. Keep related changes together (component + types + tests + stories)
+  3. Split only when changes serve distinctly different purposes
+  4. Use descriptive messages that explain the complete change
+  5. Consider semantic relationships over file location
+  6. Aim for 2-3 commits maximum unless absolutely necessary
+  7. Include all dependent files in their primary commit
