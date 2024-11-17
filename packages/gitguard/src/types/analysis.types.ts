@@ -40,7 +40,7 @@ export interface CommitSplitSuggestion {
     type: string;
     scope?: string;
   }>;
-  commands: string[];
+  commands?: string[];
 }
 
 export interface CommitAnalysisOptions {
