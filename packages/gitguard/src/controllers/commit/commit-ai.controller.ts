@@ -185,7 +185,6 @@ export class CommitAIController {
       return result;
     }
 
-    this.logger.info("\n🤖 Preparing AI suggestions...");
     const fullDiff = await this.git.getStagedDiff();
 
     const bestDiff = selectBestDiff({

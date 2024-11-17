@@ -337,26 +337,41 @@ export async function promptSplitChoice(params: {
   const { suggestions, logger } = params;
 
   try {
-    const choices = [
+    interface Choice {
+      scope?: string;
+      files: string[];
+      description?: string;
+    }
+
+    const allChoices: Choice[] = [
       {
-        name: `${chalk.yellow("0.")} Keep all changes together`,
-        value: 0,
+        scope: undefined,
+        files: [],
         description: "Proceed with the commit as is",
       },
-      ...suggestions.map((suggestion, index) => ({
-        name: `${chalk.green(`${index + 1}.`)} Keep only ${chalk.cyan(suggestion.scope ?? "root")} changes and unstage others`,
-        value: index + 1,
+      ...suggestions.map((suggestion) => ({
+        ...suggestion,
         description: `${suggestion.files.length} files`,
       })),
     ];
 
-    const selection = await select({
+    const choices = allChoices.map((choice, index) => ({
+      name: `${index === 0 ? chalk.yellow(`${index + 1}.`) : chalk.green(`${index + 1}.`)} ${
+        choice.scope
+          ? `Keep only ${chalk.cyan(choice.scope)} changes and unstage others`
+          : "Keep all changes together"
+      }`,
+      value: index + 1,
+      description: choice.description,
+    }));
+
+    const selected = await select({
       message: "Choose how to proceed:",
       choices,
       pageSize: 10,
     });
 
-    return { selection };
+    return { selection: selected - 1 };
   } catch (error) {
     logger.error("Failed to prompt for split choice:", error);
     return { selection: 0 };

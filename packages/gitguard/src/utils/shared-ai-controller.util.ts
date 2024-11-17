@@ -1,3 +1,4 @@
+import { editor } from "@inquirer/prompts";
 import chalk from "chalk";
 import {
   DEFAULT_CONTEXT_LINES,
@@ -17,7 +18,6 @@ import { checkAILimits } from "./ai-limits.util.js";
 import { copyToClipboard } from "./clipboard.util.js";
 import { formatDiffForAI } from "./diff.util.js";
 import { selectTemplateChoice } from "./template-choice.util.js";
-import { editor } from "@inquirer/prompts";
 
 // Base interface for shared dependencies
 interface BaseAIParams {
@@ -358,12 +358,44 @@ export interface TemplateResult {
   simulatedResponse?: unknown;
 }
 
+export interface AIFlowConfig {
+  emoji: string;
+  label: string;
+  color: typeof chalk.Color;
+}
+
+// Add mapping of AI flows to their visual identifiers
+const AI_FLOWS: Record<PromptType, AIFlowConfig> = {
+  commit: {
+    emoji: "📝",
+    label: "COMMIT SUGGESTION",
+    color: "cyan",
+  },
+  "split-commit": {
+    emoji: "✂️",
+    label: "COMMIT SPLIT",
+    color: "magenta",
+  },
+  pr: {
+    emoji: "🔄",
+    label: "PR DESCRIPTION",
+    color: "blue",
+  },
+  "split-pr": {
+    emoji: "🔀",
+    label: "PR SPLIT",
+    color: "yellow",
+  },
+  // Add other flow types as needed
+};
+
 function getTemplateOptions(
   params: GetTemplateOptionsParams,
 ): TemplateResult[] {
   const { type, templateRegistry, logger, variables, ai } = params;
+  const flow = AI_FLOWS[type];
 
-  logger.debug("Getting template options:", {
+  logger.debug(`Getting template options for ${flow.label}:`, {
     type,
     variableKeys: Object.keys(variables),
   });
@@ -418,6 +450,15 @@ export async function handleAIAction<TResult>(
     generateLabel,
     actionHandler,
   } = params;
+
+  const flow = AI_FLOWS[type];
+
+  // Display prominent flow header
+  logger.info("\n" + "═".repeat(50));
+  logger.info(
+    chalk[flow.color](`${flow.emoji} AI FLOW: ${flow.label} ${flow.emoji}`),
+  );
+  logger.info("═".repeat(50) + "\n");
 
   logger.debug("Starting AI action handler:", {
     type,
