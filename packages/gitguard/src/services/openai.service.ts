@@ -1,26 +1,15 @@
 import { encodingForModel, Tiktoken, TiktokenModel } from "js-tiktoken";
 import { AzureOpenAI, OpenAI } from "openai";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { AIProvider, TokenUsage } from "../types/ai.types.js";
+import {
+  AIProvider,
+  OpenAIConfig,
+  TokenUsage,
+  AzureConfig,
+} from "../types/ai.types.js";
 import { ServiceOptions } from "../types/service.types.js";
 import { BaseService } from "./base.service.js";
 import { DEFAULT_MAX_PROMPT_TOKENS } from "../constants.js";
-
-export interface OpenAIConfig {
-  type: "azure" | "openai";
-  azure?: {
-    endpoint: string;
-    apiKey: string;
-    deployment: string;
-    apiVersion: string;
-  };
-  openai?: {
-    apiKey: string;
-    model: string;
-    organization?: string;
-    maxTokens?: number;
-  };
-}
 
 interface ModelPricing {
   input: number;
@@ -45,10 +34,10 @@ const isTiktokenModel = (model: string): model is TiktokenModel => {
 };
 
 export class OpenAIService extends BaseService implements AIProvider {
-  private readonly config: OpenAIConfig;
+  private readonly config: OpenAIConfig | AzureConfig;
   private readonly client: OpenAI | AzureOpenAI;
 
-  constructor(params: ServiceOptions & { config: OpenAIConfig }) {
+  constructor(params: ServiceOptions & { config: OpenAIConfig | AzureConfig }) {
     super(params);
     this.config = params.config;
     this.client = this.createClient();
@@ -71,13 +60,17 @@ export class OpenAIService extends BaseService implements AIProvider {
       });
     }
 
-    if (!this.config.openai) {
-      throw new Error("OpenAI configuration missing");
+    if (this.config.type === "openai") {
+      if (!this.config.openai) {
+        throw new Error("OpenAI configuration missing");
+      }
+      return new OpenAI({
+        apiKey: this.config.openai.apiKey,
+        organization: this.config.openai.organization,
+      });
     }
-    return new OpenAI({
-      apiKey: this.config.openai.apiKey,
-      organization: this.config.openai.organization,
-    });
+
+    throw new Error("Invalid configuration type");
   }
 
   async generateCompletion<T>(params: {
@@ -161,8 +154,7 @@ export class OpenAIService extends BaseService implements AIProvider {
   }): TokenUsage {
     const modelName = this.getModel();
     const encoder = this.getTokenEncoder(modelName);
-    const maxApiTokens =
-      this.config.openai?.maxTokens ?? DEFAULT_MAX_PROMPT_TOKENS;
+    const maxApiTokens = this.getMaxTokens();
     const maxClipboardTokens = 16000; // Higher limit for clipboard
 
     if (!encoder) {
@@ -261,11 +253,18 @@ export class OpenAIService extends BaseService implements AIProvider {
     }
   }
 
+  private getMaxTokens(): number {
+    if (this.config.type === "openai" && this.config.openai) {
+      return this.config.maxTokens ?? DEFAULT_MAX_PROMPT_TOKENS;
+    }
+    return DEFAULT_MAX_PROMPT_TOKENS;
+  }
+
   private getModel(): string {
     if (this.config.type === "azure" && this.config.azure) {
       return this.config.azure.deployment;
     }
-    if (this.config.openai?.model) {
+    if (this.config.type === "openai" && this.config.openai) {
       return this.config.openai.model;
     }
     throw new Error("Model configuration missing");

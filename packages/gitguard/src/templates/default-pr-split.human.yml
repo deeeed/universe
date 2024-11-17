@@ -7,7 +7,10 @@ ai:
   provider: openai
   model: gpt-4
 template: |
-  You are a helpful AI assistant specializing in Pull Requests. Please analyze these changes and create a migration script to split them into multiple PRs if needed:
+  You are a helpful AI assistant specializing in Pull Requests. 
+  Please analyze these changes and determine if they need to be split into multiple PRs. 
+  Focus on main feature groups and aim for 2-3 PRs maximum. 
+  If changes are cohesive, explain why they should remain as a single PR.
 
   Base Branch: {{baseBranch}}
 
@@ -21,13 +24,27 @@ template: |
   {{diff}}
   ```
 
+  # Analysis Guidelines
+  1. Focus on main feature groups - aim for 2-3 PRs maximum
+  2. Keep related changes together (features + tests + types + styles)
+  3. Only split when changes serve different business purposes
+  4. Consider deployment dependencies
+
+  Keep as single PR when:
+  1. Changes implement a single feature or fix
+  2. Changes are tightly coupled or interdependent
+  3. Small to medium-sized changes across related areas
+  4. Infrastructure changes that need to be deployed together
+
   If the changes should be split, provide your response in this format:
 
   # Analysis
-  [Brief explanation of why these changes should be split]
+  [Brief explanation of why these changes should be split or why they should remain together]
 
   # Migration Script
   ```bash
+  cd $(git rev-parse --show-toplevel)
+
   # PR 1: feat(scope): descriptive title
   git checkout -b pr1-feature-name {{baseBranch}}
   git add [specific files]
@@ -39,28 +56,6 @@ template: |
   git add [specific files]
   git commit -m "fix(scope): descriptive title" -m "detailed description"
   git push origin pr2-feature-name
-
-  # [Additional PRs as needed...]
   ```
 
-  # PR Dependencies
-  ```mermaid
-  graph TD
-    PR1[PR1: Feature Name] --> PR2[PR2: Another Feature]
-    PR2 --> PR3[PR3: Final Feature]
-  ```
-
-  Guidelines:
-  1. Each PR section in the script should include:
-     - Clear conventional commit title as a comment
-     - Branch creation
-     - Specific files to add
-     - Commit message with description
-     - Push command
-  2. Maintain proper dependency order in the script
-  3. Keep related changes together (components + types + tests)
-  4. Consider package boundaries
-  5. Make commands copy-paste ready
-  6. Include clear PR titles for reference
-
-  Note: If the changes are cohesive and should remain as a single PR, explain why and indicate that no split is necessary.
+  Note: If the changes are cohesive and work well together, explain why they should remain as a single PR. Focus on business value and feature completeness rather than technical boundaries.

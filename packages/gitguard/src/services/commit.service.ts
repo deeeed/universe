@@ -13,20 +13,119 @@ import {
 import { Config } from "../types/config.types.js";
 import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
+import {
+  validateCommitSuggestion,
+  validateSplitSuggestion,
+} from "../utils/ai-response-validator.util.js";
+import { createAIHandler } from "../utils/ai-service-handler.util.js";
 import { CommitParser } from "../utils/commit-parser.util.js";
 import { formatDiffForAI } from "../utils/diff.util.js";
 import { shouldIgnoreFile } from "../utils/ignore-pattern.util.js";
+import { TemplateResult } from "../utils/shared-ai-controller.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
 import { SecurityService } from "./security.service.js";
-import { DEFAULT_TEMPERATURE } from "../constants.js";
-import { TemplateResult } from "../utils/shared-ai-controller.util.js";
 
 export class CommitService extends BaseService {
   private readonly git: GitService;
   private readonly security?: SecurityService;
   private readonly ai?: AIProvider;
   private readonly config: Config;
+  private readonly aiSuggestionHandler: ReturnType<
+    typeof createAIHandler<CommitSuggestion[]>
+  >;
+  private readonly aiSplitHandler: ReturnType<
+    typeof createAIHandler<CommitSplitSuggestion>
+  >;
+
+  private static readonly CONVENTIONAL_COMMIT_PATTERN = {
+    /**
+     * Regex for parsing conventional commits with ReDoS protection:
+     * - ^: Start of string
+     * - (feat|fix|...): Capturing group for valid commit types
+     * - (?:\(([^\n()]{1,50})\))?: Optional scope limited to 50 chars, no newlines/nested parens
+     * - (!)?: Optional breaking change indicator
+     * - :\s+: Required separator
+     * - (.{1,200}): Description limited to 200 chars
+     * - $: End of string
+     */
+    full: /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(?:\(([^\n()]{1,50})\))?(!)?\s*:\s*(.{1,200})$/,
+    // Valid commit types
+    types: [
+      "feat",
+      "fix",
+      "docs",
+      "style",
+      "refactor",
+      "perf",
+      "test",
+      "chore",
+      "ci",
+      "build",
+      "revert",
+    ],
+  } as const;
+
+  private static readonly SUGGESTION_SYSTEM_PROMPT = (
+    needsDetailedMessage: boolean,
+  ): string => `You are a git commit message assistant. Generate conventional commit format suggestions based on the changes.
+
+Expected response format:
+{
+  "suggestions": [
+    {
+      "title": string, // Description without type/scope
+      "message": string | null, // ${needsDetailedMessage ? "Required detailed explanation" : "Optional explanation"}
+      "type": string // One of: ${CommitService.CONVENTIONAL_COMMIT_PATTERN.types.join("|")}
+    }
+  ]
+}
+
+Guidelines:
+1. Use clear, concise language
+2. Explain what and why, not how
+3. Follow conventional commit types strictly
+4. Keep titles under 72 characters
+5. Include breaking change marker (!) when needed
+6. ${needsDetailedMessage ? "Include detailed message for all changes" : "Add detailed message only for complex changes"}
+7. Focus on the impact of the change`;
+
+  private static readonly COMMIT_SPLIT_SYSTEM_PROMPT = `You are a git commit organization assistant specializing in atomic commits and conventional commit format.
+
+Expected response format:
+{
+  "reason": string, // Clear explanation why the split is needed (max 100 chars)
+  "suggestions": [
+    {
+      "message": string, // Descriptive message without type/scope
+      "files": string[], // Array of related file paths
+      "order": number, // Logical order (1-based)
+      "type": string, // One of: ${CommitService.CONVENTIONAL_COMMIT_PATTERN.types.join("|")}
+      "scope": string // Package or component name
+    }
+  ]
+}
+
+Key principles:
+1. Prefer fewer, meaningful commits over many granular ones
+2. Group related changes by feature or purpose, not just by file type
+3. Keep changes that implement a single feature or fix together
+4. Split only when changes serve distinctly different purposes
+5. Respect package boundaries only when changes are truly independent
+6. Include all dependent files (tests, types, stories) with their primary changes
+
+Common grouping patterns:
+- Feature changes: Group all files implementing a single feature
+- Package changes: Group package changes only if truly independent
+- Cross-cutting changes: Prefer grouping by purpose over location
+- Infrastructure changes: Group related config changes together
+
+Guidelines for consolidation:
+- Keep component changes with their tests, types, and stories
+- Group related refactoring across multiple files
+- Combine small related changes into meaningful units
+- Split only when changes have different semantic purposes`;
+
   constructor(params: {
     config: Config;
     git: GitService;
@@ -39,6 +138,26 @@ export class CommitService extends BaseService {
     this.git = params.git;
     this.security = params.security;
     this.ai = params.ai;
+
+    this.aiSuggestionHandler = createAIHandler<CommitSuggestion[]>({
+      ai: this.ai,
+      logger: this.logger,
+      systemPrompt: (params) =>
+        CommitService.SUGGESTION_SYSTEM_PROMPT(
+          (params as { needsDetailedMessage?: boolean }).needsDetailedMessage ??
+            false,
+        ),
+      validator: (response) =>
+        validateCommitSuggestion({ response, logger: this.logger }),
+    });
+
+    this.aiSplitHandler = createAIHandler<CommitSplitSuggestion>({
+      ai: this.ai,
+      logger: this.logger,
+      systemPrompt: CommitService.COMMIT_SPLIT_SYSTEM_PROMPT,
+      validator: (response) =>
+        validateSplitSuggestion({ response, logger: this.logger }),
+    });
   }
 
   async analyze(params: CommitAnalysisOptions): Promise<CommitAnalysisResult> {
@@ -149,49 +268,10 @@ export class CommitService extends BaseService {
     needsDetailedMessage?: boolean;
     templateResult?: TemplateResult;
   }): Promise<CommitSuggestion[] | undefined> {
-    if (!this.ai) {
-      this.logger.debug("AI service not configured");
-      return undefined;
-    }
-
-    const { template, renderedPrompt } = params.templateResult ?? {};
-
-    if (!renderedPrompt) throw new Error("No prompt provided");
-
-    try {
-      const suggestions = await this.ai.generateCompletion<{
-        suggestions: CommitSuggestion[];
-      }>({
-        prompt: renderedPrompt,
-        options: {
-          requireJson: true,
-          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
-          systemPrompt:
-            template?.systemPrompt ??
-            `You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. 
-            Each suggestion must include:
-            - title: the description without type/scope
-            - message: optional detailed explanation (${params.needsDetailedMessage ? "required" : "optional"} for this commit)
-            - type: conventional commit type
-
-            ${params.needsDetailedMessage ? "Include detailed message for complex changes." : "Keep suggestions concise with title only."}
-            Only use the provided scope if one is specified.`,
-        },
-      });
-
-      this.logger.debug("AI response:", suggestions);
-
-      if (!suggestions?.suggestions?.length) {
-        this.logger.warn("No suggestions received from AI service");
-        this.logger.debug("Raw AI response:", suggestions);
-        return undefined;
-      }
-
-      return suggestions.suggestions;
-    } catch (error) {
-      this.logger.error("Failed to generate AI suggestions:", error);
-      return undefined;
-    }
+    return this.aiSuggestionHandler(
+      params,
+      "Failed to generate AI suggestions",
+    );
   }
 
   public getPrioritizedDiffs(params: {
@@ -254,30 +334,12 @@ export class CommitService extends BaseService {
   }
 
   public async generateAISplitSuggestion(params: {
-    templateResult?: TemplateResult;
+    templateResult: TemplateResult;
   }): Promise<CommitSplitSuggestion | undefined> {
-    if (!this.ai) {
-      this.logger.debug("AI service not configured");
-      return undefined;
-    }
-
-    const { template, renderedPrompt } = params.templateResult ?? {};
-
-    if (!renderedPrompt) throw new Error("No prompt provided");
-
-    try {
-      return await this.ai.generateCompletion<CommitSplitSuggestion>({
-        prompt: renderedPrompt,
-        options: {
-          requireJson: true,
-          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
-          systemPrompt: template?.systemPrompt ?? "",
-        },
-      });
-    } catch (error) {
-      this.logger.error("Failed to generate AI split suggestion:", error);
-      return undefined;
-    }
+    return this.aiSplitHandler(
+      params,
+      "Failed to generate AI split suggestion",
+    );
   }
 
   private createEmptyResult(params: {
@@ -302,34 +364,6 @@ export class CommitService extends BaseService {
       },
     };
   }
-
-  private static readonly CONVENTIONAL_COMMIT_PATTERN = {
-    /**
-     * Regex for parsing conventional commits with ReDoS protection:
-     * - ^: Start of string
-     * - (feat|fix|...): Capturing group for valid commit types
-     * - (?:\(([^\n()]{1,50})\))?: Optional scope limited to 50 chars, no newlines/nested parens
-     * - (!)?: Optional breaking change indicator
-     * - :\s+: Required separator
-     * - (.{1,200}): Description limited to 200 chars
-     * - $: End of string
-     */
-    full: /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(?:\(([^\n()]{1,50})\))?(!)?\s*:\s*(.{1,200})$/,
-    // Valid commit types
-    types: [
-      "feat",
-      "fix",
-      "docs",
-      "style",
-      "refactor",
-      "perf",
-      "test",
-      "chore",
-      "ci",
-      "build",
-      "revert",
-    ],
-  } as const;
 
   public parseConventionalCommit(message: string): {
     type: string;

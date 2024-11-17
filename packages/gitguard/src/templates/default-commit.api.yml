@@ -49,11 +49,21 @@ template: |
   {{diff}}
   ```
 
-  Please provide suggestions in this JSON format:
+  Please provide exactly 3 different suggestions in this JSON format:
   {
     "suggestions": [
       {
-        "title": "short descriptive title without scope or type",
+        "title": "first alternative title without scope or type",
+        "message": "detailed explanation of the changes",
+        "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
+      },
+      {
+        "title": "second alternative title without scope or type",
+        "message": "detailed explanation of the changes",
+        "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
+      },
+      {
+        "title": "third alternative title without scope or type",
         "message": "detailed explanation of the changes",
         "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
       }

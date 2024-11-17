@@ -70,7 +70,7 @@ export const largeCommitsTest: E2ETest = {
     const scenariosToRun = selectedScenarios ?? scenarios;
 
     for (const scenario of scenariosToRun) {
-      results.push(await runScenario(scenario, logger));
+      results.push(await runScenario({ scenario, logger }));
     }
     return results;
   },

@@ -27,16 +27,6 @@ template: |
   [Explain whether these changes should be split and why]
 
   {{#if shouldSplit}}
-  # Commit Structure
-  ```mermaid
-  graph TD
-    C1[1. feat: first change] --> C2[2. fix: dependent change]
-    C2 --> C3[3. refactor: final change]
-    style C1 fill:#f9f,stroke:#333
-    style C2 fill:#bbf,stroke:#333
-    style C3 fill:#bfb,stroke:#333
-  ```
-
   # Migration Script
   ```bash
   # Store current directory to return to it later
@@ -44,6 +34,9 @@ template: |
 
   # Ensure we're in the git repository root
   cd $(git rev-parse --show-toplevel)
+
+  # Reset the current commit to unstage changes
+  git reset HEAD^
 
   # Commit 1: feat(scope): descriptive title
   git add [specific files]

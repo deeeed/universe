@@ -285,7 +285,8 @@ export async function loadConfig(
       typeof finalConfig.ai === "object" &&
       finalConfig.ai &&
       !("azure" in finalConfig.ai && finalConfig.ai.azure?.endpoint) &&
-      !("ollama" in finalConfig.ai && finalConfig.ai.ollama?.host)
+      !("anthropic" in finalConfig.ai && finalConfig.ai.anthropic?.apiKey) &&
+      !("custom" in finalConfig.ai && finalConfig.ai.custom?.host)
     ) {
       finalConfig.ai.enabled = false;
     }
@@ -363,6 +364,14 @@ function validateAIConfig({ config }: ValidateAIConfigParams): void {
 
   if (config.ai.provider === "azure" && !config.ai.azure) {
     throw new Error("Azure configuration missing");
+  }
+
+  if (config.ai.provider === "anthropic" && !config.ai.anthropic) {
+    throw new Error("Anthropic configuration missing");
+  }
+
+  if (config.ai.provider === "custom" && !config.ai.custom) {
+    throw new Error("Custom configuration missing");
   }
 
   if (config.ai.maxPromptTokens && config.ai.maxPromptTokens < 1) {

@@ -40,7 +40,7 @@ export interface CommitSplitSuggestion {
     type: string;
     scope?: string;
   }>;
-  commands: string[];
+  commands?: string[];
 }
 
 export interface CommitAnalysisOptions {
@@ -94,7 +94,7 @@ export interface CommitSuggestion {
   title: string; // Short descriptive title without scope or type
   type: string; // Commit type (feat|fix|docs|style|refactor|test|chore)
   scope?: string; // Optional scope (detected from files)
-  message?: string; // Optional detailed explanation for complex changes
+  message?: string | null; // Optional detailed explanation for complex changes
 }
 
 export interface CommitSuggestionOptions extends BaseAIOptions {
@@ -142,7 +142,7 @@ export interface PRSplitSuggestion {
   suggestedPRs: Array<{
     title: string;
     description: string;
-    files: FileChange[];
+    files: string[];
     order: number;
     baseBranch: string;
     dependencies?: string[];

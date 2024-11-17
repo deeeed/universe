@@ -8,42 +8,40 @@ ai:
   provider: openai
   model: gpt-4
 template: |
-  Analyze these git changes and determine if they should be split into multiple commits.
+  Analyze these git changes and suggest how to organize them into meaningful, atomic commits.
+  Prefer fewer, well-organized commits over many granular ones.
 
   Files Changed:
   {{#each files}}
   - {{this.path}} (+{{this.additions}} -{{this.deletions}})
   {{/each}}
 
-  Original message: "{{message}}"
+  {{#if message}}Original message: "{{message}}"{{/if}}
 
   Git diff:
   ```diff
   {{diff}}
   ```
 
-  Please provide analysis in this JSON format:
+  Provide analysis in this JSON format:
   {
-    "reason": "explanation why changes should be split OR why they work well together (max 100 chars)",
+    "reason": "explanation why changes should be split (max 100 chars)",
     "suggestions": [
       {
-        "message": "conventional commit message",
-        "files": ["list of files"],
-        "order": 1,
-        "type": "commit type (feat|fix|refactor|etc)",
-        "scope": "affected component or area"
+        "message": "descriptive message without type/scope",
+        "files": ["list of files for this commit"],
+        "order": "number (1-based)",
+        "type": "feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert",
+        "scope": "affected package or component"
       }
-    ],
-    "commands": [
-      "git commands to execute the split"
     ]
   }
 
   Guidelines:
-  1. If changes are cohesive, return empty suggestions array
-  2. Only suggest splits for truly separate concerns
-  3. Keep related changes together (e.g., component + types + tests)
-  4. Follow conventional commits format
-  5. Order suggestions by importance (1 being most important)
-  6. Consider package boundaries
-  7. Provide clear git commands for implementation
+  1. Group changes by feature or purpose, not just by file type
+  2. Keep related changes together (component + types + tests + stories)
+  3. Split only when changes serve distinctly different purposes
+  4. Use descriptive messages that explain the complete change
+  5. Consider semantic relationships over file location
+  6. Aim for 2-3 commits maximum unless absolutely necessary
+  7. Include all dependent files in their primary commit

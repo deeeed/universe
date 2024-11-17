@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 import { exec } from "child_process";
-import { mkdtemp, rm, writeFile } from "fs/promises";
+import { mkdtemp, rm, writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { promisify } from "util";
@@ -96,6 +96,83 @@ describe("GitService Integration Tests", () => {
         deletions: 0,
       });
     });
+
+    it("should detect renamed files correctly", async () => {
+      // Create and commit initial file
+      await writeFile(join(tempDir, "old-name.txt"), "test content");
+      await execPromise("git add .", { cwd: tempDir });
+      await execPromise('git commit -m "Initial commit"', { cwd: tempDir });
+
+      // Rename the file and stage it
+      await execPromise("git mv old-name.txt new-name.txt", { cwd: tempDir });
+
+      const changes = await gitService.getStagedChanges();
+      expect(changes).toHaveLength(2); // Should show both deletion and addition
+      expect(changes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: "old-name.txt",
+            status: "deleted",
+            additions: 0,
+            deletions: 1,
+          }),
+          expect.objectContaining({
+            path: "new-name.txt",
+            status: "added",
+            additions: 1,
+            deletions: 0,
+          }),
+        ]),
+      );
+    });
+
+    it("should detect renamed files correctly when executed from subdirectory", async () => {
+      // Create subdirectory
+      const subDir = join(tempDir, "subdir");
+      await mkdir(subDir);
+
+      // Create and commit initial file in subdirectory
+      await writeFile(join(subDir, "old-name.txt"), "test content");
+      await execPromise("git add .", { cwd: tempDir });
+      await execPromise('git commit -m "Initial commit"', { cwd: tempDir });
+
+      const originalDir = process.cwd();
+      try {
+        const anotherSubDir = join(tempDir, "another-subdir");
+        await mkdir(anotherSubDir);
+        // Rename the file and stage it using full relative paths
+        await execPromise(
+          "git mv subdir/old-name.txt another-subdir/new-name.txt",
+          {
+            cwd: tempDir,
+          },
+        );
+        // Change working directory to subdirectory
+        process.chdir(subDir);
+
+        const changes = await gitService.getStagedChanges();
+        expect(changes).toHaveLength(2); // Should show both deletion and addition
+        expect(changes).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              path: "subdir/old-name.txt",
+              status: "deleted",
+              additions: 0,
+              deletions: 1,
+            }),
+            expect.objectContaining({
+              path: "another-subdir/new-name.txt",
+              status: "added",
+              additions: 1,
+              deletions: 0,
+            }),
+          ]),
+        );
+      } finally {
+        // Always restore original directory
+        process.chdir(originalDir);
+      }
+    });
   });
 
   describe("getUnstagedChanges", () => {
@@ -116,21 +193,45 @@ describe("GitService Integration Tests", () => {
       });
     });
 
-    it("should return modified files", async () => {
-      // Create and commit a file
-      await writeFile(join(tempDir, "test.txt"), "initial content");
+    it("should return modified files including those in subdirectories when executed from subdirectory", async () => {
+      // Create subdirectory
+      const subDir = join(tempDir, "subdir");
+      await mkdir(subDir);
+
+      // Create and commit files in both root and subdirectory
+      await writeFile(join(tempDir, "root.txt"), "initial content");
+      await writeFile(join(subDir, "nested.txt"), "initial content");
       await execPromise("git add .", { cwd: tempDir });
       await execPromise('git commit -m "Initial commit"', { cwd: tempDir });
 
-      // Modify the file
-      await writeFile(join(tempDir, "test.txt"), "modified content");
+      // Modify both files
+      await writeFile(join(tempDir, "root.txt"), "modified content");
+      await writeFile(join(subDir, "nested.txt"), "modified content");
 
-      const changes = await gitService.getUnstagedChanges();
-      expect(changes).toHaveLength(1);
-      expect(changes[0]).toMatchObject({
-        path: "test.txt",
-        status: "modified",
-      });
+      // Store original directory
+      const originalDir = process.cwd();
+      try {
+        // Change working directory to subdirectory before getting changes
+        process.chdir(subDir);
+        const changes = await gitService.getUnstagedChanges();
+
+        expect(changes).toHaveLength(2);
+        expect(changes).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              path: "root.txt",
+              status: "modified",
+            }),
+            expect.objectContaining({
+              path: "subdir/nested.txt",
+              status: "modified",
+            }),
+          ]),
+        );
+      } finally {
+        // Always restore original directory
+        process.chdir(originalDir);
+      }
     });
   });
 
@@ -155,6 +256,43 @@ describe("GitService Integration Tests", () => {
       await expect(
         gitService.renameBranch({ from: "main", to: "new-main" }),
       ).rejects.toThrow('Branch "new-main" already exists');
+    });
+  });
+
+  describe("unstageFiles", () => {
+    beforeEach(async () => {
+      // Setup initial commit
+      await writeFile(join(tempDir, "test.txt"), "test content");
+      await execPromise("git add .", { cwd: tempDir });
+      await execPromise('git commit -m "Initial commit"', { cwd: tempDir });
+    });
+
+    it("should handle unstaging renamed files", async () => {
+      // Rename a file using git mv and stage it
+      await execPromise("git mv test.txt renamed.txt", { cwd: tempDir });
+
+      // Verify the file is staged
+      const stagedChanges = await gitService.getStagedChanges();
+      expect(stagedChanges).toHaveLength(2); // Should show both deletion and addition
+      expect(stagedChanges).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: "test.txt",
+            status: "deleted",
+          }),
+          expect.objectContaining({
+            path: "renamed.txt",
+            status: "added",
+          }),
+        ]),
+      );
+
+      // Try to unstage both the old and new filenames
+      await gitService.unstageFiles({ files: ["test.txt", "renamed.txt"] });
+
+      // Verify the file was unstaged
+      const afterUnstage = await gitService.getStagedChanges();
+      expect(afterUnstage).toHaveLength(0);
     });
   });
 });

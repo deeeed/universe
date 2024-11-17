@@ -1,6 +1,5 @@
 // services/pr.service.ts
 import * as fs from "fs/promises";
-import { DEFAULT_TEMPERATURE } from "../constants.js";
 import { AIProvider } from "../types/ai.types.js";
 import {
   AnalysisWarning,
@@ -15,6 +14,7 @@ import { Config } from "../types/config.types.js";
 import { CommitInfo, FileChange } from "../types/git.types.js";
 import { SecurityCheckResult } from "../types/security.types.js";
 import { ServiceOptions } from "../types/service.types.js";
+import { createAIHandler } from "../utils/ai-service-handler.util.js";
 import { TemplateResult } from "../utils/shared-ai-controller.util.js";
 import { BaseService } from "./base.service.js";
 import { GitService } from "./git.service.js";
@@ -38,6 +38,102 @@ export class PRService extends BaseService {
   private readonly ai?: AIProvider;
   private readonly config: Config;
 
+  // Add system prompts as static class properties
+  private static readonly PR_DESCRIPTION_SYSTEM_PROMPT = `You are a PR description assistant specializing in clear, comprehensive documentation of changes.
+
+Expected response format:
+{
+  "title": string, // Clear, concise PR title following conventional commit format
+  "description": string, // Detailed description of changes
+  "type": string, // Type of change (feat, fix, etc.)
+  "scope"?: string, // Optional scope of changes
+  "breaking": boolean // Whether changes are breaking
+}
+
+Guidelines:
+1. Write clear, actionable titles that describe the change
+2. Use appropriate section emojis for visual organization
+3. Include context and reasoning in descriptions
+4. Highlight breaking changes and migration steps
+5. Document testing considerations
+6. Include deployment notes when relevant
+
+Section Emojis (use when applicable):
+📝 Description/Overview
+🎯 Purpose/Goal
+🔄 Changes Made
+✨ New Features
+🐛 Bug Fixes
+🧪 Testing Instructions
+📸 Screenshots/Recordings
+⚠️ Warnings/Notes
+🏷️ Labels/Type
+👥 Reviewers
+📋 Checklist
+🔍 Review Points
+📚 Documentation Updates
+🔗 Related Issues/PRs
+⚡ Performance Updates
+🔒 Security Changes
+🎨 UI/Style Changes
+🧹 Code Cleanup
+⚙️ Configuration Changes
+📦 Dependencies
+
+Example format:
+📝 Description
+[Overview of changes]
+
+🎯 Purpose
+[Why these changes are needed]
+
+🔄 Changes
+- Change 1
+- Change 2
+
+🧪 Testing
+[Testing instructions]
+
+⚠️ Notes
+[Any important considerations]`;
+
+  private static readonly PR_SPLIT_SYSTEM_PROMPT = `You are a PR organization assistant specializing in atomic changes and clear documentation.
+
+Expected response format:
+{
+  "reason": string, // Clear explanation why the split is needed
+  "suggestedPRs": [
+    {
+      "title": string, // Clear PR title
+      "description": string, // Detailed description
+      "files": { path: string }[], // Related files
+      "order": number, // Logical order (1-based)
+      "dependencies"?: string[], // Optional dependent PRs
+      "baseBranch": string // Base branch for the PR
+    }
+  ],
+  "commands": string[] // Git commands to execute the split
+}
+
+Key principles:
+1. Group related changes by feature or purpose
+2. Keep dependent changes together
+3. Split unrelated changes into separate PRs
+4. Maintain clear dependencies between PRs
+5. Consider testing and documentation impact
+
+Guidelines:
+1. Keep component changes with their tests
+2. Group related configuration changes
+3. Split changes that affect different domains
+4. Consider deployment implications
+5. Maintain clear dependency order`;
+
+  private aiDescriptionHandler: ReturnType<
+    typeof createAIHandler<PRDescription>
+  >;
+  private aiSplitHandler: ReturnType<typeof createAIHandler<PRSplitSuggestion>>;
+
   constructor(
     params: ServiceOptions & {
       config: Config;
@@ -53,6 +149,19 @@ export class PRService extends BaseService {
     this.security = params.security;
     this.ai = params.ai;
     this.config = params.config;
+
+    // Initialize handlers in constructor after this.ai is set
+    this.aiDescriptionHandler = createAIHandler<PRDescription>({
+      ai: this.ai,
+      logger: this.logger,
+      systemPrompt: PRService.PR_DESCRIPTION_SYSTEM_PROMPT,
+    });
+
+    this.aiSplitHandler = createAIHandler<PRSplitSuggestion>({
+      ai: this.ai,
+      logger: this.logger,
+      systemPrompt: PRService.PR_SPLIT_SYSTEM_PROMPT,
+    });
   }
 
   private createEmptyResult(
@@ -128,7 +237,7 @@ export class PRService extends BaseService {
         `git checkout -b ${branchName} ${params.baseBranch}`,
         ``,
         `# Add relevant files`,
-        ...pr.files.map((f) => `git checkout HEAD ${f.path}`),
+        ...pr.files.map((f) => `git checkout HEAD ${f}`),
         `git add .`,
         ``,
         `# Create commit with description`,
@@ -162,7 +271,7 @@ export class PRService extends BaseService {
     return commands;
   }
 
-  private generatePRTitle(commits: CommitInfo[], files: FileChange[]): string {
+  private generatePRTitle(commits: CommitInfo[], files: string[]): string {
     // If single commit, use its message
     if (commits.length === 1) {
       return commits[0].message;
@@ -173,24 +282,24 @@ export class PRService extends BaseService {
     return `${type}: Combined changes for ${commits.length} commits`;
   }
 
-  private detectPRType(files: FileChange[]): string {
+  private detectPRType(files: string[]): string {
     const hasFeature = files.some(
-      (f) =>
-        f.path.includes("/src/") ||
-        f.path.includes("/components/") ||
-        f.path.includes("/features/"),
+      (path) =>
+        path.includes("/src/") ||
+        path.includes("/components/") ||
+        path.includes("/features/"),
     );
     const hasTests = files.some(
-      (f) => f.path.includes("/test/") || f.path.includes(".test."),
+      (path) => path.includes("/test/") || path.includes(".test."),
     );
     const hasDocs = files.some(
-      (f) => f.path.includes("/docs/") || f.path.endsWith(".md"),
+      (path) => path.includes("/docs/") || path.endsWith(".md"),
     );
     const hasConfig = files.some(
-      (f) =>
-        f.path.includes(".config.") ||
-        f.path.includes(".gitignore") ||
-        f.path.includes(".env"),
+      (path) =>
+        path.includes(".config.") ||
+        path.includes(".gitignore") ||
+        path.includes(".env"),
     );
 
     if (hasFeature) return "feat";
@@ -241,52 +350,16 @@ export class PRService extends BaseService {
   public async generateAIDescription(params: {
     templateResult?: TemplateResult;
   }): Promise<PRDescription | undefined> {
-    if (!this.ai) return undefined;
-
-    const { template, renderedPrompt } = params.templateResult ?? {};
-
-    if (!renderedPrompt) throw new Error("No prompt provided");
-    try {
-      return await this.ai.generateCompletion<PRDescription>({
-        prompt: renderedPrompt,
-        options: {
-          requireJson: true,
-          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
-          systemPrompt:
-            template?.systemPrompt ??
-            "You are an expert code reviewer helping to write clear PR descriptions.",
-        },
-      });
-    } catch (error) {
-      this.logger.error("Failed to generate PR description:", error);
-      return undefined;
-    }
+    return this.aiDescriptionHandler(
+      params,
+      "Failed to generate PR description",
+    );
   }
 
   public async generateSplitSuggestion(params: {
     templateResult?: TemplateResult;
   }): Promise<PRSplitSuggestion | undefined> {
-    if (!this.ai) return undefined;
-
-    const { template, renderedPrompt } = params.templateResult ?? {};
-
-    if (!renderedPrompt) throw new Error("No prompt provided");
-
-    try {
-      return await this.ai.generateCompletion<PRSplitSuggestion>({
-        prompt: renderedPrompt,
-        options: {
-          requireJson: true,
-          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
-          systemPrompt:
-            template?.systemPrompt ??
-            "You are an expert code reviewer helping to write clear PR descriptions.",
-        },
-      });
-    } catch (error) {
-      this.logger.error("Failed to generate split suggestion:", error);
-      return undefined;
-    }
+    return this.aiSplitHandler(params, "Failed to generate split suggestion");
   }
 
   public checkSize(params: { stats: PRStats }): AnalysisWarning[] {
@@ -335,7 +408,7 @@ export class PRService extends BaseService {
     });
 
     if (securityResult.shouldBlock) {
-      this.logger.warn("\n⚠️ Security issues detected!");
+      this.logger.warn("\n️ Security issues detected!");
       securityResult.secretFindings.forEach((finding) => {
         this.logger.warn(`  • ${finding.path}: ${finding.suggestion}`);
       });
@@ -481,7 +554,7 @@ export class PRService extends BaseService {
     commits: CommitInfo[];
     baseBranch: string;
   }): PRSplitSuggestion {
-    const files = params.commits.flatMap((c) => c.files);
+    const files = params.commits.flatMap((c) => c.files.map((f) => f.path));
 
     // Group files by scope
     const filesByScope = files.reduce(
@@ -490,8 +563,8 @@ export class PRService extends BaseService {
         const patterns = this.git.config.monorepoPatterns;
 
         for (const pattern of patterns) {
-          if (file.path.startsWith(pattern)) {
-            const parts = file.path.split("/");
+          if (file.startsWith(pattern)) {
+            const parts = file.split("/");
             if (parts.length >= 2) {
               const scopeType = pattern.replace("/", "");
               scope = `${scopeType}/${parts[1]}`;
@@ -508,11 +581,11 @@ export class PRService extends BaseService {
         }
         acc[scope].files.push(file);
         params.commits
-          .filter((c) => c.files.some((f) => f.path === file.path))
+          .filter((c) => c.files.some((f) => f.path === file))
           .forEach((c) => acc[scope].commits.add(c.hash));
         return acc;
       },
-      {} as Record<string, { files: FileChange[]; commits: Set<string> }>,
+      {} as Record<string, { files: string[]; commits: Set<string> }>,
     );
 
     // Create split suggestions
@@ -588,7 +661,7 @@ export class PRService extends BaseService {
             title ??
             this.generatePRTitle(
               analysis.commits,
-              analysis.commits.flatMap((c) => c.files),
+              analysis.files.map((f) => f.path),
             );
           description =
             description ??

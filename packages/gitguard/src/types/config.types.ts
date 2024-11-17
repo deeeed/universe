@@ -65,7 +65,7 @@ export interface PRTemplateConfig {
 
 export interface AIConfig {
   enabled: boolean;
-  provider: "azure" | "openai" | "ollama" | null;
+  provider: "azure" | "openai" | "anthropic" | "custom" | null;
   maxPromptTokens?: number;
   maxPromptCost?: number;
   apiClipboard?: boolean; // Also provide clipboard option for each API flow (useful for testing prompts)
@@ -80,7 +80,11 @@ export interface AIConfig {
     model: string;
     organization?: string;
   };
-  ollama?: {
+  anthropic?: {
+    apiKey?: string;
+    model: string;
+  };
+  custom?: {
     host: string;
     model: string;
   };

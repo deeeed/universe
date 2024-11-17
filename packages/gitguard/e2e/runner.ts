@@ -5,14 +5,15 @@ import {
   promptInquirerChoice,
   promptUser,
 } from "../src/utils/user-prompt.util.js";
-import { aiSuggestionsTest } from "./scenarios/ai-suggestions.test.js";
-import { branchFeaturesTest } from "./scenarios/branch-features.test.js";
-import { commitMessageTest } from "./scenarios/commit-message.test.js";
-import { initTest } from "./scenarios/init.test.js";
-import { largeCommitsTest } from "./scenarios/large-commits.test.js";
-import { securityTest } from "./scenarios/security.test.js";
-import { statusTest } from "./scenarios/status.test.js";
-import { templateTest } from "./scenarios/template.test.js";
+import { aiSuggestionsTest } from "./scenarios/ai-suggestions.e2e.test.js";
+import { branchFeaturesTest } from "./scenarios/branch-features.e2e.test.js";
+import { commitMessageTest } from "./scenarios/commit-message.e2e.test.js";
+import { initTest } from "./scenarios/init.e2e.test.js";
+import { largeCommitsTest } from "./scenarios/large-commits.e2e.test.js";
+import { securityTest } from "./scenarios/security.e2e.test.js";
+import { statusTest } from "./scenarios/status.e2e.test.js";
+import { templateTest } from "./scenarios/template.e2e.test.js";
+import { aiProvidersTest } from "./scenarios/ai-providers.e2e.test.js";
 import {
   E2ETest,
   TestResult,
@@ -20,6 +21,7 @@ import {
   TestSuiteKey,
   TestSuites,
 } from "./tests.types.js";
+import { formatTestResult } from "./tests.utils.js";
 
 const TEST_MAP = new Map<TestSuiteKey, E2ETest>([
   [TestSuites.COMMIT_MESSAGE, commitMessageTest],
@@ -30,6 +32,7 @@ const TEST_MAP = new Map<TestSuiteKey, E2ETest>([
   [TestSuites.INIT, initTest],
   [TestSuites.STATUS, statusTest],
   [TestSuites.TEMPLATE, templateTest],
+  [TestSuites.AI_PROVIDERS, aiProvidersTest],
 ]);
 
 export async function promptForTestSuite(
@@ -89,67 +92,13 @@ export function displayTestResult(
   result: TestResult,
   logger: LoggerService,
 ): void {
-  logger.info("\n📊 Test Result:", result.message);
-
-  if (!result.success || !result.details) {
-    if (result.error) {
-      logger.error("Error:", result.error);
-    }
-    return;
-  }
-
-  logger.info("\n📝 Command:", chalk.cyan(result.details.command));
-
-  if (result.details.initialState) {
-    logger.info("\n📁 Initial Repository State:");
-    logger.info(
-      "Git Status:",
-      chalk.gray(result.details.initialState.status || "Clean"),
-    );
-    logger.info("Git History:", chalk.gray(result.details.initialState.log));
-  }
-
-  if (result.details.finalState) {
-    logger.info("\n📁 Final Repository State:");
-    logger.info(
-      "Git Status:",
-      chalk.gray(result.details.finalState.status || "Clean"),
-    );
-    logger.info("Git History:", chalk.gray(result.details.finalState.log));
-
-    // Show file changes
-    const changes = diffStates(
-      result.details.initialState?.files ?? [],
-      result.details.finalState.files,
-    );
-    if (changes.length) {
-      logger.info("\n📄 File Changes:");
-      changes.forEach((change) => {
-        logger.info(`${chalk.cyan(change.path)}:`);
-        logger.info(chalk.gray(change.diff));
-      });
-    }
-  }
-}
-
-function diffStates(
-  initial: Array<{ path: string; content: string }>,
-  final: Array<{ path: string; content: string }>,
-): Array<{ path: string; diff: string }> {
-  const changes: Array<{ path: string; diff: string }> = [];
-
-  // Use simple diff for now, could be enhanced with proper diff library
-  final.forEach((file) => {
-    const initialFile = initial.find((f) => f.path === file.path);
-    if (!initialFile || initialFile.content !== file.content) {
-      changes.push({
-        path: file.path,
-        diff: file.content, // Simple content display, could be enhanced with actual diff
-      });
-    }
-  });
-
-  return changes;
+  logger.info(
+    formatTestResult({
+      success: result.success,
+      message: result.message,
+      details: result.details,
+    }),
+  );
 }
 
 interface RunOptions {
@@ -179,7 +128,6 @@ async function runInteractiveMode({
 }: RunInteractiveModeParams): Promise<void> {
   let isRunning = true;
   while (isRunning) {
-    clearScreen();
     const selectedTest = await promptForTestSuite(logger);
 
     if (selectedTest === "exit") {
@@ -189,6 +137,7 @@ async function runInteractiveMode({
     }
 
     await runTestScenarios({ test: selectedTest, logger });
+    clearScreen();
   }
 }
 
@@ -198,7 +147,6 @@ async function runTestScenarios({
 }: RunTestScenariosParams): Promise<void> {
   let shouldContinueScenarios = true;
   while (shouldContinueScenarios) {
-    clearScreen();
     const scenario = await promptForScenario(test, logger);
 
     if (scenario === "back") {
@@ -279,11 +227,27 @@ export async function runTests({
   logger.info(chalk.green("Welcome to GitGuard E2E Tests!"));
 
   try {
+    // Check if we have both test suite and scenario specified
     if (options.tests && options.scenario) {
       await runSpecificTest({ options, logger });
-      return;
+    } else if (options.tests) {
+      // If only test suite is specified, run all scenarios for that suite
+      const testKey = options.tests as TestSuiteKey;
+      const selectedTest = TEST_MAP.get(testKey);
+      if (!selectedTest) {
+        throw new Error(
+          `Test suite '${options.tests}' not found. Available tests: ${Array.from(TEST_MAP.keys()).join(", ")}`,
+        );
+      }
+      logger.info(
+        chalk.cyan(`\n🧪 Running all scenarios for: ${selectedTest.name}\n`),
+      );
+      const results = await selectedTest.run(logger, selectedTest.scenarios);
+      results.forEach((result) => displayTestResult(result, logger));
+    } else {
+      // If no specific test is specified, run interactive mode
+      await runInteractiveMode({ logger });
     }
-    await runInteractiveMode({ logger });
   } catch (error) {
     logger.error("Test suite failed:", error);
     process.exit(1);

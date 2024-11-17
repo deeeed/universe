@@ -1,5 +1,5 @@
+import { checkbox, confirm, input, select } from "@inquirer/prompts";
 import chalk from "chalk";
-import { confirm, input, select } from "@inquirer/prompts";
 import { AIProvider } from "../types/ai.types.js";
 import { CommitSuggestion } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
@@ -337,26 +337,41 @@ export async function promptSplitChoice(params: {
   const { suggestions, logger } = params;
 
   try {
-    const choices = [
+    interface Choice {
+      scope?: string;
+      files: string[];
+      description?: string;
+    }
+
+    const allChoices: Choice[] = [
       {
-        name: `${chalk.yellow("0.")} Keep all changes together`,
-        value: 0,
+        scope: undefined,
+        files: [],
         description: "Proceed with the commit as is",
       },
-      ...suggestions.map((suggestion, index) => ({
-        name: `${chalk.green(`${index + 1}.`)} Keep only ${chalk.cyan(suggestion.scope ?? "root")} changes and unstage others`,
-        value: index + 1,
+      ...suggestions.map((suggestion) => ({
+        ...suggestion,
         description: `${suggestion.files.length} files`,
       })),
     ];
 
-    const selection = await select({
+    const choices = allChoices.map((choice, index) => ({
+      name: `${index === 0 ? chalk.yellow(`${index + 1}.`) : chalk.green(`${index + 1}.`)} ${
+        choice.scope
+          ? `Keep only ${chalk.cyan(choice.scope)} changes and unstage others`
+          : "Keep all changes together"
+      }`,
+      value: index + 1,
+      description: choice.description,
+    }));
+
+    const selected = await select({
       message: "Choose how to proceed:",
       choices,
       pageSize: 10,
     });
 
-    return { selection };
+    return { selection: selected - 1 };
   } catch (error) {
     logger.error("Failed to prompt for split choice:", error);
     return { selection: 0 };
@@ -449,7 +464,25 @@ export interface PromptActionChoice<T> {
   disabledReason?: string;
 }
 
-// Update promptInquirerChoice to use description
+// Update InquirerChoiceWithDescription interface to match @inquirer/prompts Choice type
+interface InquirerChoiceWithDescription<T> {
+  name: string;
+  value: T;
+  description?: string;
+  disabled?: boolean | string;
+}
+
+// Define InquirerChoice type to match @inquirer/prompts internal Choice type
+interface InquirerChoice<T> {
+  name: string;
+  value: T;
+  description?: string;
+  short?: string;
+  disabled?: boolean | string;
+  type?: never;
+}
+
+// Update promptInquirerChoice with proper typing
 export async function promptInquirerChoice<T>(params: {
   message: string;
   choices: PromptActionChoice<T>[];
@@ -459,16 +492,14 @@ export async function promptInquirerChoice<T>(params: {
   const { message, choices, logger } = params;
 
   try {
-    const inquirerChoices: InquirerChoiceWithDescription<T>[] = choices.map(
-      (choice) => ({
-        name: choice.label,
-        value: choice.value,
-        description: choice.disabledReason,
-        disabled: choice.disabled,
-      }),
-    );
+    const inquirerChoices: InquirerChoice<T>[] = choices.map((choice) => ({
+      name: choice.label,
+      value: choice.value,
+      description: choice.disabledReason,
+      disabled: choice.disabled,
+    }));
 
-    const selected = await select({
+    const selected = await select<T>({
       message,
       choices: inquirerChoices,
       pageSize: params.pageSize ?? 20,
@@ -482,9 +513,47 @@ export async function promptInquirerChoice<T>(params: {
   }
 }
 
-interface InquirerChoiceWithDescription<T> {
+// Define base Choice type that matches Inquirer's requirements
+type BaseChoice = {
   name: string;
-  value: T;
+  value: unknown;
   description?: string;
+  short?: string;
   disabled?: boolean | string;
+  type?: never;
+  checked?: boolean;
+};
+
+// Add new function for multi-select with dependencies
+export async function promptMultipleChoice<T>(params: {
+  message: string;
+  choices: Array<{
+    label: string;
+    value: T;
+    isDefault?: boolean;
+    disabled?: boolean;
+    disabledReason?: string;
+  }>;
+  logger: Logger;
+}): Promise<T[]> {
+  const { message, choices, logger } = params;
+
+  try {
+    const inquirerChoices = choices.map((choice) => ({
+      name: choice.label,
+      value: choice.value,
+      checked: choice.isDefault,
+      disabled: choice.disabled ? choice.disabledReason : false,
+    })) satisfies Array<Omit<BaseChoice, "value"> & { value: T }>;
+
+    const selected = await checkbox({
+      message,
+      choices: inquirerChoices,
+    });
+
+    return selected;
+  } catch (error) {
+    logger.error("Failed to prompt for multiple choice:", error);
+    return [];
+  }
 }

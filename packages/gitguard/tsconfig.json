@@ -3,7 +3,9 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "outDir": "dist",
     "rootDir": ".",
     "strict": true,
@@ -17,17 +19,20 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["node","jest"],
+    "types": [
+      "node",
+      "jest"
+    ],
     "composite": true,
     "paths": {
-      "@siteed/gitguard": [
-        "./src/index.ts"
-      ]
+      "@siteed/gitguard/*": ["src/*"]
     },
+    "allowSyntheticDefaultImports": true,
     "sourceMap": true,
     "inlineSourceMap": false,
     "inlineSources": true,
     "declarationMap": true,
+    "baseUrl": "."
   },
   "ts-node": {
     "esm": true,

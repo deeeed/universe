@@ -151,6 +151,7 @@ export class CommitAIController {
               if (aiSuggestions?.suggestions?.length) {
                 return {
                   ...params.result,
+                  skipFurtherSuggestions: true,
                   splitSuggestion: {
                     ...aiSuggestions,
                     suggestions: aiSuggestions.suggestions,
@@ -184,7 +185,6 @@ export class CommitAIController {
       return result;
     }
 
-    this.logger.info("\n🤖 Preparing AI suggestions...");
     const fullDiff = await this.git.getStagedDiff();
 
     const bestDiff = selectBestDiff({
@@ -220,7 +220,7 @@ export class CommitAIController {
       ai: this.ai,
       generateLabel: "Generate commit message suggestions",
       actionHandler: async (action, templateResult) => {
-        if (action.startsWith("generate-") && this.ai && templateResult) {
+        if (action.startsWith("generate-") && templateResult) {
           const suggestions = await this.commitService.generateAISuggestions({
             needsDetailedMessage: result.complexity.needsStructure,
             templateResult,

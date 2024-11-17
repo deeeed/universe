@@ -161,7 +161,7 @@ export const securityTest: E2ETest = {
   ): Promise<TestResult[]> {
     return Promise.all(
       (selectedScenarios ?? scenarios).map((scenario) =>
-        runScenario(scenario, logger),
+        runScenario({ scenario, logger }),
       ),
     );
   },

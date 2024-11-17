@@ -14,6 +14,7 @@ export interface CommitCommandOptions extends GlobalOptions {
   all?: boolean;
   execute?: boolean;
   cwd?: string;
+  split?: boolean;
 }
 
 // Subcommands
@@ -23,6 +24,7 @@ const analyze = new Command("analyze")
   .option("--staged", "Include analysis of staged changes (default: true)")
   .option("--unstaged", "Include analysis of unstaged changes")
   .option("--all", "Analyze both staged and unstaged changes")
+  .option("--split", "Use AI to suggest commit splits")
   .action(async (_cmdOptions: CommitCommandOptions, command: Command) => {
     const options = getCommandOptions<CommitCommandOptions>(command);
     await analyzeCommit({ options });
@@ -37,6 +39,7 @@ const create = new Command("create")
   .option("--staged", "Include staged changes (default: true)")
   .option("--unstaged", "Include unstaged changes")
   .option("--all", "Include all changes")
+  .option("--split", "Use AI to suggest and execute commit splits")
   .action(async (_cmdOptions: CommitCommandOptions, command: Command) => {
     const options = getCommandOptions<CommitCommandOptions>(command);
     await analyzeCommit({ options: { ...options, execute: true } });
@@ -69,7 +72,8 @@ ${chalk.blue("Examples:")}
   ${chalk.yellow("$")} gitguard commit analyze           # Analyze staged changes
   ${chalk.yellow("$")} gitguard commit create -m "feat"  # Create commit with message
   ${chalk.yellow("$")} gitguard commit suggest          # Get AI suggestions
-  ${chalk.yellow("$")} gitguard commit create --ai      # Create with AI help`,
+  ${chalk.yellow("$")} gitguard commit create --ai      # Create with AI help
+  ${chalk.yellow("$")} gitguard commit analyze --split  # Get AI split suggestions`,
   );
 
 // Apply global options to main commit command

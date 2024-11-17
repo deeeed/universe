@@ -20,6 +20,91 @@ interface GetDiffParams {
   to?: string;
 }
 
+interface ParsedRenamedFiles {
+  oldPath: string;
+  newPath: string;
+}
+
+interface ParseGitStatusParams {
+  statusOutput: string;
+  filterPrefix?: string;
+}
+
+function parseGitStatus(
+  params: ParseGitStatusParams,
+): Map<string, ParsedRenamedFiles> {
+  const renamedFiles = new Map<string, ParsedRenamedFiles>();
+  const prefix = params.filterPrefix ?? "R";
+
+  params.statusOutput.split("\n").forEach((line) => {
+    if (line.startsWith(prefix)) {
+      const parts = line
+        .slice(3)
+        .split(/->|\s+/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      if (parts.length >= 2) {
+        const [oldPath, newPath] = parts;
+        renamedFiles.set(newPath, { oldPath, newPath });
+      }
+    }
+  });
+
+  return renamedFiles;
+}
+
+function parseNumstatLine(params: {
+  line: string;
+  renamedFiles: Map<string, ParsedRenamedFiles>;
+}): FileChange[] {
+  const { line, renamedFiles } = params;
+  const [additions = "0", deletions = "0", rawPath = ""] = line.split(/\t/);
+
+  if (rawPath.includes("=>")) {
+    let [oldPathShort, newPathShort] = rawPath
+      .split(/\s*=>\s*/)
+      .map((p) => p.trim());
+
+    oldPathShort = oldPathShort.replace("{", "");
+    newPathShort = newPathShort.replace("}", "");
+
+    const rename = Array.from(renamedFiles.values()).find(
+      (r) =>
+        r.newPath.endsWith(newPathShort) || r.oldPath.endsWith(oldPathShort),
+    );
+
+    const oldPath = rename?.oldPath ?? oldPathShort;
+    const newPath = rename?.newPath ?? newPathShort;
+
+    return [
+      {
+        path: oldPath,
+        status: "deleted" as const,
+        additions: 0,
+        deletions: 1,
+        ...FileUtil.getFileType({ path: oldPath }),
+      },
+      {
+        path: newPath,
+        status: "added" as const,
+        additions: 1,
+        deletions: 0,
+        ...FileUtil.getFileType({ path: newPath }),
+      },
+    ];
+  }
+
+  return [
+    {
+      path: rawPath,
+      status: "modified" as const,
+      additions: parseInt(additions, 10) || 0,
+      deletions: parseInt(deletions, 10) || 0,
+      ...FileUtil.getFileType({ path: rawPath }),
+    },
+  ];
+}
+
 export class GitService extends BaseService {
   private readonly parser: CommitParser;
   private readonly gitConfig: RuntimeGitConfig;
@@ -108,40 +193,72 @@ export class GitService extends BaseService {
     }
   }
 
-  async getStagedChanges(): Promise<FileChange[]> {
+  async getFileChanges(params: { staged: boolean }): Promise<FileChange[]> {
     try {
-      this.logger.debug("Getting staged changes");
-      const output = await this.execGit({
-        command: "diff",
-        args: ["--cached", "--numstat"],
+      const type = params.staged ? "staged" : "unstaged";
+      this.logger.debug(`Getting ${type} changes`);
+
+      const statusOutput = await this.execGit({
+        command: "status",
+        args: ["--porcelain"],
         cwd: this.cwd,
       });
 
-      if (!output.trim()) {
-        this.logger.debug("No staged changes found");
-        return [];
-      }
+      const renamedFiles = parseGitStatus({
+        statusOutput,
+        filterPrefix: params.staged ? "R" : " R",
+      });
 
-      const files = output
+      const numstatOutput = await this.execGit({
+        command: "diff",
+        args: params.staged ? ["--cached", "--numstat"] : ["--numstat"],
+        cwd: this.cwd,
+      });
+
+      const files = numstatOutput
         .split("\n")
         .filter(Boolean)
-        .map((line) => {
-          const [additions = "0", deletions = "0", path = ""] =
-            line.split(/\s+/);
-          return {
-            path,
-            additions: parseInt(additions, 10) || 0,
-            deletions: parseInt(deletions, 10) || 0,
-            ...FileUtil.getFileType({ path }),
-          };
+        .flatMap((line) => parseNumstatLine({ line, renamedFiles }));
+
+      if (!params.staged) {
+        const untrackedOutput = await this.execGit({
+          command: "ls-files",
+          args: ["--others", "--exclude-standard"],
+          cwd: this.cwd,
         });
 
-      this.logger.debug("Staged files:", files);
+        if (untrackedOutput.trim()) {
+          const untrackedFiles = untrackedOutput
+            .split("\n")
+            .filter(Boolean)
+            .map((path) => ({
+              path: path.trim(),
+              additions: 0,
+              deletions: 0,
+              status: "untracked" as const,
+              ...FileUtil.getFileType({ path }),
+            }));
+          files.push(...untrackedFiles);
+        }
+      }
+
+      this.logger.debug(`${type} files:`, files);
       return files;
     } catch (error) {
-      this.logger.error("Failed to get staged changes:", error);
+      this.logger.error(
+        `Failed to get ${params.staged ? "staged" : "unstaged"} changes:`,
+        error,
+      );
       return [];
     }
+  }
+
+  async getStagedChanges(): Promise<FileChange[]> {
+    return this.getFileChanges({ staged: true });
+  }
+
+  async getUnstagedChanges(): Promise<FileChange[]> {
+    return this.getFileChanges({ staged: false });
   }
 
   async getStagedDiff(): Promise<string> {
@@ -489,67 +606,6 @@ export class GitService extends BaseService {
     } catch (error) {
       this.logger.error("Failed to get hooks path:", error);
       throw error;
-    }
-  }
-
-  async getUnstagedChanges(): Promise<FileChange[]> {
-    try {
-      this.logger.debug("Getting unstaged changes");
-      const changes: FileChange[] = [];
-
-      // Get modified but unstaged files
-      const modifiedOutput = await this.execGit({
-        command: "diff",
-        args: ["--numstat"],
-        cwd: this.cwd,
-      });
-
-      // Parse modified files
-      if (modifiedOutput.trim()) {
-        const modifiedFiles = modifiedOutput
-          .split("\n")
-          .filter(Boolean)
-          .map((line) => {
-            const [additions = "0", deletions = "0", path = ""] =
-              line.split(/\s+/);
-            return {
-              path,
-              additions: parseInt(additions, 10) || 0,
-              deletions: parseInt(deletions, 10) || 0,
-              status: "modified",
-              ...FileUtil.getFileType({ path }),
-            };
-          });
-        changes.push(...modifiedFiles);
-      }
-
-      // Get untracked files
-      const untrackedOutput = await this.execGit({
-        command: "ls-files",
-        args: ["--others", "--exclude-standard"],
-        cwd: this.cwd,
-      });
-
-      // Parse untracked files
-      if (untrackedOutput.trim()) {
-        const untrackedFiles = untrackedOutput
-          .split("\n")
-          .filter(Boolean)
-          .map((path) => ({
-            path: path.trim(),
-            additions: 0,
-            deletions: 0,
-            status: "untracked",
-            ...FileUtil.getFileType({ path }),
-          }));
-        changes.push(...untrackedFiles);
-      }
-
-      this.logger.debug("Unstaged files:", changes);
-      return changes;
-    } catch (error) {
-      this.logger.error("Failed to get unstaged changes:", error);
-      return [];
     }
   }
 

@@ -146,7 +146,7 @@ export const branchFeaturesTest: E2ETest = {
     const results: TestResult[] = [];
 
     for (const scenario of scenariosToRun) {
-      results.push(await runScenario(scenario, logger));
+      results.push(await runScenario({ scenario, logger }));
     }
 
     return results;

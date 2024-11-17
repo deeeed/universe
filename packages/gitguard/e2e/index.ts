@@ -1,3 +1,4 @@
+import { Command } from "commander";
 import { runTests } from "./runner.js";
 
 // Register unhandled rejection handler first
@@ -8,24 +9,19 @@ process.on("unhandledRejection", (reason, promise) => {
 
 void (async (): Promise<void> => {
   try {
-    // Get all command line arguments after the script name
-    const args = process.argv.slice(2);
+    const program = new Command();
 
-    const options: Record<string, string> = {};
+    program
+      .option("--tests <suite>", "Test suite to run")
+      .option("--scenario <name>", "Specific scenario to run")
+      .option("--interactive", "Run in interactive mode")
+      .option("--debug", "Run in debug mode");
 
-    // Parse command line arguments
-    args.forEach((arg) => {
-      if (arg.startsWith("--")) {
-        const [key, value] = arg.slice(2).split("=");
-        if (value !== undefined) {
-          options[key] = value;
-        } else {
-          options[key] = "true";
-        }
-      }
-    });
+    program.parse();
 
-    await runTests(options);
+    const options = program.opts();
+
+    await runTests({ options });
   } catch (error) {
     console.error("Failed to run tests:", error);
     process.exit(1);
