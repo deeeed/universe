@@ -77,7 +77,7 @@ export class BranchAnalysisController {
         const [additions = "0", deletions = "0", path = ""] = line.split(/\s+/);
         return {
           path,
-          status: "M", // Modified
+          status: "modified",
           additions: parseInt(additions, 10),
           deletions: parseInt(deletions, 10),
           ...FileUtil.getFileType({ path }),
