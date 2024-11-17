@@ -8,7 +8,7 @@ ai:
   provider: openai
   model: gpt-4
 template: |
-  Analyze these git changes and determine if they should be split into multiple commits.
+  Analyze these git changes and determine if they should be split into multiple atomic commits.
 
   Files Changed:
   {{#each files}}
@@ -22,28 +22,25 @@ template: |
   {{diff}}
   ```
 
-  Please provide analysis in this JSON format:
+  Provide analysis in this JSON format:
   {
-    "reason": "explanation why changes should be split OR why they work well together (max 100 chars)",
+    "reason": "explanation why changes should be split (max 100 chars)",
     "suggestions": [
       {
-        "message": "conventional commit message",
-        "files": ["list of files"],
-        "order": 1,
-        "type": "commit type (feat|fix|refactor|etc)",
-        "scope": "affected component or area"
+        "message": "descriptive message without type/scope",
+        "files": ["list of files for this commit"],
+        "order": "number (1-based)",
+        "type": "feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert",
+        "scope": "affected package or component"
       }
-    ],
-    "commands": [
-      "git commands to execute the split"
     ]
   }
 
   Guidelines:
-  1. If changes are cohesive, return empty suggestions array
-  2. Only suggest splits for truly separate concerns
-  3. Keep related changes together (e.g., component + types + tests)
-  4. Follow conventional commits format
-  5. Order suggestions by importance (1 being most important)
-  6. Consider package boundaries
-  7. Provide clear git commands for implementation
+  1. Each commit must be atomic and self-contained
+  2. Group related changes together (e.g., component + types + tests)
+  3. Use descriptive messages that explain the change
+  4. Follow conventional commit types strictly
+  5. Order suggestions by logical dependency (1 being most foundational)
+  6. Consider package boundaries when detecting scope
+  7. Include all files from original commit

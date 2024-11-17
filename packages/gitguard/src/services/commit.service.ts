@@ -21,6 +21,10 @@ import { GitService } from "./git.service.js";
 import { SecurityService } from "./security.service.js";
 import { DEFAULT_TEMPERATURE } from "../constants.js";
 import { TemplateResult } from "../utils/shared-ai-controller.util.js";
+import {
+  validateCommitSuggestion,
+  validateSplitSuggestion,
+} from "../utils/ai-response-validator.util.js";
 
 export class CommitService extends BaseService {
   private readonly git: GitService;
@@ -150,71 +154,62 @@ export class CommitService extends BaseService {
     templateResult?: TemplateResult;
   }): Promise<CommitSuggestion[] | undefined> {
     const { templateResult } = params;
+    this.logger.debug("Generating AI suggestions with params:", {
+      needsDetailedMessage: params.needsDetailedMessage,
+      hasTemplateResult: !!templateResult,
+      hasSimulatedResponse: !!templateResult?.simulatedResponse,
+    });
 
-    // Handle simulated response if present
-    if (templateResult?.simulatedResponse) {
-      try {
-        const simulatedSuggestions = templateResult.simulatedResponse as {
-          suggestions: CommitSuggestion[];
-        };
-
-        if (!simulatedSuggestions?.suggestions?.length) {
-          this.logger.warn(
-            "Invalid simulated response format - expected { suggestions: CommitSuggestion[] }",
-          );
-          return undefined;
-        }
-
-        this.logger.debug(
-          "Processing simulated suggestions:",
-          simulatedSuggestions,
-        );
-        return simulatedSuggestions.suggestions;
-      } catch (error) {
-        this.logger.error("Failed to process simulated suggestions:", error);
-        return undefined;
-      }
-    }
-
-    // Original API call logic
     if (!this.ai) {
       this.logger.debug("AI service not configured");
       return undefined;
     }
 
     const { template, renderedPrompt } = templateResult ?? {};
-    if (!renderedPrompt) throw new Error("No prompt provided");
+    if (!renderedPrompt) {
+      this.logger.error("No prompt provided");
+      throw new Error("No prompt provided");
+    }
 
     try {
-      const suggestions = await this.ai.generateCompletion<{
-        suggestions: CommitSuggestion[];
-      }>({
-        prompt: renderedPrompt,
-        options: {
-          requireJson: true,
-          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
-          systemPrompt:
-            template?.systemPrompt ??
-            `You are a git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format. 
-            Each suggestion must include:
-            - title: the description without type/scope
-            - message: optional detailed explanation (${params.needsDetailedMessage ? "required" : "optional"} for this commit)
-            - type: conventional commit type
+      let response = templateResult?.simulatedResponse;
 
-            ${params.needsDetailedMessage ? "Include detailed message for complex changes." : "Keep suggestions concise with title only."}
-            Only use the provided scope if one is specified.`,
-        },
+      // Handle AI request if no simulated response
+      if (!response) {
+        this.logger.debug("Sending AI request with:", {
+          promptLength: renderedPrompt.length,
+          temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
+          hasSystemPrompt: !!template?.systemPrompt,
+        });
+
+        response = await this.ai.generateCompletion<unknown>({
+          prompt: renderedPrompt,
+          options: {
+            requireJson: true,
+            temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
+            systemPrompt:
+              template?.systemPrompt ??
+              CommitService.SUGGESTION_SYSTEM_PROMPT(
+                params.needsDetailedMessage ?? false,
+              ),
+          },
+        });
+      } else {
+        this.logger.debug("Using simulated response:", response);
+      }
+
+      const validation = validateCommitSuggestion({
+        response,
+        logger: this.logger,
       });
 
-      this.logger.debug("AI response:", suggestions);
-
-      if (!suggestions?.suggestions?.length) {
-        this.logger.warn("No suggestions received from AI service");
-        this.logger.debug("Raw AI response:", suggestions);
+      if (!validation.isValid) {
+        this.logger.warn("Suggestions validation failed:", validation.error);
         return undefined;
       }
 
-      return suggestions.suggestions;
+      this.logger.debug("Returning validated suggestions:", validation.data);
+      return validation.data;
     } catch (error) {
       this.logger.error("Failed to generate AI suggestions:", error);
       return undefined;
@@ -281,26 +276,73 @@ export class CommitService extends BaseService {
   }
 
   public async generateAISplitSuggestion(params: {
-    templateResult?: TemplateResult;
+    templateResult: TemplateResult;
   }): Promise<CommitSplitSuggestion | undefined> {
+    this.logger.debug("Generating AI split suggestion with params:", {
+      hasTemplateResult: !!params.templateResult,
+      hasSimulatedResponse: !!params.templateResult?.simulatedResponse,
+    });
+
     if (!this.ai) {
       this.logger.debug("AI service not configured");
       return undefined;
     }
 
-    const { template, renderedPrompt } = params.templateResult ?? {};
+    const { templateResult } = params;
+    const {
+      template,
+      renderedPrompt,
+      renderedSystemPrompt,
+      simulatedResponse,
+    } = templateResult ?? {};
 
-    if (!renderedPrompt) throw new Error("No prompt provided");
+    if (!renderedPrompt) {
+      this.logger.error("No prompt provided");
+      throw new Error("No prompt provided");
+    }
 
     try {
-      return await this.ai.generateCompletion<CommitSplitSuggestion>({
-        prompt: renderedPrompt,
-        options: {
-          requireJson: true,
+      let response = simulatedResponse;
+
+      // Handle AI request if no simulated response
+      if (!response) {
+        this.logger.debug("Sending AI request with:", {
+          promptLength: renderedPrompt.length,
           temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
-          systemPrompt: template?.systemPrompt ?? "",
-        },
+          hasSystemPrompt: !!renderedSystemPrompt,
+        });
+
+        response = await this.ai.generateCompletion<unknown>({
+          prompt: renderedPrompt,
+          options: {
+            requireJson: true,
+            temperature: template?.ai?.temperature ?? DEFAULT_TEMPERATURE,
+            systemPrompt:
+              renderedSystemPrompt ?? CommitService.COMMIT_SPLIT_SYSTEM_PROMPT,
+          },
+        });
+      } else {
+        this.logger.debug("Using simulated response:", response);
+      }
+
+      const validation = validateSplitSuggestion({
+        response,
+        logger: this.logger,
       });
+
+      if (!validation.isValid) {
+        this.logger.warn(
+          "Split suggestion validation failed:",
+          validation.error,
+        );
+        return undefined;
+      }
+
+      this.logger.debug(
+        "Returning validated split suggestion:",
+        validation.data,
+      );
+      return validation.data;
     } catch (error) {
       this.logger.error("Failed to generate AI split suggestion:", error);
       return undefined;
@@ -579,4 +621,58 @@ export class CommitService extends BaseService {
       ),
     ];
   }
+
+  private static readonly SUGGESTION_SYSTEM_PROMPT = (
+    needsDetailedMessage: boolean,
+  ): string => `You are a git commit message assistant. Generate conventional commit format suggestions based on the changes.
+
+Expected response format:
+{
+  "suggestions": [
+    {
+      "title": string, // Description without type/scope
+      "message": string | null, // ${needsDetailedMessage ? "Required detailed explanation" : "Optional explanation"}
+      "type": string // One of: ${CommitService.CONVENTIONAL_COMMIT_PATTERN.types.join("|")}
+    }
+  ]
+}
+
+Guidelines:
+1. Use clear, concise language
+2. Explain what and why, not how
+3. Follow conventional commit types strictly
+4. Keep titles under 72 characters
+5. Include breaking change marker (!) when needed
+6. ${needsDetailedMessage ? "Include detailed message for all changes" : "Add detailed message only for complex changes"}
+7. Focus on the impact of the change`;
+
+  private static readonly COMMIT_SPLIT_SYSTEM_PROMPT = `You are a git commit organization assistant specializing in atomic commits and conventional commit format.
+
+Expected response format:
+{
+  "reason": string, // Clear explanation why the split is needed (max 100 chars)
+  "suggestions": [
+    {
+      "message": string, // Descriptive message without type/scope
+      "files": string[], // Array of related file paths
+      "order": number, // Logical order (1-based)
+      "type": string, // One of: ${CommitService.CONVENTIONAL_COMMIT_PATTERN.types.join("|")}
+      "scope": string // Package or component name
+    }
+  ]
+}
+
+Key principles:
+1. Atomic commits: Each commit should be self-contained and independently functional
+2. Related changes: Keep together files that implement a single change
+3. Clear boundaries: Respect package and component boundaries
+4. Logical ordering: Order commits from most foundational to most dependent
+5. Descriptive messages: Explain what and why, not how
+6. Complete changes: Include all necessary files for each change
+
+Common patterns:
+- Component changes: Group component + types + tests + stories
+- Package changes: Keep package-specific changes together
+- Cross-cutting changes: Split by affected subsystem
+- Infrastructure changes: Group related config files`;
 }

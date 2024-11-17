@@ -151,6 +151,7 @@ export class CommitAIController {
               if (aiSuggestions?.suggestions?.length) {
                 return {
                   ...params.result,
+                  skipFurtherSuggestions: true,
                   splitSuggestion: {
                     ...aiSuggestions,
                     suggestions: aiSuggestions.suggestions,

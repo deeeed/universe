@@ -4,6 +4,7 @@ import { GitService } from "../../services/git.service.js";
 import { LoggerService } from "../../services/logger.service.js";
 import { ReporterService } from "../../services/reporter.service.js";
 import { SecurityService } from "../../services/security.service.js";
+import { TemplateRegistry } from "../../services/template/template-registry.js";
 import { AIProvider } from "../../types/ai.types.js";
 import { CommitAnalysisResult } from "../../types/analysis.types.js";
 import { Config } from "../../types/config.types.js";
@@ -16,7 +17,7 @@ import { promptYesNo } from "../../utils/user-prompt.util.js";
 import { CommitAIController } from "./commit-ai.controller.js";
 import { CommitAnalysisController } from "./commit-analysis.controller.js";
 import { CommitSecurityController } from "./commit-security.controller.js";
-import { TemplateRegistry } from "../../services/template/template-registry.js";
+import { CommitSplitController } from "./commit-split.controller.js";
 
 interface CommitAnalyzeParams {
   options: CommitCommandOptions;
@@ -33,8 +34,9 @@ interface ServicesContext {
 
 interface ControllersContext {
   analysisController: CommitAnalysisController;
-  securityController: CommitSecurityController;
   aiController: CommitAIController;
+  splitController: CommitSplitController;
+  securityController: CommitSecurityController;
 }
 
 interface AnalysisContext {
@@ -132,6 +134,11 @@ async function initializeControllers(
       git,
       config,
       templateRegistry,
+    }),
+    splitController: new CommitSplitController({
+      logger,
+      git,
+      config,
     }),
   };
 }
@@ -255,7 +262,7 @@ async function handleAIAnalysis({
     return updatedResult;
   }
 
-  if (result.complexity.needsStructure) {
+  if (result.complexity.needsStructure || options.split) {
     logger.info("\n🔄 Analyzing commit structure with AI...");
     const securityResult: SecurityCheckResult = result.securityResult ?? {
       secretFindings: [],
@@ -377,7 +384,7 @@ async function handleAnalysis(
   services: ServicesContext,
 ): Promise<CommitAnalysisResult> {
   const { logger, reporter } = services;
-  const { analysisController } = controllers;
+  const { analysisController, splitController } = controllers;
   const { filesToAnalyze } = context;
 
   const securityResult = await handleSecurityChecks({
@@ -396,24 +403,6 @@ async function handleAnalysis(
     securityResult,
   });
 
-  if (options.split) {
-    logger.info("\n🔄 Analyzing commit structure for splitting...");
-    result = await controllers.aiController.handleSplitSuggestions({
-      result,
-      files: filesToAnalyze,
-      message: options.message,
-      securityResult,
-      enableAI: true,
-    });
-
-    if (result.skipFurtherSuggestions) {
-      logger.info(
-        "\n✨ Split analysis complete - please use the suggestions to split your commits.",
-      );
-      return result;
-    }
-  }
-
   logger.info("\n📊 Initial Analysis Report");
   analysisController.displayAnalysisResults(result);
   reporter.generateReport({ result, options: {} });
@@ -425,6 +414,32 @@ async function handleAnalysis(
     services,
     controllers,
   });
+
+  logger.debug("AI analysis result:", result);
+
+  // If split was successful, let the split controller handle the execution
+  if (result.splitSuggestion) {
+    const splitResult = await splitController.handleSplitSuggestion({
+      suggestion: result.splitSuggestion,
+      originalMessage: options.message ?? "",
+      files: filesToAnalyze,
+    });
+
+    logger.debug("Split result:", splitResult);
+    if (splitResult.success) {
+      return {
+        ...result,
+        skipFurtherSuggestions: true,
+      };
+    }
+  }
+
+  if (result.skipFurtherSuggestions) {
+    logger.info(
+      "\n✨ Split analysis complete - please use the suggestions to split your commits.",
+    );
+    return result;
+  }
 
   logger.info("\n📊 Final Analysis Report");
   if (result.formattedMessage) {
