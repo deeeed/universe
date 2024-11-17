@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import { existsSync } from "fs";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
@@ -6,12 +7,14 @@ import { main } from "../src/cli/gitguard.js";
 import { LoggerService } from "../src/services/logger.service.js";
 import { execGit } from "../src/utils/git.util.js";
 import {
+  BranchInfo,
   ExpectedResult,
   RepoState,
   TestResult,
+  TestResultDetails,
   TestScenario,
 } from "./tests.types.js";
-import { existsSync } from "fs";
+import chalk from "chalk";
 
 function execGitCommand(command: string, cwd: string): string {
   return execSync(command, {
@@ -60,9 +63,49 @@ function buildCommandArgs(
   return commandArgs;
 }
 
+interface GetBranchDetailsParams {
+  branch: string;
+  cwd: string;
+}
+
+function getBranchDetails({ branch, cwd }: GetBranchDetailsParams): BranchInfo {
+  const commits = execGitCommand(
+    `git log ${branch} --pretty=format:"%H|%s|%an|%ad" --date=iso`,
+    cwd,
+  )
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      const [hash, message, author, date] = line.split("|");
+      return { hash, message, author, date };
+    });
+
+  return {
+    name: branch,
+    commits,
+  };
+}
+
 async function captureRepoState(testDir: string): Promise<RepoState> {
   const status = execSync("git status --short", { cwd: testDir }).toString();
   const log = execGitCommand("git log --pretty=format:'%s'", testDir);
+
+  // Get branch information
+  const currentBranch = execGitCommand(
+    "git rev-parse --abbrev-ref HEAD",
+    testDir,
+  ).trim();
+  const allBranches = execGitCommand(
+    "git branch --format='%(refname:short)'",
+    testDir,
+  )
+    .split("\n")
+    .filter(Boolean);
+
+  // Get detailed information for each branch
+  const branchDetails = allBranches.map((branch) =>
+    getBranchDetails({ branch, cwd: testDir }),
+  );
 
   const files = execSync("git ls-files", { cwd: testDir })
     .toString()
@@ -89,6 +132,11 @@ async function captureRepoState(testDir: string): Promise<RepoState> {
     log,
     files: await Promise.all(files),
     config,
+    branches: {
+      current: currentBranch,
+      all: allBranches,
+      details: branchDetails,
+    },
   };
 }
 
@@ -133,6 +181,9 @@ export async function verifyExpectedResult({
   expected: ExpectedResult;
   logger: LoggerService;
 }): Promise<void> {
+  const currentState = await captureRepoState(testDir);
+  logger.info(formatRepoState({ state: currentState }));
+
   await verifyFiles(testDir, expected.files, logger);
   await verifyGitState(testDir, expected.git, logger);
 }
@@ -270,6 +321,27 @@ async function setupTestRepo(
       }
     }
 
+    // Handle renamed files if specified in setup
+    if (scenario.setup.renamedFiles) {
+      for (const rename of scenario.setup.renamedFiles) {
+        // Create the original file
+        const originalPath = join(testDir, rename.oldPath);
+        await mkdir(dirname(originalPath), { recursive: true });
+        await writeFile(originalPath, rename.content);
+        execGitCommand(`git add "${rename.oldPath}"`, testDir);
+        execGitCommand(`git commit -m "Add ${rename.oldPath}"`, testDir);
+
+        // Rename the file
+        execGitCommand(
+          `git mv "${rename.oldPath}" "${rename.newPath}"`,
+          testDir,
+        );
+        logger.debug(
+          `Renamed file from ${rename.oldPath} to ${rename.newPath}`,
+        );
+      }
+    }
+
     // Apply additional changes if specified
     if (scenario.setup.changes) {
       for (const change of scenario.setup.changes) {
@@ -316,10 +388,76 @@ async function setupTestRepo(
   }
 }
 
-export async function runScenario(
-  scenario: TestScenario,
-  logger: LoggerService,
-): Promise<TestResult> {
+interface FormatRepoStateParams {
+  state: RepoState;
+  label?: string;
+}
+
+interface RunScenarioParams {
+  scenario: TestScenario;
+  logger: LoggerService;
+}
+
+function formatRepoState({
+  state,
+  label = "Repository State",
+}: FormatRepoStateParams): string {
+  return `
+${chalk.cyan(`📁 ${label}:`)}
+${chalk.yellow("Git Status:")} ${state.status || "(empty)"}
+
+${chalk.yellow("Git History:")}
+${state.log
+  .split("\n")
+  .map((line) => `${chalk.gray("•")} ${line}`)
+  .join("\n")}
+
+${chalk.yellow("Branches:")}
+${chalk.blue("Current:")} ${chalk.green(state.branches.current)}
+${chalk.blue("All Branches:")} ${state.branches.all.map((b) => chalk.green(b)).join(", ")}
+
+${state.branches.details
+  .map(
+    (branch) => `
+${chalk.blue("Branch:")} ${chalk.green(branch.name)}
+${chalk.magenta("Commits:")}
+${branch.commits
+  .map(
+    (commit) =>
+      `${chalk.gray("•")} ${commit.message} ${chalk.dim(`(${commit.author})`)}`,
+  )
+  .join("\n")}`,
+  )
+  .join("\n")}`;
+}
+
+interface FormatTestResultParams {
+  success: boolean;
+  message: string;
+  details: TestResultDetails;
+}
+
+export function formatTestResult({
+  success,
+  message,
+  details,
+}: FormatTestResultParams): string {
+  const statusIcon = success ? "✅" : "❌";
+
+  return `
+${chalk.cyan(`📊 Test Result: ${statusIcon} ${message}`)}
+
+${chalk.yellow(`📝 Command: ${details.command}`)}
+
+${formatRepoState({ state: details.initialState, label: "Initial Repository State" })}
+
+${formatRepoState({ state: details.finalState, label: "Final Repository State" })}`;
+}
+
+export async function runScenario({
+  scenario,
+  logger,
+}: RunScenarioParams): Promise<TestResult> {
   const isDebug = process.argv.includes("--debug");
 
   const enhancedScenario = isDebug
@@ -362,22 +500,51 @@ export async function runScenario(
       await main();
       const finalState = await captureRepoState(testDir);
 
-      return {
+      // Debug output for development
+      logger.debug("\n📁 Repository State Changes:", {
+        initialBranches: {
+          current: initialState.branches.current,
+          all: initialState.branches.all,
+          details: initialState.branches.details,
+        },
+        finalBranches: {
+          current: finalState.branches.current,
+          all: finalState.branches.all,
+          details: finalState.branches.details,
+        },
+      });
+
+      const result = {
         success: true,
-        message: `✅ ${enhancedScenario.name}`,
+        message: `✅ ${scenario.name}`,
         details: {
-          input: enhancedScenario.input.message,
+          input: scenario.input.message,
           command: args.join(" "),
           initialState,
           finalState,
         },
       };
+
+      return result;
     } finally {
       process.argv = originalArgv;
       process.chdir(originalCwd);
     }
   } catch (error) {
     logger.error(`Scenario failed: ${enhancedScenario.name}`, error);
+
+    // Create empty repo state for error cases
+    const emptyRepoState: RepoState = {
+      status: "",
+      log: "",
+      files: [],
+      branches: {
+        current: "",
+        all: [],
+        details: [],
+      },
+    };
+
     return {
       success: false,
       message: `❌ ${enhancedScenario.name}`,
@@ -387,6 +554,8 @@ export async function runScenario(
         command: enhancedScenario.input.command
           ? `${enhancedScenario.input.command.name} ${enhancedScenario.input.command.subcommand ?? ""} ${enhancedScenario.input.command.args?.join(" ") ?? ""}`
           : "No command specified",
+        initialState: emptyRepoState,
+        finalState: emptyRepoState,
       },
     };
   } finally {

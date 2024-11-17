@@ -51,6 +51,7 @@ export interface TestScenario {
     branch?: string;
     commit?: string;
     stageOnly?: boolean;
+    renamedFiles?: RenamedFile[];
   };
   input: {
     message: string;
@@ -72,6 +73,16 @@ export interface TestScenario {
   expected?: ExpectedResult;
 }
 
+export interface BranchInfo {
+  name: string;
+  commits: Array<{
+    hash: string;
+    message: string;
+    author: string;
+    date: string;
+  }>;
+}
+
 export interface RepoState {
   status: string;
   log: string;
@@ -80,18 +91,25 @@ export interface RepoState {
     content: string;
   }>;
   config?: Record<string, unknown>;
+  branches: {
+    current: string;
+    all: string[];
+    details: BranchInfo[];
+  };
+}
+
+export interface TestResultDetails {
+  input: string;
+  command: string;
+  initialState: RepoState;
+  finalState: RepoState;
 }
 
 export interface TestResult {
   success: boolean;
   message: string;
   error?: Error;
-  details?: {
-    input: string;
-    command: string;
-    initialState?: RepoState;
-    finalState?: RepoState;
-  };
+  details: TestResultDetails;
 }
 
 export interface E2ETest {
@@ -136,4 +154,10 @@ export interface CreateCommandParams {
   name: CommandName;
   subcommand: CommandSubcommand;
   args: string[];
+}
+
+interface RenamedFile {
+  oldPath: string;
+  newPath: string;
+  content: string;
 }

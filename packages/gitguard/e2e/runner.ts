@@ -8,7 +8,7 @@ import {
 import { aiSuggestionsTest } from "./scenarios/ai-suggestions.e2e.test.js";
 import { branchFeaturesTest } from "./scenarios/branch-features.e2e.test.js";
 import { commitMessageTest } from "./scenarios/commit-message.e2e.test.js";
-import { initTest } from "./scenarios/init.test.e2e.js";
+import { initTest } from "./scenarios/init.e2e.test.js";
 import { largeCommitsTest } from "./scenarios/large-commits.e2e.test.js";
 import { securityTest } from "./scenarios/security.e2e.test.js";
 import { statusTest } from "./scenarios/status.e2e.test.js";
@@ -21,6 +21,7 @@ import {
   TestSuiteKey,
   TestSuites,
 } from "./tests.types.js";
+import { formatTestResult } from "./tests.utils.js";
 
 const TEST_MAP = new Map<TestSuiteKey, E2ETest>([
   [TestSuites.COMMIT_MESSAGE, commitMessageTest],
@@ -91,67 +92,13 @@ export function displayTestResult(
   result: TestResult,
   logger: LoggerService,
 ): void {
-  logger.info("\n📊 Test Result:", result.message);
-
-  if (!result.success || !result.details) {
-    if (result.error) {
-      logger.error("Error:", result.error);
-    }
-    return;
-  }
-
-  logger.info("\n📝 Command:", chalk.cyan(result.details.command));
-
-  if (result.details.initialState) {
-    logger.info("\n📁 Initial Repository State:");
-    logger.info(
-      "Git Status:",
-      chalk.gray(result.details.initialState.status || "Clean"),
-    );
-    logger.info("Git History:", chalk.gray(result.details.initialState.log));
-  }
-
-  if (result.details.finalState) {
-    logger.info("\n📁 Final Repository State:");
-    logger.info(
-      "Git Status:",
-      chalk.gray(result.details.finalState.status || "Clean"),
-    );
-    logger.info("Git History:", chalk.gray(result.details.finalState.log));
-
-    // Show file changes
-    const changes = diffStates(
-      result.details.initialState?.files ?? [],
-      result.details.finalState.files,
-    );
-    if (changes.length) {
-      logger.info("\n📄 File Changes:");
-      changes.forEach((change) => {
-        logger.info(`${chalk.cyan(change.path)}:`);
-        logger.info(chalk.gray(change.diff));
-      });
-    }
-  }
-}
-
-function diffStates(
-  initial: Array<{ path: string; content: string }>,
-  final: Array<{ path: string; content: string }>,
-): Array<{ path: string; diff: string }> {
-  const changes: Array<{ path: string; diff: string }> = [];
-
-  // Use simple diff for now, could be enhanced with proper diff library
-  final.forEach((file) => {
-    const initialFile = initial.find((f) => f.path === file.path);
-    if (!initialFile || initialFile.content !== file.content) {
-      changes.push({
-        path: file.path,
-        diff: file.content, // Simple content display, could be enhanced with actual diff
-      });
-    }
-  });
-
-  return changes;
+  logger.info(
+    formatTestResult({
+      success: result.success,
+      message: result.message,
+      details: result.details,
+    }),
+  );
 }
 
 interface RunOptions {

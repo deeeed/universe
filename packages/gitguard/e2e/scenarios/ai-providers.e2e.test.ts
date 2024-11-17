@@ -242,7 +242,7 @@ export const aiProvidersTest: E2ETest = {
 
     // Run all scenarios regardless of configuration
     for (const scenario of enhancedScenarios) {
-      results.push(await runScenario(scenario, logger));
+      results.push(await runScenario({ scenario, logger }));
     }
 
     return results;

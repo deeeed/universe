@@ -2,7 +2,12 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { LoggerService } from "../../src/services/logger.service.js";
 import { AIConfig, DeepPartial } from "../../src/types/config.types.js";
-import { E2ETest, TestResult, TestScenario } from "../tests.types.js";
+import {
+  E2ETest,
+  RepoState,
+  TestResult,
+  TestScenario,
+} from "../tests.types.js";
 import { runScenario } from "../tests.utils.js";
 
 // Create base configurations that can be reused
@@ -92,6 +97,13 @@ const scenarios: TestScenario[] = [
         {
           path: "src/api/oauth.ts",
           content: `// OAuth implementation...`,
+        },
+      ],
+      renamedFiles: [
+        {
+          oldPath: "old-name.txt",
+          newPath: "new-name.txt",
+          content: "This file will be renamed",
         },
       ],
       stageOnly: true,
@@ -227,6 +239,13 @@ const scenarios: TestScenario[] = [
           maxPromptTokens: 4000,
         },
       },
+      renamedFiles: [
+        {
+          oldPath: "old-name.txt",
+          newPath: "new-name.txt",
+          content: "This file will be renamed",
+        },
+      ],
       changes: [
         {
           path: "packages/app/src/features/user/profile.ts",
@@ -612,11 +631,31 @@ export const aiSuggestionsTest: E2ETest = {
       !aiConfig.apiVersion ||
       !aiConfig.apiKey
     ) {
+      // Create empty repo state for skipped tests
+      const emptyRepoState: RepoState = {
+        status: "",
+        log: "",
+        files: [],
+        branches: {
+          current: "",
+          all: [],
+          details: [],
+        },
+      };
+
       return (selectedScenarios ?? scenarios).map((scenario) => ({
         scenario,
         success: true,
         skipped: true,
         message: "Skipped - Missing Azure OpenAI configuration",
+        details: {
+          input: scenario.input.message,
+          command: scenario.input.command
+            ? `${scenario.input.command.name} ${scenario.input.command.subcommand ?? ""} ${scenario.input.command.args?.join(" ") ?? ""}`
+            : "No command specified",
+          initialState: emptyRepoState,
+          finalState: emptyRepoState,
+        },
       }));
     }
 
@@ -639,7 +678,7 @@ export const aiSuggestionsTest: E2ETest = {
     }));
 
     for (const scenario of enhancedScenarios) {
-      results.push(await runScenario(scenario, logger));
+      results.push(await runScenario({ scenario, logger }));
     }
 
     return results;
