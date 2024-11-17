@@ -149,13 +149,40 @@ export class CommitService extends BaseService {
     needsDetailedMessage?: boolean;
     templateResult?: TemplateResult;
   }): Promise<CommitSuggestion[] | undefined> {
+    const { templateResult } = params;
+
+    // Handle simulated response if present
+    if (templateResult?.simulatedResponse) {
+      try {
+        const simulatedSuggestions = templateResult.simulatedResponse as {
+          suggestions: CommitSuggestion[];
+        };
+
+        if (!simulatedSuggestions?.suggestions?.length) {
+          this.logger.warn(
+            "Invalid simulated response format - expected { suggestions: CommitSuggestion[] }",
+          );
+          return undefined;
+        }
+
+        this.logger.debug(
+          "Processing simulated suggestions:",
+          simulatedSuggestions,
+        );
+        return simulatedSuggestions.suggestions;
+      } catch (error) {
+        this.logger.error("Failed to process simulated suggestions:", error);
+        return undefined;
+      }
+    }
+
+    // Original API call logic
     if (!this.ai) {
       this.logger.debug("AI service not configured");
       return undefined;
     }
 
-    const { template, renderedPrompt } = params.templateResult ?? {};
-
+    const { template, renderedPrompt } = templateResult ?? {};
     if (!renderedPrompt) throw new Error("No prompt provided");
 
     try {

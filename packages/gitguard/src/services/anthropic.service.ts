@@ -15,7 +15,7 @@ export interface AnthropicConfig {
 
 const ANTHROPIC_MODELS = {
   CLAUDE_3_OPUS: "claude-3-opus-20240229",
-  CLAUDE_3_SONNET: "claude-3-sonnet-20240229",
+  CLAUDE_3_SONNET: "claude-3-5-sonnet-20241022",
   CLAUDE_3_HAIKU: "claude-3-haiku-20240229",
   CLAUDE_2_1: "claude-2.1",
   CLAUDE_2: "claude-2",
@@ -33,6 +33,7 @@ export class AnthropicService extends BaseService implements AIProvider {
   constructor(params: ServiceOptions & { config: AnthropicConfig }) {
     super(params);
     this.config = params.config;
+
     this.client = new Anthropic({
       apiKey: this.config.anthropic.apiKey,
     });
@@ -51,6 +52,18 @@ export class AnthropicService extends BaseService implements AIProvider {
     };
   }): Promise<T> {
     try {
+      // Add debug logging for configuration
+      const maskedApiKey = this.config.anthropic.apiKey
+        ? `${this.config.anthropic.apiKey.slice(0, 4)}...${this.config.anthropic.apiKey.slice(-4)}`
+        : "not set";
+
+      this.logger.debug("Anthropic Service Configuration:", {
+        model: this.config.anthropic.model,
+        maxTokens: this.config.anthropic.maxTokens,
+        apiKeyLength: this.config.anthropic.apiKey?.length ?? 0,
+        maskedApiKey,
+      });
+
       // Calculate and log token usage for input
       const inputTokens = this.calculateTokenUsage({ prompt: params.prompt });
       this.logger.debug("Completion request details:", {

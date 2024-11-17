@@ -220,7 +220,7 @@ export class CommitAIController {
       ai: this.ai,
       generateLabel: "Generate commit message suggestions",
       actionHandler: async (action, templateResult) => {
-        if (action.startsWith("generate-") && this.ai && templateResult) {
+        if (action.startsWith("generate-") && templateResult) {
           const suggestions = await this.commitService.generateAISuggestions({
             needsDetailedMessage: result.complexity.needsStructure,
             templateResult,

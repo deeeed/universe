@@ -17,6 +17,7 @@ import { checkAILimits } from "./ai-limits.util.js";
 import { copyToClipboard } from "./clipboard.util.js";
 import { formatDiffForAI } from "./diff.util.js";
 import { selectTemplateChoice } from "./template-choice.util.js";
+import { editor } from "@inquirer/prompts";
 
 // Base interface for shared dependencies
 interface BaseAIParams {
@@ -107,6 +108,107 @@ function calculateDiffScore(params: {
   });
 
   return tokenCount <= maxTokens ? 1 : 0;
+}
+
+interface HandleSimulationParams {
+  logger: Logger;
+  templateResult: TemplateResult;
+}
+
+function truncateMultilineString(text: string, maxLines: number): string {
+  const lines = text.split("\n");
+  if (lines.length <= maxLines) return text;
+
+  const halfLines = Math.floor(maxLines / 2);
+  const firstHalf = lines.slice(0, halfLines);
+  const secondHalf = lines.slice(-halfLines);
+
+  return [
+    ...firstHalf,
+    chalk.yellow(`\n  [...${lines.length - maxLines} more lines...]`),
+    ...secondHalf,
+  ].join("\n");
+}
+
+async function handleSimulation({
+  logger,
+  templateResult,
+}: HandleSimulationParams): Promise<unknown> {
+  const { template, renderedPrompt, renderedSystemPrompt, tokenUsage } =
+    templateResult;
+
+  logger.info(chalk.cyan("\n📋 Template Preview"));
+  logger.info("━".repeat(50));
+
+  // Display model settings
+  logger.info(
+    chalk.yellow("🎯 Model Settings:") +
+      chalk.dim(`\n  Temperature: ${template.ai?.temperature ?? "default"}`) +
+      (tokenUsage
+        ? chalk.dim(`\n  Estimated Cost: ${tokenUsage.estimatedCost}`)
+        : "") +
+      (tokenUsage ? chalk.dim(`\n  Token Count: ${tokenUsage.count}`) : ""),
+  );
+
+  // Display truncated system prompt
+  if (renderedSystemPrompt) {
+    const truncatedSystemPrompt = truncateMultilineString(
+      renderedSystemPrompt,
+      10,
+    );
+    logger.info(
+      chalk.yellow("\n🤖 System Prompt:") +
+        chalk.dim(
+          `\n${truncatedSystemPrompt
+            .split("\n")
+            .map((line) => `  ${line}`)
+            .join("\n")}`,
+        ),
+    );
+  }
+
+  // Display truncated user prompt
+  const truncatedPrompt = truncateMultilineString(renderedPrompt, 10);
+  logger.info(
+    chalk.yellow("\n💬 User Prompt:") +
+      chalk.dim(
+        `\n${truncatedPrompt
+          .split("\n")
+          .map((line) => `  ${line}`)
+          .join("\n")}`,
+      ),
+  );
+
+  logger.info("━".repeat(10));
+
+  try {
+    const jsonInput = await editor({
+      message: chalk.cyan(
+        "\n🤖 Paste the JSON response from your AI assistant (or press Esc to cancel):",
+      ),
+      postfix: ".json",
+    });
+
+    if (!jsonInput) {
+      logger.info("User skipped simulation input");
+      return undefined;
+    }
+
+    try {
+      const parsedResponse = JSON.parse(jsonInput) as unknown;
+      logger.info(
+        chalk.green("\n✅ JSON response received and parsed successfully!"),
+      );
+      return parsedResponse;
+    } catch (error) {
+      logger.error("Invalid JSON input. Skipping simulation.");
+      logger.debug("JSON parse error:", error);
+      return undefined;
+    }
+  } catch (error) {
+    logger.debug("Simulation input error:", error);
+    return undefined;
+  }
 }
 
 export function selectBestDiff({
@@ -253,6 +355,7 @@ export interface TemplateResult {
   isApi: boolean;
   label: string;
   tokenUsage?: TokenUsage;
+  simulatedResponse?: unknown;
 }
 
 function getTemplateOptions(
@@ -431,7 +534,6 @@ export async function handleAIAction<TResult>(
     return actionHandler("skip");
   }
 
-  // Rest of the action handling remains the same...
   if (
     action.startsWith("copy-") ||
     action.startsWith("generate-") ||
@@ -463,6 +565,25 @@ export async function handleAIAction<TResult>(
         logger,
       });
     }
+
+    if (action.startsWith("copy-api-")) {
+      const simulatedResponse = await handleSimulation({
+        logger,
+        templateResult,
+      });
+
+      if (simulatedResponse) {
+        // Convert copy-api action to generate action when we have a simulated response
+        const generateAction = `generate-${templateId}` as AIActionType;
+        return actionHandler(generateAction, {
+          ...templateResult,
+          simulatedResponse,
+        });
+      }
+
+      return actionHandler(action, templateResult);
+    }
+
     return actionHandler(action, templateResult);
   }
 

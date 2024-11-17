@@ -396,6 +396,24 @@ async function handleAnalysis(
     securityResult,
   });
 
+  if (options.split) {
+    logger.info("\n🔄 Analyzing commit structure for splitting...");
+    result = await controllers.aiController.handleSplitSuggestions({
+      result,
+      files: filesToAnalyze,
+      message: options.message,
+      securityResult,
+      enableAI: true,
+    });
+
+    if (result.skipFurtherSuggestions) {
+      logger.info(
+        "\n✨ Split analysis complete - please use the suggestions to split your commits.",
+      );
+      return result;
+    }
+  }
+
   logger.info("\n📊 Initial Analysis Report");
   analysisController.displayAnalysisResults(result);
   reporter.generateReport({ result, options: {} });
