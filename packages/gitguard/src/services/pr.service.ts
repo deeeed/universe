@@ -415,7 +415,7 @@ Example format:
 
 Expected response format:
 {
-  "reason": string, // Clear explanation why the split is needed
+  "reason": string, // Clear explanation why the split is needed (or why no split is needed)
   "suggestedPRs": [
     {
       "title": string, // Clear PR title
@@ -425,23 +425,40 @@ Expected response format:
       "dependencies"?: string[], // Optional dependent PRs
       "baseBranch": string // Base branch for the PR
     }
-  ],
-  "commands": string[] // Git commands to execute the split
+  ] | [], // Empty array if no split needed
+  "commands": string[] // Git commands to execute the split (empty array if no split needed)
 }
 
-Key principles:
-1. Group related changes by feature or purpose
-2. Keep dependent changes together
-3. Split unrelated changes into separate PRs
-4. Maintain clear dependencies between PRs
-5. Consider testing and documentation impact
+Important: Return empty suggestedPRs array if changes are cohesive and shouldn't be split!
 
-Guidelines:
-1. Keep component changes with their tests
-2. Group related configuration changes
-3. Split changes that affect different domains
-4. Consider deployment implications
-5. Maintain clear dependency order`;
+Key principles:
+1. Focus on main feature groups - aim for 2-3 PRs maximum
+2. Keep all related changes together (features, tests, types, styles)
+3. Only split when changes serve completely different business purposes
+4. Consider deployment impact and dependencies
+5. Prefer fewer, well-organized PRs over many granular ones
+
+When to keep as single PR:
+1. Changes implement a single feature or fix
+2. Related refactoring across multiple files/packages
+3. Changes are tightly coupled or interdependent
+4. Small to medium-sized changes across related areas
+5. Infrastructure changes that need to be deployed together
+
+Guidelines for grouping:
+1. Primary Features: Group all files implementing a main feature together
+2. Supporting Changes: Include tests, types, and styles with their feature
+3. Infrastructure: Group all related config/setup changes together
+4. Cross-package Changes: Keep changes together if they implement a single feature
+5. Documentation: Include with the feature it documents
+
+When to avoid splitting:
+1. Don't split by technical type (tests, types, styles)
+2. Don't split by package if changes are part of the same feature
+3. Don't create separate PRs for small related changes
+4. Don't split refactoring that affects multiple files/packages
+
+Remember: The goal is to maintain logical coherence while minimizing the number of PRs. If changes are cohesive, return an empty suggestion rather than forcing a split.`;
 
   public checkSize(params: { stats: PRStats }): AnalysisWarning[] {
     const warnings: AnalysisWarning[] = [];
