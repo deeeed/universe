@@ -6,18 +6,6 @@ active: true
 ai:
   provider: openai
   model: gpt-4
-systemPrompt: |
-  You are an expert git commit message assistant. Generate 3 distinct conventional commit format suggestions in JSON format.
-  Each suggestion must include:
-  - title: the description without type/scope
-  - message: ({{#if includeDetails}}required{{else}}optional{{/if}}) for this commit
-  - type: conventional commit type
-
-  {{#if includeDetails}}
-  Include detailed high level summary of the changes in the details field
-  {{else}}
-  Keep suggestions concise with title only.
-  {{/if}}
 template: |
   Analyze these git changes and suggest commit messages following conventional commits format.
 
@@ -61,11 +49,21 @@ template: |
   {{diff}}
   ```
 
-  Please provide suggestions in this JSON format:
+  Please provide exactly 3 different suggestions in this JSON format:
   {
     "suggestions": [
       {
-        "title": "short descriptive title without scope or type",
+        "title": "first alternative title without scope or type",
+        "message": "detailed explanation of the changes",
+        "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
+      },
+      {
+        "title": "second alternative title without scope or type",
+        "message": "detailed explanation of the changes",
+        "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
+      },
+      {
+        "title": "third alternative title without scope or type",
         "message": "detailed explanation of the changes",
         "type": "commit type (feat|fix|docs|style|refactor|test|chore)"
       }

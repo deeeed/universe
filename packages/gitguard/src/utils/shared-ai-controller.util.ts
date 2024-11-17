@@ -483,7 +483,7 @@ export async function handleAIAction<TResult>(
   if (templateOptions.some((t) => t.template.source === "default")) {
     logger.info(
       chalk.yellow(
-        "\n💡 Pro Tip: Using default templates. You can customize templates by running:",
+        "💡 Pro Tip: Using default templates. You can customize templates by running:",
       ) +
         "\n   gitguard template --init" +
         "\n   This will create editable templates in .gitguard/templates/",
