@@ -14,7 +14,7 @@ GitGuard helps developers maintain best practices without slowing them down.
 
 ## 🎥 Demo
 
-[![Watch the GitGuard Demo Video](./images/gitguard_demo_thumbnail.png)](./images/gitguard_demo_e2e_compressed.mp4)
+[![Watch the GitGuard Demo Video](./images/gitguard_demo_thumbnail.png)](https://deeeed.github.io/universe/gitguard/index.html)
 
 _Click the link above to watch the GitGuard demo video._
 
