@@ -10,6 +10,7 @@ import { GitService } from "../services/git.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { CommitService } from "../services/commit.service.js";
 import { LoggerService } from "../services/logger.service.js";
+import { DEFAULT_COMPLEXITY_OPTIONS } from "../constants.js";
 
 const execPromise = promisify(exec);
 
@@ -64,6 +65,7 @@ export const defaultConfig: Config = {
     maxCommitSize: 100,
     maxFileSize: 1000,
     checkConventionalCommits: true,
+    complexity: { ...DEFAULT_COMPLEXITY_OPTIONS },
   },
   debug: true,
   colors: true,
