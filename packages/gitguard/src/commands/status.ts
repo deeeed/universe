@@ -59,13 +59,21 @@ function formatConfigValue(value: unknown, defaultValue?: unknown): string {
   return chalk.white(String(value));
 }
 
-function displayConfigFeatures(
-  config: Partial<Config> | null,
-  defaultConfig: Config,
-): string[] {
-  const output: string[] = [];
+interface FormatConfigParams {
+  config: Partial<Config> | null;
+  defaultConfig: Config;
+}
 
-  // Git Configuration
+interface FormatIgnorePatternsParams {
+  config: Partial<Config> | null;
+  defaultConfig: Config;
+}
+
+function formatGitConfiguration({
+  config,
+  defaultConfig,
+}: FormatConfigParams): string[] {
+  const output: string[] = [];
   output.push(chalk.blue("\nGit Configuration:"));
   output.push(
     `  ${ICONS.CONFIG} Base Branch: ${formatConfigValue(config?.git?.baseBranch, defaultConfig.git.baseBranch)}`,
@@ -75,7 +83,18 @@ function displayConfigFeatures(
     `  Monorepo Patterns: ${formatConfigValue(config?.git?.monorepoPatterns, JSON.stringify(defaultConfig.git.monorepoPatterns))}`,
     `    Purpose: Patterns to identify package directories in monorepos`,
   );
-  output.push(chalk.gray("\n  Ignore Patterns:"));
+
+  output.push(...formatIgnorePatterns({ config, defaultConfig }));
+  output.push(...formatGitHubIntegration({ config }));
+
+  return output;
+}
+
+function formatIgnorePatterns({
+  config,
+  defaultConfig,
+}: FormatIgnorePatternsParams): string[] {
+  const output: string[] = [chalk.gray("\n  Ignore Patterns:")];
   output.push(
     `    ${ICONS.FILE} Status: ${formatConfigValue(config?.git?.ignorePatterns, JSON.stringify(defaultConfig.git.ignorePatterns))}`,
     `    Purpose: Patterns to exclude from analysis and AI prompts`,
@@ -106,6 +125,17 @@ function displayConfigFeatures(
     );
   }
 
+  return output;
+}
+
+interface FormatGitHubIntegrationParams {
+  config: Partial<Config> | null;
+}
+
+function formatGitHubIntegration({
+  config,
+}: FormatGitHubIntegrationParams): string[] {
+  const output: string[] = [];
   if (config?.git?.github) {
     output.push(
       `  GitHub Integration:`,
@@ -113,11 +143,17 @@ function displayConfigFeatures(
       `    Enterprise URL: ${formatConfigValue(config.git.github.enterprise?.url)}`,
     );
   }
+  return output;
+}
 
-  // Analysis Features
-  output.push(chalk.blue("\nAnalysis Features:"));
+function formatAnalysisFeatures({
+  config,
+  defaultConfig,
+}: FormatConfigParams): string[] {
+  const output: string[] = [];
   const defaultAnalysis = defaultConfig.analysis;
 
+  output.push(chalk.blue("\nAnalysis Features:"));
   output.push(
     `  Conventional Commits: ${formatEnabled(config?.analysis?.checkConventionalCommits ?? false)}`,
     `    Purpose: Enforce conventional commit message format`,
@@ -132,15 +168,32 @@ function displayConfigFeatures(
     `    Purpose: Maximum number of lines in a single file`,
   );
 
-  // Complexity Analysis
-  output.push(chalk.blue("\nComplexity Analysis:"));
-  const defaultComplexity = defaultConfig.analysis.complexity;
+  return output;
+}
 
-  // Structure Thresholds
+function formatComplexityAnalysis({
+  config,
+  defaultConfig,
+}: FormatConfigParams): string[] {
+  const output: string[] = [];
+
+  output.push(chalk.blue("\nComplexity Analysis:"));
+  output.push(...formatStructureThresholds({ config, defaultConfig }));
+  output.push(...formatSizeThresholds({ config, defaultConfig }));
+  output.push(...formatScoringWeights({ config, defaultConfig }));
+
+  return output;
+}
+
+function formatStructureThresholds({
+  config,
+  defaultConfig,
+}: FormatConfigParams): string[] {
+  const output: string[] = [];
   output.push(
     `  Score Threshold: ${formatConfigValue(
       config?.analysis?.complexity?.structureThresholds?.scoreThreshold,
-      defaultComplexity.structureThresholds.scoreThreshold,
+      defaultConfig.analysis.complexity.structureThresholds.scoreThreshold,
     )}`,
     `    Purpose: Total complexity score threshold for restructuring`,
   );
@@ -148,39 +201,53 @@ function displayConfigFeatures(
   output.push(
     `  Reasons Threshold: ${formatConfigValue(
       config?.analysis?.complexity?.structureThresholds?.reasonsThreshold,
-      defaultComplexity.structureThresholds.reasonsThreshold,
+      defaultConfig.analysis.complexity.structureThresholds.reasonsThreshold,
     )}`,
     `    Purpose: Number of complexity reasons before requiring restructuring`,
   );
 
-  // File Size Thresholds
+  return output;
+}
+
+function formatSizeThresholds({
+  config,
+  defaultConfig,
+}: FormatConfigParams): string[] {
+  const output: string[] = [];
   output.push(chalk.gray("\n  File Size Thresholds:"));
   output.push(
     `    Large File: ${formatConfigValue(
       config?.analysis?.complexity?.thresholds?.largeFile,
-      defaultComplexity.thresholds.largeFile,
+      defaultConfig.analysis.complexity.thresholds.largeFile,
     )} lines`,
     `    Very Large File: ${formatConfigValue(
       config?.analysis?.complexity?.thresholds?.veryLargeFile,
-      defaultComplexity.thresholds.veryLargeFile,
+      defaultConfig.analysis.complexity.thresholds.veryLargeFile,
     )} lines`,
     `    Huge File: ${formatConfigValue(
       config?.analysis?.complexity?.thresholds?.hugeFile,
-      defaultComplexity.thresholds.hugeFile,
+      defaultConfig.analysis.complexity.thresholds.hugeFile,
     )} lines`,
     `    Multiple Files: ${formatConfigValue(
       config?.analysis?.complexity?.thresholds?.multipleFiles,
-      defaultComplexity.thresholds.multipleFiles,
+      defaultConfig.analysis.complexity.thresholds.multipleFiles,
     )} files`,
     `    Many Files: ${formatConfigValue(
       config?.analysis?.complexity?.thresholds?.manyFiles,
-      defaultComplexity.thresholds.manyFiles,
+      defaultConfig.analysis.complexity.thresholds.manyFiles,
     )} files`,
   );
 
-  // Scoring Weights
+  return output;
+}
+
+function formatScoringWeights({
+  config,
+  defaultConfig,
+}: FormatConfigParams): string[] {
+  const output: string[] = [];
   output.push(chalk.gray("\n  Scoring Weights:"));
-  const scoring = defaultComplexity.scoring;
+  const scoring = defaultConfig.analysis.complexity.scoring;
   output.push(
     `    Base File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.baseFileScore, scoring.baseFileScore)}`,
     `    Large File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.largeFileScore, scoring.largeFileScore)}`,
@@ -197,105 +264,174 @@ function displayConfigFeatures(
     `    Critical File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.criticalFileScore, scoring.criticalFileScore)}`,
   );
 
-  // AI Features
-  output.push(chalk.blue("\nAI Features:"));
+  return output;
+}
+
+interface FormatAIFeaturesParams {
+  config: Partial<Config> | null;
+  defaultConfig: Config;
+}
+
+function formatAIFeatures({
+  config,
+  defaultConfig,
+}: FormatAIFeaturesParams): string[] {
+  const output: string[] = [];
   const aiEnabled = config?.ai?.enabled ?? false;
+
+  output.push(chalk.blue("\nAI Features:"));
   output.push(`  ${ICONS.CONFIG} Status: ${formatEnabled(aiEnabled)}`);
 
   if (aiEnabled) {
-    const provider = config?.ai?.provider;
-    output.push(
-      `  ${ICONS.CONFIG} Provider: ${formatConfigValue(provider ?? "Not configured")}`,
-    );
-    output.push(chalk.gray("\n  Available Providers:"));
-    output.push(
-      `    ${provider === "azure" ? ICONS.SUCCESS : ICONS.BULLET} Azure OpenAI: ${provider === "azure" ? chalk.green("Active") : chalk.gray("Inactive")}`,
-      `    ${provider === "openai" ? ICONS.SUCCESS : ICONS.BULLET} OpenAI: ${provider === "openai" ? chalk.green("Active") : chalk.gray("Inactive")}`,
-      `    ${provider === "anthropic" ? ICONS.SUCCESS : ICONS.BULLET} Anthropic: ${provider === "anthropic" ? chalk.green("Active") : chalk.gray("Inactive")}`,
-      `    ${provider === "custom" ? ICONS.SUCCESS : ICONS.BULLET} Custom: ${provider === "custom" ? chalk.green("Active") : chalk.gray("Inactive")}`,
-    );
-
-    output.push(
-      `\n  API Clipboard: ${formatEnabled(config?.ai?.apiClipboard ?? true)}`,
-      `    Purpose: Enable copying API responses to clipboard`,
-    );
-    output.push(
-      `  Max Prompt Tokens: ${formatConfigValue(config?.ai?.maxPromptTokens, defaultConfig.ai.maxPromptTokens)}`,
-      `    Purpose: Maximum number of tokens allowed in prompts`,
-    );
-    output.push(
-      `  Max Prompt Cost: ${formatConfigValue(config?.ai?.maxPromptCost, defaultConfig.ai.maxPromptCost)}`,
-      `    Purpose: Maximum cost allowed per prompt in USD`,
-    );
-
-    // Provider-specific configurations
-    if (provider === "azure" && config?.ai?.azure) {
-      output.push(chalk.gray("\n  Azure OpenAI Configuration:"));
-      output.push(
-        `    Endpoint: ${formatConfigValue(config.ai.azure.endpoint)}`,
-        `    Deployment: ${formatConfigValue(config.ai.azure.deployment)}`,
-        `    API Version: ${formatConfigValue(config.ai.azure.apiVersion)}`,
-      );
-    } else if (provider === "openai" && config?.ai?.openai) {
-      output.push(chalk.gray("\n  OpenAI Configuration:"));
-      output.push(
-        `    Model: ${formatConfigValue(config.ai.openai.model)}`,
-        `    Organization: ${formatConfigValue(config.ai.openai.organization)}`,
-      );
-    } else if (provider === "anthropic" && config?.ai?.anthropic) {
-      output.push(chalk.gray("\n  Anthropic Configuration:"));
-      output.push(`    Model: ${formatConfigValue(config.ai.anthropic.model)}`);
-    } else if (provider === "custom" && config?.ai?.custom) {
-      output.push(chalk.gray("\n  Custom Configuration:"));
-      output.push(
-        `    Host: ${formatConfigValue(config.ai.custom.host)}`,
-        `    Model: ${formatConfigValue(config.ai.custom.model)}`,
-      );
-    }
+    output.push(...formatAIProvider({ config }));
+    output.push(...formatAISettings({ config, defaultConfig }));
   } else {
     output.push(
       chalk.gray("  No AI provider configured - AI features disabled"),
     );
   }
 
-  // Security Features
-  output.push(chalk.blue("\nSecurity Features:"));
+  return output;
+}
+
+interface FormatAIProviderParams {
+  config: Partial<Config> | null;
+}
+
+function formatAIProvider({ config }: FormatAIProviderParams): string[] {
+  const output: string[] = [];
+  const provider = config?.ai?.provider;
+  output.push(
+    `  ${ICONS.CONFIG} Provider: ${formatConfigValue(provider ?? "Not configured")}`,
+  );
+  output.push(chalk.gray("\n  Available Providers:"));
+  output.push(
+    `    ${provider === "azure" ? ICONS.SUCCESS : ICONS.BULLET} Azure OpenAI: ${provider === "azure" ? chalk.green("Active") : chalk.gray("Inactive")}`,
+    `    ${provider === "openai" ? ICONS.SUCCESS : ICONS.BULLET} OpenAI: ${provider === "openai" ? chalk.green("Active") : chalk.gray("Inactive")}`,
+    `    ${provider === "anthropic" ? ICONS.SUCCESS : ICONS.BULLET} Anthropic: ${provider === "anthropic" ? chalk.green("Active") : chalk.gray("Inactive")}`,
+    `    ${provider === "custom" ? ICONS.SUCCESS : ICONS.BULLET} Custom: ${provider === "custom" ? chalk.green("Active") : chalk.gray("Inactive")}`,
+  );
+  return output;
+}
+
+interface FormatAISettingsParams {
+  config: Partial<Config> | null;
+  defaultConfig: Config;
+}
+
+function formatAISettings({
+  config,
+  defaultConfig,
+}: FormatAISettingsParams): string[] {
+  const output: string[] = [];
+  const provider = config?.ai?.provider;
+
+  output.push(
+    `\n  API Clipboard: ${formatEnabled(config?.ai?.apiClipboard ?? true)}`,
+    `    Purpose: Enable copying API responses to clipboard`,
+  );
+  output.push(
+    `  Max Prompt Tokens: ${formatConfigValue(config?.ai?.maxPromptTokens, defaultConfig.ai.maxPromptTokens)}`,
+    `    Purpose: Maximum number of tokens allowed in prompts`,
+  );
+  output.push(
+    `  Max Prompt Cost: ${formatConfigValue(config?.ai?.maxPromptCost, defaultConfig.ai.maxPromptCost)}`,
+    `    Purpose: Maximum cost allowed per prompt in USD`,
+  );
+
+  // Provider-specific configurations
+  if (provider === "azure" && config?.ai?.azure) {
+    output.push(chalk.gray("\n  Azure OpenAI Configuration:"));
+    output.push(
+      `    Endpoint: ${formatConfigValue(config.ai.azure.endpoint)}`,
+      `    Deployment: ${formatConfigValue(config.ai.azure.deployment)}`,
+      `    API Version: ${formatConfigValue(config.ai.azure.apiVersion)}`,
+    );
+  } else if (provider === "openai" && config?.ai?.openai) {
+    output.push(chalk.gray("\n  OpenAI Configuration:"));
+    output.push(
+      `    Model: ${formatConfigValue(config.ai.openai.model)}`,
+      `    Organization: ${formatConfigValue(config.ai.openai.organization)}`,
+    );
+  } else if (provider === "anthropic" && config?.ai?.anthropic) {
+    output.push(chalk.gray("\n  Anthropic Configuration:"));
+    output.push(`    Model: ${formatConfigValue(config.ai.anthropic.model)}`);
+  } else if (provider === "custom" && config?.ai?.custom) {
+    output.push(chalk.gray("\n  Custom Configuration:"));
+    output.push(
+      `    Host: ${formatConfigValue(config.ai.custom.host)}`,
+      `    Model: ${formatConfigValue(config.ai.custom.model)}`,
+    );
+  }
+
+  return output;
+}
+
+interface FormatSecurityParams {
+  config: Partial<Config> | null;
+  defaultConfig: Config;
+}
+
+function formatSecurityFeatures({
+  config,
+  defaultConfig,
+}: FormatSecurityParams): string[] {
+  const output: string[] = [];
   const securityEnabled = config?.security?.enabled ?? false;
+
+  output.push(chalk.blue("\nSecurity Features:"));
   output.push(`  ${ICONS.SECURITY} Status: ${formatEnabled(securityEnabled)}`);
 
   if (securityEnabled) {
-    // Secret Detection
-    const secretsEnabled = config?.security?.rules?.secrets?.enabled ?? false;
-    output.push(
-      `\n  Secret Detection: ${formatEnabled(secretsEnabled)}`,
-      `    Severity: ${formatConfigValue(config?.security?.rules?.secrets?.severity, "high")}`,
-      `    Block PR: ${formatConfigValue(config?.security?.rules?.secrets?.blockPR, true)}`,
-    );
-
-    if (secretsEnabled) {
-      output.push(chalk.gray("    Active Patterns:"));
-      SECRET_PATTERNS.forEach((pattern) => {
-        output.push(`      • ${pattern.name} (${pattern.severity})`);
-      });
-    }
-
-    // File Checks
-    const filesEnabled = config?.security?.rules?.files?.enabled ?? false;
-    output.push(
-      `\n  File Checks: ${formatEnabled(filesEnabled)}`,
-      `    Severity: ${formatConfigValue(config?.security?.rules?.files?.severity, "high")}`,
-    );
-
-    if (filesEnabled) {
-      output.push(chalk.gray("    Active Patterns:"));
-      PROBLEMATIC_FILE_PATTERNS.forEach((category) => {
-        output.push(`      • ${category.category} (${category.severity})`);
-      });
-    }
+    output.push(...formatSecretDetection({ config, defaultConfig }));
+    output.push(...formatFileChecks({ config, defaultConfig }));
   }
 
-  // PR Features
-  output.push(chalk.blue("\nPull Request Features:"));
+  return output;
+}
+
+function formatSecretDetection({ config }: FormatSecurityParams): string[] {
+  const output: string[] = [];
+  const secretsEnabled = config?.security?.rules?.secrets?.enabled ?? false;
+  output.push(
+    `\n  Secret Detection: ${formatEnabled(secretsEnabled)}`,
+    `    Severity: ${formatConfigValue(config?.security?.rules?.secrets?.severity, "high")}`,
+    `    Block PR: ${formatConfigValue(config?.security?.rules?.secrets?.blockPR, true)}`,
+  );
+
+  if (secretsEnabled) {
+    output.push(chalk.gray("    Active Patterns:"));
+    SECRET_PATTERNS.forEach((pattern) => {
+      output.push(`      • ${pattern.name} (${pattern.severity})`);
+    });
+  }
+
+  return output;
+}
+
+function formatFileChecks({ config }: FormatSecurityParams): string[] {
+  const output: string[] = [];
+  const filesEnabled = config?.security?.rules?.files?.enabled ?? false;
+  output.push(
+    `\n  File Checks: ${formatEnabled(filesEnabled)}`,
+    `    Severity: ${formatConfigValue(config?.security?.rules?.files?.severity, "high")}`,
+  );
+
+  if (filesEnabled) {
+    output.push(chalk.gray("    Active Patterns:"));
+    PROBLEMATIC_FILE_PATTERNS.forEach((category) => {
+      output.push(`      • ${category.category} (${category.severity})`);
+    });
+  }
+
+  return output;
+}
+
+function formatPRFeatures({
+  config,
+  defaultConfig,
+}: FormatConfigParams): string[] {
+  const output: string[] = [];
   output.push(
     `  Template Required: ${formatEnabled(config?.pr?.template?.required ?? false)}`,
     `    Purpose: Enforce PR template usage`,
@@ -323,11 +459,22 @@ function displayConfigFeatures(
     `    Purpose: Number of approvals required before merging`,
   );
 
-  // Debug Mode
-  output.push(chalk.blue("\nDebug Mode:"));
-  output.push(`  Status: ${formatEnabled(config?.debug ?? false)}`);
-
   return output;
+}
+
+// Main display function refactored
+function displayConfigFeatures({
+  config,
+  defaultConfig,
+}: FormatConfigParams): string[] {
+  return [
+    ...formatGitConfiguration({ config, defaultConfig }),
+    ...formatAnalysisFeatures({ config, defaultConfig }),
+    ...formatComplexityAnalysis({ config, defaultConfig }),
+    ...formatAIFeatures({ config, defaultConfig }),
+    ...formatSecurityFeatures({ config, defaultConfig }),
+    ...formatPRFeatures({ config, defaultConfig }),
+  ];
 }
 
 async function analyzeStatus({
@@ -361,19 +508,20 @@ async function analyzeStatus({
         );
       } else {
         logger.info(chalk.yellow("\nGlobal Settings:"));
-        displayConfigFeatures(status.global.config, defaultConfig).forEach(
-          (line) => logger.info(line),
-        );
+        displayConfigFeatures({
+          config: status.global.config,
+          defaultConfig,
+        }).forEach((line) => logger.info(line));
       }
     }
 
     if (status.local.exists && (!options.global || options.local)) {
       logger.info(`\nLocal config found at: ${chalk.cyan(status.local.path)}`);
       logger.info(chalk.yellow("\nLocal Settings (overrides global):"));
-      const localFeatures = displayConfigFeatures(
-        status.local.config,
+      const localFeatures = displayConfigFeatures({
+        config: status.local.config,
         defaultConfig,
-      );
+      });
       if (localFeatures.length > 0) {
         localFeatures.forEach((line) => logger.info(line));
       } else {
@@ -385,8 +533,8 @@ async function analyzeStatus({
 
     if (status.effective && status.local.exists && !options.global) {
       logger.info(chalk.blue("\n⚡ Effective Configuration:"));
-      displayConfigFeatures(runtimeConfig, defaultConfig).forEach((line) =>
-        logger.info(line),
+      displayConfigFeatures({ config: runtimeConfig, defaultConfig }).forEach(
+        (line) => logger.info(line),
       );
     }
 
