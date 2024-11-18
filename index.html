@@ -3,13 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GitGuard Demo</title>
+  <title>Siteed Universe - Project Demos</title>
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --secondary-color: #1e40af;
+      --text-color: #1f2937;
+      --bg-color: #f3f4f6;
+      --card-bg: #ffffff;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 2rem;
+      background: var(--bg-color);
+      color: var(--text-color);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      color: var(--primary-color);
+      margin-bottom: 1rem;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      color: #4b5563;
+      margin-bottom: 2rem;
+    }
+
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      padding: 1rem;
+    }
+
+    .project-card {
+      background: var(--card-bg);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .project-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .project-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--primary-color);
+    }
+
+    .project-description {
+      color: #4b5563;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .project-link {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background-color: var(--primary-color);
+      color: white;
+      text-decoration: none;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .project-link:hover {
+      background-color: var(--secondary-color);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid #e5e7eb;
+      color: #6b7280;
+    }
+
+    @media (max-width: 768px) {
+      .projects-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      body {
+        padding: 1rem;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>GitGuard Demo</h1>
-  <video width="800" controls>
-    <source src="./gitguard_demo_e2e_compressed.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
+  <div class="container">
+    <header>
+      <h1>Siteed Universe</h1>
+      <p class="subtitle">Explore our suite of developer tools and components</p>
+    </header>
+
+    <main class="projects-grid">
+      <div class="project-card">
+        <div class="project-title">@siteed/react-native-logger</div>
+        <p class="project-description">
+          A powerful logging library for React Native apps with persistent history, production debugging capabilities, and namespace-based logging control.
+        </p>
+        <a href="/universe/loggerdemo/" class="project-link">View Demo</a>
+      </div>
+
+      <div class="project-card">
+        <div class="project-title">@siteed/design-system</div>
+        <p class="project-description">
+          A comprehensive design system with reusable components, documented through Storybook for consistent and maintainable UI development.
+        </p>
+        <a href="/universe/design-system-storybook/" class="project-link">View Storybook</a>
+      </div>
+
+      <div class="project-card">
+        <div class="project-title">Design System Playground</div>
+        <p class="project-description">
+          Interactive environment to experiment with design system components, test variations, and preview implementations in real-time.
+        </p>
+        <a href="/universe/design-playground/" class="project-link">Open Playground</a>
+      </div>
+
+      <div class="project-card">
+        <div class="project-title">GitGuard</div>
+        <p class="project-description">
+          AI-powered tool for maintaining high-quality Git repositories with intelligent commit management, PR assistance, and security scanning.
+        </p>
+        <a href="/universe/gitguard/" class="project-link">Try GitGuard</a>
+      </div>
+    </main>
+
+    <footer>
+      <p>Part of the Siteed Universe • <a href="https://siteed.net" style="color: var(--primary-color);">siteed.net</a></p>
+    </footer>
+  </div>
 </body>
 </html>
