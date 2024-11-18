@@ -54,28 +54,34 @@ function calculateComplexity(params: {
 }): number {
   const { content, file, logger } = params;
 
-  // Basic complexity indicators
-  const lineCount = content.split("\n").length;
-  const logicComplexity = (content.match(/if|else|switch|for|while/g) ?? [])
-    .length;
-  const functionCount = (content.match(/function|=>/g) ?? []).length;
+  // Enhanced complexity calculation
+  const lines = content.split("\n");
+  const logicComplexity =
+    (content.match(/if|else|switch|for|while/g) ?? []).length * 3;
+  const functionCount = (content.match(/function|=>/g) ?? []).length * 2;
+  const classCount = (content.match(/class\s+\w+/g) ?? []).length * 4;
+
+  // Calculate nesting depth
+  let maxNestingDepth = 0;
+  let currentDepth = 0;
+  for (const line of lines) {
+    if (line.includes("{")) currentDepth++;
+    if (line.includes("}")) currentDepth--;
+    maxNestingDepth = Math.max(maxNestingDepth, currentDepth);
+  }
 
   const complexity =
-    file.additions * 1.2 + // New code has higher weight
-    file.deletions * 0.8 + // Deletions are important but less than additions
-    logicComplexity * 2 + // Control flow changes are significant
-    functionCount * 1.5 + // Function changes are important
-    lineCount * 0.1; // Small factor for overall size
+    file.additions * 1.5 +
+    file.deletions * 1.0 +
+    logicComplexity * 2.5 +
+    functionCount * 2.0 +
+    classCount * 3.0 +
+    maxNestingDepth * 2.0 +
+    lines.length * 0.1;
 
   logger?.debug("Calculated complexity:", {
     file: file.path,
-    metrics: {
-      lineCount,
-      logicComplexity,
-      functionCount,
-      additions: file.additions,
-      deletions: file.deletions,
-    },
+    metrics: { logicComplexity, functionCount, classCount, maxNestingDepth },
     finalScore: complexity,
   });
 
@@ -298,51 +304,65 @@ export function formatDiffForAI(params: DiffParams): string {
   };
 
   if (!diff || diff.length === 0) return "";
-  if (diff.length <= maxLength) return diff;
 
-  // Split into file sections
-  const sections = diff.split("diff --git").filter(Boolean);
+  // Split into sections but don't filter yet
+  const sections = diff.split(/(?=diff --git)/).filter(Boolean);
   const fileSignificances: FileSignificance[] = [];
 
-  // Calculate significance scores for each file
+  // Process each file
   for (const file of files) {
-    // Skip binary files
-    if (isBinaryFile(file.path)) {
-      logger?.debug(`Skipping binary file: ${file.path}`);
-      continue;
-    }
+    // Find matching section using normalized paths
+    const fileSection = sections.find((section) => {
+      const match = /diff --git [a-z]\/(.+?) [a-z]\//.exec(section);
+      if (!match) return false;
 
-    const section = sections.find((section) =>
-      section.includes(file.path.replace(/^\/+/, "")),
-    );
+      // Extract paths and normalize them
+      const diffPath = match[1].split("/").filter(Boolean).join("/");
+      const filePath = file.path.split("/").filter(Boolean).join("/");
 
-    if (!section) continue;
+      const isMatch = diffPath.endsWith(filePath);
 
-    // Skip if the section indicates it's a binary file
-    if (
-      section.includes("Binary files") ||
-      section.includes("GIT binary patch")
-    ) {
-      logger?.debug(`Skipping binary diff section: ${file.path}`);
+      logger?.debug(`Comparing paths:`, {
+        diffPath,
+        filePath,
+        isMatch,
+        isBinary: isBinaryFile(file.path),
+        hasBinaryMarker:
+          section.includes("Binary files") ||
+          section.includes("GIT binary patch"),
+      });
+
+      return (
+        isMatch &&
+        !isBinaryFile(file.path) &&
+        !section.includes("Binary files") &&
+        !section.includes("GIT binary patch")
+      );
+    });
+
+    if (!fileSection) {
+      logger?.debug(`No matching section for file: ${file.path}`);
       continue;
     }
 
     const complexity = calculateComplexity({
-      content: section,
+      content: fileSection,
       file,
+      options: fullOptions,
+      logger,
+    });
+
+    const score = calculateFileScore({
+      file,
+      complexity,
       options: fullOptions,
       logger,
     });
 
     fileSignificances.push({
       path: file.path,
-      diff: `diff --git${section}`,
-      score: calculateFileScore({
-        file,
-        complexity,
-        options: fullOptions,
-        logger,
-      }),
+      diff: fileSection,
+      score,
       metadata: {
         additions: file.additions,
         deletions: file.deletions,
@@ -351,6 +371,12 @@ export function formatDiffForAI(params: DiffParams): string {
         complexity,
       },
     });
+  }
+
+  // Return early with sorted sections if we have valid diffs
+  if (fileSignificances.length === 0) {
+    logger?.debug("No valid file significances found");
+    return "";
   }
 
   // Add debug logging for skipped files
@@ -370,7 +396,7 @@ export function formatDiffForAI(params: DiffParams): string {
   const groupedFiles = groupRelatedFiles({ files: fileSignificances, logger });
   const result = buildOptimizedDiff({
     groups: groupedFiles,
-    maxLength,
+    maxLength: maxLength * 0.95, // Leave room for truncation message
     logger,
   });
 

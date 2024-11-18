@@ -11,7 +11,6 @@ import { Logger } from "../../types/logger.types.js";
 import { displayTokenInfo } from "../../utils/ai-limits.util.js";
 import {
   handleAIAction,
-  selectBestDiff,
   TemplateResult,
 } from "../../utils/shared-ai-controller.util.js";
 import { promptYesNo } from "../../utils/user-prompt.util.js";
@@ -74,21 +73,12 @@ export class BranchAIController {
       to: analysisResult.branch,
     });
 
-    const bestDiff = selectBestDiff({
-      fullDiff,
-      files: analysisResult.files,
-      config: this.config,
-      ai: this.ai,
-      logger: this.logger,
-      templateRegistry: this.templateRegistry,
-    });
-
     const variables = {
       commits: analysisResult.commits,
       files: analysisResult.files,
       baseBranch: analysisResult.baseBranch,
       template: await this.prService.loadPRTemplate(),
-      diff: bestDiff.content,
+      diff: fullDiff,
       options: {
         includeTesting: false,
         includeChecklist: true,
@@ -187,21 +177,11 @@ export class BranchAIController {
       to: analysisResult.branch,
     });
 
-    const bestDiff = selectBestDiff({
-      fullDiff,
-      files: analysisResult.files,
-      isClipboardAction: false,
-      config: this.config,
-      ai: this.ai,
-      logger: this.logger,
-      templateRegistry: this.templateRegistry,
-    });
-
     const variables = {
       commits: analysisResult.commits,
       files: analysisResult.files,
       baseBranch: analysisResult.baseBranch,
-      diff: bestDiff.content,
+      diff: fullDiff,
       options: {
         includeTesting: false,
         includeChecklist: true,

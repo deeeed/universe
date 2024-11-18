@@ -62,6 +62,8 @@ export const defaultConfig: Config = {
     },
   },
   analysis: {
+    multiPackageDetection: true,
+    complexityDetection: true,
     maxCommitSize: 100,
     maxFileSize: 1000,
     checkConventionalCommits: true,

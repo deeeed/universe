@@ -2,12 +2,12 @@ import { editor } from "@inquirer/prompts";
 import chalk from "chalk";
 import {
   DEFAULT_CONTEXT_LINES,
+  DEFAULT_MAX_CLIPBOARD_TOKENS,
   DEFAULT_MAX_PROMPT_TOKENS,
 } from "../constants.js";
 import { TemplateRegistry } from "../services/template/template-registry.js";
 import { AIProvider, TokenUsage } from "../types/ai.types.js";
 import { Config } from "../types/config.types.js";
-import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
 import {
   LoadedPromptTemplate,
@@ -25,19 +25,6 @@ interface BaseAIParams {
   logger: Logger;
   ai?: AIProvider;
   templateRegistry: TemplateRegistry;
-}
-
-// Specific interfaces extending the base
-export interface DiffStrategy {
-  name: string;
-  content: string;
-  score: number;
-}
-
-export interface SelectBestDiffParams extends BaseAIParams {
-  fullDiff: string;
-  files: FileChange[];
-  isClipboardAction?: boolean;
 }
 
 export interface HandleClipboardCopyParams {
@@ -66,48 +53,6 @@ export interface AIActionHandlerParams<TResult> {
     disabledReason?: string;
   }>;
   skipAsDefault?: boolean;
-}
-
-export interface DiffGenerationParams {
-  files: FileChange[];
-  diff: string;
-  maxLength: number;
-  logger: Logger;
-}
-
-function calculateDiffScore(params: {
-  content: string;
-  isClipboardAction: boolean;
-  maxTokens: number;
-  ai?: AIProvider;
-  logger?: Logger;
-}): number {
-  const { content, isClipboardAction, maxTokens, ai, logger } = params;
-
-  logger?.debug("Calculating diff score:", {
-    contentLength: content.length,
-    isClipboardAction,
-    maxTokens,
-    hasAI: !!ai,
-  });
-
-  if (isClipboardAction) {
-    logger?.debug("Using clipboard action score");
-    return 2;
-  }
-
-  const tokenCount = ai
-    ? ai.calculateTokenUsage({ prompt: content }).count
-    : Math.ceil(content.length / 4);
-
-  logger?.debug("Token calculation result:", {
-    contentLength: content.length,
-    tokenCount,
-    maxTokens,
-    score: tokenCount <= maxTokens ? 1 : 0,
-  });
-
-  return tokenCount <= maxTokens ? 1 : 0;
 }
 
 interface HandleSimulationParams {
@@ -211,84 +156,6 @@ async function handleSimulation({
   }
 }
 
-export function selectBestDiff({
-  fullDiff,
-  files,
-  isClipboardAction = false,
-  config,
-  ai,
-  logger,
-}: SelectBestDiffParams): DiffStrategy {
-  const prioritizedDiffs = formatDiffForAI({
-    files,
-    diff: fullDiff,
-    maxLength: config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
-    logger,
-    options: {
-      includeTests: false,
-      prioritizeCore: true,
-      contextLines: DEFAULT_CONTEXT_LINES,
-    },
-  });
-
-  const maxTokens = isClipboardAction
-    ? (config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS) * 2
-    : (config.ai?.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS);
-
-  logger?.debug("Selecting best diff strategy:", {
-    fullDiffLength: fullDiff.length,
-    prioritizedDiffLength: prioritizedDiffs.length,
-    maxTokens,
-    isClipboardAction,
-  });
-
-  const fullDiffScore = calculateDiffScore({
-    content: fullDiff,
-    isClipboardAction,
-    maxTokens,
-    ai,
-    logger,
-  });
-
-  const prioritizedDiffScore = calculateDiffScore({
-    content: prioritizedDiffs,
-    isClipboardAction: false,
-    maxTokens,
-    ai,
-    logger,
-  });
-
-  const diffs: DiffStrategy[] = [
-    { name: "full", content: fullDiff, score: fullDiffScore },
-    {
-      name: "prioritized",
-      content: prioritizedDiffs,
-      score:
-        !isClipboardAction && prioritizedDiffs.length > 0
-          ? prioritizedDiffScore * 2
-          : 0,
-    },
-  ];
-
-  const selectedDiff = diffs.reduce((best, current) => {
-    if (current.score > best.score) return current;
-    if (
-      current.score === best.score &&
-      current.content.length < best.content.length
-    )
-      return current;
-    return best;
-  }, diffs[0]);
-
-  logger?.debug("Selected diff strategy:", {
-    strategy: selectedDiff.name,
-    contentLength: selectedDiff.content.length,
-    score: selectedDiff.score,
-  });
-
-  return selectedDiff;
-}
-
 export async function handleClipboardCopy({
   prompt,
   isApi,
@@ -339,6 +206,7 @@ interface GetTemplateOptionsParams {
   type: PromptType;
   templateRegistry: TemplateRegistry;
   logger: Logger;
+  config: Config;
   variables: TemplateVariables;
   ai?: AIProvider;
 }
@@ -355,6 +223,7 @@ export interface TemplateResult {
   isApi: boolean;
   label: string;
   tokenUsage?: TokenUsage;
+  isWithinLimits?: boolean;
   simulatedResponse?: unknown;
 }
 
@@ -392,7 +261,7 @@ const AI_FLOWS: Record<PromptType, AIFlowConfig> = {
 function getTemplateOptions(
   params: GetTemplateOptionsParams,
 ): TemplateResult[] {
-  const { type, templateRegistry, logger, variables, ai } = params;
+  const { type, templateRegistry, logger, variables, ai, config } = params;
   const flow = AI_FLOWS[type];
 
   logger.debug(`Getting template options for ${flow.label}:`, {
@@ -410,25 +279,91 @@ function getTemplateOptions(
   });
 
   return [...templates, ...humanTemplates].map((template) => {
+    let tokenLimit =
+      template.ai?.maxTokens ??
+      config.ai?.maxPromptTokens ??
+      DEFAULT_MAX_PROMPT_TOKENS;
+
+    logger.debug(
+      `template.ai.maxTokens: ${template.ai?.maxTokens} ?? config.ai.maxPromptTokens: ${config.ai?.maxPromptTokens} ?? DEFAULT_MAX_PROMPT_TOKENS: ${DEFAULT_MAX_PROMPT_TOKENS} ?? DEFAULT_MAX_CLIPBOARD_TOKENS: ${DEFAULT_MAX_CLIPBOARD_TOKENS}`,
+    );
+    if (template.format === "human") {
+      tokenLimit = DEFAULT_MAX_CLIPBOARD_TOKENS;
+    }
+    const SYSTEM_PROMPT_TOKEN_ESTIMATION = 400; // estimated number of token for system prompt + template excluding the diff
+
+    // Check if full diff exceeds token limit
+    const templateTokenCount =
+      Math.ceil(variables.diff.length / 4) + SYSTEM_PROMPT_TOKEN_ESTIMATION;
+    let optimizedDiff = variables.diff;
+
+    logger.debug(
+      `Template ${template.id} token count: ${templateTokenCount} isWithinLimits: ${templateTokenCount <= tokenLimit}`,
+    );
+
+    if (templateTokenCount > tokenLimit) {
+      const maxCharacters = (tokenLimit - SYSTEM_PROMPT_TOKEN_ESTIMATION) * 4; // 4 characters per token
+      // Compute optimized diff within token limit
+      optimizedDiff = formatDiffForAI({
+        files: variables.files,
+        diff: variables.diff,
+        maxLength: maxCharacters,
+        logger,
+        options: {
+          includeTests: false,
+          prioritizeCore: true,
+          contextLines: DEFAULT_CONTEXT_LINES,
+        },
+      });
+      logger.debug(
+        `Template ${template.id} optimized diff length: ${optimizedDiff.length} --> saved ${templateTokenCount - optimizedDiff.length} tokens`,
+      );
+    }
+
     const { userPrompt, systemPrompt } = templateRegistry.renderTemplate({
       template,
-      variables,
+      variables: { ...variables, diff: optimizedDiff },
     });
 
-    // Calculate token usage only for API templates
-    const tokenUsage =
-      template.format === "api" && ai
-        ? ai.calculateTokenUsage({
-            prompt: systemPrompt + userPrompt,
-            options: { isClipboardAction: false },
-          })
-        : undefined;
+    let tokenUsage: TokenUsage | undefined;
+    let isWithinLimits: boolean | undefined;
+
+    if (template.format === "api") {
+      // Calculate token usage only for API templates
+      tokenUsage = ai?.calculateTokenUsage({
+        prompt: systemPrompt + userPrompt,
+        options: { isClipboardAction: false },
+      });
+    } else {
+      // Manually estimate token usage for human templates
+      const tokenCount = Math.ceil((systemPrompt + userPrompt).length / 4);
+      tokenUsage = {
+        count: tokenCount,
+        estimatedCost: "$0.00",
+        isWithinApiLimits: true,
+        isWithinClipboardLimits: tokenCount < DEFAULT_MAX_CLIPBOARD_TOKENS,
+      };
+    }
+
+    if (
+      tokenUsage &&
+      (!tokenUsage.isWithinApiLimits || !tokenUsage.isWithinClipboardLimits)
+    ) {
+      const excessTokens =
+        tokenUsage.count -
+        (template.ai?.maxTokens ?? DEFAULT_MAX_PROMPT_TOKENS);
+
+      logger.warn(
+        `Template ${template.id} exceeds API token limit by ${excessTokens} tokens`,
+      );
+    }
 
     return {
       template,
       renderedPrompt: userPrompt,
       renderedSystemPrompt: systemPrompt,
       isApi: template.format === "api",
+      isWithinLimits,
       label: template.title
         ? `"${template.title}"`
         : `${template.type} (${template.format})`,
@@ -470,11 +405,12 @@ export async function handleAIAction<TResult>(
   // Check if AI generation is possible
   const aiStatus = canGenerateAI(config, ai);
 
-  // Pass AI to getTemplateOptions
+  // Get the list of actions to display for the current flow
   const templateOptions = getTemplateOptions({
     type,
     templateRegistry,
     logger,
+    config,
     variables,
     ai,
   });

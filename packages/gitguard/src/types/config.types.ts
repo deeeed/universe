@@ -14,6 +14,10 @@ export type DeepPartial<T> = {
  * Configuration for code analysis features
  */
 export interface AnalysisConfig {
+  /** Enable/disable multi-package detection */
+  multiPackageDetection: boolean;
+  /** Enable/disable complexity analysis */
+  complexityDetection: boolean; // Not implemented yet - currently always enabled
   /** Maximum number of lines changed in a single commit */
   maxCommitSize: number;
   /** Maximum number of lines in a single file */

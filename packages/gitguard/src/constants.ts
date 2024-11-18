@@ -1,6 +1,7 @@
 import { ComplexityOptions } from "./types/analysis.types.js";
 
 export const DEFAULT_MAX_PROMPT_TOKENS = 32000;
+export const DEFAULT_MAX_CLIPBOARD_TOKENS = 100000;
 export const DEFAULT_CONTEXT_LINES = 3;
 export const TOKEN_TO_CHAR_RATIO = 4; // Average number of characters per token
 export const MAX_DIFF_LENGTH_RATIO = 0.25; // Maximum diff length as a ratio of total tokens

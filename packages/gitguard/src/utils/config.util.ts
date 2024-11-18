@@ -152,6 +152,8 @@ export function getDefaultConfig(): Config {
       ignorePatterns: ["*.lock", "dist/*"],
     },
     analysis: {
+      multiPackageDetection: true,
+      complexityDetection: true,
       maxCommitSize: 500,
       maxFileSize: 800,
       checkConventionalCommits: true,

@@ -14,7 +14,9 @@ GitGuard helps developers maintain best practices without slowing them down.
 
 ## 🎥 Demo
 
-[![Watch the GitGuard Demo Video](./images/gitguard_demo_thumbnail.png)](https://deeeed.github.io/universe/gitguard/index.html)
+<a href="https://deeeed.github.io/universe/gitguard/index.html" target="_blank">
+  <img src="./images/gitguard_demo_thumbnail.png" alt="Watch the GitGuard Demo Video">
+</a>
 
 _Click the link above to watch the GitGuard demo video._
 
@@ -396,6 +398,10 @@ Create a `.gitguard/config.json` file in your git repository or home directory. 
 
   // Code analysis configuration
   "analysis": {
+    // Enable/disable multi-package detection
+    "multiPackageDetection": true,
+    // Enable/disable complexity analysis
+    "complexityDetection": true, // Not implemented yet - currently always enabled
     // Maximum number of lines changed in a single commit
     "maxCommitSize": 500,
     // Maximum number of lines in a single file

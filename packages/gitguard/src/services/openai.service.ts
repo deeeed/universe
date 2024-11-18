@@ -104,7 +104,7 @@ export class OpenAIService extends BaseService implements AIProvider {
         messages,
         model: this.getModel(),
         temperature: params.options?.temperature ?? 0.7,
-        max_tokens: 2000,
+        max_tokens: DEFAULT_MAX_PROMPT_TOKENS,
         response_format: params.options?.requireJson
           ? { type: "json_object" }
           : undefined,

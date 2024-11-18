@@ -11,10 +11,7 @@ import { Config } from "../../types/config.types.js";
 import { FileChange } from "../../types/git.types.js";
 import { Logger } from "../../types/logger.types.js";
 import { SecurityCheckResult } from "../../types/security.types.js";
-import {
-  handleAIAction,
-  selectBestDiff,
-} from "../../utils/shared-ai-controller.util.js";
+import { handleAIAction } from "../../utils/shared-ai-controller.util.js";
 import { promptAISuggestions } from "../../utils/user-prompt.util.js";
 
 interface CommitAIControllerParams {
@@ -107,21 +104,12 @@ export class CommitAIController {
 
     if (params.enableAI && shouldSplit) {
       try {
+        // TODO: Should the diff include unstaged changes in some scenario? when run with --all / --unstaged?
         const diff = await this.git.getStagedDiff();
-
-        const bestDiff = selectBestDiff({
-          fullDiff: diff,
-          files: params.files,
-          config: this.config,
-          ai: this.ai,
-          logger: this.logger,
-          templateRegistry: this.templateRegistry,
-        });
-
         const variables = {
           files: params.files,
           message: params.message ?? "",
-          diff: bestDiff.content,
+          diff,
           basicSuggestion: basicAnalysis.splitSuggestion,
           logger: this.logger,
         };
@@ -187,19 +175,10 @@ export class CommitAIController {
 
     const fullDiff = await this.git.getStagedDiff();
 
-    const bestDiff = selectBestDiff({
-      fullDiff,
-      files,
-      config: this.config,
-      ai: this.ai,
-      logger: this.logger,
-      templateRegistry: this.templateRegistry,
-    });
-
     const variables = {
       files,
       message: message ?? "",
-      diff: bestDiff.content,
+      diff: fullDiff,
       needsDetailedMessage: result.complexity.needsStructure,
       options: {
         includeTesting: false,

@@ -75,7 +75,8 @@ export class AnthropicService extends BaseService implements AIProvider {
 
       const message = await this.client.messages.create({
         model: this.getModel(),
-        max_tokens: this.config.anthropic.maxTokens ?? 2000,
+        max_tokens:
+          this.config.anthropic.maxTokens ?? DEFAULT_MAX_PROMPT_TOKENS,
         temperature: params.options?.temperature ?? 0.7,
         system: params.options?.systemPrompt,
         messages: [

@@ -38,7 +38,7 @@ export class CommitAnalysisController {
   private readonly logger: Logger;
   private readonly git: GitService;
   private readonly commitService: CommitService;
-
+  private readonly config: Config;
   constructor({ logger, git, config }: CommitAnalysisControllerParams) {
     this.logger = logger;
     this.git = git;
@@ -48,6 +48,7 @@ export class CommitAnalysisController {
       git,
       logger,
     });
+    this.config = config;
   }
 
   getFilesToAnalyze({
@@ -125,6 +126,10 @@ export class CommitAnalysisController {
       securityResult,
     });
 
+    if (!this.config.analysis.multiPackageDetection) {
+      return result;
+    }
+
     const cohesionAnalysis = this.commitService.analyzeCommitCohesion({
       files,
       originalMessage: message,
@@ -172,7 +177,7 @@ export class CommitAnalysisController {
 
         return {
           ...result,
-          splitSuggestion,
+          splitSuggestion: undefined, // Remove suggestions to avoid re-asking user.
         };
       }
     }
