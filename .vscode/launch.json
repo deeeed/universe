@@ -8,7 +8,8 @@
       "cwd": "${workspaceFolder}/packages/gitguard",
       "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}/packages/gitguard/e2e/index.ts",
-      "args": ["--tests=branch-features", "--scenario=branch-split-suggestion", "--debug"],
+      // "args": ["--tests=branch-features", "--scenario=branch-split-suggestion", "--debug"],
+      "args": ["--tests=commit-message", "--scenario=multi-package", "--debug"],
       "runtimeArgs": [
         "--loader",
         "ts-node/esm",

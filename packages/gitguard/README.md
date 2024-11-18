@@ -398,6 +398,10 @@ Create a `.gitguard/config.json` file in your git repository or home directory. 
 
   // Code analysis configuration
   "analysis": {
+    // Enable/disable multi-package detection
+    "multiPackageDetection": true,
+    // Enable/disable complexity analysis
+    "complexityDetection": true, // Not implemented yet - currently always enabled
     // Maximum number of lines changed in a single commit
     "maxCommitSize": 500,
     // Maximum number of lines in a single file
