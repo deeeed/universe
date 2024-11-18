@@ -2,7 +2,7 @@ import { promises as fs } from "fs";
 import { parse as parseJsonc } from "jsonc-parser";
 import { homedir } from "os";
 import { join } from "path";
-import { ComplexityOptions } from "../types/analysis.types.js";
+import { DEFAULT_COMPLEXITY_OPTIONS } from "../constants.js";
 import { Config, DeepPartial } from "../types/config.types.js";
 import { Severity } from "../types/security.types.js";
 import { deepMerge } from "./deep-merge.js";
@@ -143,70 +143,6 @@ export async function getConfigStatus(): Promise<ConfigStatus> {
     effective: effectiveConfig,
   };
 }
-
-// File pattern constants
-export const FILE_PATTERNS = {
-  TEST: /\/tests?\/|\.tests?\./,
-  CONFIG: /\/\.?config\//,
-} as const;
-
-export const DEFAULT_FILE_PATTERNS = {
-  source: ["/src/", "/lib/", "/core/"],
-  test: ["/test/", "/tests/", "/spec/", "/specs/"],
-  config: ["/config/", "/.config/"],
-  docs: ["/docs/", "/documentation/", "/*.md"],
-  api: ["/api/", "/interfaces/", "/services/"],
-  migrations: ["/migrations/", "/migrate/"],
-  components: ["/components/", "/views/", "/pages/"],
-  hooks: ["/hooks/", "/composables/"],
-  utils: ["/utils/", "/helpers/", "/shared/"],
-  critical: [
-    "package.json",
-    "tsconfig.json",
-    ".env",
-    "pnpm-workspace.yaml",
-    "yarn.lock",
-    "package-lock.json",
-  ],
-} as const;
-
-export const DEFAULT_COMPLEXITY_OPTIONS: ComplexityOptions = {
-  thresholds: {
-    largeFile: 100,
-    veryLargeFile: 300,
-    hugeFile: 500,
-    multipleFiles: 5,
-    manyFiles: 10,
-  },
-  scoring: {
-    baseFileScore: 1,
-    largeFileScore: 2,
-    veryLargeFileScore: 3,
-    hugeFileScore: 5,
-    sourceFileScore: 1,
-    testFileScore: 1,
-    configFileScore: 0.5,
-    apiFileScore: 2,
-    migrationFileScore: 2,
-    componentFileScore: 1,
-    hookFileScore: 1,
-    utilityFileScore: 0.5,
-    criticalFileScore: 2,
-  },
-  patterns: {
-    sourceFiles: [...DEFAULT_FILE_PATTERNS.source],
-    apiFiles: [...DEFAULT_FILE_PATTERNS.api],
-    migrationFiles: [...DEFAULT_FILE_PATTERNS.migrations],
-    componentFiles: [...DEFAULT_FILE_PATTERNS.components],
-    hookFiles: [...DEFAULT_FILE_PATTERNS.hooks],
-    utilityFiles: [...DEFAULT_FILE_PATTERNS.utils],
-    criticalFiles: [...DEFAULT_FILE_PATTERNS.critical],
-  },
-  structureThresholds: {
-    scoreThreshold: 10,
-    reasonsThreshold: 2,
-  },
-};
 
 export function getDefaultConfig(): Config {
   return {

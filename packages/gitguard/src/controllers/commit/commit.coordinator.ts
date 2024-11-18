@@ -26,6 +26,7 @@ interface CommitAnalyzeParams {
 interface ServicesContext {
   logger: LoggerService;
   reporter: ReporterService;
+  isAIEnabled: boolean;
   git: GitService;
   security: SecurityService;
   ai?: AIProvider;
@@ -103,10 +104,21 @@ async function initializeServices(
     options.ai === undefined
       ? (config.ai?.enabled ?? false)
       : (options.ai ?? true);
+  logger.debug(
+    `AI enabled: ${isAIEnabled}, requested: ${options.ai}, config: ${config.ai?.enabled}`,
+  );
   const ai = initializeAI({ config, logger, isAIRequested: isAIEnabled });
 
   logger.info("✅ Services initialized successfully");
-  return { logger, reporter, git, security, ai, config };
+  return {
+    logger,
+    reporter,
+    git,
+    security,
+    ai,
+    config,
+    isAIEnabled: isAIEnabled,
+  };
 }
 
 async function initializeControllers(
@@ -257,7 +269,7 @@ async function handleAIAnalysis({
   const { logger } = services;
   let updatedResult = result;
 
-  if (updatedResult.skipFurtherSuggestions) {
+  if (updatedResult.skipFurtherSuggestions ?? !services.isAIEnabled) {
     logger.debug("Skipping AI analysis due to skipFurtherSuggestions flag");
     return updatedResult;
   }

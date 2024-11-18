@@ -1,5 +1,6 @@
 import path from "path";
 import {
+  BINARY_FILE_PATTERNS,
   DEFAULT_MAX_PROMPT_TOKENS,
   TOKEN_TO_CHAR_RATIO,
 } from "../constants.js";
@@ -39,6 +40,10 @@ interface OptimizedDiffResult {
   groupsCovered: number;
   tokenEstimate: number;
   content?: string;
+}
+
+export function isBinaryFile(filePath: string): boolean {
+  return BINARY_FILE_PATTERNS.some((pattern) => pattern.test(filePath));
 }
 
 function calculateComplexity(params: {
@@ -301,11 +306,26 @@ export function formatDiffForAI(params: DiffParams): string {
 
   // Calculate significance scores for each file
   for (const file of files) {
+    // Skip binary files
+    if (isBinaryFile(file.path)) {
+      logger?.debug(`Skipping binary file: ${file.path}`);
+      continue;
+    }
+
     const section = sections.find((section) =>
       section.includes(file.path.replace(/^\/+/, "")),
     );
 
     if (!section) continue;
+
+    // Skip if the section indicates it's a binary file
+    if (
+      section.includes("Binary files") ||
+      section.includes("GIT binary patch")
+    ) {
+      logger?.debug(`Skipping binary diff section: ${file.path}`);
+      continue;
+    }
 
     const complexity = calculateComplexity({
       content: section,
@@ -330,6 +350,20 @@ export function formatDiffForAI(params: DiffParams): string {
         isConfig: file.isConfig,
         complexity,
       },
+    });
+  }
+
+  // Add debug logging for skipped files
+  if (logger) {
+    const totalFiles = files.length;
+    const includedFiles = fileSignificances.length;
+    const skippedFiles = files.filter((f) => isBinaryFile(f.path));
+
+    logger.debug("File processing summary:", {
+      totalFiles,
+      includedFiles,
+      skippedBinaryFiles: skippedFiles.length,
+      skippedFiles: skippedFiles.map((f) => f.path),
     });
   }
 

@@ -13,7 +13,7 @@ import {
   DEFAULT_COMPLEXITY_OPTIONS,
   DEFAULT_FILE_PATTERNS,
   FILE_PATTERNS,
-} from "./config.util.js";
+} from "../constants.js";
 import { deepMerge } from "./deep-merge.js";
 
 export class CommitParser {

@@ -25,7 +25,9 @@ template: |
   No specific scope detected
   {{/if}}
 
-  Original message: "{{message}}"
+  {{#if message}}
+    Original message: "{{message}}"
+  {{/if}}
 
   {{#if complexity}}
   Complexity Analysis:

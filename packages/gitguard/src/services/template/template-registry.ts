@@ -194,7 +194,7 @@ export class TemplateRegistry {
       {} as Record<string, number>,
     );
 
-    this.logger.info(
+    this.logger.debug(
       `✨ Successfully loaded ${loadedTemplateCount} templates:\n${loadedTemplates
         .map((t) => `  - ${t.title ?? t.id} (${t.type}, ${t.format})`)
         .join("\n")}`,
@@ -299,8 +299,13 @@ export class TemplateRegistry {
     const defaultTemplates = new Map<string, LoadedPromptTemplate>();
 
     // Get the current file URL
-    const currentFileUrl = import.meta.url;
-    const isDev = currentFileUrl.includes("/src/");
+    const currentFileUrl = new URL(import.meta.url);
+    const isDev = currentFileUrl.pathname.includes("/src/");
+
+    this.logger.debug("Loading default templates", {
+      isDev,
+      currentFileUrl,
+    });
 
     // Define possible template locations
     const templateLocations = isDev
@@ -310,8 +315,8 @@ export class TemplateRegistry {
         ]
       : [
           // Production paths - try both ESM and CJS paths
-          join(dirname(currentFileUrl), "../templates"), // ESM path
-          join(dirname(currentFileUrl), "../../templates"), // CJS path
+          join(dirname(currentFileUrl.pathname), "../templates"), // ESM path
+          join(dirname(currentFileUrl.pathname), "../../templates"), // CJS path
           join(process.cwd(), "dist/templates"), // Fallback path
         ];
 

@@ -1,6 +1,5 @@
 import { checkbox, confirm, input, select } from "@inquirer/prompts";
 import chalk from "chalk";
-import { AIProvider } from "../types/ai.types.js";
 import { CommitSuggestion } from "../types/analysis.types.js";
 import { Config } from "../types/config.types.js";
 import { Logger } from "../types/logger.types.js";
@@ -300,34 +299,6 @@ export async function promptUser(
   });
 
   return result ?? "";
-}
-
-// Add new interface and function for AI prompts
-export type AIAction = "generate" | "copy-api" | "copy-manual" | "skip";
-
-interface AICostConfirmationParams {
-  logger: Logger;
-  provider: AIProvider;
-  promptTokens: number;
-  estimatedCost: string;
-  action: string;
-}
-
-export async function confirmAIUsage(
-  params: AICostConfirmationParams,
-): Promise<boolean> {
-  const { logger, provider, promptTokens, estimatedCost, action } = params;
-
-  logger.info("\n📊 AI Usage Details:");
-  logger.info(`Provider: ${provider.getName()}`);
-  logger.info(`Estimated tokens: ${promptTokens}`);
-  logger.info(`Estimated cost: ${estimatedCost}`);
-
-  return promptYesNo({
-    message: `\nWould you like to proceed with ${action} using AI?`,
-    logger,
-    defaultValue: true,
-  });
 }
 
 export async function promptSplitChoice(params: {
