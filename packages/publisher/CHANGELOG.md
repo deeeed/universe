@@ -24,14 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat(gitguard,publisher): check ([4c61482](https://github.com/deeeed/universe/commit/4c61482a71723d84fe5ec00841a8d877331e732e))
 - chore(release): release @siteed/publisher@0.4.15 ([fdb2a3a](https://github.com/deeeed/universe/commit/fdb2a3ae2b3de3ef33ff9101e748b4ff83e9a744))
 
-
 ## [0.4.15] - 2024-10-31
 - extract file information in git service ([de663d2](https://github.com/deeeed/universe/commit/de663d2cf84e80dc2fe898cbc6dc8264fed88115))
 - filter autochangelog by package ([c3b1221](https://github.com/deeeed/universe/commit/c3b12212c7dfd7c6fa630ec1541fc198120a1a43))
 - chore(release): release @siteed/publisher@0.4.14 ([11f1b85](https://github.com/deeeed/universe/commit/11f1b85603d910d10e6ee963ccd9784624921cec))
-
-
-
 
 ## [0.4.14] - 2024-10-31
 - changelog update with commit links
@@ -39,21 +35,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - docs: cleanup changelog
 
 
-
 ## [0.4.12] - 2024-10-31
 - fix: invalid changelog format
-
-
 
 ## [0.4.11] - 2024-10-31
 - ⚠️ **WARNING: DEVELOPMENT IN PROGRESS** ⚠️
 
-
-
 ## [0.4.10] - 2024-10-30
 - dry run mode
 - feat: dry run mode
-
 
 
 ## [0.4.9] - 2024-10-30

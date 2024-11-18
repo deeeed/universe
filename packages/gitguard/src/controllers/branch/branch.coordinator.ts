@@ -31,6 +31,7 @@ interface ServicesContext {
   ai?: AIProvider;
   prService: PRService;
   config: Config;
+  isAIEnabled: boolean;
 }
 
 interface ControllersContext {
@@ -126,7 +127,17 @@ async function initializeServices({
   });
 
   logger.debug("✅ Services initialized successfully");
-  return { logger, reporter, git, github, security, ai, prService, config };
+  return {
+    logger,
+    reporter,
+    git,
+    github,
+    security,
+    ai,
+    prService,
+    config,
+    isAIEnabled: isAIEnabled,
+  };
 }
 
 async function initializeControllers({
@@ -215,13 +226,8 @@ export async function analyzeBranch({
       options: { detailed: options.detailed ?? false },
     });
 
-    const isAIEnabled =
-      options.ai === undefined
-        ? (services.config.ai?.enabled ?? true)
-        : (options.ai ?? true);
-
     // Handle AI processing if enabled
-    if (isAIEnabled) {
+    if (services.isAIEnabled) {
       analysisResult = await processAIFeatures({
         controllers,
         analysisResult,

@@ -1,9 +1,8 @@
 # Contributing to @siteed/universe
 
-First off, thank you for considering contributing to @siteed/universe! This project exists to help developers build better applications, and your help makes a difference.
+First off, thank you for considering contributing to @siteed/universe!
 
 ## Table of Contents
-- [Code of Conduct](#code-of-conduct)
 - [Development Process](#development-process)
 - [Project Structure](#project-structure)
 - [Setting Up Development Environment](#setting-up-development-environment)
@@ -11,10 +10,6 @@ First off, thank you for considering contributing to @siteed/universe! This proj
 - [Coding Standards](#coding-standards)
 - [Testing Guidelines](#testing-guidelines)
 - [Documentation](#documentation)
-
-## Code of Conduct
-
-This project follows a Code of Conduct that all contributors are expected to adhere to. Please read [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) before contributing.
 
 ## Development Process
 

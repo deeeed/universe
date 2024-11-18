@@ -1,10 +1,11 @@
 {
-  "name": "@siteed/gitguard",
+  "name": "gitguard",
   "packageManager": "yarn@4.5.0",
   "version": "0.4.3",
   "description": "GitGuard is a tool that helps you enforce best practices in your Git commit messages.",
-  "author": "Arthur Breton <abreton@siteed.net> (https://github.com/deeeed)",
+  "author": "Arthur Breton <abreton@siteed.net> (https://siteed.net/)",
   "license": "MIT",
+  "deprecated": "@siteed/gitguard has been renamed to gitguard. Please update your dependencies.",
   "repository": {
     "type": "git",
     "url": "https://github.com/deeeed/universe",
@@ -15,6 +16,12 @@
   "types": "./dist/types/index.d.ts",
   "type": "module",
   "bin": "./dist/cjs/cli/gitguard.cjs",
+  "keywords": [
+    "git",
+    "commit",
+    "guard",
+    "ai"
+  ],
   "files": [
     "dist",
     "package.json",

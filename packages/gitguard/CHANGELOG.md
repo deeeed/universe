@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- remame from @siteed/gitguard to gitguard
 
 ## [0.4.3] - 2024-11-11
 - refactor(cli): improve package version detection reliability ([f48dca5](https://github.com/deeeed/universe/commit/f48dca593b86f2f949de26931995cd7b7d89fad6))
@@ -24,7 +24,6 @@ All notable changes to this project will be documented in this file.
 - refactor(commit): consolidate AI controllers and enhance commit split suggestions (#24) ([2665ebb](https://github.com/deeeed/universe/commit/2665ebb754a4adee4b7b70a160646294fc8d365c))
 - refactor(gitguard): modularize commit and branch handling with enhanced e2e logging and security configuration (#22) ([548c5d6](https://github.com/deeeed/universe/commit/548c5d67449674864a0e50f2155252b2c6fc1563))
 - feat/branchcommands (#19) ([95a5bbd](https://github.com/deeeed/universe/commit/95a5bbd90b8d8120adb30a69d0d1e567309b3e0b))
-
 
 
 

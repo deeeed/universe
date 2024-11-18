@@ -223,7 +223,8 @@ async function runSpecificTest({
 export async function runTests({
   options = {},
 }: RunTestsParams): Promise<void> {
-  const logger = new LoggerService({ debug: true });
+  const isDebug = options["debug"] === "true";
+  const logger = new LoggerService({ debug: isDebug });
   logger.info(chalk.green("Welcome to GitGuard E2E Tests!"));
 
   try {

@@ -4,9 +4,8 @@ Welcome to `@siteed/universe`, a comprehensive monorepo containing a design syst
 
 ## Why This Exists
 1. **Accountability**: Public development forces better documentation and structure
-2. **Knowledge Sharing**: Help others learn from real-world implementations
-3. **Community**: Build a community of developers who share similar development philosophies
-4. **Experimentation**: A platform to try new ideas and get feedback
+2. **Experimentation**: A platform to try new ideas and get feedback
+3. **Self Improvement**: A platform to improve my skills and knowledge
 
 [Read more about the philosophy behind this project](./PHILOSOPHY.md)
 
@@ -27,7 +26,7 @@ Here's a quick overview of the main packages in this monorepo:
 - [**@siteed/design-system**](./packages/design-system/README.md): Core design system components and utilities.
 - [**@siteed/react-native-logger**](./packages/react-native-logger/README.md): A flexible logging solution for React Native applications.
 - [**@siteed/publisher**](./packages/publisher/README.md): A monorepo release management tool.
-- [**@siteed/gitguard**](./packages/gitguard/README.md): Smart Git commit hook for maintaining consistent commit messages.
+- [**gitguard**](./packages/gitguard/README.md): Smart Git commit hook for maintaining consistent commit messages.
 
 For more detailed information about each package, please refer to their individual README files linked above.
 
@@ -44,8 +43,12 @@ yarn install
 
 ## Contributing
 
-We welcome contributions to any of the packages in this monorepo. Please read our [CONTRIBUTING.md](./CONTRIBUTING.md) file for more information on how to get started.
+I welcome contributions to any of the packages in this monorepo. Please read the [CONTRIBUTING.md](./CONTRIBUTING.md) file for more information on how to get started.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+
+---
+<sub>Created by [Arthur Breton](https://siteed.net) • See more projects at [siteed.net](https://siteed.net)</sub>
