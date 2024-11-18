@@ -3,7 +3,15 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-- remame from @siteed/gitguard to gitguard
+- docs(gitguard): restructure documentation and improve contributor guides (#35) ([73521f5](https://github.com/deeeed/universe/commit/73521f56de0a560efe0fdddedc97dbcc7e3dc2e1))
+- feat(ai): integrate multiple AI providers and enhance commit management (#34) ([a33b4ec](https://github.com/deeeed/universe/commit/a33b4ec570bef297f36e686d69a7a05b11f84e39))
+- refactor(gitguard): migrate prompt handling to service-based architecture with enhanced UI (#33) ([62f43b9](https://github.com/deeeed/universe/commit/62f43b9af6505b17888dcc467f0a80b3fc0cbb93))
+- refactor(prompt): migrate from readline to @inquirer/prompts for interactive CLI (#32) ([55ace61](https://github.com/deeeed/universe/commit/55ace61e83bb021e2d3067acbaadd79d4e0c88bd))
+- feat(gitguard): enhance template system and add API convenience features (#31) ([f6fe45b](https://github.com/deeeed/universe/commit/f6fe45b1a6a38c9722a158df84a8a7d530167a8d))
+- feat(gitguard): implement type-safe template system with comprehensive management features (#30) ([b1470e7](https://github.com/deeeed/universe/commit/b1470e75466717bcf55b522c2575eff901d1e42e))
+- refactor(gitguard): enhance security scanning with minimatch and improve commit validation (#29) ([aa66055](https://github.com/deeeed/universe/commit/aa6605543c90541248862a62f16be19746b4010f))
+- refactor(core): enhance configuration system and AI provider initialization (#28) ([84e04f6](https://github.com/deeeed/universe/commit/84e04f63e43798ad344901efe5a97a93569c57fb))
+
 
 ## [0.4.3] - 2024-11-11
 - refactor(cli): improve package version detection reliability ([f48dca5](https://github.com/deeeed/universe/commit/f48dca593b86f2f949de26931995cd7b7d89fad6))

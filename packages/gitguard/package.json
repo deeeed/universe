@@ -5,7 +5,6 @@
   "description": "GitGuard is a tool that helps you enforce best practices in your Git commit messages.",
   "author": "Arthur Breton <abreton@siteed.net> (https://siteed.net/)",
   "license": "MIT",
-  "deprecated": "@siteed/gitguard has been renamed to gitguard. Please update your dependencies.",
   "repository": {
     "type": "git",
     "url": "https://github.com/deeeed/universe",
