@@ -114,9 +114,28 @@ async function main(): Promise<void> {
   const program = new Command();
   addGlobalOptions(program);
 
-  // Add error handling for unknown commands and options
-  program.showHelpAfterError();
-  program.showSuggestionAfterError();
+  // Improve error handling for unknown options
+  program
+    .showHelpAfterError(
+      `\n${chalk.yellow("Tip:")} Use ${chalk.cyan("--help")} to see all available options.`,
+    )
+    .showSuggestionAfterError(true)
+    .configureOutput({
+      outputError: (str, write) => {
+        // Improve the unknown option error message
+        if (str.includes("unknown option")) {
+          const option = /'(.+)'/.exec(str)?.[1];
+          write(
+            chalk.red(`Error: Unknown option '${option}'`) +
+              `\n\n${chalk.yellow("Available options:")}` +
+              `\nRun ${chalk.cyan("gitguard --help")} to see all commands` +
+              `\nRun ${chalk.cyan("gitguard <command> --help")} to see command-specific options\n`,
+          );
+        } else {
+          write(chalk.red(str));
+        }
+      },
+    });
 
   // Set version early
   const version = await getPackageVersion({ logger });
