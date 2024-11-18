@@ -77,7 +77,7 @@ export class CustomAIService extends BaseService implements AIProvider {
         messages,
         model: this.getModel(),
         temperature: params.options?.temperature ?? DEFAULT_TEMPERATURE,
-        max_tokens: 2000,
+        max_tokens: DEFAULT_MAX_PROMPT_TOKENS,
         response_format: params.options?.requireJson
           ? { type: "json_object" }
           : undefined,

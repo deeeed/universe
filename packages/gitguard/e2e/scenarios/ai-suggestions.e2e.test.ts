@@ -124,6 +124,9 @@ const scenarios: TestScenario[] = [
     setup: {
       files: [{ path: "src/generated.ts", content: "// Initial content" }],
       config: {
+        analysis: {
+          multiPackageDetection: false,
+        },
         ai: {
           ...baseAIConfig,
           maxPromptTokens: 2000,
@@ -231,6 +234,9 @@ const scenarios: TestScenario[] = [
         },
       ],
       config: {
+        analysis: {
+          multiPackageDetection: false,
+        },
         git: {
           monorepoPatterns: ["packages/*"],
         },
