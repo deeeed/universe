@@ -2,7 +2,15 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { LoggerService } from "../services/logger.service.js";
 import { Config } from "../types/config.types.js";
-import { getConfigStatus } from "../utils/config.util.js";
+import {
+  getConfigStatus,
+  getDefaultConfig,
+  loadConfig,
+} from "../utils/config.util.js";
+import {
+  PROBLEMATIC_FILE_PATTERNS,
+  SECRET_PATTERNS,
+} from "../types/security.types.js";
 
 interface StatusCommandOptions {
   debug?: boolean;
@@ -11,133 +19,328 @@ interface StatusCommandOptions {
   local?: boolean;
 }
 
-interface StatusAnalyzeParams {
-  options: StatusCommandOptions;
-}
+// Add icon constants for better readability
+const ICONS = {
+  INFO: "ℹ️",
+  WARNING: "⚠️",
+  SUCCESS: "✅",
+  ERROR: "❌",
+  BULLET: "•",
+  NOTE: "📝",
+  IMPORTANT: "🔔",
+  CONFIG: "⚙️",
+  SECURITY: "🔒",
+  FILE: "📄",
+  FOLDER: "📁",
+  BINARY: "📦",
+} as const;
 
 function formatEnabled(enabled: boolean): string {
-  if (enabled) {
-    return chalk.green("✓ Enabled");
-  }
-  return chalk.gray("✗ Disabled");
+  if (enabled) return chalk.green(`${ICONS.SUCCESS} Enabled`);
+  return chalk.gray(`${ICONS.ERROR} Disabled`);
 }
 
-function formatConfigValue(value: unknown): string {
+function formatConfigValue(value: unknown, defaultValue?: unknown): string {
   if (value === undefined || value === null) {
-    return chalk.gray("Not configured");
+    return defaultValue !== undefined
+      ? chalk.gray(`Using default: ${String(defaultValue)}`)
+      : chalk.gray("Not configured");
   }
   if (typeof value === "boolean") {
     return value ? chalk.green("Yes") : chalk.gray("No");
   }
+  if (typeof value === "object") {
+    try {
+      return chalk.white(JSON.stringify(value));
+    } catch {
+      return chalk.gray("Complex object");
+    }
+  }
   return chalk.white(String(value));
 }
 
-function displayConfigFeatures(config: Partial<Config> | null): string[] {
+function displayConfigFeatures(
+  config: Partial<Config> | null,
+  defaultConfig: Config,
+): string[] {
   const output: string[] = [];
 
   // Git Configuration
-  output.push("Git Configuration:");
-  output.push(`  Base Branch: ${formatConfigValue(config?.git?.baseBranch)}`);
+  output.push(chalk.blue("\nGit Configuration:"));
+  output.push(
+    `  ${ICONS.CONFIG} Base Branch: ${formatConfigValue(config?.git?.baseBranch, defaultConfig.git.baseBranch)}`,
+    `    Purpose: The default branch to compare changes against`,
+  );
+  output.push(
+    `  Monorepo Patterns: ${formatConfigValue(config?.git?.monorepoPatterns, JSON.stringify(defaultConfig.git.monorepoPatterns))}`,
+    `    Purpose: Patterns to identify package directories in monorepos`,
+  );
+  output.push(chalk.gray("\n  Ignore Patterns:"));
+  output.push(
+    `    ${ICONS.FILE} Status: ${formatConfigValue(config?.git?.ignorePatterns, JSON.stringify(defaultConfig.git.ignorePatterns))}`,
+    `    Purpose: Patterns to exclude from analysis and AI prompts`,
+    `\n    ${ICONS.IMPORTANT} ${chalk.yellow("Important:")} Properly configured ignore patterns are crucial for:`,
+    `      ${ICONS.BULLET} Reducing noise in diffs and analysis`,
+    `      ${ICONS.BULLET} Preventing binary files from being processed`,
+    `      ${ICONS.BULLET} Optimizing AI token usage`,
+    `      ${ICONS.BULLET} Focusing on relevant source code changes`,
+    `\n    ${ICONS.NOTE} ${chalk.cyan("Recommended patterns to ignore:")}`,
+    `      ${ICONS.BINARY} Binary files (images, pdfs, etc.)`,
+    `      ${ICONS.FOLDER} Build artifacts and dependencies`,
+    `      ${ICONS.FILE} Large generated files`,
+    `      ${ICONS.FOLDER} Temporary and cache files`,
+    `      ${ICONS.FILE} System-specific files`,
+    `\n    ${ICONS.INFO} ${chalk.gray(" Common patterns:")}`,
+    `      ${ICONS.BULLET} *.{png,jpg,gif,ico,pdf,zip,tar.gz}`,
+    `      ${ICONS.BULLET} build/`,
+    `      ${ICONS.BULLET} dist/`,
+    `      ${ICONS.BULLET} node_modules/`,
+    `      ${ICONS.BULLET} .cache/`,
+    `      ${ICONS.BULLET} *.log`,
+  );
+
+  if (!config?.git?.ignorePatterns || config.git.ignorePatterns.length === 0) {
+    output.push(
+      `\n    ${ICONS.WARNING} ${chalk.yellow("Warning:")} No ignore patterns configured.`,
+      `    This may impact performance and token usage.`,
+    );
+  }
+
+  if (config?.git?.github) {
+    output.push(
+      `  GitHub Integration:`,
+      `    Token: ${config.git.github.token ? chalk.green("Configured") : chalk.gray("Not configured")}`,
+      `    Enterprise URL: ${formatConfigValue(config.git.github.enterprise?.url)}`,
+    );
+  }
 
   // Analysis Features
-  output.push("\nAnalysis Features:");
+  output.push(chalk.blue("\nAnalysis Features:"));
+  const defaultAnalysis = defaultConfig.analysis;
+
   output.push(
     `  Conventional Commits: ${formatEnabled(config?.analysis?.checkConventionalCommits ?? false)}`,
+    `    Purpose: Enforce conventional commit message format`,
+    `    Default: ${defaultAnalysis.checkConventionalCommits}`,
   );
   output.push(
-    `  Max Commit Size: ${formatConfigValue(config?.analysis?.maxCommitSize ?? "Not set")} lines`,
+    `  Max Commit Size: ${formatConfigValue(config?.analysis?.maxCommitSize, defaultAnalysis.maxCommitSize)}`,
+    `    Purpose: Maximum number of lines changed in a single commit`,
   );
   output.push(
-    `  Max File Size: ${formatConfigValue(config?.analysis?.maxFileSize ?? "Not set")} lines`,
+    `  Max File Size: ${formatConfigValue(config?.analysis?.maxFileSize, defaultAnalysis.maxFileSize)}`,
+    `    Purpose: Maximum number of lines in a single file`,
+  );
+
+  // Complexity Analysis
+  output.push(chalk.blue("\nComplexity Analysis:"));
+  const defaultComplexity = defaultConfig.analysis.complexity;
+
+  // Structure Thresholds
+  output.push(
+    `  Score Threshold: ${formatConfigValue(
+      config?.analysis?.complexity?.structureThresholds?.scoreThreshold,
+      defaultComplexity.structureThresholds.scoreThreshold,
+    )}`,
+    `    Purpose: Total complexity score threshold for restructuring`,
+  );
+
+  output.push(
+    `  Reasons Threshold: ${formatConfigValue(
+      config?.analysis?.complexity?.structureThresholds?.reasonsThreshold,
+      defaultComplexity.structureThresholds.reasonsThreshold,
+    )}`,
+    `    Purpose: Number of complexity reasons before requiring restructuring`,
+  );
+
+  // File Size Thresholds
+  output.push(chalk.gray("\n  File Size Thresholds:"));
+  output.push(
+    `    Large File: ${formatConfigValue(
+      config?.analysis?.complexity?.thresholds?.largeFile,
+      defaultComplexity.thresholds.largeFile,
+    )} lines`,
+    `    Very Large File: ${formatConfigValue(
+      config?.analysis?.complexity?.thresholds?.veryLargeFile,
+      defaultComplexity.thresholds.veryLargeFile,
+    )} lines`,
+    `    Huge File: ${formatConfigValue(
+      config?.analysis?.complexity?.thresholds?.hugeFile,
+      defaultComplexity.thresholds.hugeFile,
+    )} lines`,
+    `    Multiple Files: ${formatConfigValue(
+      config?.analysis?.complexity?.thresholds?.multipleFiles,
+      defaultComplexity.thresholds.multipleFiles,
+    )} files`,
+    `    Many Files: ${formatConfigValue(
+      config?.analysis?.complexity?.thresholds?.manyFiles,
+      defaultComplexity.thresholds.manyFiles,
+    )} files`,
+  );
+
+  // Scoring Weights
+  output.push(chalk.gray("\n  Scoring Weights:"));
+  const scoring = defaultComplexity.scoring;
+  output.push(
+    `    Base File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.baseFileScore, scoring.baseFileScore)}`,
+    `    Large File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.largeFileScore, scoring.largeFileScore)}`,
+    `    Very Large File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.veryLargeFileScore, scoring.veryLargeFileScore)}`,
+    `    Huge File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.hugeFileScore, scoring.hugeFileScore)}`,
+    `    Source File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.sourceFileScore, scoring.sourceFileScore)}`,
+    `    Test File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.testFileScore, scoring.testFileScore)}`,
+    `    Config File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.configFileScore, scoring.configFileScore)}`,
+    `    API File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.apiFileScore, scoring.apiFileScore)}`,
+    `    Migration File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.migrationFileScore, scoring.migrationFileScore)}`,
+    `    Component File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.componentFileScore, scoring.componentFileScore)}`,
+    `    Hook File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.hookFileScore, scoring.hookFileScore)}`,
+    `    Utility File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.utilityFileScore, scoring.utilityFileScore)}`,
+    `    Critical File Score: ${formatConfigValue(config?.analysis?.complexity?.scoring?.criticalFileScore, scoring.criticalFileScore)}`,
   );
 
   // AI Features
-  output.push("\nAI Features:");
-  output.push(`  Status: ${formatEnabled(config?.ai?.enabled ?? false)}`);
-  if (config?.ai?.enabled) {
-    output.push(`  Provider: ${formatConfigValue(config.ai.provider)}`);
+  output.push(chalk.blue("\nAI Features:"));
+  const aiEnabled = config?.ai?.enabled ?? false;
+  output.push(`  ${ICONS.CONFIG} Status: ${formatEnabled(aiEnabled)}`);
+
+  if (aiEnabled) {
+    const provider = config?.ai?.provider;
     output.push(
-      `  API Clipboard: ${formatEnabled(config.ai?.apiClipboard ?? true)}`,
+      `  ${ICONS.CONFIG} Provider: ${formatConfigValue(provider ?? "Not configured")}`,
+    );
+    output.push(chalk.gray("\n  Available Providers:"));
+    output.push(
+      `    ${provider === "azure" ? ICONS.SUCCESS : ICONS.BULLET} Azure OpenAI: ${provider === "azure" ? chalk.green("Active") : chalk.gray("Inactive")}`,
+      `    ${provider === "openai" ? ICONS.SUCCESS : ICONS.BULLET} OpenAI: ${provider === "openai" ? chalk.green("Active") : chalk.gray("Inactive")}`,
+      `    ${provider === "anthropic" ? ICONS.SUCCESS : ICONS.BULLET} Anthropic: ${provider === "anthropic" ? chalk.green("Active") : chalk.gray("Inactive")}`,
+      `    ${provider === "custom" ? ICONS.SUCCESS : ICONS.BULLET} Custom: ${provider === "custom" ? chalk.green("Active") : chalk.gray("Inactive")}`,
     );
 
-    if (config.ai.provider === "azure" && config.ai.azure) {
-      output.push("  Azure OpenAI:");
+    output.push(
+      `\n  API Clipboard: ${formatEnabled(config?.ai?.apiClipboard ?? true)}`,
+      `    Purpose: Enable copying API responses to clipboard`,
+    );
+    output.push(
+      `  Max Prompt Tokens: ${formatConfigValue(config?.ai?.maxPromptTokens, defaultConfig.ai.maxPromptTokens)}`,
+      `    Purpose: Maximum number of tokens allowed in prompts`,
+    );
+    output.push(
+      `  Max Prompt Cost: ${formatConfigValue(config?.ai?.maxPromptCost, defaultConfig.ai.maxPromptCost)}`,
+      `    Purpose: Maximum cost allowed per prompt in USD`,
+    );
+
+    // Provider-specific configurations
+    if (provider === "azure" && config?.ai?.azure) {
+      output.push(chalk.gray("\n  Azure OpenAI Configuration:"));
       output.push(
         `    Endpoint: ${formatConfigValue(config.ai.azure.endpoint)}`,
-      );
-      output.push(
         `    Deployment: ${formatConfigValue(config.ai.azure.deployment)}`,
-      );
-      output.push(
         `    API Version: ${formatConfigValue(config.ai.azure.apiVersion)}`,
       );
-    } else if (config.ai.provider === "openai" && config.ai.openai) {
-      output.push("  OpenAI:");
-      output.push(`    Model: ${formatConfigValue(config.ai.openai.model)}`);
-    } else if (config.ai.provider === "anthropic" && config.ai.anthropic) {
-      output.push("  Anthropic:");
+    } else if (provider === "openai" && config?.ai?.openai) {
+      output.push(chalk.gray("\n  OpenAI Configuration:"));
+      output.push(
+        `    Model: ${formatConfigValue(config.ai.openai.model)}`,
+        `    Organization: ${formatConfigValue(config.ai.openai.organization)}`,
+      );
+    } else if (provider === "anthropic" && config?.ai?.anthropic) {
+      output.push(chalk.gray("\n  Anthropic Configuration:"));
       output.push(`    Model: ${formatConfigValue(config.ai.anthropic.model)}`);
-    } else if (config.ai.provider === "custom" && config.ai.custom) {
-      output.push("  Custom:");
-      output.push(`    Host: ${formatConfigValue(config.ai.custom.host)}`);
-      output.push(`    Model: ${formatConfigValue(config.ai.custom.model)}`);
+    } else if (provider === "custom" && config?.ai?.custom) {
+      output.push(chalk.gray("\n  Custom Configuration:"));
+      output.push(
+        `    Host: ${formatConfigValue(config.ai.custom.host)}`,
+        `    Model: ${formatConfigValue(config.ai.custom.model)}`,
+      );
     }
+  } else {
+    output.push(
+      chalk.gray("  No AI provider configured - AI features disabled"),
+    );
   }
 
   // Security Features
-  output.push("\nSecurity Features:");
+  output.push(chalk.blue("\nSecurity Features:"));
   const securityEnabled = config?.security?.enabled ?? false;
-  output.push(`  Status: ${formatEnabled(securityEnabled)}`);
+  output.push(`  ${ICONS.SECURITY} Status: ${formatEnabled(securityEnabled)}`);
 
-  // Safely access nested security properties with fallbacks
-  const secretsEnabled = config?.security?.rules?.secrets?.enabled ?? false;
-  const filesEnabled = config?.security?.rules?.files?.enabled ?? false;
+  if (securityEnabled) {
+    // Secret Detection
+    const secretsEnabled = config?.security?.rules?.secrets?.enabled ?? false;
+    output.push(
+      `\n  Secret Detection: ${formatEnabled(secretsEnabled)}`,
+      `    Severity: ${formatConfigValue(config?.security?.rules?.secrets?.severity, "high")}`,
+      `    Block PR: ${formatConfigValue(config?.security?.rules?.secrets?.blockPR, true)}`,
+    );
 
-  output.push(`  Secret Detection: ${formatEnabled(secretsEnabled)}`);
-  output.push(`  File Checks: ${formatEnabled(filesEnabled)}`);
+    if (secretsEnabled) {
+      output.push(chalk.gray("    Active Patterns:"));
+      SECRET_PATTERNS.forEach((pattern) => {
+        output.push(`      • ${pattern.name} (${pattern.severity})`);
+      });
+    }
+
+    // File Checks
+    const filesEnabled = config?.security?.rules?.files?.enabled ?? false;
+    output.push(
+      `\n  File Checks: ${formatEnabled(filesEnabled)}`,
+      `    Severity: ${formatConfigValue(config?.security?.rules?.files?.severity, "high")}`,
+    );
+
+    if (filesEnabled) {
+      output.push(chalk.gray("    Active Patterns:"));
+      PROBLEMATIC_FILE_PATTERNS.forEach((category) => {
+        output.push(`      • ${category.category} (${category.severity})`);
+      });
+    }
+  }
 
   // PR Features
-  output.push("\nPull Request Features:");
+  output.push(chalk.blue("\nPull Request Features:"));
   output.push(
     `  Template Required: ${formatEnabled(config?.pr?.template?.required ?? false)}`,
+    `    Purpose: Enforce PR template usage`,
   );
   output.push(
-    `  Template Path: ${formatConfigValue(config?.pr?.template?.path)}`,
+    `  Template Path: ${formatConfigValue(config?.pr?.template?.path, defaultConfig.pr.template.path)}`,
+    `    Purpose: Location of PR template file`,
   );
+
   if (config?.pr?.template?.sections) {
-    output.push("  Required Sections:");
+    output.push(chalk.gray("\n  Required Sections:"));
     Object.entries(config.pr.template.sections).forEach(
       ([section, enabled]) => {
         output.push(`    • ${section}: ${formatEnabled(enabled)}`);
       },
     );
   }
+
   output.push(
-    `  Max PR Size: ${formatConfigValue(config?.pr?.maxSize ?? "Not set")} lines`,
+    `\n  Max PR Size: ${formatConfigValue(config?.pr?.maxSize, defaultConfig.pr.maxSize)} lines`,
+    `    Purpose: Maximum number of lines changed in a PR`,
   );
   output.push(
-    `  Required Approvals: ${formatConfigValue(config?.pr?.requireApprovals ?? "Not set")}`,
+    `  Required Approvals: ${formatConfigValue(config?.pr?.requireApprovals, defaultConfig.pr.requireApprovals)}`,
+    `    Purpose: Number of approvals required before merging`,
   );
 
   // Debug Mode
-  output.push("\nDebug Mode:");
+  output.push(chalk.blue("\nDebug Mode:"));
   output.push(`  Status: ${formatEnabled(config?.debug ?? false)}`);
 
   return output;
 }
 
-async function analyzeStatus({ options }: StatusAnalyzeParams): Promise<void> {
+async function analyzeStatus({
+  options,
+}: {
+  options: StatusCommandOptions;
+}): Promise<void> {
   const logger = new LoggerService({ debug: options.debug });
 
   try {
-    logger.debug("Status options:", options);
     const status = await getConfigStatus();
-
-    logger.debug("Status object:", JSON.stringify(status, null, 2));
-    logger.debug(
-      "Global config:",
-      JSON.stringify(status.global.config, null, 2),
-    );
+    const defaultConfig = getDefaultConfig();
+    const runtimeConfig = await loadConfig({ configPath: options.configPath });
 
     logger.info(chalk.blue("\n📝 Configuration Status:"));
 
@@ -145,7 +348,6 @@ async function analyzeStatus({ options }: StatusAnalyzeParams): Promise<void> {
       logger.info(
         `\nGlobal config found at: ${chalk.cyan(status.global.path)}`,
       );
-
       if (!status.global.config) {
         logger.info(
           chalk.yellow(
@@ -159,17 +361,19 @@ async function analyzeStatus({ options }: StatusAnalyzeParams): Promise<void> {
         );
       } else {
         logger.info(chalk.yellow("\nGlobal Settings:"));
-        const globalFeatures = displayConfigFeatures(status.global.config);
-        globalFeatures.forEach((line) => logger.info(line));
+        displayConfigFeatures(status.global.config, defaultConfig).forEach(
+          (line) => logger.info(line),
+        );
       }
-    } else if (!options.local) {
-      logger.info(chalk.yellow("\nNo global config found"));
     }
 
     if (status.local.exists && (!options.global || options.local)) {
       logger.info(`\nLocal config found at: ${chalk.cyan(status.local.path)}`);
       logger.info(chalk.yellow("\nLocal Settings (overrides global):"));
-      const localFeatures = displayConfigFeatures(status.local.config);
+      const localFeatures = displayConfigFeatures(
+        status.local.config,
+        defaultConfig,
+      );
       if (localFeatures.length > 0) {
         localFeatures.forEach((line) => logger.info(line));
       } else {
@@ -181,7 +385,7 @@ async function analyzeStatus({ options }: StatusAnalyzeParams): Promise<void> {
 
     if (status.effective && status.local.exists && !options.global) {
       logger.info(chalk.blue("\n⚡ Effective Configuration:"));
-      displayConfigFeatures(status.effective).forEach((line) =>
+      displayConfigFeatures(runtimeConfig, defaultConfig).forEach((line) =>
         logger.info(line),
       );
     }
@@ -196,36 +400,43 @@ async function analyzeStatus({ options }: StatusAnalyzeParams): Promise<void> {
   }
 }
 
-// Subcommands
-const show = new Command("show")
-  .description("Show configuration status")
-  .option("--global", "Show only global configuration")
-  .option("--local", "Show only local configuration")
-  .action(async (cmdOptions: StatusCommandOptions) => {
-    await analyzeStatus({ options: cmdOptions });
-  });
-
 // Main status command
 export const statusCommand = new Command("status")
   .description("Show GitGuard configuration status")
   .option("-d, --debug", "Enable debug mode")
+  .option("-g, --global", "Show only global configuration")
+  .option("-l, --local", "Show only local configuration")
   .addHelpText(
     "after",
     `
 ${chalk.blue("Examples:")}
-  ${chalk.yellow("$")} gitguard status              # Show all configurations
-  ${chalk.yellow("$")} gitguard status --global     # Show only global config
-  ${chalk.yellow("$")} gitguard status --local      # Show only local config`,
-  );
+  ${chalk.yellow("$")} gitguard status          # Show all configurations
+  ${chalk.yellow("$")} gitguard status --global # Show only global config
+  ${chalk.yellow("$")} gitguard status --local  # Show only local config
 
-// Add subcommands
-statusCommand
-  .addCommand(show)
+${chalk.blue("Configuration Locations:")}
+  Global: ~/.gitguard/config.json
+  Local:  ./.gitguard/config.json (in git root)
+
+${chalk.blue("Available Options:")}
+  -d, --debug    Enable debug mode
+  -g, --global   Show only global configuration
+  -l, --local    Show only local configuration
+  -h, --help     Display help for command`,
+  )
+  .showHelpAfterError(
+    `\n${chalk.yellow("Tip:")} Use ${chalk.cyan("gitguard status --help")} to see all available options.`,
+  )
+  .showSuggestionAfterError(true)
   .action(async (cmdOptions: StatusCommandOptions) => {
-    await analyzeStatus({ options: cmdOptions });
+    try {
+      await analyzeStatus({ options: cmdOptions });
+    } catch (error) {
+      const logger = new LoggerService({ debug: cmdOptions.debug });
+      logger.error("Failed to get status:", error);
+      logger.info(
+        `\n${chalk.yellow("Need help?")} Run ${chalk.cyan("gitguard status --help")} to see usage instructions.`,
+      );
+      process.exit(1);
+    }
   });
-
-// Keep original export for backward compatibility
-export async function statusLegacy(params: StatusAnalyzeParams): Promise<void> {
-  return analyzeStatus(params);
-}
