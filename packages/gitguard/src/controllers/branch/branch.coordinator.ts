@@ -193,7 +193,7 @@ export async function analyzeBranch({
   options,
 }: AnalyzeParams): Promise<PRAnalysisResult> {
   const services = await initializeServices({ options });
-  const { logger, reporter } = services;
+  const { logger, reporter, config } = services;
 
   try {
     logger.debug("Analysis options:", {
@@ -214,11 +214,20 @@ export async function analyzeBranch({
       context: analysisContext,
     });
 
-    // Security checks
-    const securityResult = await handleSecurityChecks({
-      controllers,
-      analysisResult,
-    });
+    logger.debug(
+      `Security enabled: ${config?.security?.enabled}, skipSecurity: ${options.skipSecurity}`,
+    );
+
+    // Default to skip security if undefined on branch
+    const skipSecurity = options.skipSecurity ?? true;
+    if (config?.security?.enabled && !skipSecurity) {
+      // Security checks
+      const securityResult = await handleSecurityChecks({
+        controllers,
+        analysisResult,
+      });
+      controllers.securityController.displaySecuritySummary(securityResult);
+    }
 
     // Generate report
     reporter.generateReport({
@@ -242,8 +251,6 @@ export async function analyzeBranch({
         analysisContext,
       });
     }
-
-    controllers.securityController.displaySecuritySummary(securityResult);
 
     logger.debug("Branch analysis completed successfully");
     return analysisResult;
