@@ -126,6 +126,8 @@ export interface AIConfig {
   maxPromptTokens?: number;
   /** Maximum cost allowed per prompt */
   maxPromptCost?: number;
+  /** Maximum tokens allowed in clipboard */
+  maxClipboardTokens?: number;
   /** Enable clipboard option for API flows */
   apiClipboard?: boolean;
   /** Azure OpenAI configuration */

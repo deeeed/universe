@@ -1,7 +1,11 @@
 import chalk from "chalk";
-import { DEFAULT_MAX_PROMPT_TOKENS } from "../constants.js";
+import {
+  DEFAULT_MAX_CLIPBOARD_TOKENS,
+  DEFAULT_MAX_PROMPT_TOKENS,
+} from "../constants.js";
 import { TokenUsage } from "../types/ai.types.js";
 import { Logger } from "../types/logger.types.js";
+import { Config } from "../types/config.types.js";
 
 interface DisplayTokenInfoParams {
   tokenUsage: TokenUsage;
@@ -39,13 +43,7 @@ function formatBytes(bytes: number): string {
 
 interface CheckAILimitsParams {
   tokenUsage: TokenUsage;
-  config: {
-    ai: {
-      maxPromptTokens?: number;
-      maxClipboardTokens?: number;
-      maxPromptCost?: number;
-    };
-  };
+  config: Config;
   logger: Logger;
   isClipboardAction?: boolean;
 }
@@ -54,7 +52,8 @@ export function checkAILimits(params: CheckAILimitsParams): boolean {
   const { tokenUsage, config, logger, isClipboardAction } = params;
 
   if (isClipboardAction) {
-    const maxTokens = config.ai.maxClipboardTokens ?? 16000; // Higher limit for clipboard
+    const maxTokens =
+      config.ai.maxClipboardTokens ?? DEFAULT_MAX_CLIPBOARD_TOKENS; // Higher limit for clipboard
     return tokenUsage.count <= maxTokens;
   }
 

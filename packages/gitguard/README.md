@@ -233,7 +233,7 @@ You can fine-tune the diff analysis with:
 ```json
 {
   "ai": {
-    "maxPromptTokens": 32000,  // Maximum tokens in generated prompts
+    "maxPromptTokens": 4096,  // Maximum tokens in generated prompts
     "maxPromptCost": 0.1       // Maximum cost per API call in USD
   }
 }
@@ -489,7 +489,7 @@ Create a `.gitguard/config.json` file in your git repository or home directory. 
     // AI provider: "azure", "openai", "anthropic", "custom"
     "provider": null,
     // Maximum tokens allowed in prompts
-    "maxPromptTokens": 32000,
+    "maxPromptTokens": 4096,
     // Maximum cost allowed per prompt in USD
     "maxPromptCost": 0.1,
     // Enable copying API responses to clipboard

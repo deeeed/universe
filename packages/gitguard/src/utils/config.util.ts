@@ -2,7 +2,11 @@ import { promises as fs } from "fs";
 import { parse as parseJsonc } from "jsonc-parser";
 import { homedir } from "os";
 import { join } from "path";
-import { DEFAULT_COMPLEXITY_OPTIONS } from "../constants.js";
+import {
+  DEFAULT_COMPLEXITY_OPTIONS,
+  DEFAULT_MAX_CLIPBOARD_TOKENS,
+  DEFAULT_MAX_PROMPT_TOKENS,
+} from "../constants.js";
 import { Config, DeepPartial } from "../types/config.types.js";
 import { Severity } from "../types/security.types.js";
 import { deepMerge } from "./deep-merge.js";
@@ -180,8 +184,9 @@ export function getDefaultConfig(): Config {
     ai: {
       enabled: false,
       provider: null,
-      maxPromptTokens: 32000,
+      maxPromptTokens: DEFAULT_MAX_PROMPT_TOKENS,
       maxPromptCost: 0.1,
+      maxClipboardTokens: DEFAULT_MAX_CLIPBOARD_TOKENS,
       apiClipboard: true,
     },
     pr: {
