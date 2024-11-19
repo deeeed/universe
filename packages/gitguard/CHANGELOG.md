@@ -3,8 +3,11 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+
+
+## [0.6.0] - 2024-11-19
+- improve token management and complexity analysis (#37) ([43229bd](https://github.com/deeeed/universe/commit/43229bd45361d629d81585179885deba1d891ade))
 - refactor(ai): standardize token limits and security checks (#38) ([1ff1afc](https://github.com/deeeed/universe/commit/1ff1afc968cabbfb9a1c691f0d15acbdc4275b76))
-- feat: improve token management and complexity analysis (#37) ([43229bd](https://github.com/deeeed/universe/commit/43229bd45361d629d81585179885deba1d891ade))
 
 ## [0.5.0] - 2024-11-18
 - refactor(prompt): migrate from readline to @inquirer/prompts for interactive CLI (#32) ([55ace61](https://github.com/deeeed/universe/commit/55ace61e83bb021e2d3067acbaadd79d4e0c88bd))
@@ -16,8 +19,10 @@ All notable changes to this project will be documented in this file.
 - refactor(gitguard): enhance security scanning with minimatch and improve commit validation (#29) ([aa66055](https://github.com/deeeed/universe/commit/aa6605543c90541248862a62f16be19746b4010f))
 - refactor(core): enhance configuration system and AI provider initialization (#28) ([84e04f6](https://github.com/deeeed/universe/commit/84e04f63e43798ad344901efe5a97a93569c57fb))
 
+
 ## [0.4.3] - 2024-11-11
 - refactor(cli): improve package version detection reliability ([f48dca5](https://github.com/deeeed/universe/commit/f48dca593b86f2f949de26931995cd7b7d89fad6))
+
 
 
 ## [0.4.2] - 2024-11-11
@@ -26,8 +31,10 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.4.1] - 2024-11-11
 - refactor(gitguard): migrate to project-based test setup and enhance configuration system (#25) ([98d12a0](https://github.com/deeeed/universe/commit/98d12a0ce58ab35aa923c58f2e377abc41bde2be))
+
 
 
 
@@ -42,9 +49,11 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.3.2] - 2024-11-06
 - feat(gitguard): add monorepoPatterns to init command configuration ([11995bd](https://github.com/deeeed/universe/commit/11995bdc661d9426b1af84fe80ac36806fca3011))
 - feat(cli): add commit option to analyze command ([c8755f5](https://github.com/deeeed/universe/commit/c8755f50198df1efa820f20af41aa282822445c2))
+
 
 
 
@@ -65,12 +74,14 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.3.0] - 2024-11-04
 
 ### Changed
 - inititial version.
 
-[unreleased]: https://github.com/deeeed/universe/compare/gitguard@0.5.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/gitguard@0.6.0...HEAD
+[0.6.0]: https://github.com/deeeed/universe/compare/gitguard@0.5.1...gitguard@0.6.0
 [0.5.0]: https://github.com/deeeed/universe/compare/gitguard@0.4.3...gitguard@0.5.0
 [0.4.3]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.4.2...@siteed/gitguard@0.4.3
 [0.4.2]: https://github.com/deeeed/universe/compare/@siteed/gitguard@0.4.1...@siteed/gitguard@0.4.2
