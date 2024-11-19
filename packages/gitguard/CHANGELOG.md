@@ -3,7 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- refactor(ai): standardize token limits and security checks (#38) ([1ff1afc](https://github.com/deeeed/universe/commit/1ff1afc968cabbfb9a1c691f0d15acbdc4275b76))
+- feat: improve token management and complexity analysis (#37) ([43229bd](https://github.com/deeeed/universe/commit/43229bd45361d629d81585179885deba1d891ade))
 
 ## [0.5.0] - 2024-11-18
 - refactor(prompt): migrate from readline to @inquirer/prompts for interactive CLI (#32) ([55ace61](https://github.com/deeeed/universe/commit/55ace61e83bb021e2d3067acbaadd79d4e0c88bd))
