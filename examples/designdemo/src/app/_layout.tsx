@@ -1,19 +1,20 @@
 // examples/designdemo/src/app/_layout.tsx
-import { ThemeProvider } from "@react-navigation/native";
+import { ThemeProvider, DefaultTheme } from "@react-navigation/native";
 import { useThemePreferences } from "@siteed/design-system";
-import { Drawer } from "expo-router/drawer";
+import { Stack } from "expo-router";
+
 export const unstable_settings = {
-  initialRouteName: "/",
+  initialRouteName: "(tabs)",
 };
 
-export default function HomeLayout() {
+export default function RootLayout() {
   const { theme } = useThemePreferences();
 
   return (
-    <ThemeProvider value={{ ...theme }}>
-      <Drawer screenOptions={{ headerShown: true }}>
-        <Drawer.Screen name="(tabs)" />
-      </Drawer>
+    <ThemeProvider value={{ ...theme, fonts: DefaultTheme.fonts }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+      </Stack>
     </ThemeProvider>
   );
 }

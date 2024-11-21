@@ -28,5 +28,6 @@
     "env": {
       "NODE_OPTIONS": "--experimental-vm-modules --no-warnings",
     }
-  }
+  },
+  "java.configuration.updateBuildConfiguration": "disabled"
 }

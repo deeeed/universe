@@ -10,7 +10,8 @@
       "program": "${workspaceFolder}/packages/gitguard/e2e/index.ts",
       // "args": ["--tests=branch-features", "--scenario=branch-split-suggestion", "--debug"],
       // "args": ["--tests=commit-message", "--scenario=multi-package", "--debug"],
-      "args": ["--tests=ai-suggestions", "--scenario=commit-ai-large", "--debug"],
+      // "args": ["--tests=ai-suggestions", "--scenario=commit-ai-large", "--debug"],
+      "args": ["--tests=ai-providers", "--scenario=custom-provider-config", "--debug"],
       "runtimeArgs": [
         "--loader",
         "ts-node/esm",
