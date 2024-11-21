@@ -422,7 +422,7 @@ const FABGroup = ({
                             opacity: opacities[i],
                           },
                           isV3 && styles.v3ContainerStyle,
-                          it.containerStyle,
+                          it.containerStyle as StyleProp<ViewStyle>,
                         ]}
                       >
                         <Text
@@ -458,7 +458,7 @@ const FABGroup = ({
                           { translateY: translations[i] as unknown as number },
                         ],
                       },
-                      it.style,
+                      it.style as StyleProp<ViewStyle>,
                     ]}
                     accessibilityElementsHidden={true}
                     theme={theme}
@@ -497,7 +497,7 @@ const FABGroup = ({
           accessibilityLabel={accessibilityLabel}
           accessibilityRole="button"
           accessibilityState={{ expanded: open }}
-          style={[styles.fab, fabStyle]}
+          style={[styles.fab, fabStyle as StyleProp<ViewStyle>]}
           theme={theme}
           visible={visible}
           label={label}
