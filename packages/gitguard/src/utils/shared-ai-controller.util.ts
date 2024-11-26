@@ -18,6 +18,7 @@ import { checkAILimits } from "./ai-limits.util.js";
 import { copyToClipboard } from "./clipboard.util.js";
 import { formatDiffForAI } from "./diff.util.js";
 import { selectTemplateChoice } from "./template-choice.util.js";
+import { promptYesNo } from "./user-prompt.util.js";
 
 // Base interface for shared dependencies
 interface BaseAIParams {
@@ -197,7 +198,30 @@ export async function handleClipboardCopy({
       );
     }
   } else {
-    logger.warn("\n⚠️ Content exceeds maximum clipboard token limit");
+    const maxTokens = config.ai.maxPromptTokens ?? DEFAULT_MAX_PROMPT_TOKENS;
+    logger.warn(
+      chalk.yellow(
+        `\n⚠️ Content size (${clipboardTokens.count} tokens) exceeds the recommended limit of ${maxTokens} tokens`,
+      ),
+    );
+
+    const shouldProceed = await promptYesNo({
+      message: "Would you like to copy to clipboard anyway?",
+      defaultValue: false,
+      logger,
+    });
+
+    if (shouldProceed) {
+      await copyToClipboard({ text: prompt, logger });
+      logger.info("\n✅ AI prompt copied to clipboard!");
+      logger.warn(
+        chalk.dim(
+          "\nNote: Large prompts may be truncated by some AI assistants.",
+        ),
+      );
+    } else {
+      logger.info("\n❌ Clipboard copy cancelled.");
+    }
   }
 }
 
