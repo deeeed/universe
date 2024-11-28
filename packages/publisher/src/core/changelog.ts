@@ -203,6 +203,19 @@ export class ChangelogService {
       : KEEP_A_CHANGELOG_FORMAT;
   }
 
+  /**
+   * Generates changelog content for a new version based on either conventional commits
+   * or the current unreleased section.
+   *
+   * @param context - Package context containing version and path information
+   * @param config - Release configuration specifying changelog format and options
+   * @returns Promise<string> - Formatted changelog content for the new version
+   *
+   * @remarks
+   * - For conventional commits: Generates content from git history using conventional-changelog
+   * - For non-conventional: Returns empty sections based on the specified format
+   * - Content is formatted according to either "conventional" or "keep-a-changelog" format
+   */
   async generate(
     context: PackageContext,
     config: ReleaseConfig,
@@ -247,6 +260,23 @@ export class ChangelogService {
     });
   }
 
+  /**
+   * Updates the changelog file with new version content while maintaining proper formatting and structure.
+   *
+   * @param context - Package context containing version and path information
+   * @param newContent - New changelog content to be added
+   * @param config - Release configuration
+   *
+   * @remarks
+   * The update process:
+   * 1. Clears the unreleased section while preserving the header
+   * 2. Adds new version section with formatted date
+   * 3. Adds new content under the version
+   * 4. Deduplicates version entries
+   * 5. Updates version comparison links
+   *
+   * @throws Error if changelog update fails
+   */
   async update(
     context: PackageContext,
     newContent: string,
@@ -606,9 +636,20 @@ export class ChangelogService {
   }
 
   /**
-   * Validates the changelog for the given package context and configuration.
-   * @param context - The package context.
-   * @param config - The release configuration.
+   * Validates the changelog file structure and content according to the specified format.
+   *
+   * @param context - Package context containing version and path information
+   * @param config - Release configuration
+   *
+   * @remarks
+   * Validates:
+   * - File existence and format
+   * - Required sections (Unreleased, etc.)
+   * - Version entry format and ordering
+   * - Date formats in version headers
+   * - Section headers (for keep-a-changelog format)
+   *
+   * @throws Error if validation fails
    */
   async validate(
     context: PackageContext,
@@ -688,7 +729,7 @@ export class ChangelogService {
    * @param content - The full changelog content as a string.
    * @returns The content of the "Unreleased" section.
    */
-  private extractUnreleasedSection(content: string): string {
+  public extractUnreleasedSection(content: string): string {
     const unreleasedMatch = content.match(
       /##\s*\[Unreleased\]([^]*?)(?=\n##\s*\[|$)/i,
     );
@@ -888,7 +929,17 @@ export class ChangelogService {
   }
 
   /**
-   * Previews the changelog entry for a new version without writing to the file.
+   * Previews how the changelog will look after updating to a new version.
+   *
+   * @param context - Package context containing version information
+   * @param config - Release configuration
+   * @returns Promise<string> - Formatted preview of the changelog entry
+   *
+   * @remarks
+   * - Uses current unreleased section if available
+   * - Falls back to conventional commits if enabled
+   * - Formats according to specified changelog format
+   * - Includes proper date formatting and section structure
    */
   async previewChangelog(
     context: PackageContext,
@@ -1233,9 +1284,20 @@ export class ChangelogService {
   }
 
   /**
-   * Adds new changes to the Unreleased section of the changelog
+   * Adds new changes to the Unreleased section of the changelog.
+   *
+   * @param context - Package context
+   * @param changes - Array of change entries to add
+   *
+   * @remarks
+   * - Prevents duplicate entries (case-insensitive comparison)
+   * - Maintains proper spacing and formatting
+   * - Preserves existing unreleased entries
+   * - Handles commit references in change messages
+   *
+   * @throws Error if updating the changelog fails
    */
-  public async addToUnreleased(
+  async addToUnreleased(
     context: PackageContext,
     changes: string[],
   ): Promise<void> {

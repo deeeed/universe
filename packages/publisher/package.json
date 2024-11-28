@@ -38,6 +38,7 @@
     "setup-cli": "chmod +x setup-cli.sh && ./setup-cli.sh"
   },
   "dependencies": {
+    "@inquirer/prompts": "^7.1.0",
     "chalk": "4.1.2",
     "commander": "^11.1.0",
     "conventional-changelog": "^5.1.0",

@@ -8,6 +8,18 @@ import type {
 import { Logger } from "../../utils/logger";
 import { ReleaseService } from "../release";
 
+// Add type for the mocked service
+type MockedChangelogService = {
+  validate: jest.Mock;
+  generate: jest.Mock;
+  update: jest.Mock;
+  getUnreleasedChanges: jest.Mock;
+  previewChangelog: jest.Mock;
+  _setUnreleasedChanges: (changes: string[]) => void;
+  _setPreviewContent: (content: string) => void;
+  _setGeneratedContent: (content: string) => void;
+};
+
 // Mock modules
 jest.mock("../git", () => ({
   GitService: jest.fn().mockImplementation(() => ({
@@ -71,21 +83,34 @@ jest.mock("../integrity", () => ({
   })),
 }));
 
+// Update the mock with proper typing
 jest.mock("../changelog", () => ({
-  ChangelogService: jest.fn().mockImplementation(() => ({
-    validate: jest.fn().mockResolvedValue(undefined),
-    generate: jest.fn().mockResolvedValue("Test changelog"),
-    update: jest.fn().mockResolvedValue(undefined),
-    getUnreleasedChanges: jest
-      .fn()
-      .mockResolvedValue(["### Added", "- New feature 1", "- New feature 2"]),
-    previewChangelog: jest
-      .fn()
-      .mockImplementation(
-        () =>
-          `## [1.1.0] - 2024-01-01\n\n### Added\n- New feature 1\n- New feature 2`,
-      ),
-  })),
+  ChangelogService: jest.fn().mockImplementation(() => {
+    let unreleasedChanges: string[] = [];
+    let previewContent = "";
+    let generatedContent = "";
+
+    return {
+      validate: jest.fn().mockResolvedValue(undefined),
+      generate: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve(generatedContent)),
+      update: jest.fn().mockResolvedValue(undefined),
+      getUnreleasedChanges: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve(unreleasedChanges)),
+      previewChangelog: jest.fn().mockImplementation(() => previewContent),
+      _setUnreleasedChanges: (changes: string[]) => {
+        unreleasedChanges = changes;
+      },
+      _setPreviewContent: (content: string) => {
+        previewContent = content;
+      },
+      _setGeneratedContent: (content: string) => {
+        generatedContent = content;
+      },
+    } as MockedChangelogService;
+  }),
 }));
 
 jest.mock("../version", () => ({
@@ -560,46 +585,61 @@ describe("ReleaseService", () => {
     });
   });
 
-  describe("handleChangelog", () => {
-    beforeEach(() => {
-      // Reset mocks
-      jest.clearAllMocks();
+  describe("prepareChangelogEntry", () => {
+    const mockContext = {
+      name: "test-package",
+      path: "/test/path",
+      currentVersion: "1.0.0",
+    };
 
-      // Mock changelog methods
-      jest
-        .spyOn(releaseService["changelog"], "generate")
-        .mockResolvedValue("Test changelog");
-      jest
-        .spyOn(releaseService["changelog"], "validate")
-        .mockResolvedValue(undefined);
+    it("should handle non-existent changelog file", async () => {
+      const initialChangelog = "## [1.0.0] - 2024-01-01\n\nInitial release";
 
-      // Mock version determination
-      jest
-        .spyOn(releaseService["version"], "determineVersion")
-        .mockReturnValue("1.1.0");
-      jest
-        .spyOn(releaseService["version"], "bump")
-        .mockResolvedValue(undefined);
+      // Mock fs.access to simulate non-existent file
+      jest.spyOn(fs.promises, "access").mockRejectedValue(new Error("ENOENT"));
 
-      // Mock workspace
-      jest
-        .spyOn(releaseService["workspace"], "getCurrentPackage")
-        .mockResolvedValue({
-          name: "test-package",
-          path: "/test/path",
-          currentVersion: "1.0.0",
-        });
+      // Configure mock for this test case
+      const changelogService = releaseService[
+        "changelog"
+      ] as unknown as MockedChangelogService;
+      changelogService._setGeneratedContent(initialChangelog);
+
+      // Mock user confirmation for creating new changelog
+      const mockConfirmCreation = jest
+        .spyOn(releaseService["prompts"], "confirmChangelogCreation")
+        .mockResolvedValue(true);
+
+      const mockGenerate = jest.spyOn(changelogService, "generate");
+
+      const result = await releaseService["prepareChangelogEntry"](
+        mockContext,
+        config,
+      );
+
+      expect(result).toBe(initialChangelog);
+      expect(mockConfirmCreation).toHaveBeenCalledWith("test-package");
+      expect(mockGenerate).toHaveBeenCalled();
     });
 
-    it("should validate changelog format before release", async () => {
-      const validateSpy = jest.spyOn(releaseService["changelog"], "validate");
+    it("should handle user rejecting changelog creation", async () => {
+      // Mock fs.access to simulate non-existent file
+      jest.spyOn(fs.promises, "access").mockRejectedValue(new Error("ENOENT"));
 
-      await releaseService.releasePackages(["test-package"], {
-        dryRun: true,
-        skipGitCheck: true,
-      });
+      // Mock user rejecting changelog creation
+      const mockConfirmCreation = jest
+        .spyOn(releaseService["prompts"], "confirmChangelogCreation")
+        .mockResolvedValue(false);
 
-      expect(validateSpy).toHaveBeenCalled();
+      const mockGenerate = jest.spyOn(releaseService["changelog"], "generate");
+
+      const result = await releaseService["prepareChangelogEntry"](
+        mockContext,
+        config,
+      );
+
+      expect(result).toBeUndefined();
+      expect(mockConfirmCreation).toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
   });
 });

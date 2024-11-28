@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import inquirer from "inquirer";
+
+import { confirm } from "@inquirer/prompts";
+
+import { VersionService } from "../core/version";
 import type { BumpType, PackageContext } from "../types/config";
 import { Logger } from "./logger";
-import { VersionService } from "../core/version";
 
 interface VersionBumpResponse {
   bumpType: BumpType;
@@ -88,16 +91,10 @@ export class Prompts {
   }
 
   async confirmRelease(): Promise<boolean> {
-    const { confirm }: ConfirmResponse = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: "Are you sure you want to proceed with the release?",
-        default: false,
-      },
-    ]);
-
-    return confirm;
+    return confirm({
+      message: "Are you sure you want to proceed with the release?",
+      default: false,
+    });
   }
 
   async selectPackages(availablePackages: string[]): Promise<string[]> {

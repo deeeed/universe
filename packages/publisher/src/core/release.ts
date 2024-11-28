@@ -163,8 +163,11 @@ export class ReleaseService {
 
       previousCommitHash = await this.git.getCurrentCommitHash();
 
-      this.logger.info("Processing changelog...");
-      const changelogEntry = await this.handleChangelog(context, packageConfig);
+      this.logger.info("Preparing changelog entry...");
+      const changelogEntry = await this.prepareChangelogEntry(
+        context,
+        packageConfig,
+      );
 
       if (!options.dryRun && !(await this.prompts.confirmRelease())) {
         throw new Error("Release cancelled");
@@ -548,7 +551,14 @@ export class ReleaseService {
     return this.changelog.previewChangelog(packages[0], packageConfig);
   }
 
-  private async handleChangelog(
+  /**
+   * Prepares a changelog entry for a new version release.
+   *
+   * @param context - Package context containing version and path information
+   * @param packageConfig - Release configuration for the package
+   * @returns Promise<string | undefined> - The final changelog entry content, or undefined if skipped
+   */
+  public async prepareChangelogEntry(
     context: PackageContext,
     packageConfig: ReleaseConfig,
   ): Promise<string | undefined> {
@@ -559,6 +569,7 @@ export class ReleaseService {
     this.logger.debug(`Changelog path: ${changelogPath}`);
 
     try {
+      // Check if changelog exists
       await fs.access(changelogPath);
 
       // Get unreleased changes from existing changelog
@@ -580,12 +591,12 @@ export class ReleaseService {
       let finalChangelog: string;
 
       if (unreleasedChanges.length > 0) {
+        // Handle existing unreleased changes
         this.logger.info(
           `Found ${unreleasedChanges.length} unreleased changes in changelog:`,
         );
         this.logger.info(unreleasedChanges.join("\n"));
 
-        // Show preview of how it will look in the new version
         const preview = await this.changelog.previewChangelog(
           context,
           packageConfig,
@@ -593,43 +604,33 @@ export class ReleaseService {
         this.logger.info("\nChangelog entry will look like this:\n");
         this.logger.info(preview);
 
+        // Allow user to confirm or provide manual entry
         const confirmed = await this.prompts.confirmChangelogContent(preview);
-        if (!confirmed) {
-          finalChangelog = await this.prompts.getManualChangelogEntry();
-        } else {
-          finalChangelog = preview;
-        }
+        finalChangelog = confirmed
+          ? preview
+          : await this.prompts.getManualChangelogEntry();
       } else {
-        // Generate changelog from git commits
+        // Generate changelog from git commits if no unreleased changes
         this.logger.info(
           "No unreleased changes found, analyzing git commits...",
         );
-        if (packageConfig.conventionalCommits) {
-          finalChangelog = await this.changelog.generate(
-            context,
-            packageConfig,
-          );
-        } else {
-          // Show preview and ask for confirmation
-          const preview = await this.changelog.previewChangelog(
-            context,
-            packageConfig,
-          );
-          this.logger.info("\nProposed changelog entries:\n");
-          this.logger.info(preview);
+        const preview = await this.changelog.previewChangelog(
+          context,
+          packageConfig,
+        );
+        this.logger.info("\nProposed changelog entries:\n");
+        this.logger.info(preview);
 
-          const confirmed = await this.prompts.confirmChangelogContent(preview);
-          if (!confirmed) {
-            finalChangelog = await this.prompts.getManualChangelogEntry();
-          } else {
-            finalChangelog = preview;
-          }
-        }
+        // Allow user to confirm or provide manual entry
+        const confirmed = await this.prompts.confirmChangelogContent(preview);
+        finalChangelog = confirmed
+          ? preview
+          : await this.prompts.getManualChangelogEntry();
       }
 
       return finalChangelog;
     } catch (error) {
-      // Handle new changelog creation
+      // Handle case where changelog doesn't exist
       const shouldCreate = await this.prompts.confirmChangelogCreation(
         context.name,
       );
