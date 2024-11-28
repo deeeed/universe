@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
+- feat: enhance changelog functionality and add @inquirer/prompts dependency ([908a2ec](https://github.com/deeeed/universe/commit/908a2ec720e77445e7b2765d4e9ade73161a2055))
 
 ## [0.4.17] - 2024-11-11
 - chore(publisher): add optional relative path ([9e39762](https://github.com/deeeed/universe/commit/9e397628ed5a65c76f767a2e4806f5b5d1a67d64))
