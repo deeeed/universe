@@ -965,8 +965,8 @@ export class ChangelogService {
           options.newVersion,
           this.formatKeepAChangelogContent(
             unreleasedContent,
-            options.includeEmptySections ?? false,
             format.sectionHeaders,
+            options.includeEmptySections ?? false,
           ),
           date,
           format,
@@ -996,7 +996,7 @@ export class ChangelogService {
     format?: ChangelogFormat,
   ): string {
     if (formatType === "keep-a-changelog" && includeEmptySections && format) {
-      return this.formatKeepAChangelogContent("", true, format.sectionHeaders);
+      return this.formatKeepAChangelogContent("", format.sectionHeaders, true);
     }
     return "No changes recorded";
   }
@@ -1150,8 +1150,8 @@ export class ChangelogService {
 
   private formatKeepAChangelogContent(
     content: string,
-    includeEmptySections: boolean = false,
     sectionHeaders: string[],
+    includeEmptySections: boolean = false,
   ): string {
     // If no content or malformed, return "No changes recorded"
     if (!content.trim()) {
