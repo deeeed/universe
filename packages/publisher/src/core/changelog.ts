@@ -469,7 +469,7 @@ export class ChangelogService {
     result += versionSections.map(([_, section]) => section).join("\n");
 
     // Add comparison links if they exist (deduplicated)
-    const links = new Set(content.match(/\[.*?\]:.*/g) ?? []);
+    const links = new Set(content.match(/\[.+\]: .+$/gm) ?? []);
     if (links.size > 0) {
       this.logger.debug(`Adding ${links.size} comparison links`);
       result += "\n" + Array.from(links).join("\n") + "\n";
