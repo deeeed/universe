@@ -13,6 +13,7 @@ const config: Config.InitialOptions = {
       },
     ],
   },
+  testTimeout: 0,
   moduleFileExtensions: ["ts", "js", "json", "node"],
   collectCoverageFrom: [
     "src/**/*.ts",

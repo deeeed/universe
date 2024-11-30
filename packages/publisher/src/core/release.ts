@@ -395,7 +395,13 @@ export class ReleaseService {
 
     // Generate the changelog content
     const changelogContent =
-      options.changelog || (await this.previewChangelog(context.name));
+      options.changelog ||
+      (await this.changelog.previewNewVersion(context, config, {
+        newVersion: options.newVersion,
+        conventionalCommits: config.conventionalCommits || false,
+        format: config.changelogFormat || "conventional",
+        includeEmptySections: config.changelogFormat === "keep-a-changelog",
+      }));
 
     // Get dependency updates
     const dependencyUpdates = await this.analyzeDependencyUpdates(
@@ -548,7 +554,13 @@ export class ReleaseService {
     }
 
     const packageConfig = await this.getEffectiveConfig(packageName);
-    return this.changelog.previewChangelog(packages[0], packageConfig);
+    return this.changelog.previewNewVersion(packages[0], packageConfig, {
+      newVersion: packages[0].newVersion || "x.x.x",
+      conventionalCommits: packageConfig.conventionalCommits || false,
+      format: packageConfig.changelogFormat || "conventional",
+      includeEmptySections:
+        packageConfig.changelogFormat === "keep-a-changelog",
+    });
   }
 
   /**
@@ -597,9 +609,16 @@ export class ReleaseService {
         );
         this.logger.info(unreleasedChanges.join("\n"));
 
-        const preview = await this.changelog.previewChangelog(
+        const preview = await this.changelog.previewNewVersion(
           context,
           packageConfig,
+          {
+            newVersion: context.newVersion || "x.x.x",
+            conventionalCommits: packageConfig.conventionalCommits || false,
+            format: packageConfig.changelogFormat || "conventional",
+            includeEmptySections:
+              packageConfig.changelogFormat === "keep-a-changelog",
+          },
         );
         this.logger.info("\nChangelog entry will look like this:\n");
         this.logger.info(preview);
@@ -614,9 +633,16 @@ export class ReleaseService {
         this.logger.info(
           "No unreleased changes found, analyzing git commits...",
         );
-        const preview = await this.changelog.previewChangelog(
+        const preview = await this.changelog.previewNewVersion(
           context,
           packageConfig,
+          {
+            newVersion: context.newVersion || "x.x.x",
+            conventionalCommits: packageConfig.conventionalCommits || false,
+            format: packageConfig.changelogFormat || "conventional",
+            includeEmptySections:
+              packageConfig.changelogFormat === "keep-a-changelog",
+          },
         );
         this.logger.info("\nProposed changelog entries:\n");
         this.logger.info(preview);
@@ -630,6 +656,7 @@ export class ReleaseService {
 
       return finalChangelog;
     } catch (error) {
+      this.logger.error("Error preparing changelog entry:", error);
       // Handle case where changelog doesn't exist
       const shouldCreate = await this.prompts.confirmChangelogCreation(
         context.name,
@@ -820,7 +847,12 @@ export class ReleaseService {
     return this.createDryRunReport(context, config, {
       ...options,
       newVersion: pkg.suggestedVersion,
-      changelog: await this.previewChangelog(pkg.name),
+      changelog: await this.changelog.previewNewVersion(context, config, {
+        newVersion: pkg.suggestedVersion,
+        conventionalCommits: config.conventionalCommits || false,
+        format: config.changelogFormat || "conventional",
+        includeEmptySections: config.changelogFormat === "keep-a-changelog",
+      }),
     });
   }
 }
