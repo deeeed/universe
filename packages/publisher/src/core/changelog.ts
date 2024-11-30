@@ -1135,7 +1135,10 @@ export class ChangelogService {
     );
 
     // Match conventional commit format: type(scope)?: description
-    const match = content.match(/^(\w+)(?:\([^)]*\))?\s*:\s*(.+)$/);
+    if (content.length > 1000) return null; // Reasonable max length for a commit message
+    const match = content.match(
+      /^(\w{1,50})(?:\([^)]{0,100}\))?\s{0,10}:\s{0,10}(.+)$/,
+    );
     if (!match) return null;
 
     const [, type, description] = match;
