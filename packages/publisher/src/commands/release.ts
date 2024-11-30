@@ -77,7 +77,7 @@ export const releaseCommand = new Command()
       }
 
       // Show changes if requested or in dry-run mode
-      if (commandOptions.showChanges || commandOptions.dryRun) {
+      if (commandOptions.showChanges ?? commandOptions.dryRun) {
         const changes = await releaseService.analyzeChanges(packagesToAnalyze);
 
         for (const pkg of changes) {

@@ -121,14 +121,14 @@ changelogCommand
 
         // Preview the changes
         logger.info(`\n📦 ${chalk.bold(pkg.name)}`);
-        logger.info(`Package version: ${packageJsonVersion || "Not found"}`);
+        logger.info(`Package version: ${packageJsonVersion ?? "Not found"}`);
         logger.info(
-          `Latest changelog version: ${latestChangelogVersion || "None"}`,
+          `Latest changelog version: ${latestChangelogVersion ?? "None"}`,
         );
         logger.info(
-          `Latest published version: ${latestPublishedVersion || "None"}`,
+          `Latest published version: ${latestPublishedVersion ?? "None"}`,
         );
-        logger.info(`Latest git tag: ${lastTag || "None"}`);
+        logger.info(`Latest git tag: ${lastTag ?? "None"}`);
 
         // Version mismatch warnings using logger.warn
         if (
@@ -150,7 +150,7 @@ changelogCommand
           );
         }
 
-        logger.info(`Target version: ${pkg.newVersion || "Not specified"}`);
+        logger.info(`Target version: ${pkg.newVersion ?? "Not specified"}`);
         logger.info("\nChangelog Preview:");
         logger.info(chalk.gray("----------------------------------------"));
 
@@ -163,7 +163,7 @@ changelogCommand
             pkg,
             packageConfig,
             {
-              newVersion: pkg.newVersion || "x.x.x",
+              newVersion: pkg.newVersion ?? "x.x.x",
               conventionalCommits: packageConfig.conventionalCommits,
               format: packageConfig.changelogFormat,
               date: new Date().toISOString(),
@@ -366,8 +366,8 @@ changelogCommand
         const packageJson = await workspaceService.readPackageJson(pkg.path);
 
         // Ensure version is defined
-        const currentVersion = packageJson.version || "0.0.0";
-        const suggestedVersion = pkg.newVersion || currentVersion;
+        const currentVersion = packageJson.version ?? "0.0.0";
+        const suggestedVersion = pkg.newVersion ?? currentVersion;
 
         previewResults.push({
           name: pkg.name,

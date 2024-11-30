@@ -23,7 +23,7 @@
     "connectionId": "siteed",
     "projectKey": "deeeed_universe"
   },
-  "jestrunner.jestCommand": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' node_modules/.bin/jest",
+  "jestrunner.jestCommand": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' node_modules/.bin/jest --runInBand --detectOpenHandles",
   "jestrunner.debugOptions": {
     "env": {
       "NODE_OPTIONS": "--experimental-vm-modules --no-warnings",

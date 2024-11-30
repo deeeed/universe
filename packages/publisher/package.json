@@ -35,7 +35,10 @@
     "publisher": "ts-node bin/publisher.ts",
     "publisher:debug": "DEBUG=true node --inspect -r ts-node/register bin/publisher.ts",
     "prepare": "husky install",
-    "setup-cli": "chmod +x setup-cli.sh && ./setup-cli.sh"
+    "setup-cli": "chmod +x setup-cli.sh && ./setup-cli.sh",
+    "test:e2e": "ts-node ./e2e/index.ts",
+    "test:e2e:release": "ts-node ./e2e/index.ts --tests=release",
+    "test:e2e:changelog": "ts-node ./e2e/index.ts --tests=changelog"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.1.0",
@@ -65,6 +68,7 @@
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.1",
+    "eslint-plugin-regexp": "^2.7.0",
     "husky": "^8.0.3",
     "jest": "^29.7.0",
     "lint-staged": "^15.1.0",

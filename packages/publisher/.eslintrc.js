@@ -1,7 +1,10 @@
 module.exports = {
   root: true,
+  env: {
+    node: true,
+  },
   parser: '@typescript-eslint/parser',
-  plugins: ['@typescript-eslint'],
+  plugins: ["@typescript-eslint", "regexp"],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
@@ -17,10 +20,28 @@ module.exports = {
   rules: {
     '@typescript-eslint/explicit-function-return-type': 'error',
     '@typescript-eslint/no-explicit-any': 'error',
-    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-    '@typescript-eslint/no-non-null-assertion': 'error',
-    'no-console': ['error', { allow: ['warn', 'error'] }],
-    'prettier/prettier': 'error'
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+      },
+    ],
+    "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/prefer-nullish-coalescing": "error",
+    "prefer-regex-literals": ["error", { disallowRedundantWrapping: true }],
+    "regexp/prefer-regexp-exec": "error",
+    "no-console": ["error", { allow: ["warn", "error"] }],
+    "prettier/prettier": "error",
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/no-misused-promises": [
+      "error",
+      {
+        checksVoidReturn: {
+          attributes: false,
+        },
+      },
+    ],
   },
   ignorePatterns: ['dist/', 'node_modules/', '*.js'],
   overrides: [
