@@ -214,7 +214,7 @@ export class ReleaseService {
       }
 
       return {
-        changelog: changelogEntry || "",
+        changelog: changelogEntry ?? "",
         git: {
           tag: context.newVersion,
           commit: previousCommitHash,
@@ -395,7 +395,7 @@ export class ReleaseService {
 
     // Generate the changelog content
     const changelogContent =
-      options.changelog ||
+      options.changelog ??
       (await this.changelog.previewNewVersion(context, config, {
         newVersion: options.newVersion,
         conventionalCommits: config.conventionalCommits || false,
@@ -457,8 +457,8 @@ export class ReleaseService {
         currentVersion: pkg.currentVersion,
         suggestedVersion,
         dependencies: dependencyUpdates,
-        devDependencies: pkg.devDependencies || {},
-        peerDependencies: pkg.peerDependencies || {},
+        devDependencies: pkg.devDependencies ?? {},
+        peerDependencies: pkg.peerDependencies ?? {},
         hasGitChanges: gitChanges,
         changelogEntries,
       });
@@ -473,7 +473,7 @@ export class ReleaseService {
   ): Promise<string> {
     if (config.bumpStrategy === "conventional") {
       const bumpType =
-        config.bumpType || (await this.version.analyzeCommits(context));
+        config.bumpType ?? (await this.version.analyzeCommits(context));
       return this.version.determineVersion(
         context,
         bumpType,
@@ -555,7 +555,7 @@ export class ReleaseService {
 
     const packageConfig = await this.getEffectiveConfig(packageName);
     return this.changelog.previewNewVersion(packages[0], packageConfig, {
-      newVersion: packages[0].newVersion || "x.x.x",
+      newVersion: packages[0].newVersion ?? "x.x.x",
       conventionalCommits: packageConfig.conventionalCommits || false,
       format: packageConfig.changelogFormat || "conventional",
       includeEmptySections:
@@ -613,7 +613,7 @@ export class ReleaseService {
           context,
           packageConfig,
           {
-            newVersion: context.newVersion || "x.x.x",
+            newVersion: context.newVersion ?? "x.x.x",
             conventionalCommits: packageConfig.conventionalCommits || false,
             format: packageConfig.changelogFormat || "conventional",
             includeEmptySections:
@@ -637,7 +637,7 @@ export class ReleaseService {
           context,
           packageConfig,
           {
-            newVersion: context.newVersion || "x.x.x",
+            newVersion: context.newVersion ?? "x.x.x",
             conventionalCommits: packageConfig.conventionalCommits || false,
             format: packageConfig.changelogFormat || "conventional",
             includeEmptySections:

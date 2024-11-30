@@ -312,10 +312,10 @@ export class ChangelogService {
       const content = await fs.readFile(changelogPath, "utf8");
 
       // Extract the unreleased section and preserve all its content
-      const unreleasedMatch = content.match(
-        /## \[Unreleased\]([\s\S]*?)(?=\n##|$)/,
+      const unreleasedMatch = /## \[Unreleased\]([\s\S]*?)(?=\n##|$)/.exec(
+        content,
       );
-      const existingUnreleased = unreleasedMatch?.[1]?.trim() || "";
+      const existingUnreleased = unreleasedMatch?.[1]?.trim() ?? "";
 
       // Combine existing unreleased content with new changes, preserving all sections
       const sections = new Map<string, string[]>();
@@ -323,7 +323,7 @@ export class ChangelogService {
       // First, parse existing content
       const existingSections = existingUnreleased.split(/(?=### )/);
       existingSections.forEach((section) => {
-        const match = section.match(/### ([^\n]+)([\s\S]*)/);
+        const match = /### ([^\n]+)([\s\S]*)/g.exec(section);
         if (match) {
           const [, header, content] = match;
           sections.set(header.trim(), content.trim().split("\n"));
@@ -333,10 +333,10 @@ export class ChangelogService {
       // Then, parse and merge new changes
       const newSections = newChanges.split(/(?=### )/);
       newSections.forEach((section) => {
-        const match = section.match(/### ([^\n]+)([\s\S]*)/);
+        const match = /### ([^\n]+)([\s\S]*)/g.exec(section);
         if (match) {
           const [, header, content] = match;
-          const existing = sections.get(header.trim()) || [];
+          const existing = sections.get(header.trim()) ?? [];
           sections.set(
             header.trim(),
             [...existing, ...content.trim().split("\n")].filter(Boolean),
@@ -380,8 +380,8 @@ export class ChangelogService {
     this.logger.debug("=== Starting deduplication process ===");
 
     // Extract header before splitting into sections
-    const headerMatch = content.match(/^([\s\S]*?)(?=##\s+\[)/);
-    const header = headerMatch ? headerMatch[1].trim() : "";
+    const headerMatch = /^([\s\S]*?)(?=##\s+\[)/.exec(content);
+    const header = headerMatch?.[1]?.trim() ?? "";
     this.logger.debug("Extracted header:", header);
 
     const sections = content.split(/(?=##\s+\[)/).filter(Boolean);
@@ -393,8 +393,8 @@ export class ChangelogService {
     sections.forEach((section, index) => {
       this.logger.debug(`Processing section ${index + 1}:`, section);
 
-      const versionMatch = section.match(
-        /^##\s+\[([^\]]+)\](?:\s+-\s+([^)\n]+))?/,
+      const versionMatch = /^##\s+\[([^\]]+)\](?:\s+-\s+([^)\n]+))?/.exec(
+        section,
       );
       if (versionMatch) {
         const [fullMatch, version, date] = versionMatch;
@@ -422,7 +422,7 @@ export class ChangelogService {
 
         if (processedSections.has(version)) {
           // Merge content with existing section
-          const existingSection = processedSections.get(version) || "";
+          const existingSection = processedSections.get(version) ?? "";
           const mergedContent = this.extractAndDeduplicateEntries(
             existingSection,
             sectionContent,
@@ -469,7 +469,7 @@ export class ChangelogService {
     result += versionSections.map(([_, section]) => section).join("\n");
 
     // Add comparison links if they exist (deduplicated)
-    const links = new Set(content.match(/\[.*?\]:.*/g) || []);
+    const links = new Set(content.match(/\[.*?\]:.*/g) ?? []);
     if (links.size > 0) {
       this.logger.debug(`Adding ${links.size} comparison links`);
       result += "\n" + Array.from(links).join("\n") + "\n";
@@ -619,7 +619,7 @@ export class ChangelogService {
     context: PackageContext,
   ): string[] {
     const linkPattern = /\[.+\]: .+$/gm;
-    const allLinks = content.match(linkPattern) || [];
+    const allLinks = content.match(linkPattern) ?? [];
     const filteredLinks = allLinks.filter((link) => {
       // Exclude unreleased and current version links
       if (
@@ -728,8 +728,8 @@ export class ChangelogService {
    * @returns The content of the "Unreleased" section.
    */
   public extractUnreleasedSection(content: string): string {
-    const unreleasedMatch = content.match(
-      /##\s*\[Unreleased\]([^]*?)(?=\n##\s*\[|$)/i,
+    const unreleasedMatch = /##\s*\[Unreleased\]([^]*?)(?=\n##\s*\[|$)/i.exec(
+      content,
     );
     return unreleasedMatch ? unreleasedMatch[1].trim() : "";
   }
@@ -762,9 +762,9 @@ export class ChangelogService {
 
       // Rest of the code remains the same
       const unreleasedRegex = /## \[Unreleased\]([^]*?)(?=\n##|$)/;
-      const unreleasedMatch = content.match(unreleasedRegex);
+      const unreleasedMatch = unreleasedRegex.exec(content);
 
-      if (!unreleasedMatch || !unreleasedMatch[1]) {
+      if (!unreleasedMatch?.[1]) {
         this.logger.debug("No unreleased section found or section is empty");
         return [];
       }
@@ -792,8 +792,8 @@ export class ChangelogService {
     const changelogPath = path.join(context.path, "CHANGELOG.md");
     try {
       const content = await fs.readFile(changelogPath, "utf-8");
-      const versionMatch = content.match(
-        /## \[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]/,
+      const versionMatch = /## \[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]/.exec(
+        content,
       );
       return versionMatch ? versionMatch[1] : null;
     } catch {
@@ -898,8 +898,8 @@ export class ChangelogService {
     options: PreviewChangelogOptions,
   ): Promise<string> {
     const format = this.getFormat(config);
-    const date = options.date || formatDate(new Date(), format.dateFormat);
-    const formatType = options.format || "conventional";
+    const date = options.date ?? formatDate(new Date(), format.dateFormat);
+    const formatType = options.format ?? "conventional";
 
     try {
       const changelogPath = path.join(
@@ -909,8 +909,8 @@ export class ChangelogService {
       const content = await fs.readFile(changelogPath, "utf-8");
 
       // Extract unreleased changes
-      const unreleasedMatch = content.match(
-        /## \[Unreleased\]\n([\s\S]*?)(?=\n##|$)/,
+      const unreleasedMatch = /## \[Unreleased\]\n([\s\S]*?)(?=\n##|$)/.exec(
+        content,
       );
       let unreleasedContent = unreleasedMatch?.[1]?.trim();
 
@@ -1104,9 +1104,9 @@ export class ChangelogService {
     date?: string,
     format?: ChangelogFormat,
   ): string {
-    const dateStr = date || new Date().toISOString().split("T")[0];
+    const dateStr = date ?? new Date().toISOString().split("T")[0];
     const noChangesMessage = format?.noChangesMessage ?? "No changes recorded";
-    const body = content.trim() || noChangesMessage;
+    const body = content.trim() ?? noChangesMessage;
     return `## [${version}] - ${dateStr}\n${body}`.trim();
   }
 
@@ -1136,8 +1136,8 @@ export class ChangelogService {
 
     // Match conventional commit format: type(scope)?: description
     if (content.length > 1000) return null; // Reasonable max length for a commit message
-    const match = content.match(
-      /^(\w{1,50})(?:\([^)]{0,100}\))?\s{0,10}:\s{0,10}(.+)$/,
+    const match = /^(\w{1,50})(?:\([^)]{0,100}\))?\s{0,10}:\s{0,10}(.+)$/.exec(
+      content,
     );
     if (!match) return null;
 
