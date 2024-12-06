@@ -108,61 +108,6 @@ fi
 
 echo "Starting release process..."
 
-# Get current version from package.json
-current_version=$(node -p "require('./package.json').version")
-echo "Current version: $current_version"
-
-# Ask user for version bump type
-echo -e "\nPlease select version bump type:"
-echo "1) patch (x.x.X) - for backwards-compatible bug fixes"
-echo "2) minor (x.X.0) - for new backwards-compatible functionality"
-echo "3) major (X.0.0) - for breaking changes"
-echo "4) manual - enter specific version"
-read -p "Enter choice (1-4): " choice
-
-# Store the previous version before any changes
-previous_version=$current_version
-
-# Handle version bump based on user choice
-case $choice in
-    1)
-        echo -e "\nWill bump patch version"
-        yarn version patch > /dev/null
-        new_version=$(node -p "require('./package.json').version")
-    ;;
-    2)
-        echo -e "\nWill bump minor version"
-        yarn version minor > /dev/null
-        new_version=$(node -p "require('./package.json').version")
-    ;;
-    3)
-        echo -e "\nWill bump major version"
-        yarn version major > /dev/null
-        new_version=$(node -p "require('./package.json').version")
-    ;;
-    4)
-        read -p "Enter new version (current: $current_version): " new_version
-        if [[ -z "$new_version" ]]; then
-            echo "Version cannot be empty. Exiting."
-            exit 1
-        fi
-        echo -e "\nWill set version to $new_version"
-        yarn version $new_version > /dev/null
-    ;;
-    *)
-        echo "Invalid choice. Exiting."
-        exit 1
-    ;;
-esac
-
-echo -e "\nVersion bump preview: $current_version → $new_version"
-
-# Check if tag already exists
-check_tag_exists "$new_version"
-
-# Update the changelog without committing
-update_changelog "$new_version" "$previous_version"
-
 # Show changelog diff
 echo -e "\nChangelog updates preview:"
 git diff CHANGELOG.md
@@ -186,29 +131,3 @@ yarn typecheck || { cleanup $new_version; }
 # Deploy storybook
 echo -e "\nDeploying Storybook..."
 yarn deploy:storybook || { cleanup $new_version; }
-
-# Create git tag
-echo -e "\nCreating git tag..."
-git tag "design-system-v${new_version}"
-
-# Add changes to git
-echo -e "\nCommitting changes..."
-git add .
-git commit -m "feat(design-system): bump version $new_version"
-
-# Push the tag
-echo -e "\nPushing tag..."
-git push origin "design-system-v${new_version}"
-git push
-
-# Run the release script
-echo -e "\nPublishing to npm..."
-yarn release
-
-echo -e "\n✨ Release process completed successfully!"
-echo "New version $new_version has been:"
-echo "- Tagged in git as design-system-v${new_version}"
-echo "- Updated in CHANGELOG.md"
-echo "- Published to npm"
-echo "- Storybook has been deployed"
-echo "- All changes have been committed and pushed"

@@ -2,23 +2,7 @@
 
 Welcome to `@siteed/universe`, a comprehensive monorepo containing a design system and various packages for mobile and web development. This project aims to provide reusable components and utilities to streamline the development process for mobile and web applications.
 
-## Why This Exists
-1. **Accountability**: Public development forces better documentation and structure
-2. **Experimentation**: A platform to try new ideas and get feedback
-3. **Self Improvement**: A platform to improve my skills and knowledge
-
 [Read more about the philosophy behind this project](./PHILOSOPHY.md)
-
-## Features
-
-- **[Design System](./packages/design-system/README.md):** A cohesive set of design elements and components to ensure a consistent look and feel across your applications.
-- **Reusable Packages:** A collection of utilities and libraries tailored for mobile and web development, enhancing productivity and code quality.
-- **Framework for New Projects:** A structured approach to starting new projects or sharing common functionality across different projects using packages from this monorepo.
-
-<div align="center">
-  <h2>Try them out</h2>
-  <p><a href="https://deeeed.github.io/universe/">https://deeeed.github.io/universe/</a></p>
-</div>
 
 ## Package Overview
 
@@ -29,6 +13,12 @@ Here's a quick overview of the main packages in this monorepo:
 - [**gitguard**](./packages/gitguard/README.md): Smart Git commit hook for maintaining consistent commit messages.
 
 For more detailed information about each package, please refer to their individual README files linked above.
+
+
+<div align="center">
+  <h2>Try them out</h2>
+  <p><a href="https://deeeed.github.io/universe/">https://deeeed.github.io/universe/</a></p>
+</div>
 
 
 ## Getting Started
