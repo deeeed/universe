@@ -46,6 +46,7 @@ export * from './hooks/useScreenWidth';
 export * from './hooks/useConfirm/useConfirm';
 export * from './hooks/useToast/useToast';
 export * from './hooks/useModal/useModal';
+export * from './hooks/useDebugRerenders';
 
 export * from './providers/BottomSheetProvider';
 export * from './providers/ModalProvider';

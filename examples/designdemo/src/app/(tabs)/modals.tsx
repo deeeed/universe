@@ -94,8 +94,8 @@ export const TestModals = () => {
             // index: 0,
           },
           modalProps: {
-            closeOnOutsideTouch: false,
-            showBackdrop: false,
+            closeOnOutsideTouch: true,
+            showBackdrop: true,
           },
           data: "Hello",
           inputType: "text",
@@ -128,18 +128,21 @@ export const TestModals = () => {
     try {
       const result = await openDrawer<Test>({
         initialData: test,
-        render: ({ data, onChange }) => (
-          <View>
-            <Text>Name: {data.name}</Text>
-            <TextInput
-              label="Name"
-              value={data.name}
-              onChangeText={(text) => {
-                onChange({ ...data, name: text });
-              }}
-            />
-          </View>
-        ),
+        render: ({ state, onChange }) => {
+          const { data } = state;
+          return (
+            <View>
+              <Text>Name: {data.name}</Text>
+              <TextInput
+                label="Name"
+                value={data.name}
+                onChangeText={(text) => {
+                  onChange({ ...data, name: text });
+                }}
+              />
+            </View>
+          );
+        },
         bottomSheetProps: {
           stackBehavior: "replace",
         },

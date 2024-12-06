@@ -21,7 +21,6 @@ const getStyles = (theme: AppTheme) => {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: theme.spacing.gap,
-      minHeight: 40,
     },
     optionItem: {
       marginBottom: theme.spacing.margin,
@@ -32,7 +31,6 @@ const getStyles = (theme: AppTheme) => {
     },
     createOptionContainer: {
       padding: theme.spacing.padding,
-      paddingBottom: 100,
     },
     createOptionInput: {
       marginBottom: theme.spacing.margin,
@@ -112,8 +110,8 @@ export const PickerContent: React.FC<PickerContentProps> = ({
           selected: true,
         },
         title: 'Create New Option',
-        render: ({ data, onChange }) => {
-          // console.debug('PickerContent: handleCreate render: data', data);
+        render: ({ state, onChange }) => {
+          const { data } = state;
           return (
             <View style={styles.createOptionContainer}>
               <TextInput
@@ -129,7 +127,8 @@ export const PickerContent: React.FC<PickerContentProps> = ({
             </View>
           );
         },
-        renderFooter: ({ resolve, data }) => {
+        renderFooter: ({ state, resolve }) => {
+          const { data } = state;
           return (
             <View>
               <ConfirmCancelFooter

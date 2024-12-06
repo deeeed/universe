@@ -64,16 +64,12 @@ const logger = baseLogger.extend('DynInput');
 
 const getStyles = (theme: AppTheme) => {
   return StyleSheet.create({
-    container: {
-      display: 'flex',
-      width: '100%',
-      backgroundColor: theme.colors.surface,
-    },
     footer: {
-      display: 'flex',
       flexDirection: 'row',
       justifyContent: 'space-around',
       padding: 10,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.outline,
     },
     finishButton: {},
     cancelButton: {},
@@ -161,24 +157,26 @@ export const DynInput = ({
         onKeyPress={
           finishOnEnter || cancelOnEscape ? handleKeyPress : undefined
         }
-        blurOnSubmit={finishOnEnter}
+        submitBehavior={finishOnEnter ? 'submit' : undefined}
       />
     );
   };
 
   const renderText = () => {
     return (
-      <TextInput
-        multiline={!!(numberOfLines && numberOfLines > 0)}
-        numberOfLines={numberOfLines}
-        label={label}
-        autoFocus={autoFocus}
-        value={temp as string}
-        onChangeText={handleChange}
-        selectTextOnFocus={selectTextOnFocus}
-        onKeyPress={handleKeyPress}
-        blurOnSubmit={false} // Prevent submitting on blur
-      />
+      <View>
+        <TextInput
+          multiline={!!(numberOfLines && numberOfLines > 0)}
+          numberOfLines={numberOfLines}
+          label={label}
+          autoFocus={autoFocus}
+          value={temp as string}
+          onChangeText={handleChange}
+          selectTextOnFocus={selectTextOnFocus}
+          onKeyPress={handleKeyPress}
+          submitBehavior={finishOnEnter ? 'submit' : undefined}
+        />
+      </View>
     );
   };
 

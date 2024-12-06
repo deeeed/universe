@@ -1,18 +1,14 @@
-import { FontAwesome } from "@expo/vector-icons";
+import { useDebugRerenders } from "@siteed/design-system";
 import {
-  Accordion,
-  AccordionItemProps,
   EditableInfoCard,
   Picker,
   SelectOption,
-  TextInput,
   ThemeConfig,
   useModal,
   useThemePreferences,
 } from "@siteed/design-system/src";
-import { useNavigation } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import { Button, Text } from "react-native-paper";
 
 const getStyles = () => {
@@ -21,33 +17,11 @@ const getStyles = () => {
   });
 };
 
-const renderMany = () => {
-  const items = [];
-  for (let i = 0; i < 100; i++) {
-    items.push(<Text key={i}>Item {i}</Text>);
-  }
-  return items;
-};
-
-const accordionData: AccordionItemProps[] = [
-  {
-    title: "Accordion Item 1",
-    children: <Text>Content 1</Text>,
-  },
-  {
-    title: "Accordion Item 2",
-    children: <View>{renderMany()}</View>,
-  },
-  {
-    title: "Accordion Item 3",
-    children: <Text>Content 3</Text>,
-  },
-];
-
 export const Bug = () => {
+  useDebugRerenders("Bug");
+
   const styles = useMemo(() => getStyles(), []);
   const { theme } = useThemePreferences();
-  const navigation = useNavigation();
   const colors = [
     theme.colors.primary,
     theme.colors.secondary,
@@ -57,59 +31,9 @@ export const Bug = () => {
   const { openDrawer } = useModal();
   const [viewType, setViewType] = useState<"view" | "scroll">("view");
 
-  useEffect(() => {
-    // Set navbar title
-    navigation.setOptions({
-      headerShow: true,
-      // headerTitle: "Recording",
-      headerTitle: ({ tintColor }: { tintColor: string }) => {
-        return (
-          <Text style={{ fontSize: 16, fontWeight: "bold", color: tintColor }}>
-            Recording
-          </Text>
-        );
-      },
-      headerRight: () => (
-        <Pressable
-          style={{ padding: 10 }}
-          onPress={async () => {
-            await openDrawer({
-              bottomSheetProps: {
-                enableDynamicSizing: true,
-                snapPoints: [],
-              },
-              render: () => <Accordion data={accordionData} />,
-            });
-          }}
-        >
-          <FontAwesome name="cog" size={24} color={theme.colors.text} />
-        </Pressable>
-      ),
-    });
-  }, [navigation, openDrawer]);
-
-  const openAccordion = async () => {
-    try {
-      await openDrawer({
-        bottomSheetProps: {
-          enableDynamicSizing: true,
-          snapPoints: [],
-        },
-        render: () => (
-          <View>
-            <TextInput label="Name" />
-            <Accordion data={accordionData} />
-          </View>
-        ),
-      });
-    } catch (error) {
-      console.log(error);
-    }
-  };
   return (
     <View style={styles.container}>
       <ThemeConfig colors={colors} />
-      <Button onPress={openAccordion}>Open Accordion</Button>
       <Button
         onPress={() => {
           setViewType(viewType === "view" ? "scroll" : "view");
@@ -123,17 +47,22 @@ export const Bug = () => {
             footerType: "confirm_cancel",
             containerType: viewType === "view" ? "view" : "scrollview",
             bottomSheetProps: {
-              enableDynamicSizing: true,
-              snapPoints: [],
-              backdropComponent: undefined,
-              footerComponent: () => (
-                <View style={{ backgroundColor: "green", padding: 20 }}>
-                  <Text>FOOTER here</Text>
-                </View>
-              ),
+              // enableDynamicSizing: true,
+              // snapPoints: [],
+              // backdropComponent: undefined,
             },
-            render: ({ onChange, footerHeight }) => (
-              <InnerComponent onChange={onChange} footerHeight={footerHeight} />
+            render: ({ onChange, state }) => (
+              <InnerComponent
+                onChange={onChange}
+                footerHeight={state.footerHeight}
+              />
+            ),
+            renderFooter: ({ state }) => (
+              <View style={{ backgroundColor: "green", padding: 20 }}>
+                <Text>FOOTER here</Text>
+                <Text>footerHeight: {state.footerHeight}</Text>
+                <Text>data: {JSON.stringify(state.data)}</Text>
+              </View>
             ),
           });
         }}
@@ -149,6 +78,8 @@ interface InnerComponentProps {
   footerHeight?: number;
 }
 const InnerComponent = ({ onChange, footerHeight }: InnerComponentProps) => {
+  useDebugRerenders("InnerComponent");
+
   const { theme } = useThemePreferences();
   const [date, setDate] = useState(new Date());
   const { editProp } = useModal();
@@ -159,10 +90,12 @@ const InnerComponent = ({ onChange, footerHeight }: InnerComponentProps) => {
     { label: "Option 3", value: "3" },
   ]);
   return (
-    <View style={{ paddingBottom: footerHeight }}>
+    <View>
       <Text>Inner Component</Text>
+      <Text>footerHeight: {footerHeight}</Text>
       <Button
         onPress={() => {
+          console.log("onPress", onChange);
           onChange?.("test");
         }}
       >
@@ -241,7 +174,7 @@ const InnerComponent = ({ onChange, footerHeight }: InnerComponentProps) => {
           }
         }}
       />
-      <View style={{ height: 100 }}>
+      <View>
         <Text>Inner Inner Component</Text>
         <Text>{JSON.stringify(options)}</Text>
         <Picker
@@ -253,6 +186,7 @@ const InnerComponent = ({ onChange, footerHeight }: InnerComponentProps) => {
             setOptions(values);
           }}
         />
+        <Text>After picker</Text>
       </View>
     </View>
   );
