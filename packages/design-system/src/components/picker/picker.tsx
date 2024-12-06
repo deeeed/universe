@@ -79,80 +79,73 @@ export const Picker = ({
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [activeOptions, setActiveOptions] =
     useState<SelectOption[]>(initialOptions);
-  const [tempOptions, setTempOptions] =
-    useState<SelectOption[]>(initialOptions);
-  const selectedOptions = activeOptions.filter((option) => option.selected);
   const { openDrawer } = useModal();
 
   useEffect(() => {
     setActiveOptions(initialOptions);
-    setTempOptions(initialOptions);
   }, [initialOptions]);
 
   const handlePick = useCallback(async () => {
     try {
       const result = await openDrawer<SelectOption[]>({
         title: label,
-        initialData: tempOptions,
-        render: ({ onChange, data }) => {
-          logger.debug(`Picker render: data`, data);
-          console.log('Picker render: tempOptions', tempOptions);
-          return (
-            <PickerContent
-              options={data || []}
-              multi={multi}
-              showSearch={showSearch}
-              showDebugCreate={showCreateOptionButton}
-              emptyLabel={emptyLabel}
-              emptyOptionsTitle={emptyOptionsTitle}
-              emptyOptionsMessage={emptyOptionsMessage}
-              noResultsText={noResultsText}
-              emptyActionLabel={emptyActionLabel}
-              fullWidthOptions={fullWidthOptions}
-              onChange={onChange}
-              emptyAction={emptyAction}
-            />
-          );
-        },
-        renderFooter: ({ data, resolve }) => {
-          if (initialOptions.length === 0 && !data) {
+        initialData: activeOptions,
+        render: ({ state, onChange }) => (
+          <PickerContent
+            options={state.data}
+            multi={multi}
+            showSearch={showSearch}
+            showDebugCreate={showCreateOptionButton}
+            emptyLabel={emptyLabel}
+            emptyOptionsTitle={emptyOptionsTitle}
+            emptyOptionsMessage={emptyOptionsMessage}
+            noResultsText={noResultsText}
+            emptyActionLabel={emptyActionLabel}
+            fullWidthOptions={fullWidthOptions}
+            onChange={onChange}
+            emptyAction={emptyAction}
+          />
+        ),
+        renderFooter: ({ state, resolve }) => {
+          if (initialOptions.length === 0 && !state.data) {
             return null;
           }
 
           return (
             <ConfirmCancelFooter
               onCancel={() => {
-                logger.debug(`onCancel`);
                 resolve(undefined);
               }}
               onFinish={() => {
-                logger.debug(`onConfirm > selectedData`, data);
-                setActiveOptions(data || []);
-                logger.debug(`resolve now`, data);
-                resolve(data);
-                logger.debug(`resolve done`);
+                setActiveOptions(state.data || []);
+                resolve(state.data);
               }}
             />
           );
         },
       });
-      logger.debug(`result`, result);
-      onFinish?.(result || initialOptions);
+
+      if (result) {
+        onFinish?.(result);
+      }
     } catch (error) {
       logger.error('Error opening picker', error);
     }
   }, [
     openDrawer,
     label,
-    tempOptions,
+    activeOptions,
     multi,
     showSearch,
     fullWidthOptions,
     emptyAction,
-    initialOptions.length,
-    selectedOptions,
     onFinish,
   ]);
+
+  const selectedOptions = useMemo(
+    () => activeOptions.filter((option) => option.selected),
+    [activeOptions]
+  );
 
   return (
     <View style={styles.container}>

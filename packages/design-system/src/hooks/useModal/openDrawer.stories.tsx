@@ -20,7 +20,8 @@ const OpenDrawerExample: React.FC = () => {
       },
       title: 'Simple Drawer',
       initialData: { count: 0 },
-      render: ({ data, resolve, onChange }) => {
+      render: ({ state, resolve, onChange }) => {
+        const { data } = state;
         return (
           <View>
             <Text>Count: {data.count}</Text>
@@ -31,12 +32,15 @@ const OpenDrawerExample: React.FC = () => {
           </View>
         );
       },
-      renderFooter: ({ data, resolve }) => (
-        <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
-          <Text>Count: {data.count}</Text>
-          <Button onPress={() => resolve(data)}>Close</Button>
-        </View>
-      ),
+      renderFooter: ({ state, resolve }) => {
+        const { data } = state;
+        return (
+          <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
+            <Text>Count: {data.count}</Text>
+            <Button onPress={() => resolve(data)}>Close</Button>
+          </View>
+        );
+      },
     });
     logger.info('Simple drawer result:', result);
   };
@@ -70,12 +74,15 @@ const OpenDrawerExample: React.FC = () => {
       render: (_) => {
         return <Accordion data={accordionData} />;
       },
-      renderFooter: ({ data, resolve }) => (
-        <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
-          <Text>Selected: {data.selectedItem || 'None'}</Text>
-          <Button onPress={() => resolve(data)}>Confirm</Button>
-        </View>
-      ),
+      renderFooter: ({ state, resolve }) => {
+        const { data } = state;
+        return (
+          <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
+            <Text>Selected: {data.selectedItem || 'None'}</Text>
+            <Button onPress={() => resolve(data)}>Confirm</Button>
+          </View>
+        );
+      },
     });
     logger.info('Dynamic drawer result:', result);
   };
@@ -83,19 +90,25 @@ const OpenDrawerExample: React.FC = () => {
   const handleDrawerWithCustomHandler = async () => {
     const result = await openDrawer({
       initialData: { isOpen: true },
-      renderHandler: ({ data, onChange }) => (
-        <View style={{ padding: 16, backgroundColor: '#e0e0e0' }}>
-          <Text>Custom Handler</Text>
-          <Button onPress={() => onChange({ isOpen: !data.isOpen })}>
-            {data.isOpen ? 'Close' : 'Open'}
-          </Button>
-        </View>
-      ),
-      render: ({ data }) => (
-        <View>
-          <Text>Drawer is {data.isOpen ? 'Open' : 'Closed'}</Text>
-        </View>
-      ),
+      renderHandler: ({ state, onChange }) => {
+        const { data } = state;
+        return (
+          <View style={{ padding: 16, backgroundColor: '#e0e0e0' }}>
+            <Text>Custom Handler</Text>
+            <Button onPress={() => onChange({ isOpen: !data.isOpen })}>
+              {data.isOpen ? 'Close' : 'Open'}
+            </Button>
+          </View>
+        );
+      },
+      render: ({ state }) => {
+        const { data } = state;
+        return (
+          <View>
+            <Text>Drawer is {data.isOpen ? 'Open' : 'Closed'}</Text>
+          </View>
+        );
+      },
     });
     logger.info('Custom handler drawer result:', result);
   };
@@ -104,32 +117,40 @@ const OpenDrawerExample: React.FC = () => {
     await openDrawer({
       title: 'First Drawer',
       initialData: { level: 1 },
-      render: ({ data, onChange }) => (
-        <View>
-          <Text>This is the first drawer (Level {data.level})</Text>
-          <Button
-            onPress={() =>
-              openDrawer({
-                title: 'Second Drawer',
-                initialData: { level: data.level + 1 },
-                render: ({ data: nestedData, resolve }) => (
-                  <View>
-                    <Text>
-                      This is the second drawer (Level {nestedData.level})
-                    </Text>
-                    <Button onPress={() => resolve(nestedData)}>Close</Button>
-                  </View>
-                ),
-              }).then((result) => {
-                logger.info('Nested drawer result:', result);
-                onChange({ level: result?.level || data.level });
-              })
-            }
-          >
-            Open Second Drawer
-          </Button>
-        </View>
-      ),
+      render: ({ state, onChange }) => {
+        const { data } = state;
+        return (
+          <View>
+            <Text>This is the first drawer (Level {data.level})</Text>
+            <Button
+              onPress={() =>
+                openDrawer({
+                  title: 'Second Drawer',
+                  initialData: { level: data.level + 1 },
+                  render: ({ state, resolve }) => {
+                    const { data: nestedData } = state;
+                    return (
+                      <View>
+                        <Text>
+                          This is the second drawer (Level {nestedData.level})
+                        </Text>
+                        <Button onPress={() => resolve(nestedData)}>
+                          Close
+                        </Button>
+                      </View>
+                    );
+                  },
+                }).then((result) => {
+                  logger.info('Nested drawer result:', result);
+                  onChange({ level: result?.level || data.level });
+                })
+              }
+            >
+              Open Second Drawer
+            </Button>
+          </View>
+        );
+      },
     });
   };
 

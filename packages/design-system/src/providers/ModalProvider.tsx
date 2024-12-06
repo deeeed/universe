@@ -249,6 +249,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    flexDirection: 'row',
   },
   backdrop: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -257,7 +258,10 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 8,
     margin: 20,
+    width: 'auto',
+    height: 'auto',
     maxWidth: '90%',
     maxHeight: '90%',
+    alignSelf: 'center',
   },
 });

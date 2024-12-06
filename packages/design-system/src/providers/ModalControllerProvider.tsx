@@ -2,8 +2,6 @@ import React, { createContext, useContext, useMemo, useRef } from 'react';
 import {
   BottomSheetContextValue,
   BottomSheetProvider,
-  BottomSheetStackItem,
-  OpenDrawerProps,
 } from './BottomSheetProvider';
 import {
   ModalProvider,
@@ -11,6 +9,7 @@ import {
   ModalStackItem,
   OpenModalProps,
 } from './ModalProvider';
+import { BottomSheetStackItem, OpenDrawerProps } from '../types/bottomSheet.types';
 
 interface ModalControllerContextValue {
   openModal: <T>(props: OpenModalProps<T>) => Promise<T | undefined>;

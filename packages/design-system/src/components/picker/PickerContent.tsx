@@ -112,8 +112,8 @@ export const PickerContent: React.FC<PickerContentProps> = ({
           selected: true,
         },
         title: 'Create New Option',
-        render: ({ data, onChange }) => {
-          // console.debug('PickerContent: handleCreate render: data', data);
+        render: ({ state, onChange }) => {
+          const { data } = state;
           return (
             <View style={styles.createOptionContainer}>
               <TextInput
@@ -129,7 +129,8 @@ export const PickerContent: React.FC<PickerContentProps> = ({
             </View>
           );
         },
-        renderFooter: ({ resolve, data }) => {
+        renderFooter: ({ state, resolve }) => {
+          const { data } = state;
           return (
             <View>
               <ConfirmCancelFooter
