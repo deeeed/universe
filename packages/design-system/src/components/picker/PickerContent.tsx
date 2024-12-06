@@ -21,7 +21,6 @@ const getStyles = (theme: AppTheme) => {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: theme.spacing.gap,
-      minHeight: 40,
     },
     optionItem: {
       marginBottom: theme.spacing.margin,
@@ -32,7 +31,6 @@ const getStyles = (theme: AppTheme) => {
     },
     createOptionContainer: {
       padding: theme.spacing.padding,
-      paddingBottom: 100,
     },
     createOptionInput: {
       marginBottom: theme.spacing.margin,

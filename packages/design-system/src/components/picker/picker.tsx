@@ -90,6 +90,9 @@ export const Picker = ({
       const result = await openDrawer<SelectOption[]>({
         title: label,
         initialData: activeOptions,
+        bottomSheetProps: {
+          enableDynamicSizing: true,
+        },
         render: ({ state, onChange }) => (
           <PickerContent
             options={state.data}
