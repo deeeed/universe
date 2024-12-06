@@ -1,5 +1,10 @@
-## [Unreleased]
+# Changelog
 
+All notable changes to this project will be documented in this file.
+
+## [Unreleased]
+### Added
+- refactor(modal): improve bottom sheet state management and code organization (#40) ([d3095d0](https://github.com/deeeed/universe/commit/d3095d033119bb43a58e2aa46146fedbe6abe572))
 
 ## [0.29.4] - 2024-10-28
 
