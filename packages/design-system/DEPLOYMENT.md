@@ -27,7 +27,7 @@ publisher changelog update
 To create and publish a new release:
 
 ```bash
-publisher release
+yarn clean && yarn typecheck && yarn build && publisher release
 ```
 
 This command will:
