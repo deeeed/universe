@@ -1,6 +1,8 @@
 import "intl-pluralrules";
 // Keep polyfills at the top
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { SavedUserPreferences } from "@siteed/design-system";
 import { UIProvider, useThemePreferences } from "@siteed/design-system";
 import { setLoggerConfig } from "@siteed/react-native-logger";
 import { registerRootComponent } from "expo";
@@ -31,6 +33,18 @@ const DebugStatusBar = () => {
 const AppEntry = () => {
   return (
     <UIProvider
+      actions={{
+        savePreferences: async (preferences: SavedUserPreferences) => {
+          try {
+            await AsyncStorage.setItem(
+              "@app/preferences",
+              JSON.stringify(preferences),
+            );
+          } catch (error) {
+            console.error("Failed to save preferences:", error);
+          }
+        },
+      }}
       toastProviderProps={{
         overrides: {
           snackbarStyle: { marginBottom: 100 },
