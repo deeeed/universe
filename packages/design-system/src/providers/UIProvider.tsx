@@ -143,9 +143,7 @@ const UIProviderWithLanguageReady = ({
     setDarkMode,
     i18nInstance: i18n,
     setThemeVersion,
-    savePreferences(_) {
-      // Implement overwrites if needed but currently leave it up to the user to implement.
-    },
+    savePreferences: actions?.savePreferences,
   });
 
   useEffect(() => {

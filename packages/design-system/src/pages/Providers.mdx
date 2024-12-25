@@ -331,3 +331,46 @@ The `CustomModalProvider` wraps both bottom sheet modals and regular modals to m
 #### Example
 
 Customize the modals by using the `openDrawer`, `openModal`, or `editProp` methods provided by the `CustomModalProvider`.
+
+```
+
+### Persisting Preferences
+
+The `UIProvider` supports custom persistence of user preferences through the `actions` prop. This allows you to save theme-related settings like dark mode, locale, and ripple effects to your preferred storage solution.
+
+```tsx
+import { UIProvider } from '@siteed/design-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { SavedUserPreferences } from '@siteed/design-system';
+
+const App = () => {
+  const customActions = {
+    savePreferences: async (preferences: SavedUserPreferences) => {
+      try {
+        await AsyncStorage.setItem('@app/preferences', JSON.stringify(preferences));
+      } catch (error) {
+        console.error('Failed to save preferences:', error);
+      }
+    }
+  };
+
+  return (
+    <UIProvider actions={customActions}>
+      <View>
+        <Text>Hello World</Text>
+      </View>
+    </UIProvider>
+  );
+};
+```
+
+The `SavedUserPreferences` interface includes:
+```tsx
+interface SavedUserPreferences {
+  darkMode?: boolean;
+  locale?: string;
+  rippleEffectEnabled: boolean;
+}
+```
+
+These preferences are automatically saved whenever related settings change through the theme actions (toggling dark mode, changing locale, etc.).

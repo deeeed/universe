@@ -21,6 +21,7 @@ export interface ThemeActions {
   toggleCustomFont: () => void;
   toggleRippleEffect: () => void;
   setThemeColor: (props: { name: string; value: string }) => void;
+  savePreferences?: (preferences: SavedUserPreferences) => Promise<void> | void;
 }
 
 export interface ThemePreferences {
