@@ -126,6 +126,9 @@ For a full list of components and their usage, you can explore the storybook
 
 For more detailed information on the design system and its components, check out the storybook site at [https://deeeed.github.io/universe/design-system-storybook/](https://deeeed.github.io/universe/design-system-storybook/)
 
+## Development
+
+For information about deploying new versions, changelog management, and release procedures, please refer to [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## Storybook
 
