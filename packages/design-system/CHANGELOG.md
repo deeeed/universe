@@ -3,7 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- refactor: update toast background color and padding ([8b98f87](https://github.com/deeeed/universe/commit/8b98f87311e108a768b4036ea78863c62037573a))
+- feat: cleanup unused effetcs ([8579378](https://github.com/deeeed/universe/commit/85793785022b277cb86747c2e50bc966768679de))
 
 ## [0.31.3] - 2024-12-25
 - add initial preferences loading and state management ([853d7fc](https://github.com/deeeed/universe/commit/853d7fcd680bb4fadab3208963ae9b177bde09d3))
