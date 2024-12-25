@@ -1,7 +1,7 @@
 // packages/design-system/src/providers/UIProvider.tsx
 import { PortalHost, PortalProvider } from '@gorhom/portal';
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -172,23 +172,17 @@ const UIProviderWithLanguage = (props: Omit<UIProviderProps, 'locale'>) => {
   return <UIProviderWithLanguageReady {...props} />;
 };
 
-export const UIProvider = (props: UIProviderProps) => {
-  const { children, ...propsWithoutChildren } = props;
-  const {
-    locale,
-    actions,
-    safeAreaProviderProps,
-    toastProviderProps,
-    confirmProviderProps,
-    preferences,
-    darkTheme,
-    lightTheme,
-  } = propsWithoutChildren;
-
-  useEffect(() => {
-    console.log('DEBUG HERE preferences', propsWithoutChildren);
-  }, [propsWithoutChildren]);
-
+export const UIProvider = ({
+  locale,
+  actions,
+  safeAreaProviderProps,
+  toastProviderProps,
+  confirmProviderProps,
+  preferences,
+  darkTheme,
+  lightTheme,
+  children,
+}: UIProviderProps) => {
   return (
     <SafeAreaProvider {...safeAreaProviderProps}>
       {/* Wrap with LanguageProvider to have useTranslation available */}
