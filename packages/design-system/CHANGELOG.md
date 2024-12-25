@@ -3,11 +3,15 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-- refactor: update toast background color and padding ([8b98f87](https://github.com/deeeed/universe/commit/8b98f87311e108a768b4036ea78863c62037573a))
-- feat: cleanup unused effetcs ([8579378](https://github.com/deeeed/universe/commit/85793785022b277cb86747c2e50bc966768679de))
+
+
+## [0.32.0] - 2024-12-25
+- cleanup unused effetcs ([8579378](https://github.com/deeeed/universe/commit/85793785022b277cb86747c2e50bc966768679de))
+- update toast background color and padding ([8b98f87](https://github.com/deeeed/universe/commit/8b98f87311e108a768b4036ea78863c62037573a))
 
 ## [0.31.3] - 2024-12-25
 - add initial preferences loading and state management ([853d7fc](https://github.com/deeeed/universe/commit/853d7fcd680bb4fadab3208963ae9b177bde09d3))
+
 
 ## [0.31.2] - 2024-12-25
 - docs(design-system): Add deployment guide and update README with deployment information ([5322a6b](https://github.com/deeeed/universe/commit/5322a6bcabc216869f94288a0d6b0205d79c0686))
@@ -16,9 +20,11 @@ All notable changes to this project will be documented in this file.
 - chore(design-system): Replace custom release script with publisher tool in package.json ([9d74b60](https://github.com/deeeed/universe/commit/9d74b6055f48f5fa165d562004a855bf9ad1733d))
 
 
+
 ## [0.31.1] - 2024-12-25
 - docs: document custom persistence of user preferences in UIProvider ([dad2edf](https://github.com/deeeed/universe/commit/dad2edfe2f75d5f9b3877895e34ee4613610f973))
 - docs: update installation instructions for bottom-sheet ([675ad48](https://github.com/deeeed/universe/commit/675ad484ce38cbbf1bff269276406b9110813ad3))
+
 
 
 
@@ -28,8 +34,10 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.30.1] - 2024-10-30
 - Integrate @siteed/publisher package
+
 
 
 
@@ -44,6 +52,7 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.29.4] - 2024-10-28
 
 ### Added
@@ -53,7 +62,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.31.3...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.32.0...HEAD
+[0.32.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.31.3...@siteed/design-system@0.32.0
 [0.31.3]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.31.2...@siteed/design-system@0.31.3
 [0.31.2]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.31.1...@siteed/design-system@0.31.2
 [0.31.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.31.0...@siteed/design-system@0.31.1
