@@ -95,7 +95,7 @@ export const SelectButtons = ({
       currentOptions
         // Filter options based on search query
         .filter((option) =>
-          option.label.toLowerCase().includes(searchQuery.toLowerCase())
+          option.label?.toLowerCase().includes(searchQuery.toLowerCase())
         )
         // Sort options alphabetically
         // .sort((a, b) => a.label.localeCompare(b.label))

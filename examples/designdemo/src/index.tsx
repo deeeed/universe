@@ -2,8 +2,11 @@ import "intl-pluralrules";
 // Keep polyfills at the top
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { SavedUserPreferences } from "@siteed/design-system";
-import { UIProvider, useThemePreferences } from "@siteed/design-system";
+import {
+  SavedUserPreferences,
+  UIProvider,
+  useThemePreferences,
+} from "@siteed/design-system";
 import { setLoggerConfig } from "@siteed/react-native-logger";
 import { registerRootComponent } from "expo";
 import { App as ExpoRouterApp } from "expo-router/build/qualified-entry";
@@ -31,10 +34,38 @@ const DebugStatusBar = () => {
 };
 
 const AppEntry = () => {
+  const [initialPreferences, setInitialPreferences] = useState<
+    SavedUserPreferences | undefined
+  >();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadPreferences() {
+      try {
+        const savedPreferences = await AsyncStorage.getItem("@app/preferences");
+        console.log("DEBUG HERE savedPreferences", savedPreferences);
+        if (savedPreferences) {
+          setInitialPreferences(JSON.parse(savedPreferences));
+        }
+      } catch (error) {
+        console.error("Failed to load preferences:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadPreferences();
+  }, []);
+
+  if (isLoading) {
+    return <ActivityIndicator />;
+  }
+
   return (
     <UIProvider
+      preferences={initialPreferences}
       actions={{
-        savePreferences: async (preferences: SavedUserPreferences) => {
+        savePreferences: async (preferences) => {
           try {
             await AsyncStorage.setItem(
               "@app/preferences",

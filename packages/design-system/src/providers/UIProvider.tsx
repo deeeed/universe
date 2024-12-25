@@ -16,12 +16,12 @@ import {
 } from 'react-native-safe-area-context';
 import {
   ThemeActions,
-  ThemePreferences,
   useAppPreferencesSetup,
 } from '../hooks/_useAppPreferencesSetup';
 import {
   AppTheme,
   CustomAppTheme,
+  SavedUserPreferences,
   useAppThemeSetup,
 } from '../hooks/_useAppThemeSetup';
 import { ConfirmProvider, ConfirmProviderProps } from './ConfirmProvider';
@@ -97,7 +97,7 @@ export interface UIProviderProps {
   lightTheme?: AppTheme;
   darkTheme?: AppTheme;
   portalName?: string;
-  preferences?: Partial<Omit<ThemePreferences, 'theme'>>;
+  preferences?: SavedUserPreferences;
   actions?: Partial<ThemeActions>;
   safeAreaProviderProps?: SafeAreaProviderProps;
   toastProviderProps?: Partial<Omit<ToastProviderProps, 'children'>>;
@@ -115,11 +115,8 @@ const UIProviderWithLanguageReady = ({
   portalName = 'modal',
   children,
 }: Omit<UIProviderProps, 'locale'>) => {
-  // Create default preferences if none are provided
-  const [activePreferences, setActivePreferences] = React.useState<
-    ThemePreferences & ThemeActions
-  >();
   const { i18n } = useTranslation();
+
   const {
     theme: defaultTheme,
     darkMode,
@@ -128,10 +125,9 @@ const UIProviderWithLanguageReady = ({
   } = useAppThemeSetup({
     customDarkTheme: DefaultDarkTheme,
     customLightTheme: DefaultLightTheme,
-    // savedPreferences: preferences,
+    savedPreferences: preferences,
   });
 
-  // Calculate the theme based on preferences
   const theme = React.useMemo(() => {
     return darkMode
       ? { ...defaultTheme, ...darkTheme }
@@ -139,26 +135,12 @@ const UIProviderWithLanguageReady = ({
   }, [darkMode, darkTheme, lightTheme, defaultTheme]);
 
   const defaultPreferences = useAppPreferencesSetup({
-    theme: theme,
+    theme,
     setDarkMode,
     i18nInstance: i18n,
     setThemeVersion,
     savePreferences: actions?.savePreferences,
   });
-
-  useEffect(() => {
-    let dynPrefs = { ...defaultPreferences };
-    if (preferences) {
-      dynPrefs = { ...dynPrefs, ...preferences };
-    } else if (actions) {
-      dynPrefs = { ...dynPrefs, ...actions };
-    }
-    setActivePreferences(dynPrefs);
-  }, [preferences, actions]);
-
-  if (!activePreferences) {
-    return <ActivityIndicator />;
-  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -190,17 +172,23 @@ const UIProviderWithLanguage = (props: Omit<UIProviderProps, 'locale'>) => {
   return <UIProviderWithLanguageReady {...props} />;
 };
 
-export const UIProvider = ({
-  locale,
-  actions,
-  safeAreaProviderProps,
-  toastProviderProps,
-  confirmProviderProps,
-  preferences,
-  darkTheme,
-  lightTheme,
-  children,
-}: UIProviderProps) => {
+export const UIProvider = (props: UIProviderProps) => {
+  const { children, ...propsWithoutChildren } = props;
+  const {
+    locale,
+    actions,
+    safeAreaProviderProps,
+    toastProviderProps,
+    confirmProviderProps,
+    preferences,
+    darkTheme,
+    lightTheme,
+  } = propsWithoutChildren;
+
+  useEffect(() => {
+    console.log('DEBUG HERE preferences', propsWithoutChildren);
+  }, [propsWithoutChildren]);
+
   return (
     <SafeAreaProvider {...safeAreaProviderProps}>
       {/* Wrap with LanguageProvider to have useTranslation available */}
