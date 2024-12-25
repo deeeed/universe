@@ -3,7 +3,10 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- refactor(design-system): Remove unused export from design system index ([fc6bfef](https://github.com/deeeed/universe/commit/fc6bfef71cfb8ff5250e9d0e0942cc1e0ff19ed5))
+- refactor: clean up BottomSheetProvider imports ([05a5c5e](https://github.com/deeeed/universe/commit/05a5c5e7f638e7237dc6a7580b8587290cf8f223))
+- chore(design-system): Replace custom release script with publisher tool in package.json ([9d74b60](https://github.com/deeeed/universe/commit/9d74b6055f48f5fa165d562004a855bf9ad1733d))
+- docs(design-system): Add deployment guide and update README with deployment information ([5322a6b](https://github.com/deeeed/universe/commit/5322a6bcabc216869f94288a0d6b0205d79c0686))
 
 ## [0.31.1] - 2024-12-25
 - docs: document custom persistence of user preferences in UIProvider ([dad2edf](https://github.com/deeeed/universe/commit/dad2edfe2f75d5f9b3877895e34ee4613610f973))
