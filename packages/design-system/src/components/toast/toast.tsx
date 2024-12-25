@@ -12,14 +12,12 @@ export type ToastType = 'info' | 'success' | 'warning' | 'error';
 export type ToastPosition = 'top' | 'bottom' | 'middle';
 
 const getStyles = ({ theme, type }: { type: ToastType; theme: AppTheme }) => {
-  // const _backgroundColor = {
-  //   info: theme.colors.infoContainer,
-  //   warning: theme.colors.warningContainer,
-  //   error: theme.colors.errorContainer,
-  //   success: theme.colors.successContainer,
-  // }[type];
-
-  const whiteColor = '#FFF5EE';
+  const backgroundColor = {
+    info: theme.colors.infoContainer,
+    warning: theme.colors.warningContainer,
+    error: theme.colors.errorContainer,
+    success: theme.colors.successContainer,
+  }[type];
 
   const iconColor = {
     info: theme.colors.info,
@@ -27,25 +25,23 @@ const getStyles = ({ theme, type }: { type: ToastType; theme: AppTheme }) => {
     error: theme.colors.error,
     success: theme.colors.success,
   }[type];
+
   return StyleSheet.create({
     snackBarStyle: {
       borderRadius: 3,
       width: '95%',
       maxWidth: 400,
-      // backgroundColor: _backgroundColor,
+      backgroundColor,
     },
     message: {
-      // fontWeight: 'bold',
       fontSize: 14,
-      color: whiteColor,
     },
     textContainer: {
       gap: 5,
-      paddingLeft: 5,
+      paddingLeft: 10,
     },
     subMessage: {
       fontWeight: 'normal',
-      color: whiteColor,
       fontSize: 12,
     },
     defaultMessageContainer: {

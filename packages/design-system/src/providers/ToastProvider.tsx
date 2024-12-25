@@ -54,7 +54,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
       message: '',
       type: 'info', // default type
       position: 'bottom', // default position
-      iconVisible: false, // default icon visibility
+      iconVisible: true, // default icon visibility
       ...overrides,
     }),
     [overrides]
