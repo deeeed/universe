@@ -130,7 +130,6 @@ const TryDynInput = () => {
         <DynInput
           data={selectedDate}
           inputType="date"
-          dateMode="date"
           label="Select Date"
           onFinish={(value) => setSelectedDate(value as Date)}
         />
@@ -139,8 +138,7 @@ const TryDynInput = () => {
         <Text style={styles.sectionTitle}>Time Input</Text>
         <DynInput
           data={selectedTime}
-          inputType="date"
-          dateMode="time"
+          inputType="datetime"
           label="Select Time"
           onFinish={(value) => setSelectedTime(value as Date)}
         />

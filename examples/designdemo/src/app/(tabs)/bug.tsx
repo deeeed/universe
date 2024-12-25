@@ -1,4 +1,3 @@
-import { useDebugRerenders } from "@siteed/design-system";
 import {
   EditableInfoCard,
   Picker,
@@ -18,8 +17,6 @@ const getStyles = () => {
 };
 
 export const Bug = () => {
-  useDebugRerenders("Bug");
-
   const styles = useMemo(() => getStyles(), []);
   const { theme } = useThemePreferences();
   const colors = [
@@ -78,8 +75,6 @@ interface InnerComponentProps {
   footerHeight?: number;
 }
 const InnerComponent = ({ onChange, footerHeight }: InnerComponentProps) => {
-  useDebugRerenders("InnerComponent");
-
   const { theme } = useThemePreferences();
   const [date, setDate] = useState(new Date());
   const { editProp } = useModal();
