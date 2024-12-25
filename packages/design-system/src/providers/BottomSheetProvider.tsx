@@ -16,7 +16,6 @@ import type {
   OpenDrawerProps,
 } from '../types/bottomSheet.types';
 import { useBottomSheetStack } from '../hooks/useBottomSheetStack';
-import { useDebugRerenders } from '../hooks/useDebugRerenders';
 import { baseLogger } from '../utils/logger';
 
 export interface BottomSheetProviderProps {
@@ -41,8 +40,6 @@ const logger = baseLogger.extend('BottomSheetProvider');
 export const BottomSheetProvider = memo(
   forwardRef<BottomSheetContextValue, BottomSheetProviderProps>(
     ({ children, defaultPortalName = 'modal', sharedIdCounter }, ref) => {
-      useDebugRerenders('BottomSheetProvider');
-
       const {
         modalStack,
         modalStackRef,
