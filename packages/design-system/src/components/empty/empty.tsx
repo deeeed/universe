@@ -25,18 +25,41 @@ export interface EmptyProps {
   image: ImageSourcePropType;
   message: string;
   buttonValue: string;
+  buttonProps?: Omit<
+    React.ComponentProps<typeof Button>,
+    'children' | 'onPress'
+  >;
   onPress?: () => void;
+  style?: {
+    container?: object;
+    image?: object;
+  };
 }
 
-export const Empty = ({ message, onPress, buttonValue, image }: EmptyProps) => {
+export const Empty = ({
+  message,
+  onPress,
+  buttonValue,
+  image,
+  buttonProps = {},
+  style = {},
+}: EmptyProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getItemStyle({ theme }), [theme]);
 
   return (
-    <View style={styles.container}>
-      <Image source={image} style={styles.image} resizeMode="contain" />
+    <View style={[styles.container, style.container]}>
+      <Image
+        source={image}
+        style={[styles.image, style.image]}
+        resizeMode="contain"
+      />
       <Text variant="labelMedium">{message}</Text>
-      {buttonValue && <Button onPress={onPress}>{buttonValue}</Button>}
+      {buttonValue && (
+        <Button onPress={onPress} {...buttonProps}>
+          {buttonValue}
+        </Button>
+      )}
     </View>
   );
 };
