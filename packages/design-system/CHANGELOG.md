@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- feat: enhance Empty component stories with new props ([94e9b81](https://github.com/deeeed/universe/commit/94e9b81be99e7ff9269f6ff59abc1bcb3acfa3b2))
 
 ## [0.32.0] - 2024-12-25
 - cleanup unused effetcs ([8579378](https://github.com/deeeed/universe/commit/85793785022b277cb86747c2e50bc966768679de))
