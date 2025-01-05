@@ -11,49 +11,11 @@ import { useTheme } from '../../providers/ThemeProvider';
 export type ToastType = 'info' | 'success' | 'warning' | 'error';
 export type ToastPosition = 'top' | 'bottom' | 'middle';
 
-const getStyles = ({ theme, type }: { type: ToastType; theme: AppTheme }) => {
-  const backgroundColor = {
-    info: theme.colors.infoContainer,
-    warning: theme.colors.warningContainer,
-    error: theme.colors.errorContainer,
-    success: theme.colors.successContainer,
-  }[type];
-
-  const iconColor = {
-    info: theme.colors.info,
-    warning: theme.colors.warning,
-    error: theme.colors.error,
-    success: theme.colors.success,
-  }[type];
-
-  return StyleSheet.create({
-    snackBarStyle: {
-      borderRadius: 3,
-      width: '95%',
-      maxWidth: 400,
-      backgroundColor,
-    },
-    message: {
-      fontSize: 14,
-    },
-    textContainer: {
-      gap: 5,
-      paddingLeft: 10,
-    },
-    subMessage: {
-      fontWeight: 'normal',
-      fontSize: 12,
-    },
-    defaultMessageContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-start',
-    },
-    iconStyle: {
-      color: iconColor,
-    },
-  });
-};
+export interface ToastTypeStyles {
+  backgroundColor?: string;
+  textColor?: string;
+  iconColor?: string;
+}
 
 export interface ToastProps {
   /** The message to show */
@@ -84,6 +46,13 @@ export interface ToastProps {
   /** Toast Snackbar Style */
   snackbarStyle?: StyleProp<ViewStyle>;
   onDismiss?: () => void;
+  themeOverrides?: {
+    background?: string;
+    text?: string;
+    typeStyles?: {
+      [key in ToastType]?: ToastTypeStyles;
+    };
+  };
 }
 
 export type ToastIconType = {
@@ -99,6 +68,69 @@ const icons: ToastIconType = {
   warning: 'alert-circle-outline',
   success: 'check-circle-outline',
   error: 'close-circle-outline',
+};
+
+const getStyles = ({
+  theme,
+  type,
+  themeOverrides,
+}: {
+  theme: AppTheme;
+  type: ToastType;
+  themeOverrides?: ToastProps['themeOverrides'];
+}) => {
+  const typeStyle = themeOverrides?.typeStyles?.[type];
+
+  // Define base colors
+  const baseColors = {
+    background:
+      themeOverrides?.background ||
+      (theme.dark ? theme.colors.surfaceVariant : theme.colors.surface),
+    text:
+      themeOverrides?.text ||
+      (theme.dark ? theme.colors.onSurfaceVariant : theme.colors.onSurface),
+    loading: theme.colors.primary,
+  };
+
+  return StyleSheet.create({
+    snackBarStyle: {
+      borderRadius: 3,
+      width: '95%',
+      maxWidth: 400,
+      backgroundColor: typeStyle?.backgroundColor || baseColors.background,
+      padding: theme.padding.s,
+    },
+    message: {
+      fontSize: 14,
+      color: typeStyle?.textColor || baseColors.text,
+    },
+    textContainer: {
+      gap: 5,
+      paddingLeft: 10,
+    },
+    subMessage: {
+      fontWeight: 'normal',
+      fontSize: 12,
+    },
+    defaultMessageContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+    },
+    iconStyle: {
+      color: typeStyle?.iconColor || theme.colors[type],
+    },
+    actionButton: {
+      backgroundColor: theme.colors.primaryContainer,
+      borderRadius: 4,
+      marginLeft: theme.padding.s,
+    },
+    actionButtonText: {
+      color: theme.colors.onPrimaryContainer,
+      fontWeight: '600',
+      fontSize: 14,
+    },
+  });
 };
 
 export const Toast = ({
@@ -177,7 +209,16 @@ export const Toast = ({
       wrapperStyle={computedStyle as StyleProp<ViewStyle>}
       duration={duration}
       visible={visibility}
-      action={action ? { label: actionLabel, onPress: action } : undefined}
+      action={
+        action
+          ? {
+              label: actionLabel,
+              style: styles.actionButton,
+              labelStyle: styles.actionButtonText,
+              onPress: action,
+            }
+          : undefined
+      }
     >
       <View style={[styles.defaultMessageContainer, messageContainerStyle]}>
         {loading && <ActivityIndicator />}

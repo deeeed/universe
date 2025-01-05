@@ -1,5 +1,6 @@
 import React, { createContext, useEffect, useMemo, useReducer } from 'react';
 import { Keyboard } from 'react-native';
+import { StyleProp, ViewStyle, TextStyle } from 'react-native';
 
 import { Toast, ToastProps } from '../components/Toast/Toast';
 
@@ -12,8 +13,19 @@ export interface ToastMethods {
   hide(): void;
 }
 
+export interface ToastStyleOverrides {
+  snackBarStyle?: StyleProp<ViewStyle>;
+  messageStyle?: StyleProp<TextStyle>;
+  subMessageStyle?: StyleProp<TextStyle>;
+  iconStyle?: StyleProp<TextStyle>;
+  messageContainerStyle?: StyleProp<ViewStyle>;
+  actionButtonStyle?: StyleProp<ViewStyle>;
+  actionButtonTextStyle?: StyleProp<TextStyle>;
+}
+
 export interface ToastProviderProps {
-  overrides?: ToastOptions;
+  styleOverrides?: ToastStyleOverrides;
+  defaultOptions?: Partial<Omit<ToastProps, keyof ToastStyleOverrides>>;
   children: React.ReactNode;
 }
 
@@ -46,18 +58,25 @@ const reducer =
 
 export const ToastProvider: React.FC<ToastProviderProps> = ({
   children,
-  overrides,
+  styleOverrides = {},
+  defaultOptions = {},
 }) => {
   const initialState: ToastProps = useMemo(
     () => ({
       visibility: false,
       message: '',
-      type: 'info', // default type
-      position: 'bottom', // default position
-      iconVisible: true, // default icon visibility
-      ...overrides,
+      type: 'info',
+      position: 'bottom',
+      iconVisible: true,
+      ...defaultOptions,
+      // Merge style overrides
+      snackbarStyle: styleOverrides.snackBarStyle,
+      messageStyle: styleOverrides.messageStyle,
+      subMessageStyle: styleOverrides.subMessageStyle,
+      iconStyle: styleOverrides.iconStyle,
+      messageContainerStyle: styleOverrides.messageContainerStyle,
     }),
-    [overrides]
+    [defaultOptions, styleOverrides]
   );
 
   const [state, dispatch] = useReducer(reducer(initialState), initialState);
