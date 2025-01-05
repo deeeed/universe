@@ -1,6 +1,5 @@
-import React, { createContext, useEffect, useMemo, useReducer } from 'react';
-import { Keyboard } from 'react-native';
-import { StyleProp, ViewStyle, TextStyle } from 'react-native';
+import React, { createContext, useMemo, useReducer } from 'react';
+import { Keyboard, StyleProp, TextStyle, ViewStyle } from 'react-native';
 
 import { Toast, ToastProps } from '../components/Toast/Toast';
 
@@ -14,7 +13,7 @@ export interface ToastMethods {
 }
 
 export interface ToastStyleOverrides {
-  snackBarStyle?: StyleProp<ViewStyle>;
+  snackbarStyle?: StyleProp<ViewStyle>;
   messageStyle?: StyleProp<TextStyle>;
   subMessageStyle?: StyleProp<TextStyle>;
   iconStyle?: StyleProp<TextStyle>;
@@ -69,8 +68,8 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
       position: 'bottom',
       iconVisible: true,
       ...defaultOptions,
-      // Merge style overrides
-      snackbarStyle: styleOverrides.snackBarStyle,
+      // Change snackBarStyle to snackbarStyle
+      snackbarStyle: styleOverrides.snackbarStyle,
       messageStyle: styleOverrides.messageStyle,
       subMessageStyle: styleOverrides.subMessageStyle,
       iconStyle: styleOverrides.iconStyle,
@@ -104,10 +103,6 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
     }),
     []
   );
-
-  useEffect(() => {
-    dispatch({ type: ToastActionType.HYDRATE, payload: initialState });
-  }, [initialState]);
 
   const handleDismiss = () => {
     state.onDismiss?.();

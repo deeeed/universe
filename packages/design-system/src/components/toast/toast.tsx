@@ -166,11 +166,14 @@ export const Toast = ({
       alignItems: 'center',
       zIndex: 9999,
     };
+
+    const marginBottom = (snackbarStyle as ViewStyle)?.marginBottom || 0;
+
     let style;
     if (position === 'bottom') {
       style = {
         ...base,
-        bottom: insets.bottom,
+        bottom: insets.bottom + Number(marginBottom),
       };
       return style;
     }
@@ -191,12 +194,12 @@ export const Toast = ({
     if (Platform.OS === 'web') {
       style = {
         ...styles,
-        top: windowDimensions.height / 2 - 20, // Adjust as needed
-        bottom: windowDimensions.height / 2 - 20, // Adjust as needed
+        top: windowDimensions.height / 2 - 20,
+        bottom: windowDimensions.height / 2 - 20,
       };
     }
     return style;
-  }, [insets, position, windowDimensions]);
+  }, [insets, position, windowDimensions, snackbarStyle]);
 
   const handleDismiss = () => {
     onDismiss?.();
@@ -205,7 +208,13 @@ export const Toast = ({
   return (
     <Snackbar
       onDismiss={handleDismiss}
-      style={[styles.snackBarStyle, snackbarStyle]}
+      style={[
+        styles.snackBarStyle,
+        snackbarStyle,
+        position === 'bottom' && {
+          marginBottom: (snackbarStyle as ViewStyle)?.marginBottom || 0,
+        },
+      ]}
       wrapperStyle={computedStyle as StyleProp<ViewStyle>}
       duration={duration}
       visible={visibility}

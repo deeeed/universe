@@ -77,7 +77,7 @@ const AppEntry = () => {
         },
       }}
       toastProviderProps={{
-        overrides: {
+        styleOverrides: {
           snackbarStyle: { marginBottom: 100 },
         },
       }}
