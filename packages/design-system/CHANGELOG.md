@@ -3,13 +3,18 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-- fix: correct styleOverrides property in ToastProvider ([9019b56](https://github.com/deeeed/universe/commit/9019b56b07dbe9f9037612b0b06ea00481cf2560))
+
+
+## [0.34.1] - 2025-01-05
+- correct styleOverrides property in ToastProvider ([9019b56](https://github.com/deeeed/universe/commit/9019b56b07dbe9f9037612b0b06ea00481cf2560))
 
 ## [0.34.0] - 2025-01-05
 - update ToastProvider to support style overrides ([ca353b0](https://github.com/deeeed/universe/commit/ca353b0971a8ce9cb1ffc797f784e4b4318693e5))
 
+
 ## [0.33.0] - 2025-01-02
 - enhance Empty component stories with new props ([94e9b81](https://github.com/deeeed/universe/commit/94e9b81be99e7ff9269f6ff59abc1bcb3acfa3b2))
+
 
 
 ## [0.32.0] - 2024-12-25
@@ -18,8 +23,10 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.31.3] - 2024-12-25
 - add initial preferences loading and state management ([853d7fc](https://github.com/deeeed/universe/commit/853d7fcd680bb4fadab3208963ae9b177bde09d3))
+
 
 
 
@@ -34,9 +41,11 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.31.1] - 2024-12-25
 - docs: document custom persistence of user preferences in UIProvider ([dad2edf](https://github.com/deeeed/universe/commit/dad2edfe2f75d5f9b3877895e34ee4613610f973))
 - docs: update installation instructions for bottom-sheet ([675ad48](https://github.com/deeeed/universe/commit/675ad484ce38cbbf1bff269276406b9110813ad3))
+
 
 
 
@@ -52,8 +61,10 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.30.1] - 2024-10-30
 - Integrate @siteed/publisher package
+
 
 
 
@@ -74,6 +85,7 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.29.4] - 2024-10-28
 
 ### Added
@@ -83,7 +95,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.34.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.34.1...HEAD
+[0.34.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.34.0...@siteed/design-system@0.34.1
 [0.34.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.33.0...@siteed/design-system@0.34.0
 [0.33.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.32.0...@siteed/design-system@0.33.0
 [0.32.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.31.3...@siteed/design-system@0.32.0
