@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- fix: correct styleOverrides property in ToastProvider ([9019b56](https://github.com/deeeed/universe/commit/9019b56b07dbe9f9037612b0b06ea00481cf2560))
 
 ## [0.34.0] - 2025-01-05
 - update ToastProvider to support style overrides ([ca353b0](https://github.com/deeeed/universe/commit/ca353b0971a8ce9cb1ffc797f784e4b4318693e5))
