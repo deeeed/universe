@@ -34,6 +34,11 @@ export interface CustomAppTheme extends Omit<MD3Theme, 'colors'> {
     infoContainer: string;
     brand?: string;
   };
+  breakpoints: {
+    mobile: number;
+    tablet: number;
+    desktop: number;
+  };
 }
 
 export interface AppTheme extends CustomAppTheme {

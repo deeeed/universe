@@ -29,6 +29,7 @@ import { LanguageProvider } from './LanguageProvider';
 import { ModalControllerProvider } from './ModalControllerProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { ToastProvider, ToastProviderProps } from './ToastProvider';
+import { breakpoints as defaultBreakpoints } from '../constants/breakpoints';
 
 export const DefaultLightTheme: CustomAppTheme = {
   ...MD3LightTheme,
@@ -59,6 +60,7 @@ export const DefaultLightTheme: CustomAppTheme = {
     info: '#00BBFF',
     infoContainer: 'rgba(0,122,255,0.1)',
   },
+  breakpoints: defaultBreakpoints,
 };
 
 export const DefaultDarkTheme: CustomAppTheme = {
@@ -90,6 +92,7 @@ export const DefaultDarkTheme: CustomAppTheme = {
     info: 'rgba(0,122,255,0.9)',
     infoContainer: 'rgba(0,122,255,0.1)',
   },
+  breakpoints: defaultBreakpoints,
 };
 
 export interface UIProviderProps {
@@ -103,6 +106,11 @@ export interface UIProviderProps {
   toastProviderProps?: Partial<Omit<ToastProviderProps, 'children'>>;
   confirmProviderProps?: Partial<Omit<ConfirmProviderProps, 'children'>>;
   children: React.ReactNode;
+  breakpoints?: {
+    mobile: number;
+    tablet: number;
+    desktop: number;
+  };
 }
 
 const UIProviderWithLanguageReady = ({
@@ -110,6 +118,7 @@ const UIProviderWithLanguageReady = ({
   actions,
   darkTheme,
   lightTheme,
+  breakpoints = defaultBreakpoints,
   toastProviderProps,
   confirmProviderProps,
   portalName = 'modal',
@@ -129,10 +138,18 @@ const UIProviderWithLanguageReady = ({
   });
 
   const theme = React.useMemo(() => {
-    return darkMode
+    const baseTheme = darkMode
       ? { ...defaultTheme, ...darkTheme }
       : { ...defaultTheme, ...lightTheme };
-  }, [darkMode, darkTheme, lightTheme, defaultTheme]);
+
+    return {
+      ...baseTheme,
+      breakpoints: {
+        ...baseTheme.breakpoints,
+        ...breakpoints,
+      },
+    };
+  }, [darkMode, darkTheme, lightTheme, defaultTheme, breakpoints]);
 
   const defaultPreferences = useAppPreferencesSetup({
     theme,
