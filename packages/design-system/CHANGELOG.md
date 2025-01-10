@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- feat(design-system): add breakpoint and mobile viewport hooks (#41) ([f0cf659](https://github.com/deeeed/universe/commit/f0cf6590298abccf8bee3d8a812432ae524c21cd))
 
 ## [0.34.1] - 2025-01-05
 - correct styleOverrides property in ToastProvider ([9019b56](https://github.com/deeeed/universe/commit/9019b56b07dbe9f9037612b0b06ea00481cf2560))
