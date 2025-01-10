@@ -38,6 +38,7 @@ const config: ExpoConfig = {
     backgroundColor: "#ffffff",
   },
   assetBundlePatterns: ["**/*"],
+  newArchEnabled: true,
   ios: {
     supportsTablet: true,
     bundleIdentifier: "net.siteed.designplayground",

@@ -1,0 +1,46 @@
+import { Meta } from '@storybook/addon-docs';
+
+<Meta title="Hooks/useBreakpoint" />
+
+# useBreakpoint
+
+The `useBreakpoint` hook provides responsive breakpoint information based on the current screen width and theme breakpoint settings.
+
+## API
+
+### `useBreakpoint`
+
+Returns an object containing boolean flags for different breakpoints and the current breakpoint name.
+
+- **Type**: `() => UseBreakpointReturn`
+- **Returns**:
+  ```typescript
+  {
+    isMobile: boolean;    // True if screen width is less than mobile breakpoint
+    isTablet: boolean;    // True if screen width is between mobile and tablet breakpoints
+    isDesktop: boolean;   // True if screen width is greater than or equal to tablet breakpoint
+    currentBreakpoint: 'mobile' | 'tablet' | 'desktop';  // Current breakpoint name
+  }
+  ```
+
+## Example
+
+```tsx
+import React from 'react';
+import { useBreakpoint } from '@siteed/design-system/hooks/useBreakpoint';
+import { View, Text } from 'react-native';
+
+const ResponsiveComponent = () => {
+  const { isMobile, isTablet, isDesktop, currentBreakpoint } = useBreakpoint();
+
+  return (
+    <View>
+      <Text>Current Breakpoint: {currentBreakpoint}</Text>
+      {isMobile && <Text>Mobile Layout</Text>}
+      {isTablet && <Text>Tablet Layout</Text>}
+      {isDesktop && <Text>Desktop Layout</Text>}
+    </View>
+  );
+};
+
+export default ResponsiveComponent; 

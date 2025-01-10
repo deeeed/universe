@@ -65,7 +65,7 @@ The UIProvider will handle the initialization of the LanguageProvider and set th
 
 ### ThemeProvider
 
-The `ThemeProvider` manages theme preferences such as dark mode, colors, and ripple effects, integrating them within the `UIProvider` for consistent theme management across the app.
+The `ThemeProvider` manages theme preferences such as dark mode, colors, ripple effects, and breakpoints, integrating them within the `UIProvider` for consistent theme management across the app.
 
 #### API
 
@@ -79,16 +79,26 @@ The `ThemeProvider` manages theme preferences such as dark mode, colors, and rip
   - `darkTheme`: Custom dark theme.
     - **Type**: `AppTheme`
     - **Description**: Custom theme configuration for dark mode.
+  - `breakpoints`: Responsive breakpoints configuration.
+    - **Type**: `{ mobile: number; tablet: number; desktop: number }`
+    - **Optional**: Yes
+    - **Description**: Defines the width breakpoints for different device sizes.
 
 #### Example
 
-Customize the theme by providing the `lightTheme` and `darkTheme` props in the `UIProvider`.
+Customize the theme and breakpoints by providing the appropriate props in the `UIProvider`.
 
 ```tsx
 import React from 'react';
 import { UIProvider } from '@siteed/design-system';
 import { View, Text } from 'react-native';
 import { DefaultDarkTheme, DefaultLightTheme } from '@siteed/design-system';
+
+const customBreakpoints = {
+  mobile: 320,
+  tablet: 768,
+  desktop: 1024
+};
 
 const lightTheme = {
   ...DefaultLightTheme,
@@ -122,6 +132,7 @@ const lightTheme = {
     m: 10,
     l: 15,
   },
+  breakpoints: customBreakpoints,
 };
 
 const darkTheme = {
@@ -156,11 +167,16 @@ const darkTheme = {
     m: 10,
     l: 15,
   },
+  breakpoints: customBreakpoints,
 };
 
 const App = () => {
   return (
-    <UIProvider lightTheme={lightTheme} darkTheme={darkTheme}>
+    <UIProvider 
+      lightTheme={lightTheme} 
+      darkTheme={darkTheme}
+      breakpoints={customBreakpoints}
+    >
       <View>
         <Text>Hello World</Text>
       </View>

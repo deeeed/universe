@@ -1,0 +1,59 @@
+import { Meta } from '@storybook/addon-docs';
+
+<Meta title="Hooks/useIsMobileViewport" />
+
+# useIsMobileViewport
+
+The `useIsMobileViewport` hook provides a simple boolean indicating whether the current viewport is considered mobile based on screen width.
+
+## API
+
+### `useIsMobileViewport`
+
+Returns a boolean indicating if the current viewport is mobile-sized.
+
+- **Type**: `(options?: UseIsMobileViewportOptions) => boolean`
+- **Parameters**:
+  - `options` (optional):
+    ```typescript
+    {
+      breakpoint?: number; // Custom breakpoint value (defaults to theme.breakpoints.mobile)
+    }
+    ```
+- **Returns**: `boolean` - `true` if the screen width is less than the mobile breakpoint
+
+## Example
+
+```tsx
+import React from 'react';
+import { useIsMobileViewport } from '@siteed/design-system/hooks/useIsMobileViewport';
+import { View, Text } from 'react-native';
+
+// Using default theme breakpoint
+const SimpleExample = () => {
+  const isMobile = useIsMobileViewport();
+
+  return (
+    <View>
+      <Text>
+        {isMobile ? 'Mobile View' : 'Desktop View'}
+      </Text>
+    </View>
+  );
+};
+
+// Using custom breakpoint
+const CustomBreakpointExample = () => {
+  const isMobile = useIsMobileViewport({ breakpoint: 480 });
+
+  return (
+    <View>
+      <Text>
+        {isMobile ? 'Mobile View' : 'Desktop View'}
+      </Text>
+    </View>
+  );
+};
+
+export default SimpleExample;
+``` 

@@ -3,10 +3,10 @@ import {
   Pressable,
   StyleProp,
   StyleSheet,
-  Text,
   TextStyle,
   View,
 } from 'react-native';
+import { Text } from 'react-native-paper';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
