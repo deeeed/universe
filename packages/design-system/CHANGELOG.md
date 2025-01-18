@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- feat: export new hooks useIsMobileViewport and useBreakpoint ([37cc4a5](https://github.com/deeeed/universe/commit/37cc4a5b087f09a0ddbce770cd1f82b6acbe7a95))
 
 ## [0.35.0] - 2025-01-10
 - feat(design-system): add breakpoint and mobile viewport hooks (#41) ([f0cf659](https://github.com/deeeed/universe/commit/f0cf6590298abccf8bee3d8a812432ae524c21cd))
