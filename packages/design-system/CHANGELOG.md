@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- chore(@siteed/design-system): release 0.35.1 ([77c8cc2](https://github.com/deeeed/universe/commit/77c8cc2c555cb6295abebc4264aceeacd60ab90f))
 
 ## [0.35.1] - 2025-01-18
 - export new hooks useIsMobileViewport and useBreakpoint ([37cc4a5](https://github.com/deeeed/universe/commit/37cc4a5b087f09a0ddbce770cd1f82b6acbe7a95))
