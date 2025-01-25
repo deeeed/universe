@@ -3,7 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- feat: remove margin style in listitem ([3fb462e](https://github.com/deeeed/universe/commit/3fb462e2b61c288923a710a6959e308e99f9b239))
+- chore(@siteed/design-system): release 0.35.2 ([b66a72c](https://github.com/deeeed/universe/commit/b66a72c41009b8c48692747efbf5ef791a850eb7))
 
 ## [0.35.2] - 2025-01-18
 - chore(@siteed/design-system): release 0.35.1 ([77c8cc2](https://github.com/deeeed/universe/commit/77c8cc2c555cb6295abebc4264aceeacd60ab90f))
