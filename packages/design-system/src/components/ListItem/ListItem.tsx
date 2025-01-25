@@ -20,7 +20,6 @@ const getStyle = (theme: AppTheme) => {
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: 10,
-      margin: 10,
       backgroundColor: theme.colors.surface,
     },
     textContainer: {
