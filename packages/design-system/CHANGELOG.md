@@ -3,14 +3,19 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-- feat: remove margin style in listitem ([3fb462e](https://github.com/deeeed/universe/commit/3fb462e2b61c288923a710a6959e308e99f9b239))
+
+
+## [0.35.3] - 2025-01-25
+- remove margin style in listitem ([3fb462e](https://github.com/deeeed/universe/commit/3fb462e2b61c288923a710a6959e308e99f9b239))
 - chore(@siteed/design-system): release 0.35.2 ([b66a72c](https://github.com/deeeed/universe/commit/b66a72c41009b8c48692747efbf5ef791a850eb7))
 
 ## [0.35.2] - 2025-01-18
 - chore(@siteed/design-system): release 0.35.1 ([77c8cc2](https://github.com/deeeed/universe/commit/77c8cc2c555cb6295abebc4264aceeacd60ab90f))
 
+
 ## [0.35.1] - 2025-01-18
 - export new hooks useIsMobileViewport and useBreakpoint ([37cc4a5](https://github.com/deeeed/universe/commit/37cc4a5b087f09a0ddbce770cd1f82b6acbe7a95))
+
 
 
 ## [0.35.0] - 2025-01-10
@@ -18,8 +23,10 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.34.1] - 2025-01-05
 - correct styleOverrides property in ToastProvider ([9019b56](https://github.com/deeeed/universe/commit/9019b56b07dbe9f9037612b0b06ea00481cf2560))
+
 
 
 
@@ -31,8 +38,10 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.33.0] - 2025-01-02
 - enhance Empty component stories with new props ([94e9b81](https://github.com/deeeed/universe/commit/94e9b81be99e7ff9269f6ff59abc1bcb3acfa3b2))
+
 
 
 
@@ -49,8 +58,10 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.31.3] - 2024-12-25
 - add initial preferences loading and state management ([853d7fc](https://github.com/deeeed/universe/commit/853d7fcd680bb4fadab3208963ae9b177bde09d3))
+
 
 
 
@@ -73,9 +84,11 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.31.1] - 2024-12-25
 - docs: document custom persistence of user preferences in UIProvider ([dad2edf](https://github.com/deeeed/universe/commit/dad2edfe2f75d5f9b3877895e34ee4613610f973))
 - docs: update installation instructions for bottom-sheet ([675ad48](https://github.com/deeeed/universe/commit/675ad484ce38cbbf1bff269276406b9110813ad3))
+
 
 
 
@@ -99,8 +112,10 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.30.1] - 2024-10-30
 - Integrate @siteed/publisher package
+
 
 
 
@@ -129,6 +144,7 @@ All notable changes to this project will be documented in this file.
 
 
 
+
 ## [0.29.4] - 2024-10-28
 
 ### Added
@@ -138,7 +154,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.2...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.3...HEAD
+[0.35.3]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.2...@siteed/design-system@0.35.3
 [0.35.2]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.1...@siteed/design-system@0.35.2
 [0.35.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.0...@siteed/design-system@0.35.1
 [0.35.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.34.1...@siteed/design-system@0.35.0
