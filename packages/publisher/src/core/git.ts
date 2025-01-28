@@ -36,7 +36,7 @@ export class GitService {
     this.git = simpleGit(gitOptions);
     this.rootDir = rootDir;
     this.config = config;
-    this.logger = logger || new Logger();
+    this.logger = logger ?? new Logger();
   }
 
   async validateStatus(options?: {
@@ -58,7 +58,7 @@ export class GitService {
 
     if (
       !status.tracking &&
-      (options?.skipUpstreamTracking || !this.config.requireUpToDate)
+      (options?.skipUpstreamTracking ?? !this.config.requireUpToDate)
     ) {
       this.logger.debug("Skipping remote checks for untracked branch");
       return;
@@ -66,7 +66,7 @@ export class GitService {
 
     if (this.config.requireUpToDate) {
       await this.git.fetch(this.config.remote);
-      const currentBranch = status.current || "";
+      const currentBranch = status.current ?? "";
 
       if (!currentBranch) {
         throw new Error("Not currently on any branch");
@@ -85,7 +85,7 @@ export class GitService {
       !options?.force &&
       !options?.allowBranch
     ) {
-      const currentBranch = status.current || "";
+      const currentBranch = status.current ?? "";
       if (!this.config.allowedBranches.includes(currentBranch)) {
         throw new Error(
           `Current branch ${currentBranch} is not in allowed branches: ${this.config.allowedBranches.join(", ")}.\n\n` +
@@ -122,8 +122,8 @@ export class GitService {
     const packageTags = tags.all
       .filter((tag) => tag.startsWith(`${packageName}@`))
       .sort((a, b) => {
-        const versionA = a.split("@").pop() || "";
-        const versionB = b.split("@").pop() || "";
+        const versionA = a.split("@").pop() ?? "";
+        const versionB = b.split("@").pop() ?? "";
         return this.compareVersions(versionB, versionA);
       });
 
@@ -188,15 +188,16 @@ export class GitService {
       // Then try our actual command with modified format
       const logOptions = [
         "log",
-        `--format=COMMIT%n%H%n%aI%n%s%n%b%nFILES`, // Use COMMIT and FILES as markers
+        `--format=COMMIT%n%H%n%aI%n%s%n%b%nFILES`,
         "--name-only",
-        tag ? `${tag}..HEAD` : "HEAD",
+        `${tag}..HEAD`,
       ];
 
       this.logger.debug("Getting commits with command:", {
         command: logOptions.join(" "),
         tag,
         options,
+        fullCommand: logOptions.join(" "),
       });
 
       const result = await this.git.raw(logOptions);
@@ -363,7 +364,7 @@ export class GitService {
     }
 
     const tagName = this.getTagName(context.name, context.newVersion);
-    const tagMessage = this.config.tagMessage || `Release ${tagName}`;
+    const tagMessage = this.config.tagMessage ?? `Release ${tagName}`;
 
     try {
       const tagExists = await this.checkTagExists(tagName);
@@ -468,7 +469,7 @@ export class GitService {
 
   private async getCurrentBranch(): Promise<string> {
     const status = await this.git.status();
-    return status.current || "";
+    return status.current ?? "";
   }
 
   async checkTagExists(tagName: string): Promise<boolean> {
