@@ -969,7 +969,7 @@ export class ChangelogService {
     return "No changes recorded";
   }
 
-  private formatConventionalContent(content: string): string {
+  public formatConventionalContent(content: string): string {
     if (!content.trim()) {
       return "No changes recorded";
     }
