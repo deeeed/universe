@@ -258,11 +258,15 @@ export class ChangelogService {
     return new Promise((resolve, reject) => {
       let changelog = "";
 
+      // Get only changes since the last version
       const stream = conventionalChangelog({
         preset: "angular",
         pkg: {
           path: path.join(context.path, "package.json"),
         },
+        // Add options to limit scope
+        releaseCount: 1, // Only get changes for the latest version
+        outputUnreleased: true,
       }) as Transform;
 
       stream
