@@ -14,7 +14,20 @@ const program = new Command();
 program
   .name("publisher")
   .description("Monorepo release management tool")
-  .version(pkg.version);
+  .version(pkg.version)
+  .option(
+    "--cwd <path>",
+    "Working directory to run commands from",
+    process.cwd(),
+  );
+
+// Add middleware to handle cwd before any command execution
+program.hook("preAction", (thisCommand) => {
+  const options = thisCommand.opts<{ cwd: string }>();
+  if (options.cwd) {
+    process.chdir(options.cwd);
+  }
+});
 
 program.addCommand(initCommand);
 program.addCommand(releaseCommand);
