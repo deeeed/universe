@@ -1,9 +1,7 @@
-import conventionalChangelog from "conventional-changelog";
 import { format as formatDate } from "date-fns";
 import { promises as fs } from "fs";
 import path from "path";
 import semver from "semver";
-import type { Transform } from "stream";
 import type { PackageContext, ReleaseConfig } from "../types/config";
 import { formatGitTag } from "../utils/format-tag";
 import { Logger } from "../utils/logger";
@@ -253,33 +251,10 @@ export class ChangelogService {
   }
 
   private async generateConventionalChangelog(
-    context: PackageContext,
+    _context: PackageContext,
   ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      let changelog = "";
-
-      // Get only changes since the last version
-      const stream = conventionalChangelog({
-        preset: "angular",
-        pkg: {
-          path: path.join(context.path, "package.json"),
-        },
-        // Add options to limit scope
-        releaseCount: 1, // Only get changes for the latest version
-        outputUnreleased: true,
-      }) as Transform;
-
-      stream
-        .on("data", (chunk: Buffer) => {
-          changelog += chunk.toString("utf-8");
-        })
-        .on("error", (err: Error) => {
-          reject(err);
-        })
-        .on("end", () => {
-          resolve(changelog.trim());
-        });
-    });
+    //TODO: actual implementation
+    return Promise.resolve("");
   }
 
   /**
@@ -916,7 +891,7 @@ export class ChangelogService {
       const unreleasedMatch = /## \[Unreleased\]\n([\s\S]*?)(?=\n##|$)/.exec(
         content,
       );
-      let unreleasedContent = unreleasedMatch?.[1]?.trim();
+      const unreleasedContent = unreleasedMatch?.[1]?.trim();
 
       // If conventional commits is disabled, use unreleased content as is
       if (!options.conventionalCommits && unreleasedContent) {
@@ -926,17 +901,6 @@ export class ChangelogService {
           date,
           format,
         );
-      }
-
-      // If using conventional commits, generate from git history
-      if (options.conventionalCommits) {
-        const conventionalContent =
-          await this.generateConventionalChangelog(context);
-        // Only override unreleased content if conventional content exists
-        if (conventionalContent.trim()) {
-          unreleasedContent =
-            this.formatConventionalContent(conventionalContent);
-        }
       }
 
       // If no content found, return empty message

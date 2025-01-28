@@ -185,7 +185,7 @@ export class Prompts {
         type: "editor",
         name: "content",
         message: "Enter changelog content (opens in your default editor):",
-        default: currentChanges || `### Added\n\n### Changed\n\n### Fixed\n`,
+        default: currentChanges ?? `### Added\n\n### Changed\n\n### Fixed\n`,
         postfix: ".md",
         validate: (input: string): boolean | string => {
           if (input.trim().length === 0) {

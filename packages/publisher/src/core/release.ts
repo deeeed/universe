@@ -616,8 +616,7 @@ export class ReleaseService {
             newVersion: context.newVersion ?? "x.x.x",
             conventionalCommits: packageConfig.conventionalCommits || false,
             format: packageConfig.changelogFormat || "conventional",
-            includeEmptySections:
-              packageConfig.changelogFormat === "keep-a-changelog",
+            includeEmptySections: false,
           },
         );
         this.logger.info("\nChangelog entry will look like this:\n");
