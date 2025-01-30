@@ -20,12 +20,18 @@ export interface ToastStyleOverrides {
   messageContainerStyle?: StyleProp<ViewStyle>;
   actionButtonStyle?: StyleProp<ViewStyle>;
   actionButtonTextStyle?: StyleProp<TextStyle>;
+  closeIconStyle?: StyleProp<TextStyle>;
 }
 
 export interface ToastProviderProps {
   styleOverrides?: ToastStyleOverrides;
   defaultOptions?: Partial<Omit<ToastProps, keyof ToastStyleOverrides>>;
   children: React.ReactNode;
+  swipeConfig?: {
+    isEnabled?: boolean;
+    direction?: 'left-to-right' | 'right-to-left' | 'both';
+  };
+  showCloseIcon?: boolean;
 }
 
 export enum ToastActionType {
@@ -59,6 +65,8 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
   children,
   styleOverrides = {},
   defaultOptions = {},
+  swipeConfig = { isEnabled: true, direction: 'right-to-left' },
+  showCloseIcon = false,
 }) => {
   const initialState: ToastProps = useMemo(
     () => ({
@@ -67,15 +75,17 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
       type: 'info',
       position: 'bottom',
       iconVisible: true,
+      swipeConfig,
+      showCloseIcon,
       ...defaultOptions,
-      // Change snackBarStyle to snackbarStyle
       snackbarStyle: styleOverrides.snackbarStyle,
       messageStyle: styleOverrides.messageStyle,
       subMessageStyle: styleOverrides.subMessageStyle,
       iconStyle: styleOverrides.iconStyle,
       messageContainerStyle: styleOverrides.messageContainerStyle,
+      closeIconStyle: styleOverrides.closeIconStyle,
     }),
-    [defaultOptions, styleOverrides]
+    [defaultOptions, styleOverrides, swipeConfig, showCloseIcon]
   );
 
   const [state, dispatch] = useReducer(reducer(initialState), initialState);
