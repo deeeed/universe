@@ -6,8 +6,7 @@ All notable changes to this project will be documented in this file.
 
 
 ## [0.36.1] - 2025-01-30
-
-## [0.36.0] - 2025-01-30
+- feat(toast): add stackable toasts and infinite duration support (#45) ([a2f5bf5](https://github.com/deeeed/universe/commit/a2f5bf5cb2805f5967b952b80de5770cf731fd57))
 
 ## [0.35.3] - 2025-01-25
 - remove margin style in listitem ([3fb462e](https://github.com/deeeed/universe/commit/3fb462e2b61c288923a710a6959e308e99f9b239))
@@ -52,8 +51,7 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.36.1...HEAD
-[0.36.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.36.0...@siteed/design-system@0.36.1
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.36.0...HEAD
 [0.36.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.3...@siteed/design-system@0.36.0
 [0.35.3]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.2...@siteed/design-system@0.35.3
 [0.35.2]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.1...@siteed/design-system@0.35.2
