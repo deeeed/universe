@@ -1,6 +1,8 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { Toast, ToastProps } from './Toast';
+import { View } from 'react-native';
+import { Toast } from './Toast';
+import type { ToastProps } from './Toast.types';
 
 const ToastMeta: Meta<ToastProps> = {
   component: Toast,
@@ -12,10 +14,6 @@ const ToastMeta: Meta<ToastProps> = {
       control: 'object',
       description: 'Override default theme colors and type-specific styles',
     },
-    swipeConfig: {
-      control: 'object',
-      description: 'Configure swipe behavior for dismissal',
-    },
     showCloseIcon: {
       control: 'boolean',
       description: 'Show close icon button',
@@ -25,13 +23,19 @@ const ToastMeta: Meta<ToastProps> = {
     message: 'Information message',
     subMessage: 'More details about the info',
     type: 'info',
-    position: 'top',
-    duration: 3000,
+    position: 'bottom',
+    duration: 5000,
     visibility: true,
     iconVisible: true,
-    swipeConfig: { isEnabled: true, direction: 'right-to-left' },
     showCloseIcon: false,
   },
+  decorators: [
+    (Story) => (
+      <View style={{ flex: 1, minHeight: 200, position: 'relative' }}>
+        <Story />
+      </View>
+    ),
+  ],
 };
 
 export default ToastMeta;
@@ -127,61 +131,6 @@ export const WithAction = (args: ToastProps) => (
   />
 );
 
-export const SwipeableToasts = (args: ToastProps) => (
-  <>
-    <Toast
-      {...args}
-      message="👈 Swipe left to dismiss"
-      type="info"
-      swipeConfig={{ isEnabled: true, direction: 'right-to-left' }}
-    />
-    <br />
-    <Toast
-      {...args}
-      message="👉 Swipe right to dismiss"
-      type="success"
-      swipeConfig={{ isEnabled: true, direction: 'left-to-right' }}
-    />
-    <br />
-    <Toast
-      {...args}
-      message="👈👉 Swipe either direction"
-      type="warning"
-      swipeConfig={{ isEnabled: true, direction: 'both' }}
-    />
-    <br />
-    <Toast
-      {...args}
-      message="🔒 Swipe disabled"
-      type="error"
-      swipeConfig={{ isEnabled: false }}
-    />
-  </>
-);
-
 export const WithCloseIcon = (args: ToastProps) => (
-  <>
-    <Toast
-      {...args}
-      message="Basic close icon"
-      type="info"
-      showCloseIcon={true}
-    />
-    <br />
-    <Toast
-      {...args}
-      message="Custom styled close icon"
-      type="success"
-      showCloseIcon={true}
-      closeIconStyle={{ color: '#22C55E' }}
-    />
-    <br />
-    <Toast
-      {...args}
-      message="Close icon with swipe"
-      type="warning"
-      showCloseIcon={true}
-      swipeConfig={{ isEnabled: true, direction: 'both' }}
-    />
-  </>
+  <Toast {...args} message="With close icon" showCloseIcon />
 );

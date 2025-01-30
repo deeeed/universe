@@ -1,10 +1,14 @@
 import React, { createContext, useMemo, useReducer } from 'react';
 import { Keyboard, StyleProp, TextStyle, ViewStyle } from 'react-native';
 
-import { Toast, ToastProps } from '../components/Toast/Toast';
+import { SwipeableToast } from '../components/Toast/SwipeableToast';
+import { Toast } from '../components/Toast/Toast';
+import type { SwipeConfig, ToastProps } from '../components/Toast/Toast.types';
 
 // Make all partial except dismiss
-export type ToastOptions = Partial<ToastProps>;
+export type ToastOptions = Partial<ToastProps> & {
+  swipeConfig?: SwipeConfig;
+};
 
 export interface ToastMethods {
   show(options: ToastOptions): void;
@@ -27,10 +31,7 @@ export interface ToastProviderProps {
   styleOverrides?: ToastStyleOverrides;
   defaultOptions?: Partial<Omit<ToastProps, keyof ToastStyleOverrides>>;
   children: React.ReactNode;
-  swipeConfig?: {
-    isEnabled?: boolean;
-    direction?: 'left-to-right' | 'right-to-left' | 'both';
-  };
+  swipeConfig?: Pick<SwipeConfig, 'isEnabled' | 'direction'>;
   showCloseIcon?: boolean;
 }
 
@@ -48,7 +49,8 @@ export interface ToastAction {
 export const ToastContext = createContext<ToastMethods | null>(null);
 
 const reducer =
-  (initialState: ToastProps) => (state: ToastProps, action: ToastAction) => {
+  (initialState: ToastProps & { swipeConfig?: SwipeConfig }) =>
+  (state: ToastProps & { swipeConfig?: SwipeConfig }, action: ToastAction) => {
     switch (action.type) {
       case ToastActionType.SHOW:
         return { ...initialState, ...action.payload, visibility: true };
@@ -122,7 +124,11 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
   return (
     <ToastContext.Provider value={toastMethods}>
       {children}
-      <Toast {...state} onDismiss={handleDismiss} />
+      {state.swipeConfig?.isEnabled ? (
+        <SwipeableToast {...state} onDismiss={handleDismiss} />
+      ) : (
+        <Toast {...state} onDismiss={handleDismiss} />
+      )}
     </ToastContext.Provider>
   );
 };
