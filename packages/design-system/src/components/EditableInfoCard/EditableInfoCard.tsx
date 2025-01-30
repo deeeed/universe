@@ -11,6 +11,8 @@ import { ActivityIndicator, IconButton, Text } from 'react-native-paper';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
 import { TextInput } from '../TextInput/TextInput';
+import { NativeSyntheticEvent } from 'react-native';
+import { TextInputKeyPressEventData } from 'react-native';
 
 export interface EditableInfoCardProps {
   label?: string;
@@ -27,6 +29,12 @@ export interface EditableInfoCardProps {
   contentStyle?: StyleProp<ViewStyle>;
   rightAction?: React.ReactNode; // New prop for custom right action
   onRightActionPress?: () => void; // Callback for right action press
+  validate?: (value: string) => boolean | string;
+  errorMessage?: string;
+  placeholder?: string;
+  multiline?: boolean;
+  numberOfLines?: number;
+  isSaving?: boolean;
 }
 
 const getStyles = ({ theme }: { theme: AppTheme }) =>
@@ -34,7 +42,8 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
     container: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 5,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       backgroundColor: theme.colors.background,
       borderWidth: 1,
       borderRadius: 8,
@@ -46,18 +55,44 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
     },
     label: {
       fontWeight: 'bold',
+      marginBottom: 4,
     },
     content: {
-      // wordWrap: 'break-word',
-      // whiteSpace: 'pre-wrap',
       maxWidth: '100%',
+      height: 24,
+      justifyContent: 'center',
     },
     iconContainer: {
-      alignSelf: 'stretch',
-      justifyContent: 'center',
-      marginLeft: 5, // Add some space between content and icon
+      height: 24,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: 5,
     },
-    icon: {},
+    icon: {
+      margin: 0,
+      padding: 0,
+    },
+    textInput: {
+      backgroundColor: 'transparent',
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      margin: 0,
+      height: 24,
+      lineHeight: 24,
+      textAlignVertical: 'center',
+      fontSize: 14,
+    },
+    text: {
+      height: 24,
+      lineHeight: 24,
+      textAlignVertical: 'center',
+      fontSize: 14,
+    },
+    errorText: {
+      color: theme.colors.error,
+      fontSize: 12,
+      marginTop: 4,
+    },
   });
 
 export function EditableInfoCard({
@@ -75,11 +110,18 @@ export function EditableInfoCard({
   labelStyle,
   rightAction,
   onRightActionPress,
+  validate,
+  errorMessage,
+  placeholder,
+  multiline,
+  numberOfLines,
+  isSaving,
 }: EditableInfoCardProps): React.ReactNode {
   const theme = useTheme();
   const styles = useMemo(() => getStyles({ theme }), [theme]);
   const [isEditing, setIsEditing] = useState(false);
   const [editedValue, setEditedValue] = useState(value as string);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     setEditedValue(value as string);
@@ -94,6 +136,18 @@ export function EditableInfoCard({
   };
 
   const handleInlineEditComplete = () => {
+    if (validate) {
+      const validationResult = validate(editedValue);
+      if (typeof validationResult === 'string') {
+        setValidationError(validationResult);
+        return;
+      }
+      if (!validationResult) {
+        setValidationError(errorMessage || 'Invalid input');
+        return;
+      }
+    }
+    setValidationError(null);
     setIsEditing(false);
     if (onInlineEdit && editedValue !== value) {
       onInlineEdit(editedValue);
@@ -105,25 +159,48 @@ export function EditableInfoCard({
     setEditedValue(value as string);
   };
 
+  const handleKeyPress = (
+    e: NativeSyntheticEvent<TextInputKeyPressEventData>
+  ) => {
+    if (e.nativeEvent.key === 'Escape') {
+      handleInlineEditCancel();
+    }
+  };
+
   const defaultRightAction =
     editable || inlineEditable ? (
       <>
-        {isEditing && (
+        {isEditing ? (
+          <>
+            <IconButton
+              icon="check"
+              size={20}
+              style={styles.icon}
+              onPress={handleInlineEditComplete}
+              accessibilityLabel="Confirm edit"
+              disabled={isSaving}
+            />
+            {isSaving ? (
+              <ActivityIndicator size={20} style={styles.icon} />
+            ) : (
+              <IconButton
+                icon="close"
+                size={20}
+                style={styles.icon}
+                onPress={handleInlineEditCancel}
+                accessibilityLabel="Cancel editing"
+              />
+            )}
+          </>
+        ) : (
           <IconButton
-            icon="close"
+            icon="pencil"
             size={20}
             style={styles.icon}
-            onPress={handleInlineEditCancel}
-            accessibilityLabel="Cancel editing"
+            onPress={handleEdit}
+            accessibilityLabel="Edit value"
           />
         )}
-        <IconButton
-          icon={isEditing ? 'check' : 'pencil'}
-          size={20}
-          style={styles.icon}
-          onPress={isEditing ? handleInlineEditComplete : handleEdit}
-          accessibilityLabel={isEditing ? 'Confirm edit' : 'Edit value'}
-        />
       </>
     ) : null;
 
@@ -143,20 +220,32 @@ export function EditableInfoCard({
               onChangeText={setEditedValue}
               onBlur={handleInlineEditComplete}
               onSubmitEditing={handleInlineEditComplete}
-              style={{ backgroundColor: 'transparent' }}
+              onKeyPress={handleKeyPress}
+              style={[styles.textInput, contentStyle]}
+              placeholder={placeholder}
+              placeholderTextColor={theme.colors.onSurfaceDisabled}
+              multiline={multiline}
+              numberOfLines={numberOfLines}
             />
           ) : renderValue ? (
             renderValue(value)
           ) : (
             <Text
-              style={{
-                color: error ? theme.colors.error : theme.colors.text,
-              }}
+              style={[
+                styles.text,
+                {
+                  color: error ? theme.colors.error : theme.colors.text,
+                },
+                contentStyle,
+              ]}
             >
               {typeof value === 'string' ? value : value?.toString()}
             </Text>
           )}
         </View>
+        {validationError && (
+          <Text style={styles.errorText}>{validationError}</Text>
+        )}
       </View>
       {rightActionComponent && (
         <View style={styles.iconContainer}>{rightActionComponent}</View>
