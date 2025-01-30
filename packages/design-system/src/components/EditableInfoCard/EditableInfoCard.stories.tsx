@@ -21,6 +21,10 @@ const ItemViewMeta: Meta<EditableInfoCardProps> = {
     error: false,
     editable: false,
     inlineEditable: false,
+    placeholder: 'Enter a value...',
+    multiline: false,
+    numberOfLines: 1,
+    isSaving: false,
   },
   decorators: [],
   parameters: {},
@@ -391,3 +395,70 @@ export const MultipleActions: StoryFn<EditableInfoCardProps> = (args) => (
     }
   />
 );
+
+export const ValidationError: StoryFn<EditableInfoCardProps> = (args) => {
+  const [value, setValue] = useState('Type numbers only');
+  return (
+    <EditableInfoCard
+      {...args}
+      label="With Validation"
+      value={value}
+      inlineEditable={true}
+      validate={(val) => /^\d+$/.test(val) || 'Please enter numbers only'}
+      onInlineEdit={(newValue) => setValue(newValue as string)}
+    />
+  );
+};
+
+export const MultilineEditable: StoryFn<EditableInfoCardProps> = (args) => {
+  const [value, setValue] = useState('This is a\nmultiline\ntext input');
+  return (
+    <EditableInfoCard
+      {...args}
+      label="Multiline Text"
+      value={value}
+      inlineEditable={true}
+      multiline={true}
+      numberOfLines={3}
+      onInlineEdit={(newValue) => setValue(newValue as string)}
+    />
+  );
+};
+
+export const WithPlaceholder: StoryFn<EditableInfoCardProps> = (args) => {
+  const [value, setValue] = useState('');
+  return (
+    <EditableInfoCard
+      {...args}
+      label="With Placeholder"
+      value={value}
+      inlineEditable={true}
+      placeholder="Type something here..."
+      onInlineEdit={(newValue) => setValue(newValue as string)}
+    />
+  );
+};
+
+export const SaveInProgress: StoryFn<EditableInfoCardProps> = (args) => {
+  const [value, setValue] = useState('Click to edit with save animation');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleEdit = async (newValue: unknown) => {
+    setIsSaving(true);
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setValue(newValue as string);
+    setIsSaving(false);
+  };
+
+  return (
+    <EditableInfoCard
+      {...args}
+      label="With Save Indicator"
+      value={value}
+      inlineEditable={true}
+      isSaving={isSaving}
+      onInlineEdit={handleEdit}
+    />
+  );
+};
