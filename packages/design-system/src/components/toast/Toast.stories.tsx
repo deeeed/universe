@@ -1,11 +1,10 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { View } from 'react-native';
+import { Button, View } from 'react-native';
+import { useToast } from '../../hooks/useToast/useToast';
+import { ToastProvider } from '../../providers/ToastProvider';
 import { Toast } from './Toast';
 import type { ToastProps } from './Toast.types';
-import { ToastProvider } from '../../providers/ToastProvider';
-import { Button } from 'react-native';
-import { useToast } from '../../hooks/useToast/useToast';
 
 const ToastMeta: Meta<ToastProps> = {
   component: Toast,
@@ -53,7 +52,7 @@ export const Warning = (args: ToastProps) => (
   <Toast {...args} message="Warning message" type="warning" />
 );
 
-export const Error = (args: ToastProps) => (
+export const WithError = (args: ToastProps) => (
   <Toast {...args} message="Error message" type="error" />
 );
 
