@@ -31,7 +31,7 @@ const icons: ToastIconType = {
 export const Toast = ({
   position = 'bottom',
   actionLabel = 'DONE',
-  duration = 2000,
+  duration = 5000,
   visibility = false,
   iconVisible = true,
   loading = false,
@@ -63,13 +63,11 @@ export const Toast = ({
       zIndex: 9999,
     };
 
-    const marginBottom = (snackbarStyle as ViewStyle)?.marginBottom || 0;
-
     let style;
     if (position === 'bottom') {
       style = {
         ...base,
-        bottom: insets.bottom + Number(marginBottom),
+        bottom: insets.bottom,
       };
       return style;
     }
@@ -95,7 +93,7 @@ export const Toast = ({
       };
     }
     return style;
-  }, [insets, position, windowDimensions, snackbarStyle]);
+  }, [insets, position, windowDimensions]);
 
   if (!visibility) return null;
 
@@ -103,16 +101,8 @@ export const Toast = ({
     <View style={computedStyle as StyleProp<ViewStyle>}>
       <Snackbar
         onDismiss={onDismiss || (() => {})}
-        style={[
-          styles.snackBarStyle,
-          snackbarStyle,
-          position === 'bottom' && {
-            marginBottom: (snackbarStyle as ViewStyle)?.marginBottom || 0,
-          },
-        ]}
-        wrapperStyle={
-          { width: '100%', alignItems: 'center' } as StyleProp<ViewStyle>
-        }
+        style={[styles.snackBarStyle, snackbarStyle]}
+        wrapperStyle={{ width: '100%', alignItems: 'center' }}
         duration={duration}
         visible={visibility}
         action={
@@ -128,20 +118,22 @@ export const Toast = ({
       >
         <View style={[styles.defaultMessageContainer, messageContainerStyle]}>
           {loading && <ActivityIndicator />}
-          {!loading && iconVisible && (
-            <MaterialCommunityIcons
-              name={icons[type]}
-              style={[styles.iconStyle, iconStyle]}
-              size={20}
-            />
-          )}
-          <View style={styles.textContainer}>
-            <Text style={[styles.message, messageStyle]}>{message}</Text>
-            {subMessage && (
-              <Text style={[styles.subMessage, subMessageStyle]}>
-                {subMessage}
-              </Text>
+          <View style={styles.contentContainer}>
+            {!loading && iconVisible && (
+              <MaterialCommunityIcons
+                name={icons[type]}
+                style={[styles.iconStyle, iconStyle]}
+                size={20}
+              />
             )}
+            <View style={styles.textContainer}>
+              <Text style={[styles.message, messageStyle]}>{message}</Text>
+              {subMessage && (
+                <Text style={[styles.subMessage, subMessageStyle]}>
+                  {subMessage}
+                </Text>
+              )}
+            </View>
           </View>
           {showCloseIcon && (
             <MaterialCommunityIcons
@@ -200,7 +192,13 @@ const getStyles = ({ theme, type }: { theme: AppTheme; type: ToastType }) => {
     defaultMessageContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'flex-start',
+      justifyContent: 'space-between',
+      width: '100%',
+    },
+    contentContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
     },
     iconStyle: {
       color: typeStyle?.iconColor || theme.colors[type],
@@ -216,7 +214,7 @@ const getStyles = ({ theme, type }: { theme: AppTheme; type: ToastType }) => {
       fontSize: 14,
     },
     closeIcon: {
-      marginLeft: 'auto',
+      marginLeft: theme.padding.s,
       color: theme.colors.onSurface,
       padding: 4,
     },

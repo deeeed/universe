@@ -44,15 +44,37 @@ export function SwipeableToast({
 
   useEffect(() => {
     if (toastProps.visibility) {
-      setIsVisible(true);
       translateX.value = 0;
+      setIsVisible(true);
+    } else {
+      translateX.value = withTiming(0, { duration: 0 }, () => {
+        runOnJS(setIsVisible)(false);
+      });
     }
-  }, [toastProps.visibility]);
+
+    return () => {
+      translateX.value = 0;
+    };
+  }, [toastProps.visibility, translateX]);
 
   const handleDismiss = useCallback(() => {
-    setIsVisible(false);
-    toastProps.onDismiss?.();
-  }, [toastProps.onDismiss]);
+    translateX.value = withTiming(
+      swipeConfig.direction === 'right-to-left'
+        ? -swipeConfig.dismissDistance!
+        : swipeConfig.dismissDistance!,
+      {
+        duration: swipeConfig.animationDuration,
+      },
+      (finished) => {
+        if (finished) {
+          runOnJS(setIsVisible)(false);
+          if (toastProps.onDismiss) {
+            runOnJS(toastProps.onDismiss)();
+          }
+        }
+      }
+    );
+  }, [toastProps.onDismiss, translateX, swipeConfig]);
 
   const webHandlers =
     Platform.OS === 'web'
@@ -60,7 +82,6 @@ export function SwipeableToast({
           onMouseDown: (e: React.MouseEvent) => {
             startX.current = e.clientX;
             setIsDragging(true);
-            console.log('Web gesture started', { startX: startX.current });
           },
           onMouseMove: (e: React.MouseEvent) => {
             if (!isDragging) return;
@@ -71,29 +92,16 @@ export function SwipeableToast({
             if (swipeConfig.direction === 'left-to-right' && delta < 0) return;
 
             translateX.value = delta;
-            console.log('Web gesture update', {
-              delta,
-              currentValue: translateX.value,
-            });
           },
           onMouseUp: (e: React.MouseEvent) => {
             if (!isDragging) return;
             setIsDragging(false);
 
             const delta = e.clientX - startX.current;
-            // Calculate velocity based on time elapsed
-            const velocity = Math.abs(delta / 0.2); // Assuming 200ms duration
+            const velocity = Math.abs(delta / 0.2);
             const shouldDismiss =
               Math.abs(delta) > swipeConfig.dismissThreshold! ||
               velocity > swipeConfig.velocityThreshold!;
-
-            console.log('Web gesture end', {
-              delta,
-              velocity,
-              dismissThreshold: swipeConfig.dismissThreshold,
-              velocityThreshold: swipeConfig.velocityThreshold,
-              shouldDismiss,
-            });
 
             if (shouldDismiss) {
               const direction =
@@ -105,7 +113,10 @@ export function SwipeableToast({
                 { duration: swipeConfig.animationDuration },
                 (finished) => {
                   if (finished) {
-                    runOnJS(handleDismiss)();
+                    runOnJS(setIsVisible)(false);
+                    if (toastProps.onDismiss) {
+                      runOnJS(toastProps.onDismiss)();
+                    }
                   }
                 }
               );
@@ -132,10 +143,6 @@ export function SwipeableToast({
     .enabled(swipeConfig.isEnabled ?? true)
     .onStart(() => {
       context.value = { x: translateX.value };
-      console.log('Gesture started', {
-        initialX: translateX.value,
-        config: swipeConfig, // Log the merged config
-      });
     })
     .onUpdate((event) => {
       if (Math.abs(event.translationX) < swipeConfig.initialThreshold!) return;
@@ -145,23 +152,11 @@ export function SwipeableToast({
         return;
 
       translateX.value = event.translationX + context.value.x;
-      console.log('Gesture update', {
-        translationX: event.translationX,
-        currentValue: translateX.value,
-      });
     })
     .onEnd((event) => {
       const shouldDismiss =
         Math.abs(translateX.value) > swipeConfig.dismissThreshold! ||
         Math.abs(event.velocityX) > swipeConfig.velocityThreshold!;
-
-      console.log('Gesture end', {
-        finalTranslation: translateX.value,
-        velocity: event.velocityX,
-        dismissThreshold: swipeConfig.dismissThreshold,
-        velocityThreshold: swipeConfig.velocityThreshold,
-        shouldDismiss,
-      });
 
       if (shouldDismiss) {
         const direction =
@@ -173,7 +168,10 @@ export function SwipeableToast({
           { duration: swipeConfig.animationDuration },
           (finished) => {
             if (finished) {
-              runOnJS(handleDismiss)();
+              runOnJS(setIsVisible)(false);
+              if (toastProps.onDismiss) {
+                runOnJS(toastProps.onDismiss)();
+              }
             }
           }
         );
@@ -199,7 +197,11 @@ export function SwipeableToast({
         {...webHandlers}
         style={[baseContainerStyle, animatedStyle]}
       >
-        <Toast {...toastProps} visibility={isVisible} />
+        <Toast
+          {...toastProps}
+          visibility={isVisible}
+          onDismiss={handleDismiss}
+        />
       </Animated.View>
     );
   }
@@ -207,7 +209,11 @@ export function SwipeableToast({
   return (
     <GestureDetector gesture={panGesture}>
       <Animated.View style={[baseContainerStyle, animatedStyle]}>
-        <Toast {...toastProps} visibility={isVisible} />
+        <Toast
+          {...toastProps}
+          visibility={isVisible}
+          onDismiss={handleDismiss}
+        />
       </Animated.View>
     </GestureDetector>
   );

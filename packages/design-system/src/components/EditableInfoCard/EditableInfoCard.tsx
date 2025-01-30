@@ -6,6 +6,7 @@ import {
   TextStyle,
   View,
   ViewStyle,
+  Platform,
 } from 'react-native';
 import { ActivityIndicator, IconButton, Text } from 'react-native-paper';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
@@ -78,9 +79,11 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
       paddingHorizontal: 0,
       margin: 0,
       height: 24,
-      lineHeight: 24,
-      textAlignVertical: 'center',
+      lineHeight: Platform.OS === 'ios' ? undefined : 24,
+      textAlignVertical: Platform.OS === 'ios' ? 'top' : 'center',
       fontSize: 14,
+      paddingTop: 0,
+      paddingBottom: 0,
     },
     text: {
       height: 24,

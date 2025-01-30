@@ -197,46 +197,31 @@ The `ToastProvider` manages toast notifications within the application. It allow
 #### API
 
 - **Props**:
-  - `overrides`: Default settings for the toast notifications.
-    - **Type**: `ToastOptions`
+  - `styleOverrides`: Style overrides for toast components.
+    - **Type**: `ToastStyleOverrides`
     - **Optional**: Yes
-    - **Description**: Allows overriding default toast settings such as visibility, message, type, position, and icon visibility.
-```tsx
-export interface ToastProps {
-  /** The message to show */
-  message: string;
-  subMessage?: string;
-  /** Type of toast */
-  type?: ToastType;
-  /**  Position of the toast */
-  position?: ToastPosition;
-  /** Toast duration */
-  duration?: number;
-  loading?: boolean;
-  /** Toast Visibility */
-  visibility?: boolean;
-  /** Toast Icon visibility */
-  iconVisible?: boolean;
-  /** Toast Action onPress */
-  action?: () => void;
-  /** Toast Action Label */
-  actionLabel?: string;
-  /** Toast Message Style */
-  messageStyle?: StyleProp<ViewStyle>;
-  subMessageStyle?: StyleProp<TextStyle>;
-  /** icon style */
-  iconStyle?: StyleProp<TextStyle>;
-  /** Toast Message Container Style */
-  messageContainerStyle?: StyleProp<ViewStyle>;
-  /** Toast Snackbar Style */
-  snackbarStyle?: StyleProp<ViewStyle>;
-  onDismiss?: () => void;
-}
-export type ToastOptions = Partial<ToastProps>;
-```
-#### Example
+    - **Description**: Allows customizing styles for various toast components.
+  - `defaultOptions`: Default settings for the toast notifications.
+    - **Type**: `Partial<Omit<ToastProps, keyof ToastStyleOverrides>>`
+    - **Optional**: Yes
+    - **Description**: Default options for all toasts.
+  - `swipeConfig`: Configuration for swipe gestures.
+    - **Type**: `Pick<SwipeConfig, 'isEnabled' | 'direction'>`
+    - **Optional**: Yes
+    - **Default**: `{ isEnabled: true, direction: 'right-to-left' }`
+    - **Description**: Configure swipe behavior for dismissing toasts.
+  - `showCloseIcon`: Show close icon on toasts.
+    - **Type**: `boolean`
+    - **Optional**: Yes
+    - **Default**: `false`
+    - **Description**: Controls visibility of close icon on toasts.
+  - `isStackable`: Enable multiple toasts to stack.
+    - **Type**: `boolean`
+    - **Optional**: Yes
+    - **Default**: `true`
+    - **Description**: When enabled, multiple toasts can be displayed simultaneously, stacking vertically with proper spacing.
 
-Customize the toast notifications by providing the `overrides` prop in the `UIProvider`.
+#### Example
 
 ```tsx
 import React from 'react';
@@ -244,26 +229,38 @@ import { UIProvider } from '@siteed/design-system';
 import { View, Text, Button } from 'react-native';
 import { useToast } from '@siteed/design-system/hooks/useToast';
 
-const toastOverrides = {
-  position: 'top', // Default position for toasts
-  type: 'success', // Default type for toasts
-  iconVisible: true, // Default icon visibility
+const toastConfig = {
+  defaultOptions: {
+    position: 'bottom',
+    type: 'info',
+    iconVisible: true,
+  },
+  styleOverrides: {
+    snackbarStyle: { marginBottom: 10 },
+  },
+  isStackable: true, // Enable stacking of multiple toasts
 };
 
 const App = () => {
-  const { show, hide } = useToast();
+  const toast = useToast();
+
+  const showMultipleToasts = () => {
+    toast.show({ message: 'First toast message!' });
+    setTimeout(() => {
+      toast.show({ 
+        message: 'Second toast message!',
+        type: 'success'
+      });
+    }, 1000);
+  };
 
   return (
-    <UIProvider toastProviderProps={{ overrides: toastOverrides }}>
+    <UIProvider toastProviderProps={toastConfig}>
       <View>
-        <Text>Hello World</Text>
+        <Text>Toast Demo</Text>
         <Button
-          title="Show Toast"
-          onPress={() => show({ message: 'This is a toast message!' })}
-        />
-        <Button
-          title="Hide Toast"
-          onPress={hide}
+          title="Show Multiple Toasts"
+          onPress={showMultipleToasts}
         />
       </View>
     </UIProvider>
@@ -272,6 +269,17 @@ const App = () => {
 
 export default App;
 ```
+
+When `isStackable` is enabled:
+- Multiple toasts can be displayed simultaneously
+- Toasts will stack vertically with proper spacing
+- Each toast maintains its own dismiss behavior
+- New toasts appear below existing ones
+- When a toast is dismissed, remaining toasts adjust their positions smoothly
+
+When `isStackable` is disabled:
+- Only one toast is shown at a time
+- New toasts replace existing ones immediately
 
 See the [Toast documentation](?path=/docs/components-toast--docs) for more details on customizing toast notifications.
 
