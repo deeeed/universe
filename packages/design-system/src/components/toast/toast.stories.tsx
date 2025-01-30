@@ -1,7 +1,7 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
 import { View } from 'react-native';
-import { Toast } from './Toast';
+import { Toast } from './Toast2';
 import type { ToastProps } from './Toast.types';
 
 const ToastMeta: Meta<ToastProps> = {

@@ -2,7 +2,7 @@ import React, { createContext, useMemo, useReducer } from 'react';
 import { Keyboard, StyleProp, TextStyle, ViewStyle } from 'react-native';
 
 import { SwipeableToast } from '../components/Toast/SwipeableToast';
-import { Toast } from '../components/Toast/Toast';
+import { Toast } from '../components/Toast/Toast2';
 import type { SwipeConfig, ToastProps } from '../components/Toast/Toast.types';
 
 // Make all partial except dismiss
