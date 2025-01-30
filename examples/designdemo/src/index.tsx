@@ -77,6 +77,7 @@ const AppEntry = () => {
         },
       }}
       toastProviderProps={{
+        isStackable: false,
         styleOverrides: {
           snackbarStyle: { marginBottom: 100 },
         },

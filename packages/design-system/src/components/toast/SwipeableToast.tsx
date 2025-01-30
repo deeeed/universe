@@ -82,7 +82,6 @@ export function SwipeableToast({
           onMouseDown: (e: React.MouseEvent) => {
             startX.current = e.clientX;
             setIsDragging(true);
-            console.log('Web gesture started', { startX: startX.current });
           },
           onMouseMove: (e: React.MouseEvent) => {
             if (!isDragging) return;
@@ -93,10 +92,6 @@ export function SwipeableToast({
             if (swipeConfig.direction === 'left-to-right' && delta < 0) return;
 
             translateX.value = delta;
-            console.log('Web gesture update', {
-              delta,
-              currentValue: translateX.value,
-            });
           },
           onMouseUp: (e: React.MouseEvent) => {
             if (!isDragging) return;
@@ -148,10 +143,6 @@ export function SwipeableToast({
     .enabled(swipeConfig.isEnabled ?? true)
     .onStart(() => {
       context.value = { x: translateX.value };
-      console.log('Gesture started', {
-        initialX: translateX.value,
-        config: swipeConfig, // Log the merged config
-      });
     })
     .onUpdate((event) => {
       if (Math.abs(event.translationX) < swipeConfig.initialThreshold!) return;
@@ -161,10 +152,6 @@ export function SwipeableToast({
         return;
 
       translateX.value = event.translationX + context.value.x;
-      console.log('Gesture update', {
-        translationX: event.translationX,
-        currentValue: translateX.value,
-      });
     })
     .onEnd((event) => {
       const shouldDismiss =

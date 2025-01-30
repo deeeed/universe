@@ -128,20 +128,22 @@ export const Toast = ({
       >
         <View style={[styles.defaultMessageContainer, messageContainerStyle]}>
           {loading && <ActivityIndicator />}
-          {!loading && iconVisible && (
-            <MaterialCommunityIcons
-              name={icons[type]}
-              style={[styles.iconStyle, iconStyle]}
-              size={20}
-            />
-          )}
-          <View style={styles.textContainer}>
-            <Text style={[styles.message, messageStyle]}>{message}</Text>
-            {subMessage && (
-              <Text style={[styles.subMessage, subMessageStyle]}>
-                {subMessage}
-              </Text>
+          <View style={styles.contentContainer}>
+            {!loading && iconVisible && (
+              <MaterialCommunityIcons
+                name={icons[type]}
+                style={[styles.iconStyle, iconStyle]}
+                size={20}
+              />
             )}
+            <View style={styles.textContainer}>
+              <Text style={[styles.message, messageStyle]}>{message}</Text>
+              {subMessage && (
+                <Text style={[styles.subMessage, subMessageStyle]}>
+                  {subMessage}
+                </Text>
+              )}
+            </View>
           </View>
           {showCloseIcon && (
             <MaterialCommunityIcons
@@ -200,7 +202,13 @@ const getStyles = ({ theme, type }: { theme: AppTheme; type: ToastType }) => {
     defaultMessageContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'flex-start',
+      justifyContent: 'space-between',
+      width: '100%',
+    },
+    contentContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
     },
     iconStyle: {
       color: typeStyle?.iconColor || theme.colors[type],
@@ -216,7 +224,7 @@ const getStyles = ({ theme, type }: { theme: AppTheme; type: ToastType }) => {
       fontSize: 14,
     },
     closeIcon: {
-      marginLeft: 'auto',
+      marginLeft: theme.padding.s,
       color: theme.colors.onSurface,
       padding: 4,
     },

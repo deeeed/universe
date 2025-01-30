@@ -46,8 +46,16 @@ export const decorators: Decorator[] = [
                 `}
           </style>
         ) : null}
-        <UIProvider locale={'en'}>
-          <View>
+        <UIProvider
+          locale={'en'}
+          toastProviderProps={{
+            isStackable: true,
+            styleOverrides: {
+              snackbarStyle: { marginBottom: 10 },
+            },
+          }}
+        >
+          <View style={{ flex: 1 }}>
             <ScrollView
               horizontal={true}
               showsHorizontalScrollIndicator={false}
@@ -55,7 +63,11 @@ export const decorators: Decorator[] = [
               <ThemeConfig flexDirection={'row'} colors={colors} />
             </ScrollView>
             <ScreenWrapper
-              contentContainerStyle={{ minHeight: 500, padding: 8 }}
+              contentContainerStyle={{
+                minHeight: 500,
+                padding: 8,
+                paddingBottom: 200, // Add extra padding for toasts
+              }}
             >
               <StoryFn />
             </ScreenWrapper>
