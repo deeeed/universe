@@ -44,15 +44,37 @@ export function SwipeableToast({
 
   useEffect(() => {
     if (toastProps.visibility) {
-      setIsVisible(true);
       translateX.value = 0;
+      setIsVisible(true);
+    } else {
+      translateX.value = withTiming(0, { duration: 0 }, () => {
+        runOnJS(setIsVisible)(false);
+      });
     }
-  }, [toastProps.visibility]);
+
+    return () => {
+      translateX.value = 0;
+    };
+  }, [toastProps.visibility, translateX]);
 
   const handleDismiss = useCallback(() => {
-    setIsVisible(false);
-    toastProps.onDismiss?.();
-  }, [toastProps.onDismiss]);
+    translateX.value = withTiming(
+      swipeConfig.direction === 'right-to-left'
+        ? -swipeConfig.dismissDistance!
+        : swipeConfig.dismissDistance!,
+      {
+        duration: swipeConfig.animationDuration,
+      },
+      (finished) => {
+        if (finished) {
+          runOnJS(setIsVisible)(false);
+          if (toastProps.onDismiss) {
+            runOnJS(toastProps.onDismiss)();
+          }
+        }
+      }
+    );
+  }, [toastProps.onDismiss, translateX, swipeConfig]);
 
   const webHandlers =
     Platform.OS === 'web'
@@ -81,19 +103,10 @@ export function SwipeableToast({
             setIsDragging(false);
 
             const delta = e.clientX - startX.current;
-            // Calculate velocity based on time elapsed
-            const velocity = Math.abs(delta / 0.2); // Assuming 200ms duration
+            const velocity = Math.abs(delta / 0.2);
             const shouldDismiss =
               Math.abs(delta) > swipeConfig.dismissThreshold! ||
               velocity > swipeConfig.velocityThreshold!;
-
-            console.log('Web gesture end', {
-              delta,
-              velocity,
-              dismissThreshold: swipeConfig.dismissThreshold,
-              velocityThreshold: swipeConfig.velocityThreshold,
-              shouldDismiss,
-            });
 
             if (shouldDismiss) {
               const direction =
@@ -105,7 +118,10 @@ export function SwipeableToast({
                 { duration: swipeConfig.animationDuration },
                 (finished) => {
                   if (finished) {
-                    runOnJS(handleDismiss)();
+                    runOnJS(setIsVisible)(false);
+                    if (toastProps.onDismiss) {
+                      runOnJS(toastProps.onDismiss)();
+                    }
                   }
                 }
               );
@@ -155,14 +171,6 @@ export function SwipeableToast({
         Math.abs(translateX.value) > swipeConfig.dismissThreshold! ||
         Math.abs(event.velocityX) > swipeConfig.velocityThreshold!;
 
-      console.log('Gesture end', {
-        finalTranslation: translateX.value,
-        velocity: event.velocityX,
-        dismissThreshold: swipeConfig.dismissThreshold,
-        velocityThreshold: swipeConfig.velocityThreshold,
-        shouldDismiss,
-      });
-
       if (shouldDismiss) {
         const direction =
           translateX.value > 0
@@ -173,7 +181,10 @@ export function SwipeableToast({
           { duration: swipeConfig.animationDuration },
           (finished) => {
             if (finished) {
-              runOnJS(handleDismiss)();
+              runOnJS(setIsVisible)(false);
+              if (toastProps.onDismiss) {
+                runOnJS(toastProps.onDismiss)();
+              }
             }
           }
         );
@@ -199,7 +210,11 @@ export function SwipeableToast({
         {...webHandlers}
         style={[baseContainerStyle, animatedStyle]}
       >
-        <Toast {...toastProps} visibility={isVisible} />
+        <Toast
+          {...toastProps}
+          visibility={isVisible}
+          onDismiss={handleDismiss}
+        />
       </Animated.View>
     );
   }
@@ -207,7 +222,11 @@ export function SwipeableToast({
   return (
     <GestureDetector gesture={panGesture}>
       <Animated.View style={[baseContainerStyle, animatedStyle]}>
-        <Toast {...toastProps} visibility={isVisible} />
+        <Toast
+          {...toastProps}
+          visibility={isVisible}
+          onDismiss={handleDismiss}
+        />
       </Animated.View>
     </GestureDetector>
   );
