@@ -1,6 +1,6 @@
 import type { Decorator, Preview } from '@storybook/react';
 import React from 'react';
-import { Platform, ScrollView } from 'react-native';
+import { Platform, ScrollView, View } from 'react-native';
 import { colorOptions } from '../src/_mocks/mock_data';
 import { ScreenWrapper } from '../src/components/ScreenWrapper/ScreenWrapper';
 import { UIProvider } from '../src/providers/UIProvider';
@@ -47,17 +47,19 @@ export const decorators: Decorator[] = [
           </style>
         ) : null}
         <UIProvider locale={'en'}>
-          <>
+          <View>
             <ScrollView
               horizontal={true}
               showsHorizontalScrollIndicator={false}
             >
               <ThemeConfig flexDirection={'row'} colors={colors} />
             </ScrollView>
-            <ScreenWrapper style={{ minHeight: 300, padding: 8 }}>
+            <ScreenWrapper
+              contentContainerStyle={{ minHeight: 500, padding: 8 }}
+            >
               <StoryFn />
             </ScreenWrapper>
-          </>
+          </View>
         </UIProvider>
       </>
     );
