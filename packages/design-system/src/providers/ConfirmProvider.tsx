@@ -1,15 +1,13 @@
 import type { FunctionComponent, ReactNode } from 'react';
-import React, { createContext, useMemo, useState } from 'react';
-import { Platform, StyleSheet, ViewStyle } from 'react-native';
+import React, { createContext, useState } from 'react';
+import type { DialogButton } from '../components/ConfirmDialog/ConfirmDialog';
 import { ConfirmDialog } from '../components/ConfirmDialog/ConfirmDialog';
-import { AppTheme } from '../hooks/_useAppThemeSetup';
-import { useTheme } from './ThemeProvider';
 
 export interface ConfirmOptions {
   title: string;
   notice?: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
+  confirmButton?: Partial<DialogButton>;
+  cancelButton?: Partial<DialogButton>;
   onConfirm?: () => void;
   onCancel?: () => void;
 }
@@ -26,46 +24,16 @@ export interface ConfirmProviderProps {
   children: ReactNode;
 }
 
-const getStyles = ({ theme }: { theme: AppTheme }) =>
-  StyleSheet.create({
-    // hack to make sure the dialog is centered on web
-    fixedDialog: {
-      position: 'fixed',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      zIndex: 1000, // Ensure it's on top
-    } as unknown as ViewStyle,
-    title: {
-      textAlign: 'center',
-      fontSize: theme.fonts.bodyLarge.fontSize,
-    },
-    notice: {
-      paddingTop: 15,
-      textAlign: 'center',
-      fontSize: theme.fonts.bodyMedium.fontSize,
-    },
-  });
-
 export const ConfirmProvider: FunctionComponent<ConfirmProviderProps> = ({
   children,
 }) => {
-  const theme = useTheme();
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [options, setOptions] = useState<ConfirmOptions>({ title: '' });
   const [resolve, setResolve] = useState<(value: boolean) => void | null>();
-  const styles = useMemo(() => getStyles({ theme }), [theme]);
-  const dialogStyle = useMemo(() => {
-    if (Platform.OS === 'web') {
-      return styles.fixedDialog;
-    }
-    return {};
-  }, [styles]);
 
   const confirm: ConfirmContextType = (opts: ConfirmOptions) => {
     setOptions(opts);
     setIsVisible(true);
-
     return new Promise<boolean>((_resolve) => {
       setResolve(() => _resolve);
     });
@@ -83,13 +51,19 @@ export const ConfirmProvider: FunctionComponent<ConfirmProviderProps> = ({
       {children}
       {isVisible ? (
         <ConfirmDialog
+          visible={isVisible}
           title={options.title}
           notice={options.notice}
-          confirmLabel={options.confirmLabel || 'Yes'}
-          cancelLabel={options.cancelLabel || 'No'}
-          onConfirm={() => handleConfirm(true)}
-          onCancel={() => handleConfirm(false)}
-          style={dialogStyle}
+          confirmButton={{
+            label: options.confirmButton?.label || 'Yes',
+            onPress: () => handleConfirm(true),
+            ...options.confirmButton,
+          }}
+          cancelButton={{
+            label: options.cancelButton?.label || 'No',
+            onPress: () => handleConfirm(false),
+            ...options.cancelButton,
+          }}
         />
       ) : undefined}
     </ConfirmContext.Provider>

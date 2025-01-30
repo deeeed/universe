@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { StyleSheet, TextStyle, ViewStyle, Platform } from 'react-native';
 import { Dialog, Text } from 'react-native-paper';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
@@ -13,6 +13,16 @@ const getStyles = ({ theme }: { theme: AppTheme }) => {
       width: '100%',
       maxWidth: 400,
     },
+    webContainer: Platform.select({
+      web: {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 1000,
+      } as unknown as ViewStyle,
+      default: {},
+    }),
     content: {
       gap: theme.gap.m,
       paddingVertical: theme.padding.m,
@@ -60,6 +70,7 @@ export interface ConfirmDialogProps {
   titleStyle?: TextStyle;
   noticeStyle?: TextStyle;
   actionsStyle?: ViewStyle;
+  dialogStyle?: ViewStyle;
 }
 
 export function ConfirmDialog({
@@ -74,6 +85,7 @@ export function ConfirmDialog({
   titleStyle,
   noticeStyle,
   actionsStyle,
+  dialogStyle,
 }: ConfirmDialogProps) {
   const theme = useTheme();
   const styles = useMemo(() => getStyles({ theme }), [theme]);
@@ -96,7 +108,7 @@ export function ConfirmDialog({
     <Dialog
       visible={visible}
       onDismiss={onDismiss}
-      style={[styles.container, style]}
+      style={[styles.container, styles.webContainer, dialogStyle, style]}
     >
       <Dialog.Content style={[styles.content, contentStyle]}>
         <Text style={[styles.title, titleStyle]}>{title}</Text>
