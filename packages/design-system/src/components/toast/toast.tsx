@@ -2,19 +2,24 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
 import { Dimensions, Platform, StyleSheet, View } from 'react-native';
 
-import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
-import { ActivityIndicator, Snackbar, Text } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppTheme } from '../../hooks/_useAppThemeSetup';
-import { useTheme } from '../../providers/ThemeProvider';
+import type {
+  CursorValue,
+  StyleProp,
+  TextStyle,
+  ViewStyle,
+} from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { ActivityIndicator, Snackbar, Text } from 'react-native-paper';
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
-  runOnJS,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppTheme } from '../../hooks/_useAppThemeSetup';
+import { useTheme } from '../../providers/ThemeProvider';
 
 export type ToastType = 'info' | 'success' | 'warning' | 'error';
 export type ToastPosition = 'top' | 'bottom' | 'middle';
@@ -64,6 +69,11 @@ export interface ToastProps {
   swipeConfig?: {
     isEnabled?: boolean;
     direction?: 'left-to-right' | 'right-to-left' | 'both';
+    initialThreshold?: number;
+    dismissThreshold?: number;
+    velocityThreshold?: number;
+    animationDuration?: number;
+    dismissDistance?: number;
   };
   showCloseIcon?: boolean;
   closeIconStyle?: StyleProp<TextStyle>;
@@ -102,7 +112,15 @@ export const Toast = ({
   snackbarStyle,
   type = 'info',
   onDismiss,
-  swipeConfig = { isEnabled: true, direction: 'right-to-left' },
+  swipeConfig = {
+    isEnabled: true,
+    direction: 'right-to-left',
+    initialThreshold: 15,
+    dismissThreshold: 40,
+    velocityThreshold: 500,
+    animationDuration: 200,
+    dismissDistance: Math.min(Dimensions.get('window').width, 400),
+  },
   showCloseIcon = false,
 }: ToastProps) => {
   const theme = useTheme();
@@ -172,49 +190,116 @@ export const Toast = ({
     handleDismiss();
   };
 
-  const gesture = Gesture.Pan()
-    .enabled(swipeConfig.isEnabled ?? true)
-    .onStart(() => {
-      context.value = { x: translateX.value };
-    })
-    .onUpdate((event) => {
-      if (swipeConfig.direction === 'right-to-left' && event.translationX > 0)
-        return;
-      if (swipeConfig.direction === 'left-to-right' && event.translationX < 0)
-        return;
-      translateX.value = event.translationX + context.value.x;
-    })
-    .onEnd(() => {
-      const shouldDismiss = Math.abs(translateX.value) > 80;
-      if (shouldDismiss) {
-        const direction = translateX.value > 0 ? 400 : -400;
-        const canDismiss =
-          swipeConfig.direction === 'both' ||
-          (swipeConfig.direction === 'right-to-left' && direction < 0) ||
-          (swipeConfig.direction === 'left-to-right' && direction > 0);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const startX = React.useRef(0);
+  const viewRef = React.useRef(null);
 
-        if (canDismiss) {
-          translateX.value = withTiming(direction, undefined, () => {
-            runOnJS(dismissToast)();
-          });
-        } else {
-          translateX.value = withSpring(0);
+  const webHandlers =
+    Platform.OS === 'web'
+      ? {
+          onMouseDown: (e: React.MouseEvent) => {
+            if (
+              Math.abs(e.clientX - startX.current) >
+              swipeConfig.initialThreshold!
+            ) {
+              setIsDragging(true);
+              startX.current = e.clientX;
+            }
+          },
+          onMouseMove: (e: React.MouseEvent) => {
+            if (!isDragging) return;
+            const delta = e.clientX - startX.current;
+            if (swipeConfig.direction === 'right-to-left' && delta > 0) return;
+            if (swipeConfig.direction === 'left-to-right' && delta < 0) return;
+            translateX.value = delta;
+          },
+          onMouseUp: (e: React.MouseEvent) => {
+            if (!isDragging) return;
+            setIsDragging(false);
+            const delta = e.clientX - startX.current;
+            const velocity = Math.abs(delta) / 100; // Simple velocity calculation
+            const shouldDismiss =
+              Math.abs(delta) > swipeConfig.dismissThreshold! ||
+              velocity > swipeConfig.velocityThreshold!;
+
+            if (shouldDismiss) {
+              const direction =
+                delta > 0
+                  ? swipeConfig.dismissDistance!
+                  : -swipeConfig.dismissDistance!;
+              translateX.value = withTiming(
+                direction,
+                { duration: swipeConfig.animationDuration },
+                () => {
+                  runOnJS(dismissToast)();
+                }
+              );
+            } else {
+              translateX.value = withTiming(0, { duration: 150 });
+            }
+          },
         }
-      } else {
-        translateX.value = withSpring(0);
-      }
-    });
+      : {};
+
+  const gesture =
+    Platform.OS !== 'web'
+      ? Gesture.Pan()
+          .enabled(swipeConfig.isEnabled ?? true)
+          .onStart(() => {
+            context.value = { x: translateX.value };
+          })
+          .onUpdate((event) => {
+            if (Math.abs(event.translationX) < swipeConfig.initialThreshold!)
+              return;
+            if (
+              swipeConfig.direction === 'right-to-left' &&
+              event.translationX > 0
+            )
+              return;
+            if (
+              swipeConfig.direction === 'left-to-right' &&
+              event.translationX < 0
+            )
+              return;
+            translateX.value = event.translationX + context.value.x;
+          })
+          .onEnd((event) => {
+            const shouldDismiss =
+              Math.abs(translateX.value) > swipeConfig.dismissThreshold! ||
+              Math.abs(event.velocityX) > swipeConfig.velocityThreshold!;
+
+            if (shouldDismiss) {
+              const direction =
+                translateX.value > 0
+                  ? swipeConfig.dismissDistance!
+                  : -swipeConfig.dismissDistance!;
+              translateX.value = withTiming(
+                direction,
+                { duration: swipeConfig.animationDuration },
+                () => {
+                  runOnJS(dismissToast)();
+                }
+              );
+            } else {
+              translateX.value = withSpring(0);
+            }
+          })
+      : null;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
+    cursor: Platform.OS === 'web' ? ('grab' as CursorValue) : undefined,
+    touchAction: Platform.OS === 'web' ? 'pan-x' : undefined,
   }));
 
   if (!visibility) return null;
 
   return (
     <View style={computedStyle as StyleProp<ViewStyle>}>
-      <GestureDetector gesture={gesture}>
+      {Platform.OS === 'web' ? (
         <Animated.View
+          ref={viewRef}
+          {...webHandlers}
           style={[
             {
               width: '100%',
@@ -278,7 +363,74 @@ export const Toast = ({
             </View>
           </Snackbar>
         </Animated.View>
-      </GestureDetector>
+      ) : gesture ? (
+        <GestureDetector gesture={gesture}>
+          <Animated.View
+            style={[
+              {
+                width: '100%',
+                alignItems: 'center',
+              },
+              animatedStyle,
+            ]}
+          >
+            <Snackbar
+              onDismiss={handleDismiss}
+              style={[
+                styles.snackBarStyle,
+                snackbarStyle,
+                position === 'bottom' && {
+                  marginBottom: (snackbarStyle as ViewStyle)?.marginBottom || 0,
+                },
+              ]}
+              wrapperStyle={
+                { width: '100%', alignItems: 'center' } as StyleProp<ViewStyle>
+              }
+              duration={duration}
+              visible={visibility}
+              action={
+                action
+                  ? {
+                      label: actionLabel,
+                      style: styles.actionButton,
+                      labelStyle: styles.actionButtonText,
+                      onPress: action,
+                    }
+                  : undefined
+              }
+            >
+              <View
+                style={[styles.defaultMessageContainer, messageContainerStyle]}
+              >
+                {loading && <ActivityIndicator />}
+                {!loading && iconVisible && (
+                  <MaterialCommunityIcons
+                    name={icons[type]}
+                    style={[styles.iconStyle, iconStyle]}
+                    size={20}
+                  />
+                )}
+                <View style={styles.textContainer}>
+                  <Text style={[styles.message, messageStyle]}>{message}</Text>
+                  {subMessage && (
+                    <Text style={[styles.subMessage, subMessageStyle]}>
+                      {subMessage}
+                    </Text>
+                  )}
+                </View>
+                {showCloseIcon && (
+                  <MaterialCommunityIcons
+                    name="close"
+                    size={20}
+                    style={[styles.closeIcon, closeIconStyle]}
+                    onPress={dismissToast}
+                  />
+                )}
+              </View>
+            </Snackbar>
+          </Animated.View>
+        </GestureDetector>
+      ) : null}
     </View>
   );
 };
@@ -306,6 +458,10 @@ const getStyles = ({ theme, type }: { theme: AppTheme; type: ToastType }) => {
       padding: theme.padding.s,
       position: 'relative',
       alignSelf: 'center',
+      ...(Platform.OS === 'web' && {
+        cursor: 'grab' as CursorValue,
+        touchAction: 'pan-x',
+      }),
     },
     message: {
       fontSize: 14,
