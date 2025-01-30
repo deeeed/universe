@@ -21,7 +21,7 @@ export * from './components/ThemedView/ThemedView';
 export * from './components/Notice/Notice';
 export * from './components/Result/Result';
 export * from './components/ConfirmDialog/ConfirmDialog';
-export * from './components/Toast/Toast2';
+export * from './components/Toast/Toast';
 export * from './components/Skeleton/Skeleton';
 export * from './components/Skeleton/LoadingPulseCircle/LoadingPulseCircle';
 export * from './components/Skeleton/LoadingPulseBar/LoadingPulseBar';

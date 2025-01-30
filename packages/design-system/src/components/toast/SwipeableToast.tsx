@@ -9,7 +9,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Toast } from './Toast2';
+import { Toast } from './Toast';
 import type { SwipeableToastProps, SwipeConfig } from './Toast.types';
 
 const DEFAULT_SWIPE_CONFIG: SwipeConfig = {
