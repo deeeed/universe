@@ -3,8 +3,9 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-- feat(toast): add stackable toasts and infinite duration support (#45) ([a2f5bf5](https://github.com/deeeed/universe/commit/a2f5bf5cb2805f5967b952b80de5770cf731fd57))
-- chore(@siteed/design-system): release 0.36.0 ([1084b72](https://github.com/deeeed/universe/commit/1084b72abb6a5ee5ce1b823bcc4bb876d829421d))
+
+
+## [0.36.1] - 2025-01-30
 
 ## [0.36.0] - 2025-01-30
 
@@ -51,7 +52,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.36.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.36.1...HEAD
+[0.36.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.36.0...@siteed/design-system@0.36.1
 [0.36.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.3...@siteed/design-system@0.36.0
 [0.35.3]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.2...@siteed/design-system@0.35.3
 [0.35.2]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.1...@siteed/design-system@0.35.2
