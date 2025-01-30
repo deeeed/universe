@@ -3,6 +3,9 @@ import React from 'react';
 import { View } from 'react-native';
 import { Toast } from './Toast';
 import type { ToastProps } from './Toast.types';
+import { ToastProvider } from '../../providers/ToastProvider';
+import { Button } from 'react-native';
+import { useToast } from '../../hooks/useToast/useToast';
 
 const ToastMeta: Meta<ToastProps> = {
   component: Toast,
@@ -134,3 +137,79 @@ export const WithAction = (args: ToastProps) => (
 export const WithCloseIcon = (args: ToastProps) => (
   <Toast {...args} message="With close icon" showCloseIcon />
 );
+
+// Add a new story to demonstrate stacking
+const StackedToastDemo = () => {
+  const toast = useToast();
+
+  const showStackedToasts = () => {
+    toast.show({
+      message: 'First Toast',
+      type: 'info',
+      duration: 10000,
+    });
+
+    setTimeout(() => {
+      toast.show({
+        message: 'Second Toast',
+        type: 'success',
+        duration: 10000,
+      });
+    }, 500);
+
+    setTimeout(() => {
+      toast.show({
+        message: 'Third Toast',
+        type: 'warning',
+        duration: 10000,
+      });
+    }, 1000);
+  };
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Button onPress={showStackedToasts} title="Show Stacked Toasts" />
+    </View>
+  );
+};
+
+export const StackedToasts = () => (
+  <ToastProvider isStackable={true}>
+    <StackedToastDemo />
+  </ToastProvider>
+);
+
+StackedToasts.parameters = {
+  docs: {
+    description: {
+      story: 'Demonstrates multiple toasts stacking with visual offset',
+    },
+  },
+};
+
+// Add a new story for infinite duration toast
+export const InfiniteToast = () => (
+  <ToastProvider>
+    <Toast
+      message="This toast will stay visible"
+      type="info"
+      duration={0}
+      visibility={true}
+    />
+    <Toast
+      message="This toast is stacked above"
+      type="success"
+      duration={0}
+      visibility={true}
+      snackbarStyle={{ marginBottom: 60 }} // Add spacing between toasts
+    />
+  </ToastProvider>
+);
+
+InfiniteToast.parameters = {
+  docs: {
+    description: {
+      story: 'Demonstrates toasts with infinite duration (duration={0})',
+    },
+  },
+};
