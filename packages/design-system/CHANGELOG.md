@@ -3,7 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- feat(toast): add stackable toasts and infinite duration support (#45) ([a2f5bf5](https://github.com/deeeed/universe/commit/a2f5bf5cb2805f5967b952b80de5770cf731fd57))
+- chore(@siteed/design-system): release 0.36.0 ([1084b72](https://github.com/deeeed/universe/commit/1084b72abb6a5ee5ce1b823bcc4bb876d829421d))
 
 ## [0.36.0] - 2025-01-30
 
