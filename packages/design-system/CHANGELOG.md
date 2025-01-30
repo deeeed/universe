@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- refactor: refactor ConfirmProvider to simplify dialog button props ([44ec30b](https://github.com/deeeed/universe/commit/44ec30bcc2b38cb7d41faa3279220062c6f751f2))
+- docs: changelog update ([be023bf](https://github.com/deeeed/universe/commit/be023bf53ff5c4b474ca56a6cc83690fefcb6cc0))
 - refactor: refactor storybook preview and ConfirmDialog stories ([3932b6e](https://github.com/deeeed/universe/commit/3932b6ed044fbd3d86fa1579065fdbe2369ca00b))
 - feat: add swipeable and interactive toast components with cross-platform support (#44) ([0c8dad1](https://github.com/deeeed/universe/commit/0c8dad10d3510fcbb50287260b680a9fb76a0a95))
 - feat: editableinfo card improvements (#43) ([caf939e](https://github.com/deeeed/universe/commit/caf939e281a94cf5fc026b499b7db37132dec26b))
