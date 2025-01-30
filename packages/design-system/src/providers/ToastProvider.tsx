@@ -1,10 +1,14 @@
 import React, { createContext, useMemo, useReducer } from 'react';
 import { Keyboard, StyleProp, TextStyle, ViewStyle } from 'react-native';
 
-import { Toast, ToastProps } from '../components/Toast/Toast';
+import { SwipeableToast } from '../components/Toast/SwipeableToast';
+import { Toast } from '../components/Toast/Toast';
+import type { SwipeConfig, ToastProps } from '../components/Toast/Toast.types';
 
 // Make all partial except dismiss
-export type ToastOptions = Partial<ToastProps>;
+export type ToastOptions = Partial<ToastProps> & {
+  swipeConfig?: SwipeConfig;
+};
 
 export interface ToastMethods {
   show(options: ToastOptions): void;
@@ -20,12 +24,15 @@ export interface ToastStyleOverrides {
   messageContainerStyle?: StyleProp<ViewStyle>;
   actionButtonStyle?: StyleProp<ViewStyle>;
   actionButtonTextStyle?: StyleProp<TextStyle>;
+  closeIconStyle?: StyleProp<TextStyle>;
 }
 
 export interface ToastProviderProps {
   styleOverrides?: ToastStyleOverrides;
   defaultOptions?: Partial<Omit<ToastProps, keyof ToastStyleOverrides>>;
   children: React.ReactNode;
+  swipeConfig?: Pick<SwipeConfig, 'isEnabled' | 'direction'>;
+  showCloseIcon?: boolean;
 }
 
 export enum ToastActionType {
@@ -42,7 +49,8 @@ export interface ToastAction {
 export const ToastContext = createContext<ToastMethods | null>(null);
 
 const reducer =
-  (initialState: ToastProps) => (state: ToastProps, action: ToastAction) => {
+  (initialState: ToastProps & { swipeConfig?: SwipeConfig }) =>
+  (state: ToastProps & { swipeConfig?: SwipeConfig }, action: ToastAction) => {
     switch (action.type) {
       case ToastActionType.SHOW:
         return { ...initialState, ...action.payload, visibility: true };
@@ -59,6 +67,8 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
   children,
   styleOverrides = {},
   defaultOptions = {},
+  swipeConfig = { isEnabled: true, direction: 'right-to-left' },
+  showCloseIcon = false,
 }) => {
   const initialState: ToastProps = useMemo(
     () => ({
@@ -67,15 +77,17 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
       type: 'info',
       position: 'bottom',
       iconVisible: true,
+      swipeConfig,
+      showCloseIcon,
       ...defaultOptions,
-      // Change snackBarStyle to snackbarStyle
       snackbarStyle: styleOverrides.snackbarStyle,
       messageStyle: styleOverrides.messageStyle,
       subMessageStyle: styleOverrides.subMessageStyle,
       iconStyle: styleOverrides.iconStyle,
       messageContainerStyle: styleOverrides.messageContainerStyle,
+      closeIconStyle: styleOverrides.closeIconStyle,
     }),
-    [defaultOptions, styleOverrides]
+    [defaultOptions, styleOverrides, swipeConfig, showCloseIcon]
   );
 
   const [state, dispatch] = useReducer(reducer(initialState), initialState);
@@ -112,7 +124,11 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
   return (
     <ToastContext.Provider value={toastMethods}>
       {children}
-      <Toast {...state} onDismiss={handleDismiss} />
+      {state.swipeConfig?.isEnabled ? (
+        <SwipeableToast {...state} onDismiss={handleDismiss} />
+      ) : (
+        <Toast {...state} onDismiss={handleDismiss} />
+      )}
     </ToastContext.Provider>
   );
 };

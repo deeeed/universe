@@ -11,6 +11,10 @@ const TryToasts = () => {
         <Card.Content>
           <Text variant="titleLarge">Toast Examples</Text>
 
+          {/* Basic Toasts Section */}
+          <Text variant="titleMedium" style={{ marginVertical: 10 }}>
+            Basic Toasts
+          </Text>
           <Button
             onPress={() => {
               show({
@@ -35,40 +39,79 @@ const TryToasts = () => {
             Success Toast
           </Button>
 
+          {/* Interactive Toasts Section */}
+          <Text variant="titleMedium" style={{ marginVertical: 10 }}>
+            Interactive Toasts
+          </Text>
           <Button
             onPress={() => {
               show({
-                message: "Success with action",
-                type: "success",
-                action: () => console.log("Action clicked"),
+                message: "👈 Swipe left to dismiss",
+                type: "info",
+                swipeConfig: { isEnabled: true, direction: "right-to-left" },
               });
             }}
           >
-            Success Toast with Action
+            Left Swipe Toast
           </Button>
 
           <Button
             onPress={() => {
               show({
-                message: "Warning message",
+                message: "👉 Swipe right to dismiss",
                 type: "warning",
+                swipeConfig: { isEnabled: true, direction: "left-to-right" },
               });
             }}
           >
-            Warning Toast
+            Right Swipe Toast
           </Button>
 
           <Button
             onPress={() => {
               show({
-                message: "Error message",
-                type: "error",
+                message: "👈👉 Swipe either direction",
+                type: "success",
+                swipeConfig: { isEnabled: true, direction: "both" },
               });
             }}
           >
-            Error Toast
+            Bi-directional Swipe Toast
           </Button>
 
+          {/* Close Icon Toasts Section */}
+          <Text variant="titleMedium" style={{ marginVertical: 10 }}>
+            Close Icon Toasts
+          </Text>
+          <Button
+            onPress={() => {
+              show({
+                message: "Click the X to close",
+                type: "info",
+                showCloseIcon: true,
+              });
+            }}
+          >
+            Toast with Close Icon
+          </Button>
+
+          <Button
+            onPress={() => {
+              show({
+                message: "Swipe or click X to close",
+                type: "success",
+                showCloseIcon: true,
+                swipeConfig: { isEnabled: true, direction: "both" },
+              });
+            }}
+          >
+            Interactive Toast with Close
+          </Button>
+
+          {/* Utility Toasts Section */}
+          <Text variant="titleMedium" style={{ marginVertical: 10 }}>
+            Utility Toasts
+          </Text>
           <Button onPress={() => loader("Loading...", { position: "middle" })}>
             Loading Toast
           </Button>

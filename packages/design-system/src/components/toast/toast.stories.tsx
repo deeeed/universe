@@ -1,6 +1,8 @@
 import type { Meta } from '@storybook/react';
 import React from 'react';
-import { Toast, ToastProps } from './Toast';
+import { View } from 'react-native';
+import { Toast } from './Toast';
+import type { ToastProps } from './Toast.types';
 
 const ToastMeta: Meta<ToastProps> = {
   component: Toast,
@@ -12,16 +14,28 @@ const ToastMeta: Meta<ToastProps> = {
       control: 'object',
       description: 'Override default theme colors and type-specific styles',
     },
+    showCloseIcon: {
+      control: 'boolean',
+      description: 'Show close icon button',
+    },
   },
   args: {
     message: 'Information message',
     subMessage: 'More details about the info',
     type: 'info',
-    position: 'top',
-    duration: 3000,
+    position: 'bottom',
+    duration: 5000,
     visibility: true,
     iconVisible: true,
+    showCloseIcon: false,
   },
+  decorators: [
+    (Story) => (
+      <View style={{ flex: 1, minHeight: 200, position: 'relative' }}>
+        <Story />
+      </View>
+    ),
+  ],
 };
 
 export default ToastMeta;
@@ -115,4 +129,8 @@ export const WithAction = (args: ToastProps) => (
     action={() => console.log('Action clicked')}
     actionLabel="Undo"
   />
+);
+
+export const WithCloseIcon = (args: ToastProps) => (
+  <Toast {...args} message="With close icon" showCloseIcon />
 );
