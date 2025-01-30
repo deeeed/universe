@@ -63,13 +63,11 @@ export const Toast = ({
       zIndex: 9999,
     };
 
-    const marginBottom = (snackbarStyle as ViewStyle)?.marginBottom || 0;
-
     let style;
     if (position === 'bottom') {
       style = {
         ...base,
-        bottom: insets.bottom + Number(marginBottom),
+        bottom: insets.bottom,
       };
       return style;
     }
@@ -95,7 +93,7 @@ export const Toast = ({
       };
     }
     return style;
-  }, [insets, position, windowDimensions, snackbarStyle]);
+  }, [insets, position, windowDimensions]);
 
   if (!visibility) return null;
 
@@ -103,16 +101,8 @@ export const Toast = ({
     <View style={computedStyle as StyleProp<ViewStyle>}>
       <Snackbar
         onDismiss={onDismiss || (() => {})}
-        style={[
-          styles.snackBarStyle,
-          snackbarStyle,
-          position === 'bottom' && {
-            marginBottom: (snackbarStyle as ViewStyle)?.marginBottom || 0,
-          },
-        ]}
-        wrapperStyle={
-          { width: '100%', alignItems: 'center' } as StyleProp<ViewStyle>
-        }
+        style={[styles.snackBarStyle, snackbarStyle]}
+        wrapperStyle={{ width: '100%', alignItems: 'center' }}
         duration={duration}
         visible={visibility}
         action={
