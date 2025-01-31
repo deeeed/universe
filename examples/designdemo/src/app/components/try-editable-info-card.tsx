@@ -26,6 +26,14 @@ const TryEditableInfoCard = () => {
   const [date, setDate] = useState(new Date());
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [complexObject, setComplexObject] = useState({
+    id: 1,
+    details: {
+      category: "test",
+      tags: ["important", "demo"],
+    },
+    lastUpdated: new Date(),
+  });
 
   const handleEdit = async <T extends EditValue>(
     currentValue: T,
@@ -157,6 +165,33 @@ const TryEditableInfoCard = () => {
           onEdit={() => {
             setHasError(true);
             setTimeout(() => setHasError(false), 2000);
+          }}
+        />
+
+        <EditableInfoCard
+          label="Complex Object"
+          value={JSON.stringify(complexObject, null, 2)}
+          editable
+          onEdit={async () => {
+            const newValue = await editProp({
+              data: JSON.stringify(complexObject, null, 2),
+              modalType: "drawer",
+              inputType: "text",
+              bottomSheetProps: {
+                enableDynamicSizing: true,
+                keyboardBehavior: "interactive",
+              },
+            });
+
+            if (newValue) {
+              try {
+                const parsedValue = JSON.parse(newValue as string);
+                setComplexObject(parsedValue);
+              } catch (error) {
+                // Handle invalid JSON input
+                console.error("Invalid JSON input");
+              }
+            }
           }}
         />
 
