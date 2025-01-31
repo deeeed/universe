@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   interpolate,
@@ -73,15 +73,11 @@ export const DarkLightToggle = ({
   onToggle,
 }: DarkLightToggleProps = {}) => {
   const sizes = calculateSizes(height);
-  const [isDay, setIsDay] = useState(!isDark);
   const progress = useSharedValue(isDark ? 0 : 1);
 
   useEffect(() => {
-    if (isDay === isDark) {
-      setIsDay(!isDark);
-      progress.value = isDark ? 0 : 1;
-    }
-  }, [isDark]);
+    progress.value = withTiming(isDark ? 0 : 1, { duration: toggleDuration });
+  }, [isDark, toggleDuration]);
 
   const starStyle1 = useAnimatedStyle(() => ({
     opacity: withTiming(1 - progress.value, {
@@ -100,9 +96,7 @@ export const DarkLightToggle = ({
   }));
 
   const handleToggle = () => {
-    progress.value = withTiming(isDay ? 0 : 1, { duration: toggleDuration });
-    setIsDay(!isDay);
-    onToggle?.(!isDay);
+    onToggle?.(!isDark);
   };
 
   const toggleStyle = useAnimatedStyle(() => ({
@@ -288,7 +282,7 @@ export const DarkLightToggle = ({
       <Pressable onPress={handleToggle}>
         <Animated.View style={[styles.toggle, toggleStyle]}>
           <Animated.View style={[styles.moonSun, moonSunStyle]}>
-            {!isDay ? (
+            {isDark ? (
               <View style={styles.moon}>
                 <View style={styles.crescentOverlay} />
               </View>
