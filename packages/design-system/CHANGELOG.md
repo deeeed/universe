@@ -3,14 +3,12 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-- feat: add DarkLightToggle component and story ([b6dc957](https://github.com/deeeed/universe/commit/b6dc957914cea2aa714cd4079ddbfd9d9484f113))
-- feat: add icon to labelswitch component ([7da06ba](https://github.com/deeeed/universe/commit/7da06bafd82ffb858e4147a2593343676211ea80))
-- chore: cleanup changelog ([39b2dcf](https://github.com/deeeed/universe/commit/39b2dcf216e864f996e43249876750906bc1c325))
-- chore(@siteed/design-system): release 0.36.1 ([48f5180](https://github.com/deeeed/universe/commit/48f5180e7b047ead0de19d33113fb6f6e24604e5))
+
+
+## [0.37.0] - 2025-01-31
 
 ## [0.36.1] - 2025-01-30
 - feat(toast): add stackable toasts and infinite duration support (#45) ([a2f5bf5](https://github.com/deeeed/universe/commit/a2f5bf5cb2805f5967b952b80de5770cf731fd57))
-
 ## [0.35.3] - 2025-01-25
 - remove margin style in listitem ([3fb462e](https://github.com/deeeed/universe/commit/3fb462e2b61c288923a710a6959e308e99f9b239))
 - chore(@siteed/design-system): release 0.35.2 ([b66a72c](https://github.com/deeeed/universe/commit/b66a72c41009b8c48692747efbf5ef791a850eb7))
@@ -54,7 +52,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.36.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.37.0...HEAD
+[0.37.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.36.1...@siteed/design-system@0.37.0
 [0.36.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.3...@siteed/design-system@0.36.0
 [0.35.3]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.2...@siteed/design-system@0.35.3
 [0.35.2]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.1...@siteed/design-system@0.35.2
