@@ -3,10 +3,6 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { ColorItem } from '../../components/Colors/ColorItem/ColorItem';
 import { useTheme } from '../../providers/ThemeProvider';
-import {
-  DefaultDarkTheme,
-  DefaultLightTheme,
-} from '../../providers/UIProvider';
 
 const getStyles = () => {
   return StyleSheet.create({
@@ -28,12 +24,6 @@ export const ThemeViewer = (_: ThemeViewerProps) => {
   const colorEntries = Object.entries(colors).filter(
     ([, value]) => typeof value === 'string'
   );
-  const darkThemeEntries = Object.entries(DefaultDarkTheme.colors).filter(
-    ([, value]) => typeof value === 'string'
-  );
-  const lightThemeEntries = Object.entries(DefaultLightTheme.colors).filter(
-    ([, value]) => typeof value === 'string'
-  );
 
   return (
     <View style={styles.container}>
@@ -44,55 +34,13 @@ export const ThemeViewer = (_: ThemeViewerProps) => {
         style={styles.scrollView}
         contentContainerStyle={{ flexDirection: 'row' }}
       >
-        <View style={{ borderWidth: 1, padding: 5, width: '30%' }}>
+        <View style={{ borderWidth: 1, padding: 5 }}>
           <Text>Active Theme Colors</Text>
           {colorEntries.map(([key, value]) => (
             // Only render ColorItem for string type colors
             <ColorItem
               key={key}
               color={value as string}
-              label={`colors.${key}`}
-            />
-          ))}
-        </View>
-        <View
-          style={{
-            borderWidth: 1,
-            padding: 5,
-            width: '30%',
-            backgroundColor: DefaultDarkTheme.colors.background,
-          }}
-        >
-          <Text style={{ color: DefaultDarkTheme.colors.text }}>
-            Dark Theme Colors
-          </Text>
-          {darkThemeEntries.map(([key, value]) => (
-            // Only render ColorItem for string type colors
-            <ColorItem
-              key={key}
-              color={value as string}
-              labelStyle={{ color: DefaultDarkTheme.colors.text }}
-              label={`colors.${key}`}
-            />
-          ))}
-        </View>
-        <View
-          style={{
-            borderWidth: 1,
-            padding: 5,
-            width: '30%',
-            backgroundColor: DefaultLightTheme.colors.background,
-          }}
-        >
-          <Text style={{ color: DefaultLightTheme.colors.text }}>
-            Light Theme Colors
-          </Text>
-          {lightThemeEntries.map(([key, value]) => (
-            // Only render ColorItem for string type colors
-            <ColorItem
-              key={key}
-              color={value as string}
-              labelStyle={{ color: DefaultLightTheme.colors.text }}
               label={`colors.${key}`}
             />
           ))}

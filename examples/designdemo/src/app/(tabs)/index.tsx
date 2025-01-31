@@ -42,14 +42,6 @@ const ThemePage = () => {
     ([, value]) => typeof value === "string",
   );
 
-  const navDarkColorEntries = Object.entries(DarkTheme.colors).filter(
-    ([, value]) => typeof value === "string",
-  );
-
-  const navLightColorEntries = Object.entries(DefaultTheme.colors).filter(
-    ([, value]) => typeof value === "string",
-  );
-
   return (
     <ThemedView>
       <ThemeConfig colors={colors} />
@@ -65,48 +57,10 @@ const ThemePage = () => {
           flexDirection: "row",
         }}
       >
-        <ThemedView style={{ borderWidth: 1, padding: 5, width: "33%" }}>
+        <ThemedView style={{ borderWidth: 1, padding: 5 }}>
           <Text>Actual Theme</Text>
           <Text>DarkMode: {theme.dark ? "YES" : "NO"}</Text>
           {colorEntries.map(([key, value]) => (
-            // Only render ColorItem for string type colors
-            <ColorItem
-              key={key}
-              color={value as string}
-              label={`colors.${key}`}
-            />
-          ))}
-        </ThemedView>
-        <ThemedView
-          style={{
-            borderWidth: 1,
-            padding: 5,
-            width: "33%",
-            backgroundColor: DefaultTheme.colors.background,
-          }}
-        >
-          <Text>Light Navigation Theme</Text>
-          <Text>DarkMode: {DefaultTheme.dark ? "YES" : "NO"}</Text>
-          {navLightColorEntries.map(([key, value]) => (
-            // Only render ColorItem for string type colors
-            <ColorItem
-              key={key}
-              color={value as string}
-              label={`colors.${key}`}
-            />
-          ))}
-        </ThemedView>
-        <ThemedView
-          style={{
-            borderWidth: 1,
-            padding: 5,
-            width: "33%",
-            backgroundColor: DarkTheme.colors.background,
-          }}
-        >
-          <Text>Dark Navigation Theme</Text>
-          <Text>DarkMode: {DarkTheme.dark ? "YES" : "NO"}</Text>
-          {navDarkColorEntries.map(([key, value]) => (
             // Only render ColorItem for string type colors
             <ColorItem
               key={key}
