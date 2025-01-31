@@ -10,7 +10,7 @@ NC='\033[0m' # No Color
 
 # Get absolute path of script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR/.."
+cd "$SCRIPT_DIR"  # This puts us in the design-system directory
 echo -e "${BLUE}Changed to package directory: $(pwd)${NC}"
 
 # Check for uncommitted changes
