@@ -3,7 +3,10 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-
+- feat: add DarkLightToggle component and story ([b6dc957](https://github.com/deeeed/universe/commit/b6dc957914cea2aa714cd4079ddbfd9d9484f113))
+- feat: add icon to labelswitch component ([7da06ba](https://github.com/deeeed/universe/commit/7da06bafd82ffb858e4147a2593343676211ea80))
+- chore: cleanup changelog ([39b2dcf](https://github.com/deeeed/universe/commit/39b2dcf216e864f996e43249876750906bc1c325))
+- chore(@siteed/design-system): release 0.36.1 ([48f5180](https://github.com/deeeed/universe/commit/48f5180e7b047ead0de19d33113fb6f6e24604e5))
 
 ## [0.36.1] - 2025-01-30
 - feat(toast): add stackable toasts and infinite duration support (#45) ([a2f5bf5](https://github.com/deeeed/universe/commit/a2f5bf5cb2805f5967b952b80de5770cf731fd57))
