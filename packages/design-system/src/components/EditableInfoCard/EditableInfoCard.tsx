@@ -60,7 +60,7 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
     },
     content: {
       maxWidth: '100%',
-      height: 24,
+      minHeight: 24,
       justifyContent: 'center',
     },
     iconContainer: {
@@ -86,10 +86,11 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
       paddingBottom: 0,
     },
     text: {
-      height: 24,
+      minHeight: 24,
       lineHeight: 24,
       textAlignVertical: 'center',
       fontSize: 14,
+      flexWrap: 'wrap',
     },
     errorText: {
       color: theme.colors.error,
@@ -241,6 +242,7 @@ export function EditableInfoCard({
                 },
                 contentStyle,
               ]}
+              numberOfLines={multiline ? numberOfLines : 1}
             >
               {typeof value === 'string' ? value : value?.toString()}
             </Text>
