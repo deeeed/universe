@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { SegmentedButtons } from 'react-native-paper';
 import { ColorPicker } from '../../components/Colors/ColorPicker/ColorPicker';
-import { LabelSwitch } from '../../components/LabelSwitch/LabelSwitch';
+import { DarkLightToggle } from '../../components/DarkLightToggle/DarkLightToggle';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme, useThemePreferences } from '../../providers/ThemeProvider';
 
@@ -37,11 +37,7 @@ export const ThemeConfig = ({
 
   return (
     <View style={[styles.container, { flexDirection }]}>
-      <LabelSwitch
-        label={'DarkMode'}
-        value={darkMode}
-        onValueChange={setDarkMode}
-      />
+      <DarkLightToggle isDark={darkMode} onToggle={setDarkMode} />
       <ColorPicker
         label={'Primary'}
         color={theme.colors.primary}
