@@ -6,7 +6,10 @@ All notable changes to this project will be documented in this file.
 
 
 ## [0.38.0] - 2025-01-31
-
+- style(EditableInfoCard): Improve EditableInfoCard styles and add multiline support ([a15a3d8](https://github.com/deeeed/universe/commit/a15a3d866083aa478de0090ae3fad7ac2455796a))
+- refactor(theme): Remove redundant theme entries from ThemePage and ThemeViewer ([0e97dbe](https://github.com/deeeed/universe/commit/0e97dbea805d2170911109997a91df4de1fe95e5))
+- refactor: remove redundant state in DarkLightToggle ([66cebe8](https://github.com/deeeed/universe/commit/66cebe85b656b5ca5ce4175108ee6480830c5d29))
+- feat: publishing improvements ([8fff81e](https://github.com/deeeed/universe/commit/8fff81eac8421d356ab939f5c681c489d6799e2c))
 ## [0.37.0] - 2025-01-31
 - feat: add DarkLightToggle component and story ([b6dc957](https://github.com/deeeed/universe/commit/b6dc957914cea2aa714cd4079ddbfd9d9484f113))
 - feat: add icon to labelswitch component ([7da06ba](https://github.com/deeeed/universe/commit/7da06bafd82ffb858e4147a2593343676211ea80))
