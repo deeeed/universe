@@ -123,6 +123,70 @@ const TryToasts = () => {
           >
             Hide All Toasts
           </Button>
+
+          {/* Stacking Behavior Section */}
+          <Text variant="titleMedium" style={{ marginVertical: 10 }}>
+            Stacking Behavior
+          </Text>
+          <Button
+            onPress={() => {
+              show({
+                message: "Stacked Toast 1",
+                type: "info",
+                stackBehavior: {
+                  isStackable: true,
+                  stackSpacing: 0, // Directly on top
+                },
+              });
+              show({
+                message: "Stacked Toast 2",
+                type: "success",
+                stackBehavior: {
+                  isStackable: true,
+                  stackSpacing: 0,
+                },
+              });
+            }}
+          >
+            Stack Toasts (No Spacing)
+          </Button>
+
+          <Button
+            onPress={() => {
+              show({
+                message: "Spaced Toast 1",
+                type: "info",
+                stackBehavior: {
+                  isStackable: true,
+                  stackSpacing: 60, // Add space between toasts
+                },
+              });
+              show({
+                message: "Spaced Toast 2",
+                type: "success",
+                stackBehavior: {
+                  isStackable: true,
+                  stackSpacing: 60,
+                },
+              });
+            }}
+          >
+            Stack Toasts (With Spacing)
+          </Button>
+
+          <Button
+            onPress={() => {
+              show({
+                message: "Replace All Toasts",
+                type: "warning",
+                stackBehavior: {
+                  replaceAll: true,
+                },
+              });
+            }}
+          >
+            Replace All Toasts
+          </Button>
         </Card.Content>
       </Card>
     </ScreenWrapper>

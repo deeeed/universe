@@ -5,9 +5,14 @@ import { SwipeableToast } from '../components/Toast/SwipeableToast';
 import { Toast } from '../components/Toast/Toast';
 import type { SwipeConfig, ToastProps } from '../components/Toast/Toast.types';
 
-// Make all partial except dismiss
+// Update ToastOptions to include stacking behavior
 export type ToastOptions = Partial<ToastProps> & {
   swipeConfig?: SwipeConfig;
+  stackBehavior?: {
+    isStackable?: boolean;
+    stackSpacing?: number;
+    replaceAll?: boolean;
+  };
 };
 
 export interface ToastMethods {
@@ -34,6 +39,7 @@ export interface ToastProviderProps {
   swipeConfig?: Pick<SwipeConfig, 'isEnabled' | 'direction'>;
   showCloseIcon?: boolean;
   isStackable?: boolean;
+  stackSpacing?: number;
 }
 
 // Add a unique ID to each toast
@@ -41,6 +47,11 @@ interface ToastState extends ToastProps {
   id: string;
   swipeConfig?: SwipeConfig;
   message: string;
+  stackBehavior?: {
+    isStackable?: boolean;
+    stackSpacing?: number;
+    replaceAll?: boolean;
+  };
 }
 
 export enum ToastActionType {
@@ -68,20 +79,36 @@ const reducer =
   (state: ToastState[], action: ToastAction): ToastState[] => {
     switch (action.type) {
       case ToastActionType.ADD: {
-        // Deep clone the provider defaults
         const providerDefaults = JSON.parse(JSON.stringify(initialState[0]));
         const options = action.payload?.options ?? {};
+        const stackBehavior = options.stackBehavior ?? {};
 
-        // Create new toast - hook options should ALWAYS override provider defaults
+        // If replaceAll is true, remove all existing toasts
+        if (stackBehavior.replaceAll) {
+          return [
+            {
+              ...providerDefaults,
+              id: getNextId(),
+              visibility: true,
+              ...options,
+            },
+          ];
+        }
+
         const newToast: ToastState = {
-          ...providerDefaults, // Start with provider defaults
+          ...providerDefaults,
           id: getNextId(),
           visibility: true,
-          // Spread ALL options from the hook call - they take precedence over provider defaults
           ...options,
         };
 
-        return action.payload?.isStackable ? [...state, newToast] : [newToast];
+        // Use toast-specific isStackable if provided, otherwise fall back to provider default
+        const shouldStack =
+          stackBehavior.isStackable !== undefined
+            ? stackBehavior.isStackable
+            : action.payload?.isStackable;
+
+        return shouldStack ? [...state, newToast] : [newToast];
       }
       case ToastActionType.REMOVE:
         return state.filter((toast) => toast.id !== action.payload?.id);
@@ -105,6 +132,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
   swipeConfig = { isEnabled: true, direction: 'right-to-left' },
   showCloseIcon = false,
   isStackable = true,
+  stackSpacing = 60,
 }) => {
   const baseState: Omit<ToastState, 'id'> = useMemo(
     () => ({
@@ -175,9 +203,15 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
         const baseMarginBottom = Number(
           (styleOverrides?.snackbarStyle as ViewStyle)?.marginBottom || 0
         );
+
+        // Use toast-specific stackSpacing if provided, otherwise fall back to provider default
+        const toastStackSpacing =
+          toast.stackBehavior?.stackSpacing ?? stackSpacing;
+        const shouldStack = toast.stackBehavior?.isStackable ?? isStackable;
+
         const stackingStyle: ViewStyle = {
-          marginBottom: isStackable
-            ? baseMarginBottom + index * 10
+          marginBottom: shouldStack
+            ? baseMarginBottom + index * toastStackSpacing
             : baseMarginBottom,
         };
 
