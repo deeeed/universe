@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { baseLogger } from '../utils/logger';
 import { useTheme } from './ThemeProvider';
+import { ToastProvider } from './ToastProvider';
 
 export interface ModalStyles {
   modalContainer?: ViewStyle;
@@ -223,26 +224,24 @@ export const ModalProvider = forwardRef<
                   showBackdrop && [
                     {
                       backgroundColor: theme.dark
-                        ? 'rgba(55, 55, 70, 0.8)' // Slightly bluish-gray for dark mode
-                        : 'rgba(0, 0, 0, 0.5)', // Original opacity for light mode
+                        ? 'rgba(55, 55, 70, 0.8)'
+                        : 'rgba(0, 0, 0, 0.5)',
                     },
-                    customStyles.backdrop, // Custom styles can override the default
+                    customStyles.backdrop,
                   ],
                   { zIndex: 9999 + index },
                   customStyles.modalContainer,
                 ]}
               >
-                <TouchableWithoutFeedback>
-                  <View
-                    style={[
-                      styles.modalContent,
-                      { backgroundColor: theme.colors.surface },
-                      customStyles.modalContent,
-                    ]}
-                  >
-                    {modal.content}
-                  </View>
-                </TouchableWithoutFeedback>
+                <View
+                  style={[
+                    styles.modalContent,
+                    { backgroundColor: theme.colors.surface },
+                    customStyles.modalContent,
+                  ]}
+                >
+                  <ToastProvider>{modal.content}</ToastProvider>
+                </View>
               </View>
             </TouchableWithoutFeedback>
           );
@@ -263,7 +262,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 8,
     margin: 20,
-    width: 'auto',
+    width: '95%',
     height: 'auto',
     maxWidth: '90%',
     maxHeight: '90%',
