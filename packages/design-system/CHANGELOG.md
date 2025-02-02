@@ -3,11 +3,9 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-- feat: add stacking behavior to toasts ([5222d97](https://github.com/deeeed/universe/commit/5222d97aac9aaf3e0da6d8a078ecf651baf2b287))
-- feat: integrate ToastProvider into ModalProvider ([e26def5](https://github.com/deeeed/universe/commit/e26def51de92c8d152b51546f143b7f025c0f346))
-- feat: enhance Modal with customizable backdrop styles ([20af143](https://github.com/deeeed/universe/commit/20af1437877613ca7c2c342de56df4f32ad98bf2))
-- chore: changelog ([e9694d5](https://github.com/deeeed/universe/commit/e9694d547072dfdd7b5a230da1d65be90c00ba02))
-- chore(@siteed/design-system): release 0.38.0 ([ecb5594](https://github.com/deeeed/universe/commit/ecb5594c8a99751c65e799fa17d41221a56434a9))
+
+
+## [0.39.0] - 2025-02-02
 
 ## [0.38.0] - 2025-01-31
 - style(EditableInfoCard): Improve EditableInfoCard styles and add multiline support ([a15a3d8](https://github.com/deeeed/universe/commit/a15a3d866083aa478de0090ae3fad7ac2455796a))
@@ -62,7 +60,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.38.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.39.0...HEAD
+[0.39.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.38.0...@siteed/design-system@0.39.0
 [0.38.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.37.0...@siteed/design-system@0.38.0
 [0.37.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.36.1...@siteed/design-system@0.37.0
 [0.36.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.35.3...@siteed/design-system@0.36.0
