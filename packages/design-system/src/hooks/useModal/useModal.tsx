@@ -113,6 +113,7 @@ export const useModal = () => {
                   ? 'transparent'
                   : colors.surface,
               },
+              backdrop: modalProps?.styles?.backdrop,
             },
           },
         });

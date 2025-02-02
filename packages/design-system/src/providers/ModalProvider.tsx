@@ -20,6 +20,7 @@ import { useTheme } from './ThemeProvider';
 export interface ModalStyles {
   modalContainer?: ViewStyle;
   modalContent?: ViewStyle;
+  backdrop?: ViewStyle;
 }
 
 export interface OpenModalProps<T = unknown> {
@@ -219,7 +220,14 @@ export const ModalProvider = forwardRef<
                 style={[
                   StyleSheet.absoluteFillObject,
                   styles.modalContainer,
-                  showBackdrop && styles.backdrop,
+                  showBackdrop && [
+                    {
+                      backgroundColor: theme.dark
+                        ? 'rgba(55, 55, 70, 0.8)' // Slightly bluish-gray for dark mode
+                        : 'rgba(0, 0, 0, 0.5)', // Original opacity for light mode
+                    },
+                    customStyles.backdrop, // Custom styles can override the default
+                  ],
                   { zIndex: 9999 + index },
                   customStyles.modalContainer,
                 ]}
@@ -250,9 +258,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-  },
-  backdrop: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     padding: 20,
