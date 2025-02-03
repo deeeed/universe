@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 
 ## [0.41.0] - 2025-02-03
-
+- feat: add local state management for NumberAdjuster ([34743f6](https://github.com/deeeed/universe/commit/34743f62cb1e6034baf78ec73bbfd92591df6b0c))
 ## [0.40.0] - 2025-02-03
 - feat: update ModalProvider to support close button ([00d824d](https://github.com/deeeed/universe/commit/00d824d7428a07bc616a4a9018fa395aa05a2488))
 - docs: toast info ([b2237f8](https://github.com/deeeed/universe/commit/b2237f890385dfe07d371b473bc8e83fcc9753c9))
