@@ -13,6 +13,7 @@ import {
   TouchableWithoutFeedback,
   View,
   ViewStyle,
+  Text,
 } from 'react-native';
 import { baseLogger } from '../utils/logger';
 import { useTheme } from './ThemeProvider';
@@ -22,6 +23,7 @@ export interface ModalStyles {
   modalContainer?: ViewStyle;
   modalContent?: ViewStyle;
   backdrop?: ViewStyle;
+  closeButton?: ViewStyle;
 }
 
 export interface OpenModalProps<T = unknown> {
@@ -30,6 +32,8 @@ export interface OpenModalProps<T = unknown> {
     closeOnOutsideTouch?: boolean;
     styles?: ModalStyles;
     showBackdrop?: boolean;
+    showCloseButton?: boolean;
+    closeButtonPosition?: 'top-right' | 'top-left';
   };
   render: (props: {
     resolve: (value: T) => void;
@@ -210,6 +214,9 @@ export const ModalProvider = forwardRef<
       <Portal hostName={portalName}>
         {modalStack.map((modal, index) => {
           const showBackdrop = modal.props.modalProps?.showBackdrop ?? true;
+          const showCloseButton = modal.props.modalProps?.showCloseButton;
+          const closeButtonPosition =
+            modal.props.modalProps?.closeButtonPosition ?? 'top-right';
           const customStyles = modal.props.modalProps?.styles ?? {};
 
           return (
@@ -240,6 +247,19 @@ export const ModalProvider = forwardRef<
                     customStyles.modalContent,
                   ]}
                 >
+                  {showCloseButton && (
+                    <TouchableWithoutFeedback onPress={handleModalDismiss}>
+                      <View
+                        style={[
+                          styles.closeButton,
+                          styles[closeButtonPosition],
+                          customStyles.closeButton,
+                        ]}
+                      >
+                        <Text style={styles.closeButtonText}>✕</Text>
+                      </View>
+                    </TouchableWithoutFeedback>
+                  )}
                   <ToastProvider>{modal.content}</ToastProvider>
                 </View>
               </View>
@@ -253,12 +273,12 @@ export const ModalProvider = forwardRef<
 ModalProvider.displayName = 'ModalProvider';
 
 const styles = StyleSheet.create({
-  modalContainer: {
+  'modalContainer': {
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
   },
-  modalContent: {
+  'modalContent': {
     padding: 20,
     borderRadius: 8,
     margin: 20,
@@ -267,5 +287,36 @@ const styles = StyleSheet.create({
     maxWidth: '90%',
     maxHeight: '90%',
     alignSelf: 'center',
+  },
+  'closeButton': {
+    position: 'absolute',
+    zIndex: 1,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
+    cursor: 'pointer',
+  },
+  'top-right': {
+    top: 8,
+    right: 8,
+  },
+  'top-left': {
+    top: 8,
+    left: 8,
+  },
+  'closeButtonText': {
+    fontSize: 16,
+    color: '#666',
   },
 });

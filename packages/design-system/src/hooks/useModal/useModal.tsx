@@ -107,6 +107,8 @@ export const useModal = () => {
           ...commonProps,
           modalProps: {
             ...modalProps,
+            showCloseButton: modalProps?.showCloseButton ?? true,
+            closeButtonPosition: modalProps?.closeButtonPosition,
             styles: {
               modalContent: {
                 backgroundColor: isDateTimeType
@@ -114,6 +116,7 @@ export const useModal = () => {
                   : colors.surface,
               },
               backdrop: modalProps?.styles?.backdrop,
+              closeButton: modalProps?.styles?.closeButton,
             },
           },
         });

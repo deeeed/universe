@@ -6,119 +6,139 @@ import { Meta, Story, Canvas } from '@storybook/addon-docs';
 
 The `useModal` hook provides methods to manage custom modals and drawers, including bottom sheet modals and regular modals. It must be used within both a `ModalProvider` and a `BottomSheetProvider`.
 
-
 ## API
 
-### `dismiss`
+### Modal Configuration
 
+#### Close Button Options
+- `showCloseButton`: Boolean to show/hide the close button (default: false)
+- `closeButtonPosition`: Position of close button ('top-right' | 'top-left')
+
+#### Styling
+The modal supports custom styling through the `modalProps.styles` object:
+```typescript
+interface ModalStyles {
+  modalContainer?: ViewStyle;
+  modalContent?: ViewStyle;
+  backdrop?: ViewStyle;
+  closeButton?: ViewStyle;
+}
+```
+
+### Methods
+
+#### `dismiss`
 Dismiss the current modal or drawer.
-
 - **Type**: `() => Promise<boolean>`
 - **Returns**: `Promise<boolean>` indicating whether a modal or drawer was dismissed.
 
-### `editProp`
-
+#### `editProp`
 Open a modal or drawer to edit a property.
-
 - **Type**: `(props: EditPropProps) => Promise<DynamicType | undefined>`
 - **Parameters**:
   - `props`: Properties for the modal/drawer and the data to be edited.
 - **Returns**: `Promise<DynamicType | undefined>` The edited data or `undefined` if cancelled.
 
-
-### `openDrawer`
-
+#### `openDrawer`
 Open a custom bottom sheet modal drawer.
-
 - **Type**: `<T>(props: OpenDrawerProps<T>) => Promise<T | undefined>`
 - **Parameters**:
   - `props`: Properties for the bottom sheet modal drawer.
 - **Returns**: `Promise<T | undefined>` The result from the drawer, or `undefined` if dismissed.
 
-
-### `openModal`
-
+#### `openModal`
 Open a custom modal.
-
 - **Type**: `<T>(props: OpenModalProps<T>) => Promise<T>`
 - **Parameters**:
   - `props`: Properties for the modal.
 - **Returns**: `Promise<T>` The result from the modal.
 
-
-### `dismissAll`
-
+#### `dismissAll`
 Dismiss all open modals.
-
 - **Type**: `() => void`
 
+## Examples
 
-## Example
-
-Customize the modals by using the `openDrawer`, `openModal`, or `editProp` methods provided by the `useModal` hook.
-
+### Basic Modal with Close Button
 ```tsx
-import React from 'react';
-import { useModal } from '@siteed/design-system/hooks/useModal';
-import { Button, View, Text } from 'react-native';
+const { openModal } = useModal();
 
-const App = () => {
-  const { openDrawer, openModal } = useModal();
-
-  const handleOpenDrawer = async () => {
-    const result = await openDrawer({
-      title: 'Custom Drawer',
-      footerType: 'confirm_cancel',
-      initialData: { name: 'John Doe' },
-      render: ({ data, resolve, onChange, reject }) => (
-        <View>
-          <Text>Drawer Content for {data.name}</Text>
-          <Button
-            title="Change Name"
-            onPress={() => onChange({ name: 'Jane Doe' })}
-          />
-          <Button title="Confirm" onPress={() => resolve(data)} />
-          <Button
-            title="Cancel"
-            onPress={() => reject(new Error('Canceled'))}
-          />
-        </View>
-      ),
-    });
-
-    console.log('Drawer Result:', result);
-  };
-
-  const handleOpenModal = async () => {
-    const result = await openModal({
-      initialData: { age: 30 },
-      render: ({ data, resolve, onChange, reject }) => (
-        <View>
-          <Text>Modal Content, age is {data.age}</Text>
-          <Button
-            title="Increase Age"
-            onPress={() => onChange({ age: data.age + 1 })}
-          />
-          <Button title="Confirm" onPress={() => resolve(data)} />
-          <Button
-            title="Cancel"
-            onPress={() => reject(new Error('Canceled'))}
-          />
-        </View>
-      ),
-    });
-
-    console.log('Modal Result:', result);
-  };
-
-  return (
-    <View>
-      <Text>Hello World</Text>
-      <Button title="Open Drawer" onPress={handleOpenDrawer} />
-      <Button title="Open Modal" onPress={handleOpenModal} />
-    </View>
-  );
+const handleOpenModal = async () => {
+  const result = await openModal({
+    modalProps: {
+      showCloseButton: true,
+      closeButtonPosition: 'top-right',
+      styles: {
+        closeButton: {
+          // Custom close button styles
+          backgroundColor: 'rgba(0, 0, 0, 0.08)',
+        },
+      },
+    },
+    render: ({ resolve, reject }) => (
+      <View>
+        <Text>Modal with Close Button</Text>
+        <Button title="Confirm" onPress={() => resolve(data)} />
+        <Button title="Cancel" onPress={() => reject(new Error('Canceled'))} />
+      </View>
+    ),
+  });
 };
-
-export default App;
 ```
+
+### Custom Styled Modal
+```tsx
+const { openModal } = useModal();
+
+const handleOpenStyledModal = async () => {
+  const result = await openModal({
+    modalProps: {
+      styles: {
+        modalContent: {
+          backgroundColor: '#f0f0f0',
+          borderRadius: 20,
+          padding: 20,
+        },
+        backdrop: {
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        },
+      },
+    },
+    render: ({ resolve }) => (
+      <View>
+        <Text>Custom Styled Modal</Text>
+        <Button title="Close" onPress={() => resolve(data)} />
+      </View>
+    ),
+  });
+};
+```
+
+### Basic Drawer
+```tsx
+const { openDrawer } = useModal();
+
+const handleOpenDrawer = async () => {
+  const result = await openDrawer({
+    title: 'Custom Drawer',
+    footerType: 'confirm_cancel',
+    initialData: { name: 'John Doe' },
+    render: ({ data, resolve, onChange, reject }) => (
+      <View>
+        <Text>Drawer Content for {data.name}</Text>
+        <Button
+          title="Change Name"
+          onPress={() => onChange({ name: 'Jane Doe' })}
+        />
+        <Button title="Confirm" onPress={() => resolve(data)} />
+        <Button
+          title="Cancel"
+          onPress={() => reject(new Error('Canceled'))}
+        />
+      </View>
+    ),
+  });
+};
+```
+
+For more examples and use cases, check out the TryModals component in the design demo app.
