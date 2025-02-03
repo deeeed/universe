@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 
 ## [0.40.0] - 2025-02-03
+- feat: update ModalProvider to support close button ([00d824d](https://github.com/deeeed/universe/commit/00d824d7428a07bc616a4a9018fa395aa05a2488))
+- docs: toast info ([b2237f8](https://github.com/deeeed/universe/commit/b2237f890385dfe07d371b473bc8e83fcc9753c9))
 
 ## [0.39.0] - 2025-02-02
 - feat: add stacking behavior to toasts ([5222d97](https://github.com/deeeed/universe/commit/5222d97aac9aaf3e0da6d8a078ecf651baf2b287))
