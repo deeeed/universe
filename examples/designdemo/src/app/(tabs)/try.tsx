@@ -37,6 +37,11 @@ const links = [
     path: "/components/try-editable-info-card",
   },
   {
+    label: "Modals",
+    subLabel: "Explore Modal Components",
+    path: "/components/try-modals",
+  },
+  {
     label: "Pickers",
     subLabel: "Explore Picker Components",
     path: "/components/try-pickers",
