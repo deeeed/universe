@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Button } from '../Button/Button';
 import { TextInput } from '../TextInput/TextInput';
@@ -32,6 +32,7 @@ export interface NumberAdjusterProps {
   inputStyle?: StyleProp<ViewStyle>;
   buttonStyle?: StyleProp<ViewStyle>;
   buttonContainerStyle?: StyleProp<ViewStyle>;
+  textInputProps?: Partial<React.ComponentProps<typeof TextInput>>;
 }
 
 export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
@@ -45,23 +46,35 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
   inputStyle,
   buttonStyle,
   buttonContainerStyle,
+  textInputProps,
 }) => {
   const styles = getStyles();
+  const [localValue, setLocalValue] = useState(value.toString());
 
   const handleIncrement = () => {
-    onChange(Math.min(value + step, max));
+    const newValue = Math.min(value + step, max);
+    onChange(newValue);
+    setLocalValue(newValue.toString());
   };
 
   const handleDecrement = () => {
-    onChange(Math.max(value - step, min));
+    const newValue = Math.max(value - step, min);
+    onChange(newValue);
+    setLocalValue(newValue.toString());
   };
 
   const handleChangeText = (text: string) => {
-    const newValue = parseInt(text, 10);
+    setLocalValue(text);
+  };
+
+  const handleFinishEditing = () => {
+    const newValue = parseInt(localValue, 10);
     if (!isNaN(newValue)) {
-      onChange(Math.max(Math.min(newValue, max), min));
+      const boundedValue = Math.max(Math.min(newValue, max), min);
+      onChange(boundedValue);
+      setLocalValue(boundedValue.toString());
     } else {
-      onChange(min);
+      setLocalValue(value.toString());
     }
   };
 
@@ -69,10 +82,14 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
     <View style={[styles.inputRow, containerStyle]}>
       <TextInput
         label={label}
-        value={value.toString()}
+        value={localValue}
         style={[styles.input, inputStyle]}
         onChangeText={handleChangeText}
+        onBlur={handleFinishEditing}
+        onSubmitEditing={handleFinishEditing}
         keyboardType="numeric"
+        returnKeyType="done"
+        {...textInputProps}
       />
       <View style={[styles.buttonContainer, buttonContainerStyle]}>
         <Button onPress={handleDecrement} style={[buttonStyle]}>
