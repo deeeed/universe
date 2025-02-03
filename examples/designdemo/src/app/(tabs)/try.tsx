@@ -56,6 +56,11 @@ const links = [
     subLabel: "Explore Helper Components",
     path: "/components/try-helpers",
   },
+  {
+    label: "NumberAdjuster",
+    subLabel: "Explore NumberAdjuster Component",
+    path: "/components/try-number-adjuster",
+  },
 ];
 
 const logger = getLogger("TryItScreen");
