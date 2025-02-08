@@ -100,10 +100,8 @@ export const WithCustomStyles: StoryObj<LabelSwitchProps> = {
 export const Disabled: StoryObj<LabelSwitchProps> = {
   args: {
     value: true,
+    disabled: true,
     onValueChange: () => {},
-    containerStyle: {
-      opacity: 0.5,
-    },
     icon: <MaterialIcons name="block" size={24} color="#999" />,
     label: 'Disabled Switch',
   },
@@ -114,8 +112,8 @@ export const Disabled: StoryObj<LabelSwitchProps> = {
 <LabelSwitch 
   label="Disabled Switch" 
   value={true} 
+  disabled={true}
   onValueChange={() => {}} 
-  containerStyle={{ opacity: 0.5 }}
   icon={<MaterialIcons name="block" size={24} color="#999" />}
 />`,
       },

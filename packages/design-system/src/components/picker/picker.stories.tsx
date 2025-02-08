@@ -289,3 +289,32 @@ export const CustomPressBehavior: StoryObj<PickerProps> = {
     },
   },
 };
+
+export const Disabled: StoryObj<PickerProps> = {
+  args: {
+    ...CategoryPickerMeta.args,
+    disabled: true,
+    options: options.map((opt, index) => ({
+      ...opt,
+      color: colorOptions[index % colorOptions.length]?.value,
+    })),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'This variant shows the Picker component in a disabled state, preventing any user interaction.',
+      },
+      source: {
+        code: `
+<Picker 
+  label="Category" 
+  options={options} 
+  multi={true}
+  disabled={true}
+/>
+        `,
+      },
+    },
+  },
+};

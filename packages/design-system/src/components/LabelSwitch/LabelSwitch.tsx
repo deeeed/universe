@@ -35,6 +35,7 @@ export interface LabelSwitchProps {
   labelStyle?: StyleProp<TextStyle>;
   onValueChange: (value: boolean) => void;
   icon?: React.ReactNode;
+  disabled?: boolean;
 }
 
 export const LabelSwitch = ({
@@ -44,18 +45,22 @@ export const LabelSwitch = ({
   labelStyle,
   onValueChange,
   icon,
+  disabled = false,
 }: LabelSwitchProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyle(theme), [theme]);
 
   const handleContainerPress = () => {
-    onValueChange(!value);
+    if (!disabled) {
+      onValueChange(!value);
+    }
   };
 
   return (
     <Pressable
-      style={[styles.container, containerStyle]}
+      style={[styles.container, containerStyle, disabled && { opacity: 0.5 }]}
       onPress={handleContainerPress}
+      disabled={disabled}
     >
       <View style={styles.labelContainer}>
         {icon && <View style={styles.icon}>{icon}</View>}
@@ -64,7 +69,7 @@ export const LabelSwitch = ({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        // Prevent the Pressable's onPress from firing when the Switch is pressed
+        disabled={disabled}
         onTouchStart={(e) => e.stopPropagation()}
       />
     </Pressable>

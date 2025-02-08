@@ -1,19 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  NativeSyntheticEvent,
+  Platform,
   Pressable,
   StyleProp,
   StyleSheet,
+  TextInputKeyPressEventData,
   TextStyle,
   View,
   ViewStyle,
-  Platform,
 } from 'react-native';
 import { ActivityIndicator, IconButton, Text } from 'react-native-paper';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
 import { TextInput } from '../TextInput/TextInput';
-import { NativeSyntheticEvent } from 'react-native';
-import { TextInputKeyPressEventData } from 'react-native';
 
 export interface EditableInfoCardProps {
   label?: string;
@@ -23,6 +23,7 @@ export interface EditableInfoCardProps {
   renderValue?: (value?: unknown) => React.ReactNode;
   editable?: boolean; // determine if the item is editable
   inlineEditable?: boolean; // if the item is inline editable
+  disabled?: boolean; // Add disabled prop
   onEdit?: () => void; // Callback function when edit icon is pressed
   onInlineEdit?: (newValue?: unknown) => void; // Callback function when inline edit is pressed
   labelStyle?: StyleProp<TextStyle>;
@@ -106,6 +107,7 @@ export function EditableInfoCard({
   processing,
   editable,
   inlineEditable,
+  disabled = false,
   onEdit,
   onInlineEdit,
   renderValue,
@@ -132,6 +134,8 @@ export function EditableInfoCard({
   }, [value]);
 
   const handleEdit = () => {
+    if (disabled) return;
+
     if (inlineEditable) {
       setIsEditing(true);
     } else if (editable && onEdit) {
@@ -140,6 +144,8 @@ export function EditableInfoCard({
   };
 
   const handleInlineEditComplete = () => {
+    if (disabled) return;
+
     if (validate) {
       const validationResult = validate(editedValue);
       if (typeof validationResult === 'string') {
@@ -182,7 +188,7 @@ export function EditableInfoCard({
               style={styles.icon}
               onPress={handleInlineEditComplete}
               accessibilityLabel="Confirm edit"
-              disabled={isSaving}
+              disabled={isSaving || disabled}
             />
             {isSaving ? (
               <ActivityIndicator size={20} style={styles.icon} />
@@ -193,6 +199,7 @@ export function EditableInfoCard({
                 style={styles.icon}
                 onPress={handleInlineEditCancel}
                 accessibilityLabel="Cancel editing"
+                disabled={disabled}
               />
             )}
           </>
@@ -203,6 +210,7 @@ export function EditableInfoCard({
             style={styles.icon}
             onPress={handleEdit}
             accessibilityLabel="Edit value"
+            disabled={disabled}
           />
         )}
       </>
@@ -269,7 +277,15 @@ export function EditableInfoCard({
   return (
     <Pressable
       onPress={handlePress}
-      disabled={!editable && !inlineEditable && !onRightActionPress}
+      disabled={
+        (!editable && !inlineEditable && !onRightActionPress) || disabled
+      }
+      style={({ pressed }) => [
+        styles.container,
+        containerStyle,
+        disabled && { opacity: 0.5 },
+        pressed && !disabled && { opacity: 0.7 },
+      ]}
     >
       {content}
     </Pressable>

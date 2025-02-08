@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { EditableInfoCard, EditableInfoCardProps } from './EditableInfoCard';
 import { Meta, StoryFn } from '@storybook/react';
-import { useModal } from '../../hooks/useModal/useModal';
 import { format } from 'date-fns';
-import { SelectOption } from '../SelectButtons/SelectButtons';
-import { Text } from 'react-native-paper';
-import { IconButton } from 'react-native-paper';
+import React, { useState } from 'react';
 import { View } from 'react-native';
+import { IconButton, Text } from 'react-native-paper';
+import { useModal } from '../../hooks/useModal/useModal';
+import { SelectOption } from '../SelectButtons/SelectButtons';
+import { EditableInfoCard, EditableInfoCardProps } from './EditableInfoCard';
 
 const ItemViewMeta: Meta<EditableInfoCardProps> = {
   component: EditableInfoCard,
@@ -462,3 +461,37 @@ export const SaveInProgress: StoryFn<EditableInfoCardProps> = (args) => {
     />
   );
 };
+
+export const Disabled: StoryFn<EditableInfoCardProps> = (args) => {
+  const [value, setValue] = useState('This card is disabled');
+  return (
+    <EditableInfoCard
+      {...args}
+      label="Disabled Card"
+      value={value}
+      editable={true}
+      inlineEditable={true}
+      disabled={true}
+      onInlineEdit={(newValue) => setValue(newValue as string)}
+    />
+  );
+};
+
+export const DisabledWithCustomAction: StoryFn<EditableInfoCardProps> = (
+  args
+) => (
+  <EditableInfoCard
+    {...args}
+    label="Disabled with Custom Action"
+    value="Disabled card with custom action"
+    disabled={true}
+    rightAction={
+      <IconButton
+        icon="star"
+        size={20}
+        onPress={() => console.log('Star pressed')}
+        disabled={true}
+      />
+    }
+  />
+);
