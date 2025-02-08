@@ -6,7 +6,8 @@ All notable changes to this project will be documented in this file.
 
 
 ## [0.42.0] - 2025-02-08
-
+- fix: invalid case in picker filenames ([117e9ca](https://github.com/deeeed/universe/commit/117e9ca889f16ae2ee1c69bde7570ffcb23783cd))
+- feat(design-system): add disabled state support across components (#46) ([b61d646](https://github.com/deeeed/universe/commit/b61d646b033cff6940768433f257f742365bee1e))
 ## [0.41.0] - 2025-02-03
 - feat: add local state management for NumberAdjuster ([34743f6](https://github.com/deeeed/universe/commit/34743f62cb1e6034baf78ec73bbfd92591df6b0c))
 ## [0.40.0] - 2025-02-03
