@@ -37,6 +37,7 @@ export * from './components/Slider/Slider';
 export * from './components/HelperWrapper/HelperWrapper';
 export * from './components/HelperText/HelperText';
 export * from './components/DarkLightToggle/DarkLightToggle';
+export * from './components/Text/Text';
 // Settings related components, useful to re-use and visualize in external storybooks
 export * from './settings/ThemeConfig/ThemeConfig';
 export * from './settings/ThemeViewer/ThemeViewer';
