@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.42.0] - 2025-02-08
+
 ## [0.41.0] - 2025-02-03
 - feat: add local state management for NumberAdjuster ([34743f6](https://github.com/deeeed/universe/commit/34743f62cb1e6034baf78ec73bbfd92591df6b0c))
 ## [0.40.0] - 2025-02-03
@@ -67,7 +69,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.41.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.42.0...HEAD
+[0.42.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.41.0...@siteed/design-system@0.42.0
 [0.41.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.40.0...@siteed/design-system@0.41.0
 [0.40.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.39.0...@siteed/design-system@0.40.0
 [0.39.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.38.0...@siteed/design-system@0.39.0
