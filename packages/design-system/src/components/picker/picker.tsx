@@ -50,6 +50,7 @@ export interface PickerProps {
   enableDynamicSizing?: boolean;
   showSearch?: boolean;
   fullWidthOptions?: boolean;
+  disabled?: boolean;
   onFinish?: (selection: SelectOption[]) => void;
   onItemPress?: (item: SelectOption) => void;
   emptyAction?: () => void;
@@ -66,6 +67,7 @@ export const Picker = ({
   multi = false,
   showSearch = false,
   fullWidthOptions = false,
+  disabled = false,
   emptyLabel = 'No options available',
   emptyOptionsTitle = 'No options available',
   emptyOptionsMessage = 'No options available',
@@ -86,6 +88,8 @@ export const Picker = ({
   }, [initialOptions]);
 
   const handlePick = useCallback(async () => {
+    if (disabled) return;
+
     try {
       const result = await openDrawer<SelectOption[]>({
         title: label,
@@ -135,6 +139,7 @@ export const Picker = ({
       logger.error('Error opening picker', error);
     }
   }, [
+    disabled,
     openDrawer,
     label,
     activeOptions,
@@ -151,8 +156,8 @@ export const Picker = ({
   );
 
   return (
-    <View style={styles.container}>
-      <Pressable style={styles.header} onPress={handlePick}>
+    <View style={[styles.container, disabled && { opacity: 0.5 }]}>
+      <Pressable style={styles.header} onPress={handlePick} disabled={disabled}>
         <Text style={styles.title} variant="headlineMedium">
           {label}
         </Text>

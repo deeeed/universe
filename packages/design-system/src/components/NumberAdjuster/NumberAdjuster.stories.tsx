@@ -30,10 +30,15 @@ const NumberAdjusterMeta: Meta<NumberAdjusterProps> = {
       action: 'changed',
       description: 'Callback function when the value changes',
     },
+    disabled: {
+      control: 'boolean',
+      description: 'Whether the number adjuster is disabled',
+    },
   },
   args: {
     label: 'Number Adjuster',
     value: 10,
+    disabled: false,
   },
 };
 
@@ -60,6 +65,34 @@ export const MinMaxSet = (args: NumberAdjusterProps) => {
       onChange={setValue}
       min={5}
       max={50}
+    />
+  );
+};
+
+export const Disabled = (args: NumberAdjusterProps) => {
+  const [value, setValue] = useState(args.value);
+  return (
+    <NumberAdjuster
+      {...args}
+      value={value}
+      onChange={setValue}
+      disabled={true}
+    />
+  );
+};
+
+export const DisabledWithCustomValue = (args: NumberAdjusterProps) => {
+  const [value, setValue] = useState(42);
+  return (
+    <NumberAdjuster
+      {...args}
+      label="Disabled Number Adjuster"
+      value={value}
+      onChange={setValue}
+      disabled={true}
+      min={0}
+      max={100}
+      step={5}
     />
   );
 };

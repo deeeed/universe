@@ -28,6 +28,7 @@ export interface NumberAdjusterProps {
   min?: number;
   max?: number;
   step?: number;
+  disabled?: boolean;
   containerStyle?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<ViewStyle>;
   buttonStyle?: StyleProp<ViewStyle>;
@@ -42,6 +43,7 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
   min = 1,
   max = Infinity,
   step = 1,
+  disabled = false,
   containerStyle,
   inputStyle,
   buttonStyle,
@@ -52,22 +54,26 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
   const [localValue, setLocalValue] = useState(value.toString());
 
   const handleIncrement = () => {
+    if (disabled) return;
     const newValue = Math.min(value + step, max);
     onChange(newValue);
     setLocalValue(newValue.toString());
   };
 
   const handleDecrement = () => {
+    if (disabled) return;
     const newValue = Math.max(value - step, min);
     onChange(newValue);
     setLocalValue(newValue.toString());
   };
 
   const handleChangeText = (text: string) => {
+    if (disabled) return;
     setLocalValue(text);
   };
 
   const handleFinishEditing = () => {
+    if (disabled) return;
     const newValue = parseInt(localValue, 10);
     if (!isNaN(newValue)) {
       const boundedValue = Math.max(Math.min(newValue, max), min);
@@ -79,7 +85,9 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
   };
 
   return (
-    <View style={[styles.inputRow, containerStyle]}>
+    <View
+      style={[styles.inputRow, containerStyle, disabled && { opacity: 0.5 }]}
+    >
       <TextInput
         label={label}
         value={localValue}
@@ -89,13 +97,22 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
         onSubmitEditing={handleFinishEditing}
         keyboardType="numeric"
         returnKeyType="done"
+        editable={!disabled}
         {...textInputProps}
       />
       <View style={[styles.buttonContainer, buttonContainerStyle]}>
-        <Button onPress={handleDecrement} style={[buttonStyle]}>
+        <Button
+          onPress={handleDecrement}
+          style={[buttonStyle]}
+          disabled={disabled}
+        >
           -{step}
         </Button>
-        <Button onPress={handleIncrement} style={[buttonStyle]}>
+        <Button
+          onPress={handleIncrement}
+          style={[buttonStyle]}
+          disabled={disabled}
+        >
           +{step}
         </Button>
       </View>
