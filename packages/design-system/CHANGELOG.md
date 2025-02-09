@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.43.1] - 2025-02-09
+
 ## [0.43.0] - 2025-02-09
 - feat: synchronize localValue with value prop using useEffect ([723e7ef](https://github.com/deeeed/universe/commit/723e7efa863344ae71b42050c0fc3ede059f6693))
 - refactor: remove unnecessary marginBottom style ([a92a6bb](https://github.com/deeeed/universe/commit/a92a6bbbce441b123ac271933f0eb1e168666065))
@@ -73,7 +75,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.43.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.43.1...HEAD
+[0.43.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.43.0...@siteed/design-system@0.43.1
 [0.43.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.42.0...@siteed/design-system@0.43.0
 [0.42.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.41.0...@siteed/design-system@0.42.0
 [0.41.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.40.0...@siteed/design-system@0.41.0
