@@ -47,6 +47,7 @@ const getStyles = ({ theme }: { theme: AppTheme }) =>
       paddingHorizontal: 12,
       paddingVertical: 8,
       backgroundColor: theme.colors.background,
+      borderColor: theme.colors.outline,
       borderWidth: 1,
       borderRadius: 8,
     },
@@ -218,8 +219,27 @@ export function EditableInfoCard({
 
   const rightActionComponent = rightAction ?? defaultRightAction;
 
-  const content = (
-    <View style={[styles.container, containerStyle]}>
+  const handlePress = () => {
+    if (inlineEditable || editable) {
+      handleEdit();
+    } else if (onRightActionPress) {
+      onRightActionPress();
+    }
+  };
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      disabled={
+        (!editable && !inlineEditable && !onRightActionPress) || disabled
+      }
+      style={({ pressed }) => [
+        styles.container,
+        containerStyle,
+        disabled && { opacity: 0.5 },
+        pressed && !disabled && { opacity: 0.7 },
+      ]}
+    >
       <View style={styles.contentContainer}>
         {label ? <Text style={[styles.label, labelStyle]}>{label}</Text> : null}
         <View style={[styles.content, contentStyle]}>
@@ -263,31 +283,6 @@ export function EditableInfoCard({
       {rightActionComponent && (
         <View style={styles.iconContainer}>{rightActionComponent}</View>
       )}
-    </View>
-  );
-
-  const handlePress = () => {
-    if (inlineEditable || editable) {
-      handleEdit();
-    } else if (onRightActionPress) {
-      onRightActionPress();
-    }
-  };
-
-  return (
-    <Pressable
-      onPress={handlePress}
-      disabled={
-        (!editable && !inlineEditable && !onRightActionPress) || disabled
-      }
-      style={({ pressed }) => [
-        styles.container,
-        containerStyle,
-        disabled && { opacity: 0.5 },
-        pressed && !disabled && { opacity: 0.7 },
-      ]}
-    >
-      {content}
     </Pressable>
   );
 }
