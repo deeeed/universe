@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Button } from '../Button/Button';
 import { TextInput } from '../TextInput/TextInput';
@@ -51,6 +51,21 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
 }) => {
   const styles = getStyles();
   const [localValue, setLocalValue] = useState(value.toString());
+
+  useEffect(() => {
+    setLocalValue(value.toString());
+  }, [value]);
+
+  useEffect(() => {
+    const currentValue = parseInt(localValue, 10);
+    if (!isNaN(currentValue)) {
+      const boundedValue = Math.max(Math.min(currentValue, max), min);
+      if (boundedValue !== currentValue) {
+        onChange(boundedValue);
+        setLocalValue(boundedValue.toString());
+      }
+    }
+  }, [min, max, onChange]);
 
   const handleIncrement = () => {
     if (disabled) return;
