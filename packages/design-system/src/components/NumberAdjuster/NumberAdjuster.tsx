@@ -8,7 +8,6 @@ const getStyles = () => {
     inputRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 10,
       gap: 5,
     },
     input: {
