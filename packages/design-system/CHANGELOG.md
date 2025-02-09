@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.43.0] - 2025-02-09
+
 ## [0.42.0] - 2025-02-08
 - fix: invalid case in picker filenames ([117e9ca](https://github.com/deeeed/universe/commit/117e9ca889f16ae2ee1c69bde7570ffcb23783cd))
 - feat(design-system): add disabled state support across components (#46) ([b61d646](https://github.com/deeeed/universe/commit/b61d646b033cff6940768433f257f742365bee1e))
@@ -70,7 +72,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.42.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.43.0...HEAD
+[0.43.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.42.0...@siteed/design-system@0.43.0
 [0.42.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.41.0...@siteed/design-system@0.42.0
 [0.41.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.40.0...@siteed/design-system@0.41.0
 [0.40.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.39.0...@siteed/design-system@0.40.0
