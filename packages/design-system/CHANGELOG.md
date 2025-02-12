@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 
 ## [0.44.0] - 2025-02-12
+- fix(deps): update @gorhom/bottom-sheet and related dependencies (#47) ([d9ec815](https://github.com/deeeed/universe/commit/d9ec8155bba0669a54f89bc9e191789322669aad))
 
 ## [0.43.0] - 2025-02-09
 - feat: synchronize localValue with value prop using useEffect ([723e7ef](https://github.com/deeeed/universe/commit/723e7efa863344ae71b42050c0fc3ede059f6693))
