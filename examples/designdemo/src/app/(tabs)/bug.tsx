@@ -66,6 +66,26 @@ export const Bug = () => {
       >
         drawer
       </Button>
+      <Button
+        onPress={() => {
+          openDrawer({
+            footerType: "confirm_cancel",
+            containerType: "scrollview",
+            title: "Long Scrolling Content",
+            bottomSheetProps: {
+              enableDynamicSizing: true,
+            },
+            render: ({ onChange, state }) => (
+              <LongScrollContent
+                onChange={onChange}
+                footerHeight={state.footerHeight}
+              />
+            ),
+          });
+        }}
+      >
+        Test Long Scroll
+      </Button>
     </View>
   );
 };
@@ -183,6 +203,40 @@ const InnerComponent = ({ onChange, footerHeight }: InnerComponentProps) => {
         />
         <Text>After picker</Text>
       </View>
+    </View>
+  );
+};
+
+interface LongScrollContentProps {
+  onChange?: (value: unknown) => void;
+  footerHeight?: number;
+}
+
+const LongScrollContent = ({ footerHeight }: LongScrollContentProps) => {
+  const { theme } = useThemePreferences();
+
+  // Create an array of 50 items for testing
+  const items = Array.from({ length: 50 }, (_, index) => index + 1);
+
+  return (
+    <View style={{ paddingHorizontal: 16 }}>
+      {items.map((item) => (
+        <View
+          key={item}
+          style={{
+            padding: 16,
+            backgroundColor: theme.colors.surface,
+            marginVertical: 8,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: theme.colors.outline,
+          }}
+        >
+          <Text>Item #{item}</Text>
+          <Text>This is a test item to demonstrate the scrolling issue</Text>
+          <Text>Footer height: {footerHeight}</Text>
+        </View>
+      ))}
     </View>
   );
 };

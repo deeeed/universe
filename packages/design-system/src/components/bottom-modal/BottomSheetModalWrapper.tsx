@@ -21,6 +21,7 @@ import type {
 } from '../../types/bottomSheet.types';
 import { ConfirmCancelFooter } from './footers/ConfirmCancelFooter';
 import { LabelHandler } from './handlers/LabelHandler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ModalContentProps {
   modalId: number;
@@ -51,6 +52,7 @@ const defaultBottomSheetModalProps: Partial<BottomSheetModalProps> = {
   enableDismissOnClose: true,
   stackBehavior: 'push',
   backgroundStyle: { backgroundColor: 'transparent' },
+  topInset: 50,
 };
 
 // Co-locate backdrop component
@@ -88,6 +90,7 @@ export const BottomSheetModalWrapper = memo(
     updateModalState,
   }: BottomSheetModalWrapperProps) => {
     const theme = useTheme();
+    const { top: topInset } = useSafeAreaInsets();
     const lastFooterHeight = useRef(modal.state.footerHeight);
 
     const handleChange = useCallback(
@@ -180,10 +183,11 @@ export const BottomSheetModalWrapper = memo(
 
     const bottomSheetProps = useMemo(
       () => ({
+        topInset,
         ...defaultBottomSheetModalProps,
         ...modal.props.bottomSheetProps,
       }),
-      [modal.props.bottomSheetProps]
+      [modal.props.bottomSheetProps, topInset]
     );
 
     const handlerComponent = useCallback(
