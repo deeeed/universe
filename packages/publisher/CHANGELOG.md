@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## [0.5.0] - 2025-02-14
+### Changed
+- feat(changelog): add automatic changelog generation & improve release workflow (#49) ([87ec7de](https://github.com/deeeed/universe/commit/87ec7ded31785bf7cc3fc807b4ae931741cad426))
+- fix: changelog cleanup ([b47a14d](https://github.com/deeeed/universe/commit/b47a14d9881a72d46454c64b303501ffe94bf69e))
 ## [0.4.19] - 2025-01-28
 
 ## [0.4.18] - 2024-11-28
@@ -45,7 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - full process with helper scripts
 - feat: full process with helper scripts
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.19...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.5.0...HEAD
+[0.5.0]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.19...@siteed/publisher@0.5.0
 [0.4.19]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.18...@siteed/publisher@0.4.19
 [0.4.18]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.17...@siteed/publisher@0.4.18
 [0.4.17]: https://github.com/deeeed/universe/compare/@siteed/publisher@0.4.16...@siteed/publisher@0.4.17
