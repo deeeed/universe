@@ -66,7 +66,7 @@ export class BranchAnalysisController {
     // Get diff between base branch and current branch
     const diffStats = await this.git.execGit({
       command: "diff",
-      args: [`${baseBranch}...${params.branchToAnalyze}`, "--numstat"],
+      args: [`origin/${baseBranch}...${params.branchToAnalyze}`, "--numstat"],
     });
 
     // Parse the diff stats into FileChange objects
@@ -87,7 +87,7 @@ export class BranchAnalysisController {
     // Get the complete diff content
     const diff = await this.git.execGit({
       command: "diff",
-      args: [`${baseBranch}...${params.branchToAnalyze}`],
+      args: [`origin/${baseBranch}...${params.branchToAnalyze}`],
     });
 
     // Group files by directory using the commit service's scope detection

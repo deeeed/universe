@@ -215,6 +215,18 @@ ${chalk.blue("Options:")}
       thisCommand.setOptionValue("debug", true);
       process.env.GITGUARD_DEBUG = "true";
     }
+
+    // Change working directory if --cwd is specified
+    if (!currentOptions.cwd) return;
+    try {
+      process.chdir(currentOptions.cwd);
+      logger.debug(`Changed working directory to: ${currentOptions.cwd}`);
+    } catch (error: unknown) {
+      logger.error(
+        `Failed to change working directory: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      process.exit(1);
+    }
   });
 
   // Parse arguments
