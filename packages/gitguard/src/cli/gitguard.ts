@@ -219,7 +219,7 @@ ${chalk.blue("Options:")}
     // Change working directory if --cwd is specified
     if (!currentOptions.cwd) return;
     try {
-      process.chdir(currentOptions.cwd as string);
+      process.chdir(currentOptions.cwd);
       logger.debug(`Changed working directory to: ${currentOptions.cwd}`);
     } catch (error: unknown) {
       logger.error(
