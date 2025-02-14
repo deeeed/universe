@@ -233,6 +233,7 @@ export class ReleaseService {
       this.logger.info("Rolling back changes...");
 
       if (previousCommitHash) {
+        // FIXME: this should only revert what was changed during the release process!!!
         await this.git.resetToCommit(previousCommitHash);
       }
 
