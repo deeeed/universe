@@ -49,7 +49,11 @@ changelogCommand
         workspaceService.getRootDir(),
         logger,
       );
-      const changelogService = new ChangelogService(logger);
+      const changelogService = new ChangelogService(
+        logger,
+        workspaceService,
+        git,
+      );
 
       // Create package manager service
       const packageManager = PackageManagerFactory.create(
@@ -202,7 +206,16 @@ changelogCommand
     try {
       const config = await loadConfig();
       const workspaceService = new WorkspaceService(config);
-      const changelogService = new ChangelogService(logger);
+      const git = new GitService(
+        config.git,
+        workspaceService.getRootDir(),
+        logger,
+      );
+      const changelogService = new ChangelogService(
+        logger,
+        workspaceService,
+        git,
+      );
 
       // Get packages to validate
       let packagesToValidate: PackageContext[] = [];
@@ -254,7 +267,11 @@ changelogCommand
         workspaceService.getRootDir(),
         logger,
       );
-      const changelogService = new ChangelogService(logger);
+      const changelogService = new ChangelogService(
+        logger,
+        workspaceService,
+        git,
+      );
 
       // Get packages to check
       let packagesToCheck = options.all
@@ -431,7 +448,11 @@ changelogCommand
         workspaceService.getRootDir(),
         logger,
       );
-      const changelogService = new ChangelogService(logger);
+      const changelogService = new ChangelogService(
+        logger,
+        workspaceService,
+        git,
+      );
 
       // Get packages to update
       let packagesToUpdate: PackageContext[] = [];

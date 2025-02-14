@@ -4,6 +4,9 @@ import path from "path";
 import { PassThrough } from "stream";
 import type { PackageContext, ReleaseConfig } from "../../types/config";
 import { ChangelogService } from "../changelog";
+import { GitService } from "../git";
+import { WorkspaceService } from "../workspace";
+import { Logger } from "../../utils/logger";
 
 // Mock setup
 jest.mock("fs", () => ({
@@ -46,7 +49,23 @@ describe("KeepAChangelogService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    service = new ChangelogService();
+    const logger = new Logger();
+    const workspaceService = new WorkspaceService();
+    const git = new GitService(
+      {
+        tagPrefix: "",
+        requireCleanWorkingDirectory: true,
+        requireUpToDate: true,
+        requireUpstreamTracking: true,
+        commit: true,
+        push: true,
+        commitMessage: "",
+        tag: true,
+        remote: "origin",
+      },
+      workspaceService.getRootDir(),
+    );
+    service = new ChangelogService(logger, workspaceService, git);
 
     // Set the mock directly with proper typing
     Object.defineProperty(service, "workspaceService", {

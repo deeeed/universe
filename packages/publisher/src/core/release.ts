@@ -48,8 +48,12 @@ export class ReleaseService {
       config.npm,
     );
     this.version = new VersionService(config.git);
-    this.changelog = new ChangelogService(this.logger);
     this.workspace = new WorkspaceService(config, this.logger);
+    this.changelog = new ChangelogService(
+      this.logger,
+      this.workspace,
+      this.git,
+    );
     this.prompts = new Prompts(this.logger);
     this.integrityService = new WorkspaceIntegrityService(
       this.packageManager,

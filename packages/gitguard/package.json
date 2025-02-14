@@ -1,7 +1,7 @@
 {
   "name": "gitguard",
   "packageManager": "yarn@4.5.0",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "GitGuard is a tool that helps you enforce best practices in your Git commit messages.",
   "author": "Arthur Breton <abreton@siteed.net> (https://siteed.net/)",
   "license": "MIT",
