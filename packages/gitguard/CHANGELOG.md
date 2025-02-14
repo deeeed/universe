@@ -6,10 +6,7 @@ All notable changes to this project will be documented in this file.
 
 
 ## [0.7.1] - 2025-02-14
-### Changed
-- test
-## [0.7.0] - 2025-02-14
-
+- Add --cwd option to release command to allow specifying a different working directory (#40) ([43229bd](https://github.com/deeeed/universe/commit/43229bd45361d629d81585179885deba1d891ade))
 ## [0.6.0] - 2024-11-19
 - improve token management and complexity analysis (#37) ([43229bd](https://github.com/deeeed/universe/commit/43229bd45361d629d81585179885deba1d891ade))
 - refactor(ai): standardize token limits and security checks (#38) ([1ff1afc](https://github.com/deeeed/universe/commit/1ff1afc968cabbfb9a1c691f0d15acbdc4275b76))
