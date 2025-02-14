@@ -315,6 +315,11 @@ export class ChangelogService {
       );
       const content = await fs.readFile(changelogPath, "utf8");
 
+      // First, clean up the newChanges by removing any version headers
+      const cleanedChanges = newChanges
+        .replace(/^##\s*\[[^\]]+\](?:\s*-\s*\d{4}-\d{2}-\d{2})?\n?/, "")
+        .trim();
+
       // Extract the unreleased section and preserve all its content
       const unreleasedMatch = /## \[Unreleased\]([\s\S]*?)(?=\n##|$)/.exec(
         content,
@@ -335,7 +340,12 @@ export class ChangelogService {
       });
 
       // Then, parse and merge new changes
-      const newSections = newChanges.split(/(?=### )/);
+      // If the cleaned changes don't start with a section header, wrap them in "Changed"
+      const processedChanges = cleanedChanges.startsWith("### ")
+        ? cleanedChanges
+        : `### Changed\n${cleanedChanges}`;
+
+      const newSections = processedChanges.split(/(?=### )/);
       newSections.forEach((section) => {
         const match = /### ([^\n]+)([\s\S]*)/g.exec(section);
         if (match) {
