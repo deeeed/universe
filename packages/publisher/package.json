@@ -33,7 +33,7 @@
     "release": "node ./dist/bin/publisher.js publish",
     "dev": "DEBUG=true node --inspect -r ts-node/register bin/publisher.ts",
     "publisher": "ts-node bin/publisher.ts",
-    "publisher:debug": "DEBUG=true node --inspect -r ts-node/register bin/publisher.ts",
+    "publisher:debug": "DEBUG=true node --inspect -r ts-node/register bin/publisher.ts release --no-git-check --cwd ../gitguard",
     "prepare": "husky install",
     "setup-cli": "chmod +x setup-cli.sh && ./setup-cli.sh",
     "test:e2e": "ts-node ./e2e/index.ts",

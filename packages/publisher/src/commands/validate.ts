@@ -10,6 +10,7 @@ import {
 import { VersionService } from "../core/version";
 import { WorkspaceService } from "../core/workspace";
 import type {
+  MonorepoConfig,
   PackageContext,
   PackageManager,
   ReleaseConfig,
@@ -127,15 +128,16 @@ export class ValidateCommand {
     const changelogService = new ChangelogService(
       this.logger,
       this.workspaceService,
+      this.gitService,
     );
 
     // Check if any "only" flags are set
     const onlyMode =
-      options.authOnly ||
-      options.gitOnly ||
-      options.depsOnly ||
-      options.versionOnly ||
-      options.changelogOnly ||
+      options.authOnly ??
+      options.gitOnly ??
+      options.depsOnly ??
+      options.versionOnly ??
+      options.changelogOnly ??
       options.publishOnly;
 
     // Determine what to validate
@@ -572,9 +574,16 @@ Examples:
 
 export async function validateChangelogs(
   packages: PackageContext[],
-  config: ReleaseConfig,
+  config: MonorepoConfig,
 ): Promise<void> {
-  const changelogService = new ChangelogService();
+  const logger = new Logger();
+  const workspaceService = new WorkspaceService(config, logger);
+  const gitService = new GitService(config.git, process.cwd(), logger);
+  const changelogService = new ChangelogService(
+    logger,
+    workspaceService,
+    gitService,
+  );
 
   if (!packages || packages.length === 0) {
     throw new Error("No packages found to validate");

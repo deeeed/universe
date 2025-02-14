@@ -532,7 +532,7 @@ export class GitService {
   }
 
   async resetToCommit(commitHash: string): Promise<void> {
-    await this.runGitCommand(["reset", "--hard", commitHash]);
+    await this.runGitCommand(["reset", "--soft", commitHash]);
   }
 
   async getAllCommits(): Promise<GitCommit[]> {
