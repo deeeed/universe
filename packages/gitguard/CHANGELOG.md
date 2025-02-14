@@ -3,8 +3,11 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-- test
 
+
+## [0.7.1] - 2025-02-14
+### Changed
+- test
 ## [0.7.0] - 2025-02-14
 
 ## [0.6.0] - 2024-11-19
@@ -46,7 +49,8 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - inititial version.
 
-[unreleased]: https://github.com/deeeed/universe/compare/gitguard@0.7.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/gitguard@0.7.1...HEAD
+[0.7.1]: https://github.com/deeeed/universe/compare/gitguard@0.7.0...gitguard@0.7.1
 [0.7.0]: https://github.com/deeeed/universe/compare/gitguard@0.6.0...gitguard@0.7.0
 [0.6.0]: https://github.com/deeeed/universe/compare/gitguard@0.5.1...gitguard@0.6.0
 [0.5.0]: https://github.com/deeeed/universe/compare/gitguard@0.4.3...gitguard@0.5.0
