@@ -8,6 +8,7 @@ export interface GlobalOptions {
   skipSecurity?: boolean;
   split?: boolean;
   noColors?: boolean;
+  cwd?: string;
 }
 
 // Helper to get all options including globals
@@ -27,5 +28,6 @@ export function addGlobalOptions(command: Command): Command {
     .option("--ai", "Enable AI-powered suggestions")
     .option("--skip-security", "Skip security checks")
     .option("--no-colors", "Disable colors")
-    .option("--split", "Suggest split changes using AI");
+    .option("--split", "Suggest split changes using AI")
+    .option("--cwd <path>", "Set working directory");
 }

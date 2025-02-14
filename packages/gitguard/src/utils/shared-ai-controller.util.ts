@@ -206,7 +206,7 @@ export async function handleClipboardCopy({
     );
 
     const shouldProceed = await promptYesNo({
-      message: "Would you like to copy to clipboard anyway?",
+      message: "Would you like to copy to clipboard anyway? AAAA",
       defaultValue: false,
       logger,
     });

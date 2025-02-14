@@ -4,6 +4,7 @@ import {
   DEFAULT_MAX_PROMPT_TOKENS,
   TOKEN_TO_CHAR_RATIO,
 } from "../constants.js";
+import { GitConfig } from "../types/config.types.js";
 import { FileChange } from "../types/git.types.js";
 import { Logger } from "../types/logger.types.js";
 
@@ -283,24 +284,35 @@ function buildOptimizedDiff(params: {
   };
 }
 
-export function formatDiffForAI(params: DiffParams): string {
+export function formatDiffForAI({
+  files,
+  diff,
+  maxLength,
+  logger,
+  options,
+  gitConfig,
+}: {
+  files: FileChange[];
+  diff: string;
+  maxLength?: number;
+  logger?: Logger;
+  options?: {
+    includeTests?: boolean;
+    prioritizeCore?: boolean;
+    contextLines?: number;
+  };
+  gitConfig?: GitConfig;
+}): string {
   const {
-    files,
-    diff,
-    maxLength = DEFAULT_MAX_PROMPT_TOKENS,
-    logger,
-    options = {
-      includeTests: false,
-      prioritizeCore: true,
-      contextLines: 3,
-    },
-  } = params;
+    includeTests = false,
+    prioritizeCore = true,
+    contextLines = 3,
+  } = options ?? {};
 
   const fullOptions: DiffOptions = {
-    includeTests: false,
-    prioritizeCore: true,
-    contextLines: 3,
-    ...options,
+    includeTests,
+    prioritizeCore,
+    contextLines,
   };
 
   if (!diff || diff.length === 0) return "";
@@ -311,6 +323,21 @@ export function formatDiffForAI(params: DiffParams): string {
 
   // Process each file
   for (const file of files) {
+    // Check if file should be ignored based on config patterns
+    const isIgnored = gitConfig?.ignorePatterns?.some((pattern) => {
+      // Convert glob pattern to regex
+      const regexPattern = pattern
+        .replace(/\./g, "\\.")
+        .replace(/\*/g, ".*")
+        .replace(/\?/g, ".");
+      return new RegExp(regexPattern).test(file.path);
+    });
+
+    if (isIgnored) {
+      logger?.debug(`Skipping ignored file: ${file.path}`);
+      continue;
+    }
+
     // Find matching section using normalized paths
     const fileSection = sections.find((section) => {
       const match = /diff --git [a-z]\/(.+?) [a-z]\//.exec(section);
@@ -396,7 +423,9 @@ export function formatDiffForAI(params: DiffParams): string {
   const groupedFiles = groupRelatedFiles({ files: fileSignificances, logger });
   const result = buildOptimizedDiff({
     groups: groupedFiles,
-    maxLength: maxLength * 0.95, // Leave room for truncation message
+    maxLength:
+      (maxLength ??
+        Math.ceil(DEFAULT_MAX_PROMPT_TOKENS * TOKEN_TO_CHAR_RATIO)) * 0.95, // Leave room for truncation message
     logger,
   });
 

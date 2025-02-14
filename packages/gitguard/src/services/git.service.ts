@@ -179,7 +179,9 @@ export class GitService extends BaseService {
         command: "log",
         args: [
           "--format=%H%n%an%n%aI%n%B%n--END--",
-          `${params.from}..${params.to}`,
+          `${params.from}...${params.to}`,
+          "--no-merges", // Ignore merge commits
+          "--first-parent", // Follow only the first parent commit upon seeing a merge commit
         ],
         cwd: this.cwd,
       });
@@ -195,62 +197,64 @@ export class GitService extends BaseService {
 
   async getFileChanges(params: { staged: boolean }): Promise<FileChange[]> {
     try {
-      const type = params.staged ? "staged" : "unstaged";
-      this.logger.debug(`Getting ${type} changes`);
+      if (params.staged) {
+        // Keep existing staged files logic
+        return this.getStagedChanges();
+      }
 
-      const statusOutput = await this.execGit({
-        command: "status",
-        args: ["--porcelain"],
+      this.logger.debug("Getting unstaged changes compared to remote");
+
+      // Ensure we have latest remote info
+      await this.execGit({
+        command: "fetch",
+        args: ["origin"],
+        cwd: this.cwd,
+      });
+
+      const baseBranch = this.gitConfig.baseBranch || "main";
+
+      // Get changed files compared to remote base branch
+      const changedFiles = await this.execGit({
+        command: "diff",
+        args: [`origin/${baseBranch}...HEAD`, "--name-status"],
+        cwd: this.cwd,
+      });
+
+      // Get numstat for additions/deletions counts
+      const numstatOutput = await this.execGit({
+        command: "diff",
+        args: [`origin/${baseBranch}...HEAD`, "--numstat"],
         cwd: this.cwd,
       });
 
       const renamedFiles = parseGitStatus({
-        statusOutput,
-        filterPrefix: params.staged ? "R" : " R",
-      });
-
-      const numstatOutput = await this.execGit({
-        command: "diff",
-        args: params.staged ? ["--cached", "--numstat"] : ["--numstat"],
-        cwd: this.cwd,
+        statusOutput: changedFiles,
+        filterPrefix: " R",
       });
 
       const files = numstatOutput
         .split("\n")
         .filter(Boolean)
-        .flatMap((line) => parseNumstatLine({ line, renamedFiles }));
+        .flatMap((line) => parseNumstatLine({ line, renamedFiles }))
+        .filter((file) => this.shouldIncludeFile(file.path));
 
-      if (!params.staged) {
-        const untrackedOutput = await this.execGit({
-          command: "ls-files",
-          args: ["--others", "--exclude-standard"],
-          cwd: this.cwd,
-        });
-
-        if (untrackedOutput.trim()) {
-          const untrackedFiles = untrackedOutput
-            .split("\n")
-            .filter(Boolean)
-            .map((path) => ({
-              path: path.trim(),
-              additions: 0,
-              deletions: 0,
-              status: "untracked" as const,
-              ...FileUtil.getFileType({ path }),
-            }));
-          files.push(...untrackedFiles);
-        }
-      }
-
-      this.logger.debug(`${type} files:`, files);
+      this.logger.debug(`Changed files:`, files);
       return files;
     } catch (error) {
-      this.logger.error(
-        `Failed to get ${params.staged ? "staged" : "unstaged"} changes:`,
-        error,
-      );
+      this.logger.error("Failed to get changes:", error);
       return [];
     }
+  }
+
+  private shouldIncludeFile(path: string): boolean {
+    const ignorePatterns = this.gitConfig.ignorePatterns ?? [];
+    return !ignorePatterns.some((pattern) => {
+      const regexPattern = pattern
+        .replace(/\./g, "\\.")
+        .replace(/\*/g, ".*")
+        .replace(/\?/g, ".");
+      return new RegExp(regexPattern).test(path);
+    });
   }
 
   async getStagedChanges(): Promise<FileChange[]> {
@@ -627,7 +631,6 @@ export class GitService extends BaseService {
     try {
       this.logger.debug("Getting staged diff for AI analysis");
 
-      // Get diff in a single command instead of per file
       const diff = await this.execGit({
         command: "diff",
         args: ["--cached", "--no-color"],
@@ -646,6 +649,7 @@ export class GitService extends BaseService {
         diff,
         maxLength: 8000,
         logger: this.logger,
+        gitConfig: this.gitConfig,
       });
     } catch (error) {
       this.logger.error("Failed to get staged diff for AI:", error);
