@@ -1,7 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "types": ["node"]  // Override to exclude jest types in production
-  },
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/__tests__/**", "**/__mocks__/**", "jest.setup.ts", "jest.config.ts"]
-}
