@@ -8,8 +8,8 @@ type SpacerProps = {
 };
 
 const Spacer = ({ horizontal, vertical, testID }: SpacerProps) => (
-  <View 
-    style={{ paddingHorizontal: horizontal, paddingVertical: vertical }} 
+  <View
+    style={{ paddingHorizontal: horizontal, paddingVertical: vertical }}
     testID={testID}
   />
 );
