@@ -9,13 +9,14 @@ const getStyles = () => {
 
 export interface AvatarProps {
   id: string;
+  testID?: string;
 }
-export const Avatar = ({ id }: AvatarProps) => {
+export const Avatar = ({ id, testID }: AvatarProps) => {
   const styles = useMemo(() => getStyles(), []);
 
   return (
-    <View style={styles.container}>
-      <Text>TODO {id}</Text>
+    <View style={styles.container} testID={testID}>
+      <Text testID={testID ? `${testID}-text` : undefined}>TODO {id}</Text>
     </View>
   );
 };

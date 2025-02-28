@@ -1,7 +1,13 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ViewProps } from 'react-native';
 
-const Divider = () => <View style={styles.container} />;
+interface DividerProps extends Pick<ViewProps, 'testID'> {
+  testID?: string;
+}
+
+const Divider = ({ testID }: DividerProps) => (
+  <View style={styles.container} testID={testID} />
+);
 
 const styles = StyleSheet.create({
   container: {

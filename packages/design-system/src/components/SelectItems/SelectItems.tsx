@@ -70,6 +70,7 @@ export interface SelectItemsProps<T> {
   options: SelectItemOption<T>[];
   onFinish?: (options: SelectItemOption<T>[]) => void;
   onChange?: (options: SelectItemOption<T>[]) => void;
+  testID?: string;
 }
 
 export const SelectItems = <T,>({
@@ -83,6 +84,7 @@ export const SelectItems = <T,>({
   showSearch,
   onFinish,
   onChange,
+  testID,
 }: SelectItemsProps<T>) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -216,7 +218,7 @@ export const SelectItems = <T,>({
   }, [onFinish, currentOptions, refInit]);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID={testID}>
       {showSearch && (
         <Searchbar
           placeholder={t('search_placeholder')}
@@ -224,9 +226,10 @@ export const SelectItems = <T,>({
           onChangeText={handleSearchChange}
           onKeyPress={handleKeyPress}
           value={searchQuery}
+          testID={`${testID}-searchbar`}
         />
       )}
-      <HelperText type="error" visible={isErrorVisible || false}>
+      <HelperText type="error" visible={isErrorVisible || false} testID={`${testID}-error-text`}>
         {errorText}
       </HelperText>
       {/* Use FlatList to handle the grid layout */}
@@ -236,16 +239,18 @@ export const SelectItems = <T,>({
         keyExtractor={(_item, index) => `opt${index}`}
         numColumns={numColumns}
         key={`flatlist-${numColumns}`} // force re-render when numColumns changes
+        testID={`${testID}-flatlist`}
       />
       {showFooter && (
-        <View style={styles.footer}>
-          <Button style={styles.cancelButton} onPress={handleCancel}>
+        <View style={styles.footer} testID={`${testID}-footer`}>
+          <Button style={styles.cancelButton} onPress={handleCancel} testID={`${testID}-cancel-button`}>
             {t('cancel')}
           </Button>
           <Button
             style={styles.finishButton}
             mode="contained"
             onPress={handleFinish}
+            testID={`${testID}-finish-button`}
           >
             {t('finish')}
           </Button>

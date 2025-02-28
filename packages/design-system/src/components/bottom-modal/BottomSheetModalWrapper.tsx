@@ -80,6 +80,7 @@ interface BottomSheetModalWrapperProps {
     modalId: number;
     updates: Partial<ModalState<unknown>>;
   }) => void;
+  testID?: string;
 }
 
 export const BottomSheetModalWrapper = memo(
@@ -88,6 +89,7 @@ export const BottomSheetModalWrapper = memo(
     onSheetChanges,
     onDismiss,
     updateModalState,
+    testID,
   }: BottomSheetModalWrapperProps) => {
     const theme = useTheme();
     const { top: topInset } = useSafeAreaInsets();
@@ -224,28 +226,30 @@ export const BottomSheetModalWrapper = memo(
     );
 
     return (
-      <BottomSheetModal
-        ref={modal.bottomSheetRef}
-        {...bottomSheetProps}
-        handleComponent={handlerComponent}
-        footerComponent={renderFooter}
-        backdropComponent={BackdropComponent}
-        stackBehavior={
-          bottomSheetProps?.stackBehavior ||
-          defaultBottomSheetModalProps.stackBehavior
-        }
-        onChange={(index, position, type) =>
-          onSheetChanges({
-            modalId: modal.id,
-            index,
-            position,
-            type,
-          })
-        }
-        onDismiss={() => onDismiss({ modalId: modal.id })}
-      >
-        {renderContent()}
-      </BottomSheetModal>
+      <View testID={testID}>
+        <BottomSheetModal
+          ref={modal.bottomSheetRef}
+          {...bottomSheetProps}
+          handleComponent={handlerComponent}
+          footerComponent={renderFooter}
+          backdropComponent={BackdropComponent}
+          stackBehavior={
+            bottomSheetProps?.stackBehavior ||
+            defaultBottomSheetModalProps.stackBehavior
+          }
+          onChange={(index, position, type) =>
+            onSheetChanges({
+              modalId: modal.id,
+              index,
+              position,
+              type,
+            })
+          }
+          onDismiss={() => onDismiss({ modalId: modal.id })}
+        >
+          {renderContent()}
+        </BottomSheetModal>
+      </View>
     );
   },
   (prev, next) => {

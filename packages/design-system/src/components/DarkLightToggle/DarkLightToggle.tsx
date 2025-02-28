@@ -29,6 +29,8 @@ export interface DarkLightToggleProps {
   isDark?: boolean;
   /** Callback when toggle is pressed */
   onToggle?: (isDark: boolean) => void;
+  /** Test ID for Detox testing */
+  testID?: string;
 }
 
 function calculateSizes(height: number) {
@@ -71,6 +73,7 @@ export const DarkLightToggle = ({
   colors = DEFAULT_CONFIG.colors,
   isDark = false,
   onToggle,
+  testID,
 }: DarkLightToggleProps = {}) => {
   const sizes = calculateSizes(height);
   const progress = useSharedValue(isDark ? 0 : 1);
@@ -279,7 +282,7 @@ export const DarkLightToggle = ({
 
   return (
     <View style={styles.container}>
-      <Pressable onPress={handleToggle}>
+      <Pressable onPress={handleToggle} testID={testID}>
         <Animated.View style={[styles.toggle, toggleStyle]}>
           <Animated.View style={[styles.moonSun, moonSunStyle]}>
             {isDark ? (
@@ -287,7 +290,10 @@ export const DarkLightToggle = ({
                 <View style={styles.crescentOverlay} />
               </View>
             ) : (
-              <SunRays />
+              <View style={styles.sunContainer}>
+                <View style={styles.sun} />
+                <SunRays />
+              </View>
             )}
           </Animated.View>
           <Animated.View style={[styles.star, styles.star1, starStyle1]} />

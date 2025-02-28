@@ -34,6 +34,7 @@ export interface EmptyProps {
     container?: object;
     image?: object;
   };
+  testID?: string;
 }
 
 export const Empty = ({
@@ -43,20 +44,31 @@ export const Empty = ({
   image,
   buttonProps = {},
   style = {},
+  testID,
 }: EmptyProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getItemStyle({ theme }), [theme]);
 
   return (
-    <View style={[styles.container, style.container]}>
+    <View style={[styles.container, style.container]} testID={testID}>
       <Image
         source={image}
         style={[styles.image, style.image]}
         resizeMode="contain"
+        testID={testID ? `${testID}-image` : undefined}
       />
-      <Text variant="labelMedium">{message}</Text>
+      <Text
+        variant="labelMedium"
+        testID={testID ? `${testID}-message` : undefined}
+      >
+        {message}
+      </Text>
       {buttonValue && (
-        <Button onPress={onPress} {...buttonProps}>
+        <Button
+          onPress={onPress}
+          {...buttonProps}
+          testID={testID ? `${testID}-button` : undefined}
+        >
           {buttonValue}
         </Button>
       )}

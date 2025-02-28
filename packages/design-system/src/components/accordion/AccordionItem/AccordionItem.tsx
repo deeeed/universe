@@ -52,6 +52,7 @@ export interface AccordionItemProps extends AccordionItemData {
   children: React.ReactNode;
   titleStyle?: StyleProp<TextStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  testID?: string;
 }
 
 const animationConfig: WithTimingConfig = {
@@ -66,6 +67,7 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
   children,
   expanded = false,
   onHeaderPress,
+  testID,
 }) => {
   const theme = useTheme();
   const styles = getStyles({ theme });
@@ -92,8 +94,12 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
   }, [onHeaderPress]);
 
   return (
-    <View style={styles.container}>
-      <Pressable style={styles.header} onPress={handlePress}>
+    <View style={styles.container} testID={testID}>
+      <Pressable
+        style={styles.header}
+        onPress={handlePress}
+        testID={testID ? `${testID}-header` : undefined}
+      >
         <Text style={[styles.title, titleStyle]}>{title}</Text>
         <Animated.View style={iconAnimatedStyle}>
           <MaterialCommunityIcons
@@ -109,6 +115,7 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
           contentAnimatedStyle,
           contentContainerStyle,
         ]}
+        testID={testID ? `${testID}-content` : undefined}
       >
         <View style={styles.content}>{children}</View>
       </Animated.View>

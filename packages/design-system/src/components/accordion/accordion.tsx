@@ -10,6 +10,7 @@ export interface AccordionProps {
   titleStyle?: StyleProp<TextStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
   singleExpand?: boolean;
+  testID?: string;
 }
 
 export const Accordion: React.FC<AccordionProps> = ({
@@ -17,6 +18,7 @@ export const Accordion: React.FC<AccordionProps> = ({
   titleStyle,
   contentContainerStyle,
   singleExpand = false,
+  testID,
 }) => {
   const [expandedIndices, setExpandedIndices] = useState<number[]>(
     data.reduce<number[]>(
@@ -58,6 +60,7 @@ export const Accordion: React.FC<AccordionProps> = ({
           ]}
           expanded={expandedIndices.includes(index)}
           onHeaderPress={() => handleHeaderPress(index)}
+          testID={testID ? `${testID}-item-${index}` : undefined}
         />
       ))}
     </>

@@ -43,6 +43,7 @@ export interface ListItemProps {
   subLabel?: string;
   subLabelStyle?: StyleProp<TextStyle>;
   onPress?: () => void;
+  testID?: string;
 }
 export const ListItem = ({
   label,
@@ -52,6 +53,7 @@ export const ListItem = ({
   textContentContainerStyle,
   subLabelStyle,
   onPress,
+  testID,
 }: ListItemProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyle(theme), [theme]);
@@ -60,17 +62,32 @@ export const ListItem = ({
     <Pressable
       style={[styles.container, contentContainerStyle]}
       onPress={onPress}
+      testID={testID}
     >
-      <View style={[styles.textContainer, textContentContainerStyle]}>
-        <Text style={[styles.label, labelStyle]}>{label}</Text>
+      <View
+        style={[styles.textContainer, textContentContainerStyle]}
+        testID={testID ? `${testID}-text-container` : undefined}
+      >
+        <Text
+          style={[styles.label, labelStyle]}
+          testID={testID ? `${testID}-label` : undefined}
+        >
+          {label}
+        </Text>
         {subLabel ? (
-          <Text style={[styles.subLabel, subLabelStyle]}>{subLabel}</Text>
+          <Text
+            style={[styles.subLabel, subLabelStyle]}
+            testID={testID ? `${testID}-sublabel` : undefined}
+          >
+            {subLabel}
+          </Text>
         ) : null}
       </View>
       <MaterialCommunityIcons
         name={'chevron-right'}
         size={24}
         color={theme.colors.text}
+        testID={testID ? `${testID}-icon` : undefined}
       />
     </Pressable>
   );

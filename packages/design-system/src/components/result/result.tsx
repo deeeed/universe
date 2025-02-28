@@ -59,6 +59,7 @@ export interface ResultProps {
   extra?: React.ReactNode;
   onButtonPress?: (e: GestureResponderEvent) => void;
   onSecondaryButtonPress?: (e: GestureResponderEvent) => void;
+  testID?: string;
 }
 export const Result = ({
   buttonText = 'ACTION',
@@ -75,6 +76,7 @@ export const Result = ({
   onSecondaryButtonPress,
   style,
   title,
+  testID,
 }: ResultProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles({ theme }), [theme]);
@@ -115,39 +117,62 @@ export const Result = ({
   }
 
   return (
-    <View style={[styles.container, style]}>
-      {imgContent}
+    <View style={[styles.container, style]} testID={testID}>
+      {imgContent && <View testID={`${testID}-image`}>{imgContent}</View>}
       {title ? (
-        <View style={styles.titleContainer}>
-          <Text variant="headlineMedium" style={styles.titleText}>
+        <View
+          style={styles.titleContainer}
+          testID={`${testID}-title-container`}
+        >
+          <Text
+            variant="headlineMedium"
+            style={styles.titleText}
+            testID={`${testID}-title`}
+          >
             {title}
           </Text>
         </View>
       ) : null}
       {message ? (
-        <View style={styles.messageContainer}>
-          <Text variant="bodyMedium" style={styles.messageText}>
+        <View
+          style={styles.messageContainer}
+          testID={`${testID}-message-container`}
+        >
+          <Text
+            variant="bodyMedium"
+            style={styles.messageText}
+            testID={`${testID}-message`}
+          >
             {message}
           </Text>
         </View>
       ) : null}
-      <View style={styles.buttonWrap}>
+      <View style={styles.buttonWrap} testID={`${testID}-buttons`}>
         {onButtonPress ? (
           <Button
             style={styles.button}
             mode={buttonMode}
             onPress={onButtonPress}
+            testID={`${testID}-primary-button`}
           >
             {buttonText}
           </Button>
         ) : null}
         {secondaryButtonText ? (
-          <Button mode={secondaryButtonMode} onPress={onSecondaryButtonPress}>
+          <Button
+            mode={secondaryButtonMode}
+            onPress={onSecondaryButtonPress}
+            testID={`${testID}-secondary-button`}
+          >
             {secondaryButtonText}
           </Button>
         ) : null}
       </View>
-      {extra && <View style={styles.extraContainer}>{extra}</View>}
+      {extra && (
+        <View style={styles.extraContainer} testID={`${testID}-extra`}>
+          {extra}
+        </View>
+      )}
     </View>
   );
 };

@@ -23,6 +23,7 @@ import {
 
 export interface TextInputProps extends PTextInputProps {
   mandatory?: boolean;
+  testID?: string;
 }
 
 export interface InputRefMethods {
@@ -40,7 +41,7 @@ const useSafeBottomSheetInternal = () => {
 const isWeb = Platform.OS === 'web';
 
 export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
-  ({ mandatory, label, onFocus, onBlur, autoFocus, ...rest }, ref) => {
+  ({ mandatory, label, onFocus, onBlur, autoFocus, testID, ...rest }, ref) => {
     const inputRef = useRef<RNTextInput>(null);
     const bottomSheetInternal = useSafeBottomSheetInternal();
     const [shouldFocus, setShouldFocus] = useState(!isWeb);
@@ -110,6 +111,7 @@ export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
         onFocus={handleOnFocus}
         onBlur={handleOnBlur}
         autoFocus={isWeb ? shouldFocus && autoFocus : autoFocus}
+        testID={testID}
       />
     );
   }

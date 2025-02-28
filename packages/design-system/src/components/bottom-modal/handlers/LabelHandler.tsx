@@ -40,22 +40,37 @@ const getStyles = (theme: AppTheme) => {
 
 export interface LabelHandlerProps extends BottomSheetHandleProps {
   label?: string;
+  testID?: string;
 }
-export const LabelHandler = ({ label = '', ...rest }: LabelHandlerProps) => {
+export const LabelHandler = ({
+  label = '',
+  testID,
+  ...rest
+}: LabelHandlerProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
   return (
-    <BottomSheetHandle
-      {...rest}
-      indicatorStyle={styles.indicator}
-      style={styles.container}
-    >
-      {label ? (
-        <View style={styles.titleContainer}>
-          <Text variant="titleSmall">{label}</Text>
-        </View>
-      ) : undefined}
-    </BottomSheetHandle>
+    <View testID={testID}>
+      <BottomSheetHandle
+        {...rest}
+        indicatorStyle={styles.indicator}
+        style={styles.container}
+      >
+        {label ? (
+          <View
+            style={styles.titleContainer}
+            testID={testID ? `${testID}-title-container` : undefined}
+          >
+            <Text
+              variant="titleSmall"
+              testID={testID ? `${testID}-title` : undefined}
+            >
+              {label}
+            </Text>
+          </View>
+        ) : undefined}
+      </BottomSheetHandle>
+    </View>
   );
 };

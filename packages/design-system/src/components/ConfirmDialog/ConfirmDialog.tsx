@@ -71,6 +71,7 @@ export interface ConfirmDialogProps {
   noticeStyle?: TextStyle;
   actionsStyle?: ViewStyle;
   dialogStyle?: ViewStyle;
+  testID?: string;
 }
 
 export function ConfirmDialog({
@@ -86,6 +87,7 @@ export function ConfirmDialog({
   noticeStyle,
   actionsStyle,
   dialogStyle,
+  testID,
 }: ConfirmDialogProps) {
   const theme = useTheme();
   const styles = useMemo(() => getStyles({ theme }), [theme]);
@@ -109,11 +111,27 @@ export function ConfirmDialog({
       visible={visible}
       onDismiss={onDismiss}
       style={[styles.container, styles.webContainer, dialogStyle, style]}
+      testID={testID}
     >
-      <Dialog.Content style={[styles.content, contentStyle]}>
-        <Text style={[styles.title, titleStyle]}>{title}</Text>
-        {notice && <Text style={[styles.notice, noticeStyle]}>{notice}</Text>}
-        <Dialog.Actions style={[styles.actions, actionsStyle]}>
+      <Dialog.Content
+        style={[styles.content, contentStyle]}
+        testID={`${testID}-content`}
+      >
+        <Text style={[styles.title, titleStyle]} testID={`${testID}-title`}>
+          {title}
+        </Text>
+        {notice && (
+          <Text
+            style={[styles.notice, noticeStyle]}
+            testID={`${testID}-notice`}
+          >
+            {notice}
+          </Text>
+        )}
+        <Dialog.Actions
+          style={[styles.actions, actionsStyle]}
+          testID={`${testID}-actions`}
+        >
           <Button
             mode={defaultCancelButton.mode}
             onPress={defaultCancelButton.onPress}
@@ -121,6 +139,7 @@ export function ConfirmDialog({
             disabled={defaultCancelButton.disabled}
             style={[styles.button, defaultCancelButton.style]}
             labelStyle={defaultCancelButton.labelStyle}
+            testID={`${testID}-cancel-button`}
           >
             {defaultCancelButton.label}
           </Button>
@@ -131,6 +150,7 @@ export function ConfirmDialog({
             disabled={defaultConfirmButton.disabled}
             style={[styles.button, defaultConfirmButton.style]}
             labelStyle={defaultConfirmButton.labelStyle}
+            testID={`${testID}-confirm-button`}
           >
             {defaultConfirmButton.label}
           </Button>

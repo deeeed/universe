@@ -25,12 +25,17 @@ const getStyles = ({
 export interface ThemedViewProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 }
 
-export const ThemedView = ({ children, style }: ThemedViewProps) => {
+export const ThemedView = ({ children, style, testID }: ThemedViewProps) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => getStyles({ theme, insets }), [theme, insets]);
 
-  return <View style={[styles.container, style]}>{children}</View>;
+  return (
+    <View style={[styles.container, style]} testID={testID}>
+      {children}
+    </View>
+  );
 };

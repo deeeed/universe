@@ -58,6 +58,7 @@ export interface DynInputProps {
   cancelOnEscape?: boolean;
   onChange?: (value: DynamicType) => void;
   initiallyOpen?: boolean; // Prevent double modals if called from editProps
+  testID?: string;
 }
 
 const logger = baseLogger.extend('DynInput');
@@ -95,6 +96,7 @@ export const DynInput = ({
   finishOnEnter,
   cancelOnEscape,
   initiallyOpen = false, // Default to false if not provided
+  testID,
 }: DynInputProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -158,13 +160,14 @@ export const DynInput = ({
           finishOnEnter || cancelOnEscape ? handleKeyPress : undefined
         }
         submitBehavior={finishOnEnter ? 'submit' : undefined}
+        testID={`${testID}-number-input`}
       />
     );
   };
 
   const renderText = () => {
     return (
-      <View>
+      <View testID={`${testID}-text-container`}>
         <TextInput
           multiline={!!(numberOfLines && numberOfLines > 0)}
           numberOfLines={numberOfLines}
@@ -175,6 +178,7 @@ export const DynInput = ({
           selectTextOnFocus={selectTextOnFocus}
           onKeyPress={handleKeyPress}
           submitBehavior={finishOnEnter ? 'submit' : undefined}
+          testID={`${testID}-text-input`}
         />
       </View>
     );
@@ -209,7 +213,10 @@ export const DynInput = ({
       return (
         <>
           {!visible && !isInitialOpen && (
-            <Button onPress={() => setVisible(true)}>
+            <Button
+              onPress={() => setVisible(true)}
+              testID={`${testID}-time-button`}
+            >
               {selectedDate ? selectedDate.toLocaleTimeString() : 'Pick time'}
             </Button>
           )}
@@ -243,7 +250,10 @@ export const DynInput = ({
       return (
         <>
           {!visible && !isInitialOpen && (
-            <Button onPress={() => setVisible(true)}>
+            <Button
+              onPress={() => setVisible(true)}
+              testID={`${testID}-date-button`}
+            >
               {selectedDate ? selectedDate.toLocaleDateString() : 'Pick date'}
             </Button>
           )}
@@ -378,45 +388,47 @@ export const DynInput = ({
   }, [onFinish, temp]);
 
   return (
-    // <View style={styles.container}>
-    <>
-      {inputType === 'text' && renderText()}
+    <View testID={testID}>
       {inputType === 'number' && renderNumber()}
+      {(inputType === 'text' || inputType === 'textarea') && renderText()}
+      {inputType === 'select-button' && (
+        <SelectButtons
+          multiSelect={multiSelect}
+          options={temp as SelectOption[]}
+          onChange={handleChange}
+          min={min}
+          max={max}
+          showSearch={showSearch}
+          testID={`${testID}-select-buttons`}
+        />
+      )}
       {(inputType === 'date' ||
         inputType === 'time' ||
         inputType === 'datetime') &&
         renderDatePicker()}
-      {inputType === 'custom' && customRender?.(data, handleChange)}
-      {inputType === 'select-button' && (
-        <SelectButtons
-          // Prevent passing references to the original data
-          options={JSON.parse(JSON.stringify(temp)) as SelectOption[]}
-          min={min}
-          max={max}
-          multiSelect={multiSelect}
-          showSearch={showSearch}
-          onChange={handleChange}
-        />
-      )}
-      {showFooter && (
-        <View style={styles.footer}>
+      {inputType === 'custom' &&
+        customRender &&
+        customRender(temp, handleChange)}
+      {showFooter && !isInitialOpen && (
+        <View style={styles.footer} testID={`${testID}-footer`}>
           <Button
-            style={styles.cancelButton}
-            testID={'dyn-input-cancel'}
+            mode="contained"
+            onPress={handleFinish}
+            style={styles.finishButton}
+            testID={`${testID}-finish-button`}
+          >
+            Finish
+          </Button>
+          <Button
+            mode="outlined"
             onPress={handleCancel}
+            style={styles.cancelButton}
+            testID={`${testID}-cancel-button`}
           >
             Cancel
           </Button>
-          <Button
-            style={styles.finishButton}
-            testID={'dyn-input-finish'}
-            mode="contained"
-            onPress={handleFinish}
-          >
-            Done
-          </Button>
         </View>
       )}
-    </>
+    </View>
   );
 };

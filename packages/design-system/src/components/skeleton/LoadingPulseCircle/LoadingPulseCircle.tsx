@@ -25,6 +25,7 @@ export interface LoadingPulseCircleProps {
   animationDuration?: number;
   minOpacity?: number;
   maxOpacity?: number;
+  testID?: string;
 }
 export const LoadingPulseCircle = ({
   style,
@@ -33,6 +34,7 @@ export const LoadingPulseCircle = ({
   animationDuration = 1000,
   minOpacity = 0.5,
   maxOpacity = 1,
+  testID,
 }: LoadingPulseCircleProps) => {
   const styles = useMemo(() => getStyles({ size, color }), [size, color]);
   const opacity = useSharedValue(minOpacity);
@@ -48,5 +50,10 @@ export const LoadingPulseCircle = ({
     };
   });
 
-  return <Animated.View style={[styles.pulseCircle, animatedStyles, style]} />;
+  return (
+    <Animated.View
+      style={[styles.pulseCircle, animatedStyles, style]}
+      testID={testID}
+    />
+  );
 };

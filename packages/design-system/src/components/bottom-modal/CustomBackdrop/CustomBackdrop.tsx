@@ -24,7 +24,9 @@ const DEFAULT_DISAPPEARS_ON_INDEX = 0;
 const DEFAULT_ENABLE_TOUCH_THROUGH = false;
 const DEFAULT_PRESS_BEHAVIOR = 'close' as const;
 
-export interface CustomBackdropProps extends BottomSheetDefaultBackdropProps {}
+export interface CustomBackdropProps extends BottomSheetDefaultBackdropProps {
+  testID?: string;
+}
 
 export const CustomBackdrop = ({
   animatedIndex,
@@ -36,6 +38,7 @@ export const CustomBackdrop = ({
   onPress,
   style,
   children,
+  testID,
 }: CustomBackdropProps) => {
   //#region hooks
   const { snapToIndex, close } = useBottomSheet();
@@ -116,11 +119,16 @@ export const CustomBackdrop = ({
       accessibilityHint={`Tap to ${
         typeof pressBehavior === 'string' ? pressBehavior : 'move'
       } the Bottom Sheet`}
+      testID={testID}
     >
       {children}
     </AnimatedPressable>
   ) : (
-    <Animated.View pointerEvents={pointerEvents} style={containerStyle}>
+    <Animated.View
+      pointerEvents={pointerEvents}
+      style={containerStyle}
+      testID={testID}
+    >
       {children}
     </Animated.View>
   );

@@ -38,6 +38,7 @@ export interface HelperTextProps {
   textStyle?: StyleProp<TextStyle>;
   containerStyle?: StyleProp<ViewStyle>;
   maxLines?: number;
+  testID?: string;
 }
 
 export const HelperText = ({
@@ -47,6 +48,7 @@ export const HelperText = ({
   textStyle,
   containerStyle,
   maxLines = 3,
+  testID,
 }: HelperTextProps) => {
   const theme = useTheme();
   const styles = getStyles({ theme });
@@ -57,19 +59,25 @@ export const HelperText = ({
   }, []);
 
   return (
-    <View style={[styles.container, containerStyle]}>
-      <View style={styles.iconContainer}>
+    <View style={[styles.container, containerStyle]} testID={testID}>
+      <View style={styles.iconContainer} testID={`${testID}-icon-container`}>
         <Ionicons
           name="information-circle"
           size={iconSize}
           color={iconColor || theme.colors.primary}
+          testID={`${testID}-icon`}
         />
       </View>
-      <TouchableOpacity style={styles.textContainer} onPress={toggleExpand}>
+      <TouchableOpacity
+        style={styles.textContainer}
+        onPress={toggleExpand}
+        testID={`${testID}-text-container`}
+      >
         <Text
           style={[styles.text, textStyle]}
           numberOfLines={isExpanded ? undefined : maxLines}
           ellipsizeMode="tail"
+          testID={`${testID}-text`}
         >
           {text}
         </Text>

@@ -37,6 +37,7 @@ export interface EditableInfoCardProps {
   multiline?: boolean;
   numberOfLines?: number;
   isSaving?: boolean;
+  testID?: string;
 }
 
 const getStyles = ({ theme }: { theme: AppTheme }) =>
@@ -123,6 +124,7 @@ export function EditableInfoCard({
   multiline,
   numberOfLines,
   isSaving,
+  testID,
 }: EditableInfoCardProps): React.ReactNode {
   const theme = useTheme();
   const styles = useMemo(() => getStyles({ theme }), [theme]);
@@ -239,12 +241,26 @@ export function EditableInfoCard({
         disabled && { opacity: 0.5 },
         pressed && !disabled && { opacity: 0.7 },
       ]}
+      testID={testID}
     >
-      <View style={styles.contentContainer}>
-        {label ? <Text style={[styles.label, labelStyle]}>{label}</Text> : null}
-        <View style={[styles.content, contentStyle]}>
+      <View
+        style={styles.contentContainer}
+        testID={`${testID}-content-container`}
+      >
+        {label ? (
+          <Text style={[styles.label, labelStyle]} testID={`${testID}-label`}>
+            {label}
+          </Text>
+        ) : null}
+        <View
+          style={[styles.content, contentStyle]}
+          testID={`${testID}-content`}
+        >
           {processing ? (
-            <ActivityIndicator size="small" />
+            <ActivityIndicator
+              size="small"
+              testID={`${testID}-activity-indicator`}
+            />
           ) : isEditing ? (
             <TextInput
               autoFocus
@@ -258,6 +274,7 @@ export function EditableInfoCard({
               placeholderTextColor={theme.colors.onSurfaceDisabled}
               multiline={multiline}
               numberOfLines={numberOfLines}
+              testID={`${testID}-text-input`}
             />
           ) : renderValue ? (
             renderValue(value)
@@ -271,17 +288,22 @@ export function EditableInfoCard({
                 contentStyle,
               ]}
               numberOfLines={multiline ? numberOfLines : 1}
+              testID={`${testID}-value-text`}
             >
               {typeof value === 'string' ? value : value?.toString()}
             </Text>
           )}
         </View>
         {validationError && (
-          <Text style={styles.errorText}>{validationError}</Text>
+          <Text style={styles.errorText} testID={`${testID}-error-text`}>
+            {validationError}
+          </Text>
         )}
       </View>
       {rightActionComponent && (
-        <View style={styles.iconContainer}>{rightActionComponent}</View>
+        <View style={styles.iconContainer} testID={`${testID}-icon-container`}>
+          {rightActionComponent}
+        </View>
       )}
     </Pressable>
   );

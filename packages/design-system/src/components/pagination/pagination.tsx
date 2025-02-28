@@ -83,6 +83,7 @@ export interface PaginationProps {
   total: number;
   onChange?: (page: number, pageSize: number) => void;
   onPageSizeChange?: (current: number, size: number) => void;
+  testID?: string;
 }
 export const Pagination = ({
   current, // controlled prop: if provided, component is controlled
@@ -100,6 +101,7 @@ export const Pagination = ({
   total = 0,
   onChange,
   onPageSizeChange,
+  testID,
 }: PaginationProps) => {
   const windowSize = useScreenWidth();
   const isMobile = windowSize < 480;
@@ -197,6 +199,7 @@ export const Pagination = ({
             label={label}
             isCurrent={currentPage === page}
             onPress={() => handlePageChange(page)}
+            testID={`${testID}-item-${page}`}
           />
         ),
       });
@@ -208,6 +211,7 @@ export const Pagination = ({
         label={label}
         isCurrent={currentPage === page}
         onPress={() => handlePageChange(page)}
+        testID={`${testID}-item-${page}`}
       />
     );
   };
@@ -225,13 +229,17 @@ export const Pagination = ({
   const renderPageSizeOptions = () => {
     if (showSizeChanger) {
       return (
-        <View style={styles.pageSizeOptionsContainer}>
+        <View
+          style={styles.pageSizeOptionsContainer}
+          testID={`${testID}-size-options`}
+        >
           {pageSizeOptions.map((size) => (
             <Pressable
               key={size}
               style={styles.pageSizeOption}
               onPress={() => handlePageSizeChange(Number(size))}
               disabled={disabled}
+              testID={`${testID}-size-option-${size}`}
             >
               <Text>{size} / Page</Text>
             </Pressable>
@@ -251,46 +259,18 @@ export const Pagination = ({
     }
   };
 
-  // Render quick jumper
-  const renderQuickJumper = () => {
-    if (showQuickJumper) {
-      return (
-        <View style={styles.quickJumperContainer}>
-          <TextInput
-            ref={inputRef}
-            style={styles.quickJumperInput}
-            onChangeText={setJumperPage}
-            value={jumperPage}
-            keyboardType="number-pad"
-            placeholder="Jump to page"
-            returnKeyType="go"
-            onSubmitEditing={handleJump}
-            editable={!disabled}
-          />
-          {typeof showQuickJumper === 'object' && showQuickJumper.goButton ? (
-            <Pressable onPress={handleJump}>
-              {showQuickJumper.goButton}
-            </Pressable>
-          ) : (
-            <Pressable onPress={handleJump} disabled={disabled}>
-              <Text>Go</Text>
-            </Pressable>
-          )}
-        </View>
-      );
-    }
-    return null;
-  };
-
   if (isMobile) {
     return (
-      <View style={styles.container}>
+      <View style={styles.container} testID={testID}>
         {currentPage > 1 && renderItem(currentPage - 1, '<')}
 
         {showTotal ? (
-          renderTotal()
+          <View testID={`${testID}-total`}>{renderTotal()}</View>
         ) : (
-          <Text style={styles.pageIndicator}>
+          <Text
+            style={styles.pageIndicator}
+            testID={`${testID}-page-indicator`}
+          >
             Page {currentPage} of {totalPages}
           </Text>
         )}
@@ -301,25 +281,68 @@ export const Pagination = ({
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.paginationContainer}>
-        {renderTotal()}
-        {renderItem(currentPage - 1, '<')}
-
-        {visiblePages.map((page) => {
-          if (page === ELLIPSIS) {
-            // Render ellipsis as non-interactive item
-            return renderItem(page, '...');
-          } else {
-            // Render normal page number
-            return renderItem(page);
+    <View style={styles.container} testID={testID}>
+      {renderTotal() && <View testID={`${testID}-total`}>{renderTotal()}</View>}
+      <View style={styles.paginationContainer} testID={`${testID}-container`}>
+        <Pressable
+          onPress={() =>
+            !disabled && currentPage > 1 && handlePageChange(currentPage - 1)
           }
-        })}
-
-        {renderItem(currentPage + 1, '>')}
+          disabled={disabled || currentPage <= 1}
+          testID={`${testID}-prev`}
+        >
+          <Text style={styles.arrow}>{'<'}</Text>
+        </Pressable>
+        {visiblePages.map((page) =>
+          page === ELLIPSIS ? (
+            <Text
+              key={`ellipsis-${Math.random()}`}
+              style={styles.ellipsis}
+              testID={`${testID}-ellipsis`}
+            >
+              ...
+            </Text>
+          ) : (
+            renderItem(page)
+          )
+        )}
+        <Pressable
+          onPress={() =>
+            !disabled &&
+            currentPage < totalPages &&
+            handlePageChange(currentPage + 1)
+          }
+          disabled={disabled || currentPage >= totalPages}
+          testID={`${testID}-next`}
+        >
+          <Text style={styles.arrow}>{'>'}</Text>
+        </Pressable>
       </View>
-      {renderQuickJumper()}
       {renderPageSizeOptions()}
+      {showQuickJumper && (
+        <View style={styles.quickJumperContainer} testID={`${testID}-jumper`}>
+          <TextInput
+            ref={inputRef}
+            value={jumperPage}
+            onChangeText={setJumperPage}
+            keyboardType="numeric"
+            testID={`${testID}-jumper-input`}
+          />
+          {typeof showQuickJumper === 'object' && showQuickJumper.goButton ? (
+            <Pressable onPress={handleJump} testID={`${testID}-jumper-button`}>
+              {showQuickJumper.goButton}
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={handleJump}
+              testID={`${testID}-jumper-button`}
+              disabled={disabled}
+            >
+              <Text>Go</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
     </View>
   );
 };

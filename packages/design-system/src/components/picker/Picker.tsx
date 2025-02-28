@@ -59,6 +59,7 @@ export interface PickerProps {
   noResultsText?: string;
   emptyActionLabel?: string;
   showCreateOptionButton?: boolean;
+  testID?: string;
 }
 
 export const Picker = ({
@@ -76,6 +77,7 @@ export const Picker = ({
   showCreateOptionButton = false,
   onFinish,
   emptyAction,
+  testID,
 }: PickerProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -156,13 +158,30 @@ export const Picker = ({
   );
 
   return (
-    <View style={[styles.container, disabled && { opacity: 0.5 }]}>
-      <Pressable style={styles.header} onPress={handlePick} disabled={disabled}>
-        <Text style={styles.title} variant="headlineMedium">
+    <View
+      style={[styles.container, disabled && { opacity: 0.5 }]}
+      testID={testID}
+    >
+      <Pressable
+        style={styles.header}
+        onPress={handlePick}
+        disabled={disabled}
+        testID={`${testID}-header`}
+      >
+        <Text
+          style={styles.title}
+          variant="headlineMedium"
+          testID={`${testID}-label`}
+        >
           {label}
         </Text>
-        <Pressable onPress={handlePick} testID="picker-right-handle">
-          <AntDesign name="right" size={24} color={theme.colors.text} />
+        <Pressable onPress={handlePick} testID={`${testID}-right-handle`}>
+          <AntDesign
+            name="right"
+            size={24}
+            color={theme.colors.text}
+            testID={`${testID}-right-icon`}
+          />
         </Pressable>
       </Pressable>
       <ScrollView
@@ -172,15 +191,17 @@ export const Picker = ({
           styles.scrollViewContent,
         ]}
         showsHorizontalScrollIndicator={false}
+        testID={`${testID}-options-container`}
       >
         {selectedOptions.length === 0 ? (
-          <Text>No options selected</Text>
+          <Text testID={`${testID}-empty-text`}>No options selected</Text>
         ) : (
           selectedOptions.map((option) => (
             <Chip
               key={option.value}
               mode="flat"
               style={{ backgroundColor: option.color }}
+              testID={`${testID}-option-${option.value}`}
             >
               {option.label}
             </Chip>

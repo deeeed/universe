@@ -46,6 +46,7 @@ export interface ToastProps {
   };
   showCloseIcon?: boolean;
   closeIconStyle?: StyleProp<TextStyle>;
+  testID?: string;
 }
 
 export interface SwipeableToastProps extends ToastProps {

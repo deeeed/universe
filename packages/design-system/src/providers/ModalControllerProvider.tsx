@@ -9,7 +9,10 @@ import {
   ModalStackItem,
   OpenModalProps,
 } from './ModalProvider';
-import { BottomSheetStackItem, OpenDrawerProps } from '../types/bottomSheet.types';
+import {
+  BottomSheetStackItem,
+  OpenDrawerProps,
+} from '../types/bottomSheet.types';
 
 interface ModalControllerContextValue {
   openModal: <T>(props: OpenModalProps<T>) => Promise<T | undefined>;
