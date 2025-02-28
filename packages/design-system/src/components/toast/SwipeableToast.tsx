@@ -29,6 +29,7 @@ const baseContainerStyle: ViewStyle = {
 
 export function SwipeableToast({
   swipeConfig: userSwipeConfig = {},
+  testID,
   ...toastProps
 }: SwipeableToastProps) {
   const swipeConfig = {
@@ -196,11 +197,13 @@ export function SwipeableToast({
       <Animated.View
         {...webHandlers}
         style={[baseContainerStyle, animatedStyle]}
+        testID={testID}
       >
         <Toast
           {...toastProps}
           visibility={isVisible}
           onDismiss={handleDismiss}
+          testID={testID ? `${testID}-toast` : undefined}
         />
       </Animated.View>
     );
@@ -208,11 +211,15 @@ export function SwipeableToast({
 
   return (
     <GestureDetector gesture={panGesture}>
-      <Animated.View style={[baseContainerStyle, animatedStyle]}>
+      <Animated.View
+        style={[baseContainerStyle, animatedStyle]}
+        testID={testID}
+      >
         <Toast
           {...toastProps}
           visibility={isVisible}
           onDismiss={handleDismiss}
+          testID={testID ? `${testID}-toast` : undefined}
         />
       </Animated.View>
     </GestureDetector>

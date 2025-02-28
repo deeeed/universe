@@ -33,6 +33,7 @@ export interface NumberAdjusterProps {
   buttonStyle?: StyleProp<ViewStyle>;
   buttonContainerStyle?: StyleProp<ViewStyle>;
   textInputProps?: Partial<React.ComponentProps<typeof TextInput>>;
+  testID?: string;
 }
 
 export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
@@ -48,6 +49,7 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
   buttonStyle,
   buttonContainerStyle,
   textInputProps,
+  testID,
 }) => {
   const styles = getStyles();
   const [localValue, setLocalValue] = useState(value.toString());
@@ -101,6 +103,7 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
   return (
     <View
       style={[styles.inputRow, containerStyle, disabled && { opacity: 0.5 }]}
+      testID={testID}
     >
       <TextInput
         label={label}
@@ -112,13 +115,18 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
         keyboardType="numeric"
         returnKeyType="done"
         editable={!disabled}
+        testID={`${testID}-input`}
         {...textInputProps}
       />
-      <View style={[styles.buttonContainer, buttonContainerStyle]}>
+      <View
+        style={[styles.buttonContainer, buttonContainerStyle]}
+        testID={`${testID}-buttons-container`}
+      >
         <Button
           onPress={handleDecrement}
           style={[buttonStyle]}
           disabled={disabled}
+          testID={`${testID}-decrement-button`}
         >
           -{step}
         </Button>
@@ -126,6 +134,7 @@ export const NumberAdjuster: React.FC<NumberAdjusterProps> = ({
           onPress={handleIncrement}
           style={[buttonStyle]}
           disabled={disabled}
+          testID={`${testID}-increment-button`}
         >
           +{step}
         </Button>

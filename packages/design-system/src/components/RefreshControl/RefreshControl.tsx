@@ -83,6 +83,7 @@ export interface RefreshControlProps extends RefreshControlPropsRN {
   RefreshingIndicator?: React.FC<RefreshingIndicatorProps>;
   onPullStateChange?: (isPulling: boolean) => void;
   pullResetDelay?: number;
+  testID?: string;
 }
 
 const maxTranslateY = 50;
@@ -127,6 +128,7 @@ export const RefreshControl = React.forwardRef(
       RefreshingIndicator = DefaultRefreshingIndicator,
       onPullStateChange,
       pullResetDelay = DEFAULT_PULL_RESET_DELAY,
+      testID,
       ...rcProps
     }: RefreshControlProps,
     ref: React.Ref<unknown> // Use unknown to accommodate both View and RefreshControl
@@ -135,6 +137,7 @@ export const RefreshControl = React.forwardRef(
       return (
         <RefreshControlRN
           ref={ref as React.Ref<RefreshControlRN>}
+          testID={testID}
           {...rcProps}
         />
       );
@@ -270,41 +273,46 @@ export const RefreshControl = React.forwardRef(
     );
 
     return (
-      <GestureDetector gesture={gesture}>
-        <Animated.View
-          ref={ref as React.Ref<View>}
-          style={[styles.container, animatedStyles]}
-        >
-          {isPullingState && (
-            <>
-              <Animated.View style={[styles.pullingContainer]}>
-                {refreshing ? (
-                  <RefreshingIndicator
-                    color={theme.colors.primary}
-                    size={size}
-                  />
-                ) : (
-                  <PullingIndicator
-                    color={theme.colors.primary}
-                    size={size}
-                    progress={translateY.value / maxTranslateY}
-                  />
-                )}
-              </Animated.View>
-              <Animated.View style={[styles.cursor, cursorAnimatedStyles]}>
-                <Loader color={theme.colors.primary} size={size} />
-              </Animated.View>
-            </>
-          )}
-          <Animated.ScrollView
-            style={styles.content}
-            ref={scrollViewRef}
-            onScroll={handleScroll}
-          >
+      <View style={styles.container} testID={testID}>
+        <GestureDetector gesture={gesture}>
+          <Animated.View style={styles.content}>
             {children}
-          </Animated.ScrollView>
-        </Animated.View>
-      </GestureDetector>
+            <Animated.View
+              style={[
+                styles.pullingContainer,
+                {
+                  opacity: isPulling.value ? 1 : 0,
+                  transform: [{ translateY }],
+                },
+              ]}
+              testID={`${testID}-pulling-container`}
+            >
+              {refreshing ? (
+                <RefreshingIndicator
+                  color={rcProps.tintColor || theme.colors.primary}
+                  size={size}
+                />
+              ) : (
+                <PullingIndicator
+                  color={rcProps.tintColor || theme.colors.primary}
+                  size={size}
+                  progress={translateY.value / maxTranslateY}
+                />
+              )}
+            </Animated.View>
+            <Animated.View
+              style={[
+                styles.cursor,
+                {
+                  opacity: cursorOpacity,
+                  transform: [{ translateY: cursorPositionY }],
+                },
+              ]}
+              testID={`${testID}-cursor`}
+            />
+          </Animated.View>
+        </GestureDetector>
+      </View>
     );
   }
 );

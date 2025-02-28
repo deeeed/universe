@@ -40,12 +40,14 @@ export interface ConfirmCancelFooterProps {
   onCancel?: () => void;
   onFinish?: () => void;
   containerStyle?: StyleProp<ViewStyle>;
+  testID?: string;
 }
 
 export const ConfirmCancelFooter = ({
   onCancel,
   onFinish,
   containerStyle,
+  testID,
 }: ConfirmCancelFooterProps) => {
   const { bottom, left, right } = useSafeAreaInsets();
   const theme = useTheme();
@@ -56,11 +58,21 @@ export const ConfirmCancelFooter = ({
   const { t } = useTranslation('confirm_cancel_footer');
 
   return (
-    <View style={[styles.footer, containerStyle]}>
-      <Button mode="outlined" style={styles.cancelButton} onPress={onCancel}>
+    <View style={[styles.footer, containerStyle]} testID={testID}>
+      <Button
+        mode="outlined"
+        style={styles.cancelButton}
+        onPress={onCancel}
+        testID={testID ? `${testID}-cancel-button` : undefined}
+      >
         {t('cancel')}
       </Button>
-      <Button style={styles.finishButton} mode="contained" onPress={onFinish}>
+      <Button
+        style={styles.finishButton}
+        mode="contained"
+        onPress={onFinish}
+        testID={testID ? `${testID}-confirm-button` : undefined}
+      >
         {t('confirm')}
       </Button>
     </View>

@@ -6,18 +6,27 @@ export interface LockInputProps {
   label?: string;
   text: string;
   onPress?: () => void;
+  testID?: string;
 }
 
-export const LockInput = ({ locked, label, text, onPress }: LockInputProps) => {
+export const LockInput = ({
+  locked,
+  label,
+  text,
+  onPress,
+  testID,
+}: LockInputProps) => {
   return (
     <TextInput
       label={label}
       value={text}
       disabled={locked}
+      testID={testID}
       right={
         <PTextInput.Icon
           icon={locked ? 'lock' : 'lock-open-variant-outline'}
           onPress={onPress}
+          testID={`${testID}-lock-icon`}
         />
       }
     />

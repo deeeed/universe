@@ -37,6 +37,7 @@ export interface ScreenWrapperProps {
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
   useInsets?: boolean;
+  testID?: string;
 }
 
 export const ScreenWrapper = ({
@@ -45,6 +46,7 @@ export const ScreenWrapper = ({
   useInsets = true,
   style,
   contentContainerStyle,
+  testID,
   ...rest
 }: ScreenWrapperProps) => {
   const theme = useTheme();
@@ -64,11 +66,14 @@ export const ScreenWrapper = ({
           alwaysBounceVertical={false}
           showsVerticalScrollIndicator={false}
           style={[styles.container, style]}
+          testID={testID}
         >
           {children}
         </ScrollView>
       ) : (
-        <View style={[styles.container, style]}>{children}</View>
+        <View style={[styles.container, style]} testID={testID}>
+          {children}
+        </View>
       )}
     </>
   );

@@ -42,6 +42,7 @@ export interface SkeletonProps {
   minOpacity?: number;
   maxOpacity?: number;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 }
 export const Skeleton = ({
   items = defaultSkeletonItems,
@@ -52,14 +53,22 @@ export const Skeleton = ({
   minOpacity = 0.5,
   maxOpacity = 1,
   style,
+  testID,
 }: SkeletonProps) => {
   const styles = useMemo(() => getStyles(), []);
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, style]} testID={testID}>
       {items.map((item, index) => (
-        <View key={`skeleton-item-${index}`} style={styles.itemRow}>
-          <View style={styles.circleContainer}>
+        <View
+          key={`skeleton-item-${index}`}
+          style={styles.itemRow}
+          testID={`${testID}-item-${index}`}
+        >
+          <View
+            style={styles.circleContainer}
+            testID={`${testID}-circle-container-${index}`}
+          >
             {Array.from({ length: item.circles }, (_, circleIndex) => (
               <LoadingPulseCircle
                 key={`circle-${circleIndex}`}
@@ -68,10 +77,14 @@ export const Skeleton = ({
                 animationDuration={animationDuration}
                 minOpacity={minOpacity}
                 maxOpacity={maxOpacity}
+                testID={`${testID}-circle-${index}-${circleIndex}`}
               />
             ))}
           </View>
-          <View style={styles.barContainer}>
+          <View
+            style={styles.barContainer}
+            testID={`${testID}-bar-container-${index}`}
+          >
             {Array.from({ length: item.bars }, (_, barIndex) => (
               <LoadingPulseBar
                 key={`bar-${barIndex}`}
@@ -80,6 +93,7 @@ export const Skeleton = ({
                 animationDuration={animationDuration}
                 minOpacity={minOpacity}
                 maxOpacity={maxOpacity}
+                testID={`${testID}-bar-${index}-${barIndex}`}
               />
             ))}
           </View>

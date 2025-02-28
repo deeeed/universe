@@ -55,6 +55,7 @@ export interface SelectButtonsProps {
   cols?: number; // overwrite number of columns to display options in
   onChange?: (options: SelectOption[]) => void;
   options: SelectOption[];
+  testID?: string;
 }
 
 export const BREAKPOINTS = {
@@ -72,6 +73,7 @@ export const SelectButtons = ({
   useFlatList = false,
   onChange,
   showSearch,
+  testID,
 }: SelectButtonsProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -176,14 +178,14 @@ export const SelectButtons = ({
       <Button
         key={key ?? `opt${index}`}
         mode="outlined"
-        testID={`buttons-opt-${index}`}
+        testID={testID ? `${testID}-opt-${index}` : `buttons-opt-${index}`}
         style={[styles.button, item.selected && styles.buttonSelected]}
         onPress={() => handleButtonPress(index)}
       >
         {item.label}
       </Button>
     ),
-    [handleButtonPress, styles]
+    [handleButtonPress, styles, testID]
   );
 
   const handleKeyPress = useCallback(
@@ -200,7 +202,7 @@ export const SelectButtons = ({
   );
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID={testID}>
       {showSearch && (
         <Searchbar
           placeholder="Search"
@@ -208,9 +210,14 @@ export const SelectButtons = ({
           onChangeText={handleSearchChange}
           onKeyPress={handleKeyPress}
           value={searchQuery}
+          testID={testID ? `${testID}-searchbar` : undefined}
         />
       )}
-      <HelperText type="error" visible={isErrorVisible || false}>
+      <HelperText
+        type="error"
+        visible={isErrorVisible || false}
+        testID={testID ? `${testID}-error-text` : undefined}
+      >
         {errorText}
       </HelperText>
       {useFlatList ? (
@@ -220,9 +227,13 @@ export const SelectButtons = ({
           keyExtractor={(_item, index) => `opt${index}`}
           numColumns={numColumns}
           key={`flatlist-${numColumns}`} // force re-render when numColumns changes
+          testID={testID ? `${testID}-flatlist` : undefined}
         />
       ) : (
-        <View style={styles.buttonContainer}>
+        <View
+          style={styles.buttonContainer}
+          testID={testID ? `${testID}-button-container` : undefined}
+        >
           {filteredOptions.map((item, index) =>
             renderButton({ item, index, key: `opt${index}` })
           )}

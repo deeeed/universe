@@ -45,6 +45,7 @@ export interface HelperWrapperProps {
   visible?: boolean;
   iconPosition?: 'left' | 'right';
   iconColor?: string;
+  testID?: string;
 }
 
 export const HelperWrapper = ({
@@ -53,6 +54,7 @@ export const HelperWrapper = ({
   iconColor,
   helperText,
   visible = true,
+  testID,
 }: HelperWrapperProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles({ theme }), [theme]);
@@ -66,13 +68,21 @@ export const HelperWrapper = ({
         },
       },
       render: ({ resolve }) => (
-        <View style={styles.modalInner}>
-          <HelperText text={helperText} maxLines={10} />
-          <View style={styles.buttonContainer}>
+        <View style={styles.modalInner} testID={`${testID}-modal-content`}>
+          <HelperText
+            text={helperText}
+            maxLines={10}
+            testID={`${testID}-modal-helper-text`}
+          />
+          <View
+            style={styles.buttonContainer}
+            testID={`${testID}-modal-button-container`}
+          >
             <Button
               mode="outlined"
               onPress={() => resolve?.(true)}
               style={styles.modalButton}
+              testID={`${testID}-modal-ok-button`}
             >
               Ok
             </Button>
@@ -83,11 +93,16 @@ export const HelperWrapper = ({
   };
 
   const iconElement = (
-    <TouchableOpacity onPress={handleIconPress} style={styles.iconContainer}>
+    <TouchableOpacity
+      onPress={handleIconPress}
+      style={styles.iconContainer}
+      testID={`${testID}-icon-button`}
+    >
       <Ionicons
         name="information-circle-outline"
         size={24}
         color={iconColor || theme.colors.primary}
+        testID={`${testID}-icon`}
       />
     </TouchableOpacity>
   );
@@ -97,9 +112,14 @@ export const HelperWrapper = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID={testID}>
       {iconPosition === 'left' && iconElement}
-      <View style={styles.childrenContainer}>{children}</View>
+      <View
+        style={styles.childrenContainer}
+        testID={`${testID}-children-container`}
+      >
+        {children}
+      </View>
       {iconPosition === 'right' && iconElement}
     </View>
   );

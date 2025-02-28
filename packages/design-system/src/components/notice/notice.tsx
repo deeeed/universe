@@ -70,6 +70,7 @@ export interface NoticeProps {
   iconStyle?: StyleProp<TextStyle>;
   closable?: boolean;
   onClose?: () => void;
+  testID?: string;
 }
 type IconName = keyof (typeof MaterialCommunityIcons)['glyphMap'];
 
@@ -88,6 +89,7 @@ export const Notice = ({
   onClose,
   message,
   type,
+  testID,
 }: NoticeProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles({ theme, type }), [theme, type]);
@@ -104,28 +106,50 @@ export const Notice = ({
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.iconContainer}>
+    <View style={styles.container} testID={testID}>
+      <View
+        style={styles.iconContainer}
+        testID={testID ? `${testID}-icon-container` : undefined}
+      >
         {withIcon && (
           <MaterialCommunityIcons
             name={icons[type]}
             style={[styles.iconStyle, iconStyle]}
             size={20}
+            testID={testID ? `${testID}-icon` : undefined}
           />
         )}
       </View>
-      <View style={styles.contentContainer}>
-        {title && <Text style={styles.title}>{title}</Text>}
-        {hasMessage ? <Text>{message}</Text> : null}
+      <View
+        style={styles.contentContainer}
+        testID={testID ? `${testID}-content` : undefined}
+      >
+        {title && (
+          <Text
+            style={styles.title}
+            testID={testID ? `${testID}-title` : undefined}
+          >
+            {title}
+          </Text>
+        )}
+        {hasMessage ? (
+          <Text testID={testID ? `${testID}-message` : undefined}>
+            {message}
+          </Text>
+        ) : null}
       </View>
       {closable && (
-        <Pressable onPress={handleClose} style={styles.closeIcon}>
-          {/* Insert close icon here */}
+        <Pressable
+          onPress={handleClose}
+          style={styles.closeIcon}
+          testID={testID ? `${testID}-close-button` : undefined}
+        >
           <MaterialCommunityIcons
             name="close"
             style={styles.iconStyle}
             size={20}
-          ></MaterialCommunityIcons>
+            testID={testID ? `${testID}-close-icon` : undefined}
+          />
         </Pressable>
       )}
     </View>

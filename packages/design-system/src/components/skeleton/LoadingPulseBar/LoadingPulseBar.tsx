@@ -34,6 +34,7 @@ export interface LoadingPulseBarProps {
   animationDuration?: number;
   minOpacity?: number;
   maxOpacity?: number;
+  testID?: string;
 }
 export const LoadingPulseBar = ({
   style,
@@ -43,6 +44,7 @@ export const LoadingPulseBar = ({
   animationDuration = 1000,
   minOpacity = 0.5,
   maxOpacity = 1,
+  testID,
 }: LoadingPulseBarProps) => {
   const styles = useMemo(
     () => getStyles({ color, width, height }),
@@ -61,5 +63,10 @@ export const LoadingPulseBar = ({
     };
   });
 
-  return <Animated.View style={[styles.pulseBar, animatedStyles, style]} />;
+  return (
+    <Animated.View
+      style={[styles.pulseBar, animatedStyles, style]}
+      testID={testID}
+    />
+  );
 };

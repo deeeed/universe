@@ -50,6 +50,7 @@ export interface SliderProps {
   sliderStyle?: ViewStyle;
   valueLabelStyle?: TextStyle;
   onSlidingStart?: () => void;
+  testID?: string;
 }
 
 export const Slider: React.FC<SliderProps> = ({
@@ -68,6 +69,7 @@ export const Slider: React.FC<SliderProps> = ({
   sliderStyle,
   valueLabelStyle,
   onSlidingStart,
+  testID,
 }) => {
   const theme = useTheme();
   const defaultStyles = useMemo(
@@ -125,6 +127,8 @@ export const Slider: React.FC<SliderProps> = ({
           }
           disabled={disabled}
           step={step}
+          id={testID}
+          data-testid={testID}
         />
       );
     } else {
@@ -145,15 +149,22 @@ export const Slider: React.FC<SliderProps> = ({
           }
           disabled={disabled}
           step={step}
+          testID={testID ? `${testID}-slider` : undefined}
         />
       );
     }
   };
 
   return (
-    <View style={StyleSheet.flatten([defaultStyles.container, containerStyle])}>
+    <View
+      style={StyleSheet.flatten([defaultStyles.container, containerStyle])}
+      testID={testID}
+    >
       {label && (
-        <Text style={StyleSheet.flatten([defaultStyles.label, labelStyle])}>
+        <Text
+          style={StyleSheet.flatten([defaultStyles.label, labelStyle])}
+          testID={testID ? `${testID}-label` : undefined}
+        >
           {label}
         </Text>
       )}
@@ -164,6 +175,7 @@ export const Slider: React.FC<SliderProps> = ({
             defaultStyles.valueLabel,
             valueLabelStyle,
           ])}
+          testID={testID ? `${testID}-value` : undefined}
         >
           {valueFormatter(value)}
         </Text>

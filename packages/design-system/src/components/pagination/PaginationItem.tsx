@@ -52,6 +52,7 @@ export interface PaginationItemProps {
   isCurrent: boolean;
   disabled?: boolean;
   onPress: (page: number) => void;
+  testID?: string;
 }
 export const PaginationItem = ({
   page,
@@ -59,6 +60,7 @@ export const PaginationItem = ({
   isCurrent,
   disabled = false,
   onPress,
+  testID,
 }: PaginationItemProps) => {
   const styles = useMemo(() => getStyles(), []);
 
@@ -67,8 +69,11 @@ export const PaginationItem = ({
       style={[styles.pageItem, isCurrent && styles.currentPageItem]}
       onPress={() => onPress(page)}
       disabled={disabled}
+      testID={testID}
     >
-      <Text style={styles.pageText}>{label ?? page}</Text>
+      <Text style={styles.pageText} testID={`${testID}-text`}>
+        {label ?? page}
+      </Text>
     </Pressable>
   );
 };

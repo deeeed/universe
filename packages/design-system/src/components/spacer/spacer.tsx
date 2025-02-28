@@ -4,10 +4,14 @@ import { View } from 'react-native';
 type SpacerProps = {
   horizontal?: number;
   vertical?: number;
+  testID?: string;
 };
 
-const Spacer = ({ horizontal, vertical }: SpacerProps) => (
-  <View style={{ paddingHorizontal: horizontal, paddingVertical: vertical }} />
+const Spacer = ({ horizontal, vertical, testID }: SpacerProps) => (
+  <View 
+    style={{ paddingHorizontal: horizontal, paddingVertical: vertical }} 
+    testID={testID}
+  />
 );
 
 export { Spacer };
