@@ -3,14 +3,16 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+
+
+## [0.45.0] - 2025-03-01
+### Changed
 - feat(design-system): linting in spacer ([f17dcda](https://github.com/deeeed/universe/commit/f17dcda5bd155e4aebdbaf73c878d9b1bab630d3))
 - testid (#50) ([25f3fae](https://github.com/deeeed/universe/commit/25f3fae7529c6c59f8576cfdcdfae3640cc2795e))
 - chore: changelog ([b3e9434](https://github.com/deeeed/universe/commit/b3e94345b9ac13de92f4957fb1df89df6e84a6d9))
 - chore(@siteed/design-system): release 0.44.0 ([bab3377](https://github.com/deeeed/universe/commit/bab33779df26e51a4a1a01ccce6b096356043e00))
-
 ## [0.44.0] - 2025-02-12
 - fix(deps): update @gorhom/bottom-sheet and related dependencies (#47) ([d9ec815](https://github.com/deeeed/universe/commit/d9ec8155bba0669a54f89bc9e191789322669aad))
-
 ## [0.43.0] - 2025-02-09
 - feat: synchronize localValue with value prop using useEffect ([723e7ef](https://github.com/deeeed/universe/commit/723e7efa863344ae71b42050c0fc3ede059f6693))
 - refactor: remove unnecessary marginBottom style ([a92a6bb](https://github.com/deeeed/universe/commit/a92a6bbbce441b123ac271933f0eb1e168666065))
@@ -79,7 +81,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.44.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.45.0...HEAD
+[0.45.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.44.0...@siteed/design-system@0.45.0
 [0.44.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.43.1...@siteed/design-system@0.44.0
 [0.43.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.43.0...@siteed/design-system@0.43.1
 [0.43.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.42.0...@siteed/design-system@0.43.0
