@@ -229,7 +229,11 @@ export const SelectItems = <T,>({
           testID={`${testID}-searchbar`}
         />
       )}
-      <HelperText type="error" visible={isErrorVisible || false} testID={`${testID}-error-text`}>
+      <HelperText
+        type="error"
+        visible={isErrorVisible || false}
+        testID={`${testID}-error-text`}
+      >
         {errorText}
       </HelperText>
       {/* Use FlatList to handle the grid layout */}
@@ -243,7 +247,11 @@ export const SelectItems = <T,>({
       />
       {showFooter && (
         <View style={styles.footer} testID={`${testID}-footer`}>
-          <Button style={styles.cancelButton} onPress={handleCancel} testID={`${testID}-cancel-button`}>
+          <Button
+            style={styles.cancelButton}
+            onPress={handleCancel}
+            testID={`${testID}-cancel-button`}
+          >
             {t('cancel')}
           </Button>
           <Button
