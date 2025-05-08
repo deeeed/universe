@@ -10,6 +10,9 @@
       "@siteed/design-system": [
         "./src/index"
       ],
+      "@siteed/react-native-logger": [
+        "../../packages/react-native-logger/src"
+      ]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
