@@ -82,7 +82,7 @@ export const TryItScreen = () => {
           subLabel={item.subLabel}
           labelStyle={{}}
           onPress={() => {
-            router.navigate(`${item.path}`);
+            router.push(`${item.path}`);
           }}
         />
       )}

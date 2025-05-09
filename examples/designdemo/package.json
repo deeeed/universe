@@ -36,7 +36,7 @@
     "@siteed/design-system": "workspace:^",
     "@siteed/react-native-logger": "workspace:^",
     "date-fns": "^3.6.0",
-    "expo": "^53.0.8",
+    "expo": "^53.0.9",
     "expo-constants": "~17.1.6",
     "expo-linking": "~7.1.4",
     "expo-localization": "~16.1.5",
@@ -74,7 +74,10 @@
     "typescript": "^5.8.3"
   },
   "resolutions": {
-    "@siteed/react-native-logger": "0.8.2"
+    "@siteed/react-native-logger": "0.8.2",
+    "react-native-gesture-handler": "~2.24.0",
+    "@gorhom/bottom-sheet": "^4.6.0",
+    "react-native-reanimated": "~3.17.4"
   },
   "nohoist": [
     "**/@siteed/react-native-logger",

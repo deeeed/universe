@@ -7,7 +7,14 @@ import {
 } from "@siteed/design-system";
 import { format } from "date-fns";
 import React, { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { Text } from "react-native-paper";
 
 export const randomSelectValues: SelectOption[] = Array.from(
@@ -34,130 +41,151 @@ const TryDynInput = () => {
 
   return (
     <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.sectionTitle}>Text Input</Text>
-        <DynInput
-          data="Default text"
-          inputType="text"
-          label="Simple Text Input"
-          onFinish={(value) => console.log("Text input finished:", value)}
-        />
-
-        <Text style={styles.sectionTitle}>Number Input</Text>
-        <DynInput
-          data={numberValue}
-          inputType="number"
-          label="Number Input"
-          onFinish={(value) => setNumberValue(Number(value))}
-        />
-        <Text>Current number value: {numberValue}</Text>
-
-        <Text style={styles.sectionTitle}>Textarea Input</Text>
-        <DynInput
-          data={textAreaValue}
-          inputType="text"
-          label="Multiline Text Input"
-          numberOfLines={4}
-          onFinish={(value) => setTextAreaValue(String(value))}
-        />
-
-        <Text style={styles.sectionTitle}>Select Buttons (Multi-select)</Text>
-        <DynInput
-          data={randomSelectValues}
-          inputType="select-button"
-          multiSelect
-          max={3}
-          showSearch
-          label="Choose up to 3 options"
-          onFinish={(value) => console.log("Selected options:", value)}
-        />
-
-        <Text style={styles.sectionTitle}>Select Buttons (Single-select)</Text>
-        <DynInput
-          data={randomSelectValues.slice(0, 5)}
-          inputType="select-button"
-          label="Choose one option"
-          onFinish={(value) => console.log("Selected option:", value)}
-        />
-
-        <Text style={styles.sectionTitle}>Custom Render (Color Picker)</Text>
-        <DynInput
-          data={selectedColors}
-          inputType="custom"
-          label="Pick colors"
-          customRender={(value, onChange) => {
-            const handlePress = (pressed: SelectOption) => {
-              const updatedColors = (value as SelectOption[]).map((color) =>
-                color.value === pressed.value
-                  ? { ...color, selected: !color.selected }
-                  : color,
-              );
-              onChange(updatedColors);
-            };
-
-            if (Array.isArray(value)) {
-              return (
-                <View style={styles.colorContainer}>
-                  {value.map((option, index) => (
-                    <Pressable
-                      key={`${option.label}-${index}`}
-                      onPress={() => handlePress(option)}
-                      style={[
-                        styles.colorItem,
-                        option.selected && styles.selectedColor,
-                      ]}
-                    >
-                      <ColorItem color={option.value} />
-                    </Pressable>
-                  ))}
-                </View>
-              );
-            }
-
-            return <Text>{JSON.stringify(value)}</Text>;
-          }}
-          onFinish={(value) => setSelectedColors(value as SelectOption[])}
-        />
-        <Text>
-          Selected colors:{" "}
-          {selectedColors
-            .filter((c) => c.selected)
-            .map((c) => c.value)
-            .join(", ")}
-        </Text>
-
-        <Text style={styles.sectionTitle}>Date Input</Text>
-        <DynInput
-          data={selectedDate}
-          inputType="date"
-          label="Select Date"
-          onFinish={(value) => setSelectedDate(value as Date)}
-        />
-        <Text>Selected date: {format(selectedDate, "yyyy-MM-dd")}</Text>
-
-        <Text style={styles.sectionTitle}>Time Input</Text>
-        <DynInput
-          data={selectedTime}
-          inputType="datetime"
-          label="Select Time"
-          onFinish={(value) => setSelectedTime(value as Date)}
-        />
-        <Text>Selected time: {format(selectedTime, "HH:mm")}</Text>
-
-        <Button
-          onPress={() =>
-            console.log("All current values:", {
-              numberValue,
-              textAreaValue,
-              selectedColors,
-              selectedDate,
-              selectedTime,
-            })
-          }
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+      >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator
         >
-          Log All Values
-        </Button>
-      </ScrollView>
+          <Text style={styles.sectionTitle}>Text Input</Text>
+          <DynInput
+            data="Default text"
+            inputType="text"
+            label="Simple Text Input"
+            onFinish={(value) => console.log("Text input finished:", value)}
+          />
+
+          <Text style={styles.sectionTitle}>Number Input</Text>
+          <DynInput
+            data={numberValue}
+            inputType="number"
+            label="Number Input"
+            onFinish={(value) => setNumberValue(Number(value))}
+            textInputProps={{
+              blurOnSubmit: false,
+              keyboardType: "numeric",
+            }}
+          />
+          <Text>Current number value: {numberValue}</Text>
+
+          <Text style={styles.sectionTitle}>Textarea Input</Text>
+          <DynInput
+            data={textAreaValue}
+            inputType="text"
+            label="Multiline Text Input"
+            numberOfLines={4}
+            onFinish={(value) => setTextAreaValue(String(value))}
+            textInputProps={{
+              blurOnSubmit: false,
+              autoComplete: "off",
+              autoCapitalize: "sentences",
+            }}
+          />
+
+          <Text style={styles.sectionTitle}>Select Buttons (Multi-select)</Text>
+          <DynInput
+            data={randomSelectValues}
+            inputType="select-button"
+            multiSelect
+            max={3}
+            showSearch
+            label="Choose up to 3 options"
+            onFinish={(value) => console.log("Selected options:", value)}
+          />
+
+          <Text style={styles.sectionTitle}>
+            Select Buttons (Single-select)
+          </Text>
+          <DynInput
+            data={randomSelectValues.slice(0, 5)}
+            inputType="select-button"
+            label="Choose one option"
+            onFinish={(value) => console.log("Selected option:", value)}
+          />
+
+          <Text style={styles.sectionTitle}>Custom Render (Color Picker)</Text>
+          <DynInput
+            data={selectedColors}
+            inputType="custom"
+            label="Pick colors"
+            customRender={(value, onChange) => {
+              const handlePress = (pressed: SelectOption) => {
+                const updatedColors = (value as SelectOption[]).map((color) =>
+                  color.value === pressed.value
+                    ? { ...color, selected: !color.selected }
+                    : color,
+                );
+                onChange(updatedColors);
+              };
+
+              if (Array.isArray(value)) {
+                return (
+                  <View style={styles.colorContainer}>
+                    {value.map((option, index) => (
+                      <Pressable
+                        key={`${option.label}-${index}`}
+                        onPress={() => handlePress(option)}
+                        style={[
+                          styles.colorItem,
+                          option.selected && styles.selectedColor,
+                        ]}
+                      >
+                        <ColorItem color={option.value} />
+                      </Pressable>
+                    ))}
+                  </View>
+                );
+              }
+
+              return <Text>{JSON.stringify(value)}</Text>;
+            }}
+            onFinish={(value) => setSelectedColors(value as SelectOption[])}
+          />
+          <Text>
+            Selected colors:{" "}
+            {selectedColors
+              .filter((c) => c.selected)
+              .map((c) => c.value)
+              .join(", ")}
+          </Text>
+
+          <Text style={styles.sectionTitle}>Date Input</Text>
+          <DynInput
+            data={selectedDate}
+            inputType="date"
+            label="Select Date"
+            onFinish={(value) => setSelectedDate(value as Date)}
+          />
+          <Text>Selected date: {format(selectedDate, "yyyy-MM-dd")}</Text>
+
+          <Text style={styles.sectionTitle}>Time Input</Text>
+          <DynInput
+            data={selectedTime}
+            inputType="datetime"
+            label="Select Time"
+            onFinish={(value) => setSelectedTime(value as Date)}
+          />
+          <Text>Selected time: {format(selectedTime, "HH:mm")}</Text>
+
+          <Button
+            onPress={() =>
+              console.log("All current values:", {
+                numberValue,
+                textAreaValue,
+                selectedColors,
+                selectedDate,
+                selectedTime,
+              })
+            }
+          >
+            Log All Values
+          </Button>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ScreenWrapper>
   );
 };
