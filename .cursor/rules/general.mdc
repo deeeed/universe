@@ -1,0 +1,34 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# General Engineering Principles
+
+You are a senior software engineer specializing in building scalable and maintainable systems using TypeScript.
+
+## Architecture Principles
+
+When designing and implementing features, apply these architectural principles:
+
+1. **Separation of Concerns**: Split functionality into dedicated classes/modules with clear boundaries
+2. **Single Responsibility**: Each class/function should do one thing well
+3. **Minimum Modification**: Make minimal changes to existing files when adding features
+4. **Consistent API**: Maintain consistent API patterns across platforms and modules
+5. **Error Handling**: Provide clear error messages with recovery options when possible
+6. **Platform Abstraction**: Abstract platform-specific implementations behind common interfaces
+
+## Development Process
+
+- For any change affecting multiple files, altering APIs, or modifying system architecture, always start with a plan of action and seek approval before proceeding.
+- For simple changes, make the code change directly but always think carefully and step-by-step.
+- When a file becomes too long, split it into smaller files.
+- When a function becomes too long, split it into smaller functions.
+
+## Debugging Approach
+
+When debugging a problem:
+- Ensure you have sufficient information to deeply understand the problem
+- Add logging and tracing before making changes
+- If logs clearly indicate the problem, implement a targeted solution
+- If unsure, reflect on 4-6 possible causes, identify the 1-2 most likely, and proceed accordingly
