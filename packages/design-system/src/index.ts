@@ -30,7 +30,7 @@ export * from './components/Pagination/Pagination';
 export * from './components/Pagination/PaginationItem';
 export * from './components/ListItem/ListItem';
 export * from './components/EditableInfoCard/EditableInfoCard';
-export * from './components/RefreshControl/RefreshControl';
+export * from './components/RefreshControl';
 export * from './components/NumberAdjuster/NumberAdjuster';
 export * from './components/FAB/FABGroup';
 export * from './components/Slider/Slider';

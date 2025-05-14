@@ -6,14 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  ColorValue,
-  Platform,
-  RefreshControlProps as RefreshControlPropsRN,
-  RefreshControl as RefreshControlRN,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { ActivityIndicator } from 'react-native-paper';
 import Animated, {
@@ -24,22 +17,16 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
+import {
+  CONSTANTS,
+  PullingIndicatorProps,
+  RefreshControlProps,
+  RefreshingIndicatorProps,
+  StylesProps,
+} from './RefreshControl.types';
 
-const maxTranslateY = 50;
-const refreshThreshold = maxTranslateY * 0.3; // Lower threshold for easier triggering
-const minVisiblePosition = 20; // Minimum visible position for the refresh indicator
-const defaultIndicatorSize = 24;
-const DEFAULT_PULL_RESET_DELAY = 300; // 300ms default delay
-const MIN_REFRESHING_DURATION = 1500; // Minimum time to show refreshing indicator
-
-const getStyles = ({
-  progressBackgroundColor,
-}: {
-  theme: AppTheme;
-  progressBackgroundColor?: ColorValue;
-}) => {
+const getStyles = ({ progressBackgroundColor }: StylesProps) => {
   return StyleSheet.create({
     container: {
       overflow: 'visible',
@@ -52,13 +39,13 @@ const getStyles = ({
     },
     indicatorContainer: {
       position: 'absolute',
-      top: -maxTranslateY, // Start offscreen
+      top: -CONSTANTS.maxTranslateY, // Start offscreen
       left: 0,
       right: 0,
       zIndex: 1000, // Ensure it's above everything else
       alignItems: 'center',
       justifyContent: 'center',
-      height: maxTranslateY,
+      height: CONSTANTS.maxTranslateY,
       backgroundColor: progressBackgroundColor,
       pointerEvents: 'none',
     },
@@ -69,37 +56,16 @@ const getStyles = ({
       top: 0,
       alignItems: 'center',
       justifyContent: 'center',
-      height: maxTranslateY,
+      height: CONSTANTS.maxTranslateY,
       zIndex: 99,
       pointerEvents: 'none',
     },
   });
 };
 
-// Helper types
-export interface RefreshControlProps extends RefreshControlPropsRN {
-  PullingIndicator?: React.FC<PullingIndicatorProps>;
-  RefreshingIndicator?: React.FC<RefreshingIndicatorProps>;
-  onPullStateChange?: (isPulling: boolean) => void;
-  pullResetDelay?: number;
-  testID?: string;
-  debug?: boolean;
-}
-
-interface PullingIndicatorProps {
-  color?: ColorValue;
-  size?: number;
-  progress: number;
-}
-
-interface RefreshingIndicatorProps {
-  color?: ColorValue;
-  size?: number;
-}
-
 const DefaultPullingIndicator = ({
   color,
-  size = defaultIndicatorSize,
+  size = CONSTANTS.defaultIndicatorSize,
   progress,
 }: PullingIndicatorProps) => {
   const scale = 1 + progress * 0.2;
@@ -117,39 +83,27 @@ const DefaultRefreshingIndicator = ({
   return <ActivityIndicator color={color as string} size={size} />;
 };
 
-export const RefreshControl = React.forwardRef(
+export const RefreshControl = React.forwardRef<unknown, RefreshControlProps>(
   (
     {
       PullingIndicator = DefaultPullingIndicator,
       RefreshingIndicator = DefaultRefreshingIndicator,
       onPullStateChange,
-      pullResetDelay = DEFAULT_PULL_RESET_DELAY,
+      pullResetDelay = CONSTANTS.DEFAULT_PULL_RESET_DELAY,
       testID,
       debug = false,
       ...rcProps
-    }: RefreshControlProps,
-    ref: React.Ref<unknown>
+    },
+    _ref
   ) => {
-    if (Platform.OS !== 'web') {
-      return (
-        <RefreshControlRN
-          ref={ref as React.Ref<RefreshControlRN>}
-          testID={testID}
-          {...rcProps}
-        />
-      );
-    }
-
     const {
       refreshing,
       enabled = true,
       progressBackgroundColor,
-      progressViewOffset: _progressViewOffset = refreshThreshold,
-      size = defaultIndicatorSize,
+      progressViewOffset: _progressViewOffset = CONSTANTS.refreshThreshold,
+      size = CONSTANTS.defaultIndicatorSize,
       onRefresh,
       children,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      ...restProps
     } = rcProps;
 
     const translateY = useSharedValue(0);
@@ -202,9 +156,12 @@ export const RefreshControl = React.forwardRef(
         refreshStartTimeRef.current = Date.now();
 
         // If translateY is at 0, we need to show the indicator at a visible position
-        if (translateY.value < minVisiblePosition) {
-          translateY.value = withSpring(minVisiblePosition);
-          debugLog('Moving indicator to visible position:', minVisiblePosition);
+        if (translateY.value < CONSTANTS.minVisiblePosition) {
+          translateY.value = withSpring(CONSTANTS.minVisiblePosition);
+          debugLog(
+            'Moving indicator to visible position:',
+            CONSTANTS.minVisiblePosition
+          );
         } else {
           // Keep it at the current pull position
           debugLog('Keeping indicator at current position:', translateY.value);
@@ -214,7 +171,7 @@ export const RefreshControl = React.forwardRef(
         const elapsedTime = Date.now() - refreshStartTimeRef.current;
         const remainingTime = Math.max(
           0,
-          MIN_REFRESHING_DURATION - elapsedTime
+          CONSTANTS.MIN_REFRESHING_DURATION - elapsedTime
         );
 
         debugLog(
@@ -266,7 +223,8 @@ export const RefreshControl = React.forwardRef(
       if (!isRefreshing.value) {
         translateY.value = newTranslateY;
         cursorPositionY.value = Math.min(10, newTranslateY);
-        cursorOpacity.value = 0.5 + (newTranslateY / maxTranslateY) * 0.5;
+        cursorOpacity.value =
+          0.5 + (newTranslateY / CONSTANTS.maxTranslateY) * 0.5;
       }
     };
 
@@ -332,17 +290,22 @@ export const RefreshControl = React.forwardRef(
           // Handle pull-to-refresh gesture
           const newTranslateY = Math.max(
             0,
-            Math.min(translateY.value + e.changeY, maxTranslateY)
+            Math.min(translateY.value + e.changeY, CONSTANTS.maxTranslateY)
           );
-          debugLog('Pulling:', Math.round(newTranslateY), '/', maxTranslateY);
+          debugLog(
+            'Pulling:',
+            Math.round(newTranslateY),
+            '/',
+            CONSTANTS.maxTranslateY
+          );
           animateValues(newTranslateY);
         }
       })
       .onEnd(() => {
         debugLog('Gesture ended', {
           translateY: Math.round(translateY.value),
-          threshold: refreshThreshold,
-          willRefresh: translateY.value >= refreshThreshold,
+          threshold: CONSTANTS.refreshThreshold,
+          willRefresh: translateY.value >= CONSTANTS.refreshThreshold,
         });
 
         hasDragged.value = false;
@@ -350,7 +313,7 @@ export const RefreshControl = React.forwardRef(
           cursorOpacity.value = withTiming(0);
 
           // Check if pull distance is sufficient to trigger refresh
-          if (translateY.value >= refreshThreshold) {
+          if (translateY.value >= CONSTANTS.refreshThreshold) {
             debugLog('Threshold reached, triggering refresh');
             // Important: We do NOT reset translateY here to maintain visual position
             // Store the current position
@@ -424,7 +387,7 @@ export const RefreshControl = React.forwardRef(
                   <PullingIndicator
                     color={rcProps.tintColor || theme.colors.primary}
                     size={size}
-                    progress={translateY.value / maxTranslateY}
+                    progress={translateY.value / CONSTANTS.maxTranslateY}
                   />
                 )}
               </Animated.View>
