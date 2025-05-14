@@ -8,19 +8,17 @@ import React, {
 } from 'react';
 import {
   ColorValue,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Platform,
   RefreshControlProps as RefreshControlPropsRN,
   RefreshControl as RefreshControlRN,
   StyleSheet,
   View,
-  ViewStyle,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { ActivityIndicator } from 'react-native-paper';
 import Animated, {
   runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -28,7 +26,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
-import { Loader } from './Loader';
+
+const maxTranslateY = 50;
+const refreshThreshold = maxTranslateY * 0.3; // Lower threshold for easier triggering
+const minVisiblePosition = 20; // Minimum visible position for the refresh indicator
+const defaultIndicatorSize = 24;
+const DEFAULT_PULL_RESET_DELAY = 300; // 300ms default delay
+const MIN_REFRESHING_DURATION = 1500; // Minimum time to show refreshing indicator
 
 const getStyles = ({
   progressBackgroundColor,
@@ -38,32 +42,25 @@ const getStyles = ({
 }) => {
   return StyleSheet.create({
     container: {
-      ...((Platform.OS === 'web'
-        ? {
-            overflow: 'hidden',
-            // position: 'absolute',
-            // top: 0,
-            // left: 0,
-            // right: 0,
-          }
-        : {}) as ViewStyle),
+      overflow: 'visible',
       flex: 1,
       width: '100%',
+      position: 'relative',
     },
     content: {
       // flex: 1,
     },
-    pullingContainer: {
+    indicatorContainer: {
       position: 'absolute',
-      top: -maxTranslateY,
+      top: -maxTranslateY, // Start offscreen
       left: 0,
       right: 0,
-      zIndex: 99,
+      zIndex: 1000, // Ensure it's above everything else
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: progressBackgroundColor,
       height: maxTranslateY,
-      overflow: 'hidden',
+      backgroundColor: progressBackgroundColor,
+      pointerEvents: 'none',
     },
     cursor: {
       position: 'absolute',
@@ -74,22 +71,20 @@ const getStyles = ({
       justifyContent: 'center',
       height: maxTranslateY,
       zIndex: 99,
+      pointerEvents: 'none',
     },
   });
 };
 
+// Helper types
 export interface RefreshControlProps extends RefreshControlPropsRN {
   PullingIndicator?: React.FC<PullingIndicatorProps>;
   RefreshingIndicator?: React.FC<RefreshingIndicatorProps>;
   onPullStateChange?: (isPulling: boolean) => void;
   pullResetDelay?: number;
   testID?: string;
+  debug?: boolean;
 }
-
-const maxTranslateY = 50;
-const defaultProgressViewOffset = -maxTranslateY / 2;
-const defaultIndicatorSize = 24;
-const DEFAULT_PULL_RESET_DELAY = 300; // 300ms default delay
 
 interface PullingIndicatorProps {
   color?: ColorValue;
@@ -107,9 +102,9 @@ const DefaultPullingIndicator = ({
   size = defaultIndicatorSize,
   progress,
 }: PullingIndicatorProps) => {
-  const rotation = progress * 180;
+  const scale = 1 + progress * 0.2;
   return (
-    <Animated.View style={{ transform: [{ rotate: `${rotation}deg` }] }}>
+    <Animated.View style={{ transform: [{ scale }] }}>
       <Feather name="arrow-down" size={size} color={color as string} />
     </Animated.View>
   );
@@ -121,6 +116,7 @@ const DefaultRefreshingIndicator = ({
 }: RefreshingIndicatorProps) => {
   return <ActivityIndicator color={color as string} size={size} />;
 };
+
 export const RefreshControl = React.forwardRef(
   (
     {
@@ -129,9 +125,10 @@ export const RefreshControl = React.forwardRef(
       onPullStateChange,
       pullResetDelay = DEFAULT_PULL_RESET_DELAY,
       testID,
+      debug = false,
       ...rcProps
     }: RefreshControlProps,
-    ref: React.Ref<unknown> // Use unknown to accommodate both View and RefreshControl
+    ref: React.Ref<unknown>
   ) => {
     if (Platform.OS !== 'web') {
       return (
@@ -147,11 +144,14 @@ export const RefreshControl = React.forwardRef(
       refreshing,
       enabled = true,
       progressBackgroundColor,
-      progressViewOffset = -defaultProgressViewOffset,
+      progressViewOffset: _progressViewOffset = refreshThreshold,
       size = defaultIndicatorSize,
       onRefresh,
       children,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ...restProps
     } = rcProps;
+
     const translateY = useSharedValue(0);
     const cursorOpacity = useSharedValue(0);
     const cursorPositionY = useSharedValue(0);
@@ -161,41 +161,144 @@ export const RefreshControl = React.forwardRef(
       [theme, progressBackgroundColor]
     );
     const isPulling = useSharedValue(false);
-    const isScrolling = useSharedValue(false); // To track if we are in scrolling mode
+    const isScrolling = useSharedValue(false);
     const scrollPosition = useSharedValue(0);
     const initialTranslationY = useSharedValue(0);
-    const scrollViewRef = useRef<Animated.ScrollView>(null);
-    const [isPullingState, setIsPullingState] = useState(false);
     const hasDragged = useSharedValue(false);
+    const isRefreshing = useSharedValue(false);
 
+    // Use refs instead of state to avoid re-renders
+    const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const refreshStartTimeRef = useRef<number | null>(null);
+    const lastPullPositionRef = useRef(0);
+
+    // Add shared UI state
+    const [shouldShowIndicator, setShouldShowIndicator] = useState(false);
+    const [isCurrentlyRefreshing, setIsCurrentlyRefreshing] = useState(false);
+
+    const debugLog = useCallback(
+      (message: string, ...args: unknown[]) => {
+        if (debug) {
+          console.log(`[RefreshControl] ${message}`, ...args);
+        }
+      },
+      [debug]
+    );
+
+    // Update both the shared value and the React state for refreshing
     useEffect(() => {
-      if (!refreshing) {
-        translateY.value = withTiming(0, { duration: 180 });
+      debugLog('Refreshing prop changed:', refreshing);
+      isRefreshing.value = refreshing;
+      setIsCurrentlyRefreshing(refreshing);
+
+      if (refreshing) {
+        // Clear any existing timeout to prevent issues
+        if (refreshTimeoutRef.current) {
+          clearTimeout(refreshTimeoutRef.current);
+          refreshTimeoutRef.current = null;
+        }
+
+        // Start refreshing
+        refreshStartTimeRef.current = Date.now();
+
+        // If translateY is at 0, we need to show the indicator at a visible position
+        if (translateY.value < minVisiblePosition) {
+          translateY.value = withSpring(minVisiblePosition);
+          debugLog('Moving indicator to visible position:', minVisiblePosition);
+        } else {
+          // Keep it at the current pull position
+          debugLog('Keeping indicator at current position:', translateY.value);
+        }
+      } else if (refreshStartTimeRef.current) {
+        // Calculate how long we've been refreshing
+        const elapsedTime = Date.now() - refreshStartTimeRef.current;
+        const remainingTime = Math.max(
+          0,
+          MIN_REFRESHING_DURATION - elapsedTime
+        );
+
+        debugLog(
+          'Refresh ended, elapsed time:',
+          elapsedTime,
+          'remaining:',
+          remainingTime
+        );
+
+        if (remainingTime > 0) {
+          // Keep showing for minimum duration
+          refreshTimeoutRef.current = setTimeout(() => {
+            debugLog('Minimum refresh time reached, hiding indicator');
+            isRefreshing.value = false;
+            translateY.value = withTiming(0, { duration: 180 });
+            refreshStartTimeRef.current = null;
+            refreshTimeoutRef.current = null;
+          }, remainingTime);
+        } else {
+          // Hide immediately if we've shown it long enough
+          isRefreshing.value = false;
+          translateY.value = withTiming(0, { duration: 180 });
+          refreshStartTimeRef.current = null;
+        }
       }
-    }, [refreshing]);
+    }, [refreshing, debugLog]);
+
+    // Clean up timeout on unmount
+    useEffect(() => {
+      return () => {
+        if (refreshTimeoutRef.current) {
+          clearTimeout(refreshTimeoutRef.current);
+        }
+      };
+    }, []);
 
     const notifyPullState = useCallback(
       (pulling: boolean) => {
+        debugLog('Pull state changed:', pulling);
         onPullStateChange?.(pulling);
       },
-      [onPullStateChange, isPulling]
+      [onPullStateChange, debugLog]
     );
 
     const animateValues = (newTranslateY: number) => {
       'worklet';
-      translateY.value = newTranslateY;
-      cursorPositionY.value = Math.min(10, newTranslateY);
-      cursorOpacity.value = 0.5 + (newTranslateY / maxTranslateY) * 0.5;
+
+      // Only animate if we're not already refreshing
+      if (!isRefreshing.value) {
+        translateY.value = newTranslateY;
+        cursorPositionY.value = Math.min(10, newTranslateY);
+        cursorOpacity.value = 0.5 + (newTranslateY / maxTranslateY) * 0.5;
+      }
     };
+
+    const triggerRefresh = useCallback(() => {
+      if (onRefresh) {
+        debugLog('Calling onRefresh()');
+
+        // Store the current position for future reference
+        lastPullPositionRef.current = translateY.value;
+
+        // Set refreshing state
+        isRefreshing.value = true;
+
+        // Call the refresh handler
+        onRefresh();
+      }
+    }, [onRefresh, debugLog]);
 
     const gesture = Gesture.Pan()
       .onStart((e) => {
-        isPulling.value = false;
-        isScrolling.value = false;
-        initialTranslationY.value = e.translationY; // Capture initial translationY
+        debugLog('Gesture started');
+        if (!isRefreshing.value) {
+          isPulling.value = false;
+          isScrolling.value = false;
+          initialTranslationY.value = e.translationY;
+        }
       })
       .onChange((e) => {
-        if (!enabled) return;
+        if (!enabled || isRefreshing.value) {
+          debugLog('Gesture ignored: already refreshing or disabled');
+          return;
+        }
 
         if (
           !hasDragged.value &&
@@ -204,22 +307,24 @@ export const RefreshControl = React.forwardRef(
           e.changeY !== 0
         ) {
           const downward = e.changeY > 0;
+          debugLog('Determining gesture type', {
+            scrollPos: scrollPosition.value,
+            isDownward: downward,
+          });
+
           // Determine if it's a pull or a scroll
-          if (
-            initialTranslationY.value === 0 &&
-            scrollPosition.value <= 0 &&
-            downward
-          ) {
+          if (scrollPosition.value <= 0 && downward) {
             // Pull-to-refresh
             isPulling.value = true;
             isScrolling.value = false;
+            debugLog('Started PULLING');
           } else {
             // Normal scroll
             isScrolling.value = true;
             isPulling.value = false;
+            debugLog('Started SCROLLING');
           }
           runOnJS(notifyPullState)(true);
-          runOnJS(setIsPullingState)(isPulling.value);
           hasDragged.value = true;
         }
 
@@ -229,47 +334,73 @@ export const RefreshControl = React.forwardRef(
             0,
             Math.min(translateY.value + e.changeY, maxTranslateY)
           );
+          debugLog('Pulling:', Math.round(newTranslateY), '/', maxTranslateY);
           animateValues(newTranslateY);
         }
       })
       .onEnd(() => {
+        debugLog('Gesture ended', {
+          translateY: Math.round(translateY.value),
+          threshold: refreshThreshold,
+          willRefresh: translateY.value >= refreshThreshold,
+        });
+
         hasDragged.value = false;
         if (isPulling.value) {
           cursorOpacity.value = withTiming(0);
-          cursorPositionY.value = withTiming(progressViewOffset);
 
-          if (translateY.value > progressViewOffset) {
-            if (onRefresh) {
-              runOnJS(onRefresh)();
-            }
+          // Check if pull distance is sufficient to trigger refresh
+          if (translateY.value >= refreshThreshold) {
+            debugLog('Threshold reached, triggering refresh');
+            // Important: We do NOT reset translateY here to maintain visual position
+            // Store the current position
+            runOnJS(triggerRefresh)();
+          } else {
+            debugLog('Pull not enough, resetting');
+            // Only reset if not refreshing
+            translateY.value = withSpring(0);
           }
-          translateY.value = withSpring(0);
         }
 
         setTimeout(() => {
           runOnJS(notifyPullState)(false);
         }, pullResetDelay);
 
-        runOnJS(setIsPullingState)(false);
         // Reset pulling and scrolling state
         isPulling.value = false;
         isScrolling.value = false;
       });
 
-    const animatedStyles = useAnimatedStyle(() => ({
-      transform: [{ translateY: translateY.value }],
-    }));
+    // Create a single animated style for the indicator container
+    const indicatorContainerStyle = useAnimatedStyle(() => {
+      return {
+        transform: [{ translateY: translateY.value }],
+      };
+    });
 
-    const cursorAnimatedStyles = useAnimatedStyle(() => ({
+    const cursorAnimatedStyle = useAnimatedStyle(() => ({
       opacity: cursorOpacity.value,
       transform: [{ translateY: cursorPositionY.value }],
     }));
 
-    const handleScroll = useCallback(
-      (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        scrollPosition.value = event.nativeEvent.contentOffset.y;
+    // Fix the visibility tracking with a more reliable approach
+    useAnimatedReaction(
+      () => {
+        // Only show indicator when actively pulling with some distance OR when refreshing
+        return {
+          // Must be actively pulling AND have moved some distance
+          isPulling: isPulling.value && translateY.value > 5,
+          isRefreshing: isRefreshing.value,
+        };
       },
-      [scrollPosition]
+      (result) => {
+        // Only show when either condition is true
+        const shouldShow = result.isPulling || result.isRefreshing;
+        runOnJS(setShouldShowIndicator)(shouldShow);
+      },
+      [
+        // Empty dependency array is fine here
+      ]
     );
 
     return (
@@ -277,37 +408,30 @@ export const RefreshControl = React.forwardRef(
         <GestureDetector gesture={gesture}>
           <Animated.View style={styles.content}>
             {children}
+
+            {/* Only render when actively pulling or refreshing */}
+            {shouldShowIndicator && (
+              <Animated.View
+                style={[styles.indicatorContainer, indicatorContainerStyle]}
+                testID={`${testID}-indicator-container`}
+              >
+                {isCurrentlyRefreshing ? (
+                  <RefreshingIndicator
+                    color={rcProps.tintColor || theme.colors.primary}
+                    size={size}
+                  />
+                ) : (
+                  <PullingIndicator
+                    color={rcProps.tintColor || theme.colors.primary}
+                    size={size}
+                    progress={translateY.value / maxTranslateY}
+                  />
+                )}
+              </Animated.View>
+            )}
+
             <Animated.View
-              style={[
-                styles.pullingContainer,
-                {
-                  opacity: isPulling.value ? 1 : 0,
-                  transform: [{ translateY }],
-                },
-              ]}
-              testID={`${testID}-pulling-container`}
-            >
-              {refreshing ? (
-                <RefreshingIndicator
-                  color={rcProps.tintColor || theme.colors.primary}
-                  size={size}
-                />
-              ) : (
-                <PullingIndicator
-                  color={rcProps.tintColor || theme.colors.primary}
-                  size={size}
-                  progress={translateY.value / maxTranslateY}
-                />
-              )}
-            </Animated.View>
-            <Animated.View
-              style={[
-                styles.cursor,
-                {
-                  opacity: cursorOpacity,
-                  transform: [{ translateY: cursorPositionY }],
-                },
-              ]}
+              style={[styles.cursor, cursorAnimatedStyle]}
               testID={`${testID}-cursor`}
             />
           </Animated.View>
