@@ -124,7 +124,7 @@ export function useBottomSheetStack({
     async <T>(props: OpenDrawerProps<T>): Promise<T | undefined> => {
       const bottomSheetRef = {
         current: null,
-      } as React.RefObject<BottomSheetModal>;
+      } as unknown as React.RefObject<BottomSheetModal>;
 
       return new Promise((resolve, reject) => {
         const { initialData, portalName = defaultPortalName } = props;
