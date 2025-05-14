@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.46.1] - 2025-05-14
+### Changed
+- chore(@siteed/design-system): release 0.46.0 ([032eb22](https://github.com/deeeed/universe/commit/032eb223eae45e4a18e18127c5ebbb01376daaf6))
+- fix(useBottomSheetStack): update type assertion for bottomSheetRef to improve type safety ([8fc9347](https://github.com/deeeed/universe/commit/8fc93470a8a0c0547a988485076964f95558f980))
+- chore: cleanup ([ead8130](https://github.com/deeeed/universe/commit/ead81301e408ccedf75414d1fd5ae0a3836984dd))
+- feat(design-system): implement RefreshControl component for enhanced pull-to-refresh functionality ([f8d2c97](https://github.com/deeeed/universe/commit/f8d2c97697280857d2a2eceee90bc38370eacb89))
+- feat(designdemo): Add keyboard test screen and enhance modal functionality (#51) ([e40ea27](https://github.com/deeeed/universe/commit/e40ea27448739278cb8a8d88e65d77387e06b73e))
+- chore(@siteed/design-system): release 0.45.0 ([3ba0172](https://github.com/deeeed/universe/commit/3ba0172e051a48617ddfd7cbbde6b8b0fb74c9f5))
 ## [0.46.0] - 2025-05-14
 ### Changed
 - fix(useBottomSheetStack): update type assertion for bottomSheetRef to improve type safety ([8fc9347](https://github.com/deeeed/universe/commit/8fc93470a8a0c0547a988485076964f95558f980))
@@ -88,7 +96,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.46.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.46.1...HEAD
+[0.46.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.46.0...@siteed/design-system@0.46.1
 [0.46.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.45.0...@siteed/design-system@0.46.0
 [0.45.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.44.0...@siteed/design-system@0.45.0
 [0.44.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.43.1...@siteed/design-system@0.44.0
