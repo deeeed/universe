@@ -14,7 +14,7 @@ export default function TabLayout() {
               name="arrow-back-ios"
               size={24}
               color={tintColor}
-              onPress={() => router.navigate("/(tabs)/try")}
+              onPress={() => router.back()}
               style={{ paddingRight: 10, paddingLeft: 10 }}
             />
           );

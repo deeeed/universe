@@ -13,7 +13,7 @@ import { AppTheme } from '../../hooks/_useAppThemeSetup';
 import { useTheme } from '../../providers/ThemeProvider';
 import { baseLogger } from '../../utils/logger';
 import { SelectButtons, SelectOption } from '../SelectButtons/SelectButtons';
-import { TextInput } from '../TextInput/TextInput';
+import { TextInput, TextInputProps } from '../TextInput/TextInput';
 
 type InputType =
   | 'text'
@@ -59,6 +59,17 @@ export interface DynInputProps {
   onChange?: (value: DynamicType) => void;
   initiallyOpen?: boolean; // Prevent double modals if called from editProps
   testID?: string;
+  textInputProps?: Omit<
+    TextInputProps,
+    | 'value'
+    | 'onChangeText'
+    | 'multiline'
+    | 'numberOfLines'
+    | 'label'
+    | 'autoFocus'
+    | 'onKeyPress'
+    | 'selectTextOnFocus'
+  >;
 }
 
 const logger = baseLogger.extend('DynInput');
@@ -97,6 +108,7 @@ export const DynInput = ({
   cancelOnEscape,
   initiallyOpen = false, // Default to false if not provided
   testID,
+  textInputProps,
 }: DynInputProps) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -161,6 +173,7 @@ export const DynInput = ({
         }
         submitBehavior={finishOnEnter ? 'submit' : undefined}
         testID={`${testID}-number-input`}
+        {...textInputProps}
       />
     );
   };
@@ -179,6 +192,7 @@ export const DynInput = ({
           onKeyPress={handleKeyPress}
           submitBehavior={finishOnEnter ? 'submit' : undefined}
           testID={`${testID}-text-input`}
+          {...textInputProps}
         />
       </View>
     );

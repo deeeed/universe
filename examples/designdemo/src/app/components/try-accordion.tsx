@@ -4,6 +4,7 @@ import {
   LabelSwitch,
   LockInput,
   ScreenWrapper,
+  TextInput,
   useThemePreferences,
 } from "@siteed/design-system";
 import { View } from "react-native";
@@ -41,6 +42,7 @@ const RandomPage = () => {
         value={darkMode}
       />
       <LockInput text="This is a locked input" locked />
+      <TextInput placeholder="sdfafd">sfaf</TextInput>
       <Accordion data={accordionData} />
     </ScreenWrapper>
   );

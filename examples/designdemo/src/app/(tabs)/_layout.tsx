@@ -20,6 +20,10 @@ export default function TabLayout() {
       <Tabs.Screen name="try" options={{ href: "/try" }} />
       <Tabs.Screen name="bug" options={{ href: "/bug" }} />
       <Tabs.Screen name="modals" options={{ href: "/modals" }} />
+      <Tabs.Screen
+        name="keyboard-test"
+        options={{ title: "Keyboard Test", href: "/keyboard-test" }}
+      />
     </Tabs>
   );
 }

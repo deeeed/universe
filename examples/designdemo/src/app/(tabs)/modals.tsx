@@ -1,4 +1,5 @@
 // examples/designdemo/src/app/(tabs)/bottom.tsx
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import {
   Accordion,
   AccordionItemProps,
@@ -11,19 +12,41 @@ import {
   useThemePreferences,
   useToast,
 } from "@siteed/design-system";
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { StyleSheet, View } from "react-native";
 import { Text } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getStyles = () => {
   return StyleSheet.create({
-    container: {},
+    container: {
+      flex: 1,
+    },
     contentContainer: {
       flex: 1,
       width: "100%",
       alignItems: "center",
-      backgroundColor: "red",
-      // minHeight: 200,
+      padding: 16,
+    },
+    bottomSheetContent: {
+      padding: 16,
+    },
+    directBtn: {
+      marginTop: 16,
+      padding: 8,
+      backgroundColor: "#2196F3",
+      borderRadius: 4,
+      alignItems: "center",
+    },
+    directBtnText: {
+      color: "white",
+      fontWeight: "bold",
     },
   });
 };
@@ -39,11 +62,38 @@ export const TestModals = () => {
   const theme = useTheme();
 
   // variables
-  const _snapPoints = useMemo(() => ["20%", "50%"], []);
+  const insets = useSafeAreaInsets();
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const nestedBottomSheetRef = useRef<BottomSheetModal>(null);
 
   const { openDrawer, editProp, openModal } = useModal();
 
   const [test, setTest] = useState<Test>({ name: "test" });
+  const [directInputValue, setDirectInputValue] = useState("test");
+  const [nestedValue, setNestedValue] = useState("nested value");
+
+  // Add a minimal set of snap points
+  const snapPoints = useMemo(() => [], []);
+
+  // Direct bottom sheet handlers
+  const handlePresentDirectModal = useCallback(() => {
+    console.log("Opening direct bottom sheet modal");
+    bottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleCloseDirectModal = useCallback(() => {
+    bottomSheetModalRef.current?.close();
+  }, []);
+
+  const handleSaveDirectModal = useCallback(() => {
+    setTest({ name: directInputValue });
+    bottomSheetModalRef.current?.close();
+  }, [directInputValue]);
+
+  // Set direct input value when test changes
+  useEffect(() => {
+    setDirectInputValue(test.name);
+  }, [test]);
 
   const renderMany = () => {
     const items = [];
@@ -156,8 +206,23 @@ export const TestModals = () => {
     }
   }, [test, openDrawer]);
 
+  // Add handlers for the nested sheet
+  const handleOpenNestedSheet = useCallback(() => {
+    console.log("Opening nested bottom sheet");
+    nestedBottomSheetRef.current?.present();
+  }, []);
+
+  const handleCloseNestedSheet = useCallback(() => {
+    nestedBottomSheetRef.current?.close();
+  }, []);
+
+  const handleUpdateFromNested = useCallback((newValue: string) => {
+    setDirectInputValue(newValue);
+    nestedBottomSheetRef.current?.close();
+  }, []);
+
   return (
-    <View style={styles.container}>
+    <View>
       <ThemeConfig colors={[]} />
       <Text>Modals: darkMode: {theme.dark ? "true" : "false"}</Text>
       <View>
@@ -180,6 +245,146 @@ export const TestModals = () => {
       <View>
         <Button onPress={handleOpenModal}>Open Modal</Button>
       </View>
+
+      {/* New Button for Direct Bottom Sheet */}
+      <View style={{ marginTop: 20 }}>
+        <Text style={{ fontWeight: "bold" }}>
+          Direct Bottom Sheet (bypass useModal)
+        </Text>
+        <Button onPress={handlePresentDirectModal}>
+          Open Direct Bottom Sheet
+        </Button>
+      </View>
+
+      {/* Direct Bottom Sheet Modal */}
+      <BottomSheetModal
+        ref={bottomSheetModalRef}
+        index={0}
+        snapPoints={snapPoints}
+        enableDynamicSizing
+        keyboardBehavior="interactive"
+        android_keyboardInputMode="adjustResize"
+        enablePanDownToClose
+        handleIndicatorStyle={{ width: 60, height: 6 }}
+        backgroundStyle={{ backgroundColor: theme.colors.surface }}
+        topInset={insets.top}
+        bottomInset={insets.bottom}
+      >
+        <BottomSheetView
+          style={[
+            styles.bottomSheetContent,
+            { paddingBottom: Math.max(16, insets.bottom + 8) },
+          ]}
+        >
+          <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 16 }}>
+            Edit Name (Direct Modal)
+          </Text>
+          <Text>Current Name: {directInputValue}</Text>
+          <Text>{JSON.stringify(snapPoints)}</Text>
+          <TextInput
+            label="Name"
+            value={directInputValue}
+            onChangeText={setDirectInputValue}
+            style={{ marginTop: 8, marginBottom: 16 }}
+          />
+
+          {/* Button to open nested sheet */}
+          <View
+            style={[
+              styles.directBtn,
+              { backgroundColor: theme.colors.secondary, marginBottom: 16 },
+            ]}
+          >
+            <Text style={styles.directBtnText} onPress={handleOpenNestedSheet}>
+              Open Nested Sheet
+            </Text>
+          </View>
+
+          <View
+            style={{ flexDirection: "row", justifyContent: "space-between" }}
+          >
+            <View
+              style={[
+                styles.directBtn,
+                { backgroundColor: theme.colors.error },
+              ]}
+            >
+              <Text
+                style={styles.directBtnText}
+                onPress={handleCloseDirectModal}
+              >
+                Cancel
+              </Text>
+            </View>
+            <View style={styles.directBtn}>
+              <Text
+                style={styles.directBtnText}
+                onPress={handleSaveDirectModal}
+              >
+                Save
+              </Text>
+            </View>
+          </View>
+        </BottomSheetView>
+      </BottomSheetModal>
+
+      {/* Nested Bottom Sheet Modal */}
+      <BottomSheetModal
+        ref={nestedBottomSheetRef}
+        index={0}
+        snapPoints={snapPoints}
+        enableDynamicSizing
+        keyboardBehavior="interactive"
+        android_keyboardInputMode="adjustResize"
+        enablePanDownToClose
+        handleIndicatorStyle={{ width: 60, height: 6 }}
+        backgroundStyle={{ backgroundColor: theme.colors.surface }}
+        topInset={insets.top}
+        bottomInset={insets.bottom}
+      >
+        <BottomSheetView
+          style={[
+            styles.bottomSheetContent,
+            { paddingBottom: Math.max(16, insets.bottom + 8) },
+          ]}
+        >
+          <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 16 }}>
+            Nested Sheet
+          </Text>
+          <Text>Value from parent: {directInputValue}</Text>
+          <TextInput
+            label="Modified Value"
+            value={nestedValue}
+            onChangeText={setNestedValue}
+            style={{ marginTop: 8, marginBottom: 16 }}
+          />
+          <View
+            style={{ flexDirection: "row", justifyContent: "space-between" }}
+          >
+            <View
+              style={[
+                styles.directBtn,
+                { backgroundColor: theme.colors.error },
+              ]}
+            >
+              <Text
+                style={styles.directBtnText}
+                onPress={handleCloseNestedSheet}
+              >
+                Cancel
+              </Text>
+            </View>
+            <View style={styles.directBtn}>
+              <Text
+                style={styles.directBtnText}
+                onPress={() => handleUpdateFromNested(nestedValue)}
+              >
+                Update Parent
+              </Text>
+            </View>
+          </View>
+        </BottomSheetView>
+      </BottomSheetModal>
     </View>
   );
 };

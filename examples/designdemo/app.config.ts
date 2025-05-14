@@ -57,7 +57,16 @@ const config: ExpoConfig = {
   experiments: {
     baseUrl: isDev ? "" : "/universe/design-playground",
   },
-  plugins: ["expo-localization", "expo-router"],
+  plugins: [
+    "expo-localization",
+    "expo-router",
+    [
+      "react-native-edge-to-edge",
+      {
+        enableEdgeToEdge: true,
+      },
+    ],
+  ],
 };
 
 export default config;

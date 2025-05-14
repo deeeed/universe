@@ -36,7 +36,12 @@ module.exports = {
     },
   },
   plugins: ['@typescript-eslint', 'react', 'prettier'],
-  ignorePatterns: ['release-it.js', '!.storybook/', 'dist/'],
+  ignorePatterns: [
+    'release-it.js',
+    '!.storybook/',
+    'dist/',
+    'storybook-static/',
+  ],
   rules: {
     'prettier/prettier': [
       'error',
