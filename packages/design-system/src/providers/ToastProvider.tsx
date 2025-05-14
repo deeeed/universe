@@ -3,7 +3,7 @@ import { Keyboard, StyleProp, TextStyle, ViewStyle } from 'react-native';
 
 import { SwipeableToast } from '../components/Toast/SwipeableToast';
 import { Toast } from '../components/Toast/Toast';
-import type { SwipeConfig, ToastProps } from '../components/Toast/Toast.types';
+import { SwipeConfig, ToastProps } from '../components/Toast/Toast.types';
 
 // Update ToastOptions to include stacking behavior
 export type ToastOptions = Partial<ToastProps> & {
@@ -43,7 +43,7 @@ export interface ToastProviderProps {
 }
 
 // Add a unique ID to each toast
-interface ToastState extends ToastProps {
+export interface ToastState extends ToastProps {
   id: string;
   swipeConfig?: SwipeConfig;
   message: string;
@@ -74,16 +74,14 @@ export const ToastContext = createContext<ToastMethods | null>(null);
 let toastIdCounter = 0;
 const getNextId = () => `toast-${++toastIdCounter}`;
 
-const reducer =
-  (initialState: ToastState[]) =>
-  (state: ToastState[], action: ToastAction): ToastState[] => {
+const reducer = (initialState: ToastState[]) => {
+  return (state: ToastState[], action: ToastAction) => {
     switch (action.type) {
       case ToastActionType.ADD: {
         const providerDefaults = JSON.parse(JSON.stringify(initialState[0]));
         const options = action.payload?.options ?? {};
         const stackBehavior = options.stackBehavior ?? {};
 
-        // If replaceAll is true, remove all existing toasts
         if (stackBehavior.replaceAll) {
           return [
             {
@@ -102,7 +100,6 @@ const reducer =
           ...options,
         };
 
-        // Use toast-specific isStackable if provided, otherwise fall back to provider default
         const shouldStack =
           stackBehavior.isStackable !== undefined
             ? stackBehavior.isStackable
@@ -116,7 +113,7 @@ const reducer =
         const providerDefaults = JSON.parse(JSON.stringify(initialState[0]));
         return state.map((toast) => ({
           ...providerDefaults,
-          ...toast, // Maintain toast's own properties
+          ...toast,
           visibility: false,
         }));
       }
@@ -124,6 +121,7 @@ const reducer =
         return state;
     }
   };
+};
 
 export const ToastProvider: React.FC<ToastProviderProps> = ({
   children,
@@ -157,9 +155,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
 
   const initialState: ToastState[] = [{ ...baseState, id: getNextId() }];
 
-  const [toasts, dispatch] = useReducer<
-    (state: ToastState[], action: ToastAction) => ToastState[]
-  >(reducer(initialState), initialState);
+  const [toasts, dispatch] = useReducer(reducer(initialState), initialState);
 
   const toastMethods = useMemo(
     () => ({

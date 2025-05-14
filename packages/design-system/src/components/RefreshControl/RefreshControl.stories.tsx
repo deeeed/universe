@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Text } from 'react-native-paper';
-import { RefreshControl, RefreshControlProps } from './RefreshControl';
+import { RefreshControl, RefreshControlProps } from './index';
 
 const RefreshControlWebMeta: Meta = {
   component: RefreshControl,
