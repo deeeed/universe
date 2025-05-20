@@ -12,8 +12,8 @@ import {
   BottomSheetView,
   SNAP_POINT_TYPE,
 } from '@gorhom/bottom-sheet';
-import React, { memo, useCallback, useMemo, useRef } from 'react';
-import { LayoutChangeEvent, View } from 'react-native';
+import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { LayoutChangeEvent, View, Platform } from 'react-native';
 import { useTheme } from '../../providers/ThemeProvider';
 import type {
   BottomSheetStackItem,
@@ -94,6 +94,7 @@ export const BottomSheetModalWrapper = memo(
     const theme = useTheme();
     const { top: topInset } = useSafeAreaInsets();
     const lastFooterHeight = useRef(modal.state.footerHeight);
+    const hasPresentedRef = useRef(false);
 
     const handleChange = useCallback(
       (newValue: unknown) => {
@@ -224,6 +225,17 @@ export const BottomSheetModalWrapper = memo(
       },
       [modal, handleChange]
     );
+
+    useEffect(() => {
+      if (
+        Platform.OS === 'android' &&
+        modal.bottomSheetRef.current &&
+        !hasPresentedRef.current
+      ) {
+        modal.bottomSheetRef.current.present();
+        hasPresentedRef.current = true;
+      }
+    }, [modal.bottomSheetRef.current]);
 
     return (
       <View testID={testID}>
