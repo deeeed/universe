@@ -6,10 +6,17 @@ import type {
   BottomSheetFooterProps,
 } from '@gorhom/bottom-sheet';
 import type { ReactNode } from 'react';
+import type { ViewStyle } from 'react-native';
 
 export interface ModalState<T = unknown> {
   data: T;
   footerHeight: number;
+}
+
+export interface CustomBottomSheetProps extends BottomSheetModalProps {
+  disableSafeAreaPadding?: boolean;
+  contentContainerStyle?: ViewStyle;
+  footerContainerStyle?: ViewStyle;
 }
 
 export interface OpenDrawerProps<T = unknown> {
@@ -18,7 +25,7 @@ export interface OpenDrawerProps<T = unknown> {
   initialData?: T;
   portalName?: string;
   containerType?: 'view' | 'scrollview' | 'none';
-  bottomSheetProps?: Partial<BottomSheetModalProps>;
+  bottomSheetProps?: Partial<CustomBottomSheetProps>;
   render: (props: {
     state: ModalState<T>;
     resolve: (value: T | undefined) => void;

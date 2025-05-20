@@ -13,7 +13,8 @@ import {
   SNAP_POINT_TYPE,
 } from '@gorhom/bottom-sheet';
 import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react';
-import { LayoutChangeEvent, View, Platform } from 'react-native';
+import { LayoutChangeEvent, Platform, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../providers/ThemeProvider';
 import type {
   BottomSheetStackItem,
@@ -21,7 +22,6 @@ import type {
 } from '../../types/bottomSheet.types';
 import { ConfirmCancelFooter } from './footers/ConfirmCancelFooter';
 import { LabelHandler } from './handlers/LabelHandler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ModalContentProps {
   modalId: number;
@@ -45,7 +45,8 @@ ModalContent.displayName = 'ModalContent';
 const defaultBottomSheetModalProps: Partial<BottomSheetModalProps> = {
   enableDynamicSizing: true,
   snapPoints: [],
-  android_keyboardInputMode: 'adjustResize',
+  android_keyboardInputMode:
+    Platform.OS === 'android' ? 'adjustPan' : 'adjustResize',
   keyboardBehavior: 'interactive',
   keyboardBlurBehavior: 'restore',
   enablePanDownToClose: true,
@@ -92,7 +93,7 @@ export const BottomSheetModalWrapper = memo(
     testID,
   }: BottomSheetModalWrapperProps) => {
     const theme = useTheme();
-    const { top: topInset } = useSafeAreaInsets();
+    const { top: topInset, bottom: bottomInset } = useSafeAreaInsets();
     const lastFooterHeight = useRef(modal.state.footerHeight);
     const hasPresentedRef = useRef(false);
 
@@ -120,6 +121,14 @@ export const BottomSheetModalWrapper = memo(
       [modal.id, updateModalState]
     );
 
+    // Allow user to disable safe area padding or override styles
+    const disableSafeAreaPadding =
+      modal.props.bottomSheetProps?.disableSafeAreaPadding;
+    const userContentContainerStyle =
+      modal.props.bottomSheetProps?.contentContainerStyle;
+    const userFooterContainerStyle =
+      modal.props.bottomSheetProps?.footerContainerStyle;
+
     const renderFooter = useCallback(
       (footerProps: BottomSheetFooterProps) => {
         const { renderFooter, footerType } = modal.props;
@@ -127,7 +136,13 @@ export const BottomSheetModalWrapper = memo(
 
         return (
           <BottomSheetFooter {...footerProps}>
-            <View onLayout={handleFooterLayout}>
+            <View
+              onLayout={handleFooterLayout}
+              style={[
+                !disableSafeAreaPadding && { paddingBottom: bottomInset },
+                userFooterContainerStyle,
+              ]}
+            >
               {!renderFooter && footerType === 'confirm_cancel' && (
                 <ConfirmCancelFooter
                   onFinish={() => modal.resolve(modal.state.data)}
@@ -146,7 +161,14 @@ export const BottomSheetModalWrapper = memo(
           </BottomSheetFooter>
         );
       },
-      [modal, handleChange, handleFooterLayout]
+      [
+        modal,
+        handleChange,
+        handleFooterLayout,
+        bottomInset,
+        disableSafeAreaPadding,
+        userFooterContainerStyle,
+      ]
     );
 
     const renderContent = useCallback(() => {
@@ -161,10 +183,13 @@ export const BottomSheetModalWrapper = memo(
       return (
         <Container>
           <View
-            style={{
-              paddingBottom: modal.state.footerHeight,
-              backgroundColor: theme.colors.surface,
-            }}
+            style={[
+              { backgroundColor: theme.colors.surface },
+              !disableSafeAreaPadding && {
+                paddingBottom: modal.state.footerHeight + bottomInset,
+              },
+              userContentContainerStyle,
+            ]}
           >
             <ModalContent
               modalId={modal.id}
@@ -182,7 +207,14 @@ export const BottomSheetModalWrapper = memo(
           </View>
         </Container>
       );
-    }, [modal, handleChange, theme.colors]);
+    }, [
+      modal,
+      handleChange,
+      theme.colors,
+      bottomInset,
+      disableSafeAreaPadding,
+      userContentContainerStyle,
+    ]);
 
     const bottomSheetProps = useMemo(
       () => ({
