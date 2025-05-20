@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.48.0] - 2025-05-20
+### Changed
+- fix(BottomSheetModalWrapper): enhance safe area handling and footer layout adjustments for better modal presentation ([898174c](https://github.com/deeeed/universe/commit/898174cc71311ba26030936c1e519b7bcd84f58c))
+- chore(@siteed/design-system): release 0.47.0 ([9ff0d6a](https://github.com/deeeed/universe/commit/9ff0d6af2ed90a2606313ffdcdacfaaa271c47f0))
 ## [0.47.0] - 2025-05-20
 ### Changed
 - fix(BottomSheetModalWrapper): ensure modal presents correctly on Android by using useEffect and a ref to track presentation state ([2b319e3](https://github.com/deeeed/universe/commit/2b319e35574f28de6c1bf8739f1d352191acad9a))
@@ -109,7 +113,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.47.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.48.0...HEAD
+[0.48.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.47.0...@siteed/design-system@0.48.0
 [0.47.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.46.2...@siteed/design-system@0.47.0
 [0.46.2]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.46.1...@siteed/design-system@0.46.2
 [0.46.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.46.0...@siteed/design-system@0.46.1
