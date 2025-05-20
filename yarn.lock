@@ -12860,9 +12860,9 @@ __metadata:
     eslint-config-universe: "npm:^12.0.0"
     expo: "npm:^53.0.9"
     expo-constants: "npm:~17.1.6"
-    expo-linking: "npm:~7.1.4"
+    expo-linking: "npm:~7.1.5"
     expo-localization: "npm:~16.1.5"
-    expo-router: "npm:~5.0.6"
+    expo-router: "npm:~5.0.7"
     expo-status-bar: "npm:~2.2.3"
     expo-system-ui: "npm:~5.0.7"
     gh-pages: "npm:^6.1.1"
@@ -14535,7 +14535,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-constants@npm:~17.1.4, expo-constants@npm:~17.1.5, expo-constants@npm:~17.1.6":
+"expo-constants@npm:~17.1.5, expo-constants@npm:~17.1.6":
   version: 17.1.6
   resolution: "expo-constants@npm:17.1.6"
   dependencies:
@@ -14629,16 +14629,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-linking@npm:~7.1.4":
-  version: 7.1.4
-  resolution: "expo-linking@npm:7.1.4"
+"expo-linking@npm:~7.1.5":
+  version: 7.1.5
+  resolution: "expo-linking@npm:7.1.5"
   dependencies:
-    expo-constants: "npm:~17.1.4"
+    expo-constants: "npm:~17.1.6"
     invariant: "npm:^2.2.4"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/b9dcf776a96922565d92402c4c8f1b4035d8c6dc5551fbe52790301e1590e9f25d78f4f553d53a7b29d048149e4ae2ad3ada74fc6cacfdb82a75aa21152029de
+  checksum: 10c0/ed976f27aab12063702b5e4fca56c564133f01f8efa7e9980b7aa8de17ad987cf8cb7ee9117015672193e9400b785ec289a7553c734cddc807b17495d4551b98
   languageName: node
   linkType: hard
 
@@ -14787,9 +14787,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-router@npm:~5.0.6":
-  version: 5.0.6
-  resolution: "expo-router@npm:5.0.6"
+"expo-router@npm:~5.0.7":
+  version: 5.0.7
+  resolution: "expo-router@npm:5.0.7"
   dependencies:
     "@expo/metro-runtime": "npm:5.0.4"
     "@expo/server": "npm:^0.6.2"
@@ -14820,7 +14820,7 @@ __metadata:
       optional: true
     react-native-reanimated:
       optional: true
-  checksum: 10c0/8822fa28c33e431b3019ee876e7d142da524c367570d863babbe02db455dc6297e454a51846c197ae9c4747f213b5f4320d8a03a240b99fe926b7c1d9baec4ac
+  checksum: 10c0/a8fa0435199fd3b6aa7444a01c450003ee459930896f108c2622ca7feaa16ac1a4cd5636ce8e0b7a221213f684a280c55b9805618b28288ded302755296774ad
   languageName: node
   linkType: hard
 
