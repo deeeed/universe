@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.49.0] - 2025-05-23
+### Changed
+- refactor: optimize theme and preferences hooks by memoizing callbacks and values to enhance performance and reduce unnecessary re-renders ([1b2f898](https://github.com/deeeed/universe/commit/1b2f8985f10a7964c017c7dea6871e905e6ffa89))
+- docs: update CONTRIBUTING.md, DEPLOYMENT.md, OPENDRAWER.md, and README.md for improved clarity and formatting; refine TypeScript configuration files for consistency ([58d4420](https://github.com/deeeed/universe/commit/58d4420e148c4afe7065ada78387d8df2d23461f))
+- chore(@siteed/design-system): release 0.48.0 ([c738dc0](https://github.com/deeeed/universe/commit/c738dc0e2c6f60d487b4e792969e4bccf3766b75))
 ## [0.48.0] - 2025-05-20
 ### Changed
 - fix(BottomSheetModalWrapper): enhance safe area handling and footer layout adjustments for better modal presentation ([898174c](https://github.com/deeeed/universe/commit/898174cc71311ba26030936c1e519b7bcd84f58c))
@@ -113,7 +118,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.48.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.49.0...HEAD
+[0.49.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.48.0...@siteed/design-system@0.49.0
 [0.48.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.47.0...@siteed/design-system@0.48.0
 [0.47.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.46.2...@siteed/design-system@0.47.0
 [0.46.2]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.46.1...@siteed/design-system@0.46.2
