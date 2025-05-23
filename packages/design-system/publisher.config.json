@@ -19,10 +19,7 @@
     "push": true,
     "commitMessage": "chore(@siteed/design-system): release ${version}",
     "tag": true,
-    "allowedBranches": [
-      "main",
-      "master"
-    ],
+    "allowedBranches": ["main", "master"],
     "remote": "origin"
   },
   "npm": {

@@ -31,6 +31,7 @@ yarn clean && yarn typecheck && yarn build && publisher release
 ```
 
 This command will:
+
 1. Validate all changes
 2. Update the changelog
 3. Bump the version number
@@ -58,4 +59,4 @@ If you encounter issues during deployment:
 1. Ensure all tests pass: `yarn test`
 2. Verify the build succeeds: `yarn build`
 3. Check that you have the necessary permissions for npm publishing
-4. Ensure your git working directory is clean 
+4. Ensure your git working directory is clean

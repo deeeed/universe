@@ -7,22 +7,27 @@ While I maintain this primarily for my own projects, I welcome contributions. Th
 Quick reminder of how to create a new release:
 
 1. Add changes to `CHANGELOG.md` under `[Unreleased]`:
+
    ```markdown
    ## [Unreleased]
 
    ### Added
+
    - New component I created
    - Cool new variant for existing component
 
    ### Changed
+
    - Updated styling for Component X
    - Improved accessibility for Component Y
 
    ### Removed
+
    - Deprecated Component Z
    ```
 
 2. Run the release script:
+
    ```bash
    ./release.sh
    ```
@@ -33,6 +38,7 @@ Quick reminder of how to create a new release:
    - Confirm and publish
 
 The script handles:
+
 - Version bumping
 - Changelog updates
 - Git tagging (e.g., `design-system-v0.29.5`)
@@ -42,16 +48,17 @@ The script handles:
 ### Version Bump Cheatsheet
 
 When to use each version type:
-- **patch** (0.29.x): 
+
+- **patch** (0.29.x):
   - Bug fixes
   - Documentation updates
   - Minor style tweaks
   - Updated dependencies
-- **minor** (0.x.0): 
+- **minor** (0.x.0):
   - New components
   - New features to existing components
   - New variants/props that don't break existing usage
-- **major** (x.0.0): 
+- **major** (x.0.0):
   - Breaking changes to component APIs
   - Major styling overhaul
   - Removing/renaming components
@@ -59,6 +66,7 @@ When to use each version type:
 ### Component Development
 
 Remember to:
+
 1. Add new components in `src/components`
 2. Create a story in `src/stories` for each component
 3. Add exports to `src/index.ts`
@@ -67,6 +75,7 @@ Remember to:
 ### Troubleshooting
 
 If something goes wrong during release:
+
 - Am I in the right directory? (`packages/design-system`)
 - Did I update the changelog?
 - Is Storybook working locally?
@@ -86,6 +95,7 @@ If you'd like to contribute:
 6. Submit a PR
 
 Component Guidelines:
+
 - Use TypeScript
 - Include proper prop types and documentation
 - Create a Storybook story for each component
@@ -115,6 +125,7 @@ yarn typecheck
 ```
 
 ## Before Each Release
+
 - Check all stories in Storybook
 - Ensure documentation is up to date
 - Run typechecks and tests
