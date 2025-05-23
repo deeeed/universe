@@ -1,5 +1,5 @@
 // hooks/useAppTheme.ts
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Appearance, ColorSchemeName } from 'react-native';
 import { MD3Theme, configureFonts } from 'react-native-paper';
 import { useScreenWidth } from './useScreenWidth';
@@ -73,39 +73,55 @@ export const useAppThemeSetup = ({
   const [themeVersion, setThemeVersion] = useState<number>(3);
   const screenWidth = useScreenWidth();
 
-  // Define initial state for dynamic spacing
-  const [dynamicSpacing, setDynamicSpacing] = useState({
-    padding: customLightTheme.padding.m,
-    margin: customLightTheme.margin.m,
-    gap: customLightTheme.gap.m,
-  });
+  // Memoize spacing values and only recalculate when screen width crosses breakpoints
+  const spacingValues = useMemo(() => {
+    const baseTheme = darkMode ? customDarkTheme : customLightTheme;
 
-  // Update dynamic spacing based on screen width
-  useEffect(() => {
-    if (screenWidth < 600) {
-      setDynamicSpacing({
-        padding: customLightTheme.padding.s,
-        margin: customLightTheme.margin.s,
-        gap: customLightTheme.gap.s,
-      });
-    } else if (screenWidth < 1024) {
-      setDynamicSpacing({
-        padding: customLightTheme.padding.m,
-        margin: customLightTheme.margin.m,
-        gap: customLightTheme.gap.m,
-      });
+    // Use the theme's actual breakpoints instead of hardcoded values
+    if (screenWidth < baseTheme.breakpoints.mobile) {
+      return {
+        padding: baseTheme.padding.s,
+        margin: baseTheme.margin.s,
+        gap: baseTheme.gap.s,
+      };
+    } else if (screenWidth < baseTheme.breakpoints.tablet) {
+      return {
+        padding: baseTheme.padding.m,
+        margin: baseTheme.margin.m,
+        gap: baseTheme.gap.m,
+      };
     } else {
-      setDynamicSpacing({
-        padding: customLightTheme.padding.l,
-        margin: customLightTheme.margin.l,
-        gap: customLightTheme.gap.l,
-      });
+      return {
+        padding: baseTheme.padding.l,
+        margin: baseTheme.margin.l,
+        gap: baseTheme.gap.l,
+      };
     }
   }, [
     screenWidth,
-    customLightTheme.padding,
-    customLightTheme.margin,
-    customLightTheme.gap,
+    darkMode,
+    customDarkTheme.padding.s,
+    customDarkTheme.padding.m,
+    customDarkTheme.padding.l,
+    customDarkTheme.margin.s,
+    customDarkTheme.margin.m,
+    customDarkTheme.margin.l,
+    customDarkTheme.gap.s,
+    customDarkTheme.gap.m,
+    customDarkTheme.gap.l,
+    customDarkTheme.breakpoints.mobile,
+    customDarkTheme.breakpoints.tablet,
+    customLightTheme.padding.s,
+    customLightTheme.padding.m,
+    customLightTheme.padding.l,
+    customLightTheme.margin.s,
+    customLightTheme.margin.m,
+    customLightTheme.margin.l,
+    customLightTheme.gap.s,
+    customLightTheme.gap.m,
+    customLightTheme.gap.l,
+    customLightTheme.breakpoints.mobile,
+    customLightTheme.breakpoints.tablet,
   ]);
 
   // Listen to system color scheme changes
@@ -130,32 +146,54 @@ export const useAppThemeSetup = ({
     }
   }, [savedPreferences]);
 
+  // Memoize setDarkMode callback to prevent unnecessary re-renders
+  const stableSetDarkMode = useCallback(
+    (value: boolean | ((oldValue: boolean) => boolean)) => {
+      if (typeof value === 'function') {
+        setDarkMode(value);
+      } else {
+        setDarkMode(value);
+      }
+    },
+    []
+  );
+
+  // Memoize setThemeVersion callback
+  const stableSetThemeVersion = useCallback((version: number) => {
+    setThemeVersion(version);
+  }, []);
+
+  // Create stable theme object
   const theme = useMemo(() => {
     const baseTheme = darkMode ? customDarkTheme : customLightTheme;
     return {
       ...baseTheme,
-      spacing: dynamicSpacing,
+      spacing: spacingValues,
     };
-  }, [darkMode, customDarkTheme, customLightTheme, dynamicSpacing]);
+  }, [darkMode, customDarkTheme, customLightTheme, spacingValues]);
 
-  const configuredFontTheme = {
-    ...theme,
-    fonts: fontFamily
-      ? configureFonts({
-          config: {
-            fontFamily,
-          },
-        })
-      : undefined,
-  };
+  // Create configured font theme
+  const configuredFontTheme = useMemo(
+    () => ({
+      ...theme,
+      fonts: fontFamily
+        ? configureFonts({
+            config: {
+              fontFamily,
+            },
+          })
+        : theme.fonts,
+    }),
+    [theme, fontFamily]
+  );
 
   return {
     theme,
     configuredFontTheme,
     darkMode,
     locale: savedPreferences?.locale,
-    setDarkMode,
+    setDarkMode: stableSetDarkMode,
     themeVersion,
-    setThemeVersion,
+    setThemeVersion: stableSetThemeVersion,
   };
 };

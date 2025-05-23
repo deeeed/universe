@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { I18nextProviderProps } from 'react-i18next';
-import { baseLogger } from '../utils/logger';
 import { AppTheme, SavedUserPreferences } from './_useAppThemeSetup';
 
 interface useThemePreferencesProps {
@@ -33,8 +32,6 @@ export interface ThemePreferences {
   shouldUseDeviceColors?: boolean;
   isReady: boolean;
 }
-
-const logger = baseLogger.extend('useAppPreferencesSetup');
 
 export const useAppPreferencesSetup = ({
   theme,
@@ -82,65 +79,104 @@ export const useAppPreferencesSetup = ({
     i18nInstance,
     savePreferences,
     listener,
-    logger,
-    dynamicTheme,
+    dynamicTheme.dark,
     rippleEffectEnabled,
   ]);
 
+  // Memoize all action functions with useCallback
+  const toggleDarkMode = useCallback(() => {
+    const newValue = !dynamicTheme.dark;
+    setLocalDarkmode(newValue);
+    setThemeDarkMode(newValue);
+    savePreferences?.({
+      darkMode: newValue,
+      rippleEffectEnabled,
+      locale: i18nInstance.language,
+    });
+  }, [
+    dynamicTheme.dark,
+    setThemeDarkMode,
+    savePreferences,
+    rippleEffectEnabled,
+    i18nInstance.language,
+  ]);
+
+  const setDarkMode = useCallback(
+    (value: boolean) => {
+      setLocalDarkmode(value);
+      setThemeDarkMode(value);
+      savePreferences?.({
+        darkMode: value,
+        rippleEffectEnabled,
+        locale: i18nInstance.language,
+      });
+    },
+    [
+      setThemeDarkMode,
+      savePreferences,
+      rippleEffectEnabled,
+      i18nInstance.language,
+    ]
+  );
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => !prev);
+  }, []);
+
+  const toggleCustomFont = useCallback(() => {
+    setCustomFont((prev) => !prev);
+  }, []);
+
+  const toggleRippleEffect = useCallback(() => {
+    setRippleEffectEnabled((oldValue) => {
+      const newValue = !oldValue;
+      savePreferences?.({
+        darkMode: dynamicTheme.dark,
+        rippleEffectEnabled: newValue,
+        locale: i18nInstance.language,
+      });
+      return newValue;
+    });
+  }, [savePreferences, dynamicTheme.dark, i18nInstance.language]);
+
+  const setThemeColor = useCallback(
+    ({ name, value }: { name: string; value: string }) => {
+      setDynamicTheme((oldTheme) => {
+        const newTheme = {
+          ...oldTheme,
+          colors: {
+            ...oldTheme.colors,
+            [name]: value,
+          },
+        };
+        console.log(
+          `[${name}] ${
+            oldTheme.colors[name as keyof AppTheme['colors']]
+          } -> ${value}`
+        );
+        console.log(
+          `primary: ${newTheme.colors.primary} secondary: ${newTheme.colors.secondary} tertiary: ${newTheme.colors.tertiary}`
+        );
+        return newTheme;
+      });
+    },
+    []
+  );
+
+  const toggleThemeVersion = useCallback(() => {
+    // Empty implementation - kept for API consistency
+  }, []);
+
+  // Memoize the final preferences object
   const preferences: ThemeActions & ThemePreferences = useMemo(
     () => ({
-      toggleDarkMode: () => {
-        const newValue = !dynamicTheme.dark;
-        setLocalDarkmode(newValue);
-        setThemeDarkMode(newValue);
-        savePreferences?.({
-          darkMode: newValue,
-          rippleEffectEnabled,
-          locale: i18nInstance.language,
-        });
-      },
-      setDarkMode: (value: boolean) => {
-        setLocalDarkmode(value);
-        setThemeDarkMode(value);
-        savePreferences?.({
-          darkMode: value,
-          rippleEffectEnabled,
-          locale: i18nInstance.language,
-        });
-      },
-      toggleCollapsed: () => setCollapsed(!collapsed),
-      toggleCustomFont: () => setCustomFont(!customFontLoaded),
-      toggleRippleEffect: () => {
-        setRippleEffectEnabled((oldValue) => {
-          savePreferences?.({
-            darkMode: dynamicTheme.dark,
-            rippleEffectEnabled: !oldValue,
-            locale: i18nInstance.language,
-          });
-          return !oldValue;
-        });
-      },
-      setThemeColor: ({ name, value }: { name: string; value: string }) => {
-        setDynamicTheme((oldTheme) => {
-          const newTheme = {
-            ...oldTheme,
-            colors: {
-              ...oldTheme.colors,
-              [name]: value,
-            },
-          };
-          console.log(
-            `[${name}] ${
-              oldTheme.colors[name as keyof AppTheme['colors']]
-            } -> ${value}`
-          );
-          console.log(
-            `primary: ${newTheme.colors.primary} secondary: ${newTheme.colors.secondary} tertiary: ${newTheme.colors.tertiary}`
-          );
-          return newTheme;
-        });
-      },
-      toggleThemeVersion: () => {},
+      toggleDarkMode,
+      setDarkMode,
+      toggleCollapsed,
+      toggleCustomFont,
+      toggleRippleEffect,
+      setThemeColor,
+      toggleThemeVersion,
       customFontLoaded,
       rippleEffectEnabled,
       collapsed,
@@ -149,14 +185,19 @@ export const useAppPreferencesSetup = ({
       isReady,
     }),
     [
-      dynamicTheme,
-      isReady,
-      collapsed,
-      i18nInstance,
-      savePreferences,
+      toggleDarkMode,
+      setDarkMode,
+      toggleCollapsed,
+      toggleCustomFont,
+      toggleRippleEffect,
+      setThemeColor,
+      toggleThemeVersion,
       customFontLoaded,
       rippleEffectEnabled,
-      setThemeDarkMode,
+      collapsed,
+      darkMode,
+      dynamicTheme,
+      isReady,
     ]
   );
 

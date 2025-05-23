@@ -1,4 +1,4 @@
-import React, { FunctionComponent, ReactNode } from 'react';
+import React, { FunctionComponent, ReactNode, useMemo } from 'react';
 import { PaperProvider } from 'react-native-paper';
 import {
   ThemeActions,
@@ -18,11 +18,24 @@ export const ThemeProvider: FunctionComponent<ThemeProviderProps> = ({
   children,
   preferences,
 }) => {
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => preferences, [preferences]);
+
+  // Memoize PaperProvider props
+  const paperProviderTheme = useMemo(
+    () => preferences.theme,
+    [preferences.theme]
+  );
+  const paperProviderSettings = useMemo(
+    () => ({ rippleEffectEnabled: preferences.rippleEffectEnabled }),
+    [preferences.rippleEffectEnabled]
+  );
+
   return (
-    <PreferencesContext.Provider value={preferences}>
+    <PreferencesContext.Provider value={contextValue}>
       <PaperProvider
-        theme={preferences.theme}
-        settings={{ rippleEffectEnabled: preferences.rippleEffectEnabled }}
+        theme={paperProviderTheme}
+        settings={paperProviderSettings}
       >
         {children}
       </PaperProvider>

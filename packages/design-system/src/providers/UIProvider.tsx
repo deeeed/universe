@@ -1,7 +1,7 @@
 // packages/design-system/src/providers/UIProvider.tsx
 import { PortalHost, PortalProvider } from '@gorhom/portal';
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -137,26 +137,45 @@ const UIProviderWithLanguageReady = ({
     savedPreferences: preferences,
   });
 
-  const theme = React.useMemo(() => {
+  // Memoize custom themes to prevent recreation
+  const memoizedDarkTheme = useMemo(() => darkTheme, [darkTheme]);
+  const memoizedLightTheme = useMemo(() => lightTheme, [lightTheme]);
+  const memoizedBreakpoints = useMemo(() => breakpoints, [breakpoints]);
+
+  // Memoize the final theme to prevent unnecessary recreations
+  const theme = useMemo(() => {
     const baseTheme = darkMode
-      ? { ...defaultTheme, ...darkTheme }
-      : { ...defaultTheme, ...lightTheme };
+      ? { ...defaultTheme, ...memoizedDarkTheme }
+      : { ...defaultTheme, ...memoizedLightTheme };
 
     return {
       ...baseTheme,
       breakpoints: {
         ...baseTheme.breakpoints,
-        ...breakpoints,
+        ...memoizedBreakpoints,
       },
     };
-  }, [darkMode, darkTheme, lightTheme, defaultTheme, breakpoints]);
+  }, [
+    darkMode,
+    defaultTheme,
+    memoizedDarkTheme,
+    memoizedLightTheme,
+    memoizedBreakpoints,
+  ]);
 
+  // Memoize the save preferences action
+  const memoizedSavePreferences = useMemo(
+    () => actions?.savePreferences,
+    [actions?.savePreferences]
+  );
+
+  // Memoize preferences setup to prevent recreation
   const defaultPreferences = useAppPreferencesSetup({
     theme,
     setDarkMode,
     i18nInstance: i18n,
     setThemeVersion,
-    savePreferences: actions?.savePreferences,
+    savePreferences: memoizedSavePreferences,
   });
 
   return (
