@@ -14,9 +14,7 @@ const handleOpenModal = async () => {
   const result = await openDrawer({
     render: ({ resolve }) => (
       // This component was being recreated on EVERY parent re-render!
-      <MyModalContent 
-        onFinish={(data) => resolve(data)}
-      />
+      <MyModalContent onFinish={(data) => resolve(data)} />
     ),
   });
 };
@@ -49,12 +47,12 @@ const ModalContent = memo(
   ({ state, onChange, render, resolve, reject }: ModalContentProps) => {
     // Store the initial render function in a ref to prevent re-creation
     const renderRef = useRef(render);
-    
+
     // Only update the ref on mount
     useEffect(() => {
       renderRef.current = render;
     }, []); // Empty deps - only run once
-    
+
     // Render using the stable reference
     return (
       <>
@@ -76,18 +74,20 @@ const ModalContent = memo(
       prevProps.resolve === nextProps.resolve &&
       prevProps.reject === nextProps.reject
     );
-  }
+  },
 );
 ```
 
 ## How It Works
 
 ### Before the Fix
+
 ```
 Parent Re-render → render() called → New Component Instance → All Hooks Re-initialized
 ```
 
 ### After the Fix
+
 ```
 Parent Re-render → render() NOT called → Same Component Instance → Hooks Maintain State
 ```
@@ -99,8 +99,8 @@ The `openDrawer` API remains completely unchanged. All existing functionality is
 ```tsx
 const result = await openDrawer({
   // Initial data for the modal
-  initialData: { name: '', email: '' },
-  
+  initialData: { name: "", email: "" },
+
   // Render the modal content
   render: ({ state, onChange, resolve, reject }) => (
     <MyModalContent
@@ -111,12 +111,10 @@ const result = await openDrawer({
       onError={(error) => reject(error)}
     />
   ),
-  
+
   // Optional footer with access to current state
   renderFooter: ({ state, resolve }) => (
-    <Button onPress={() => resolve(state.data)}>
-      Save Changes
-    </Button>
+    <Button onPress={() => resolve(state.data)}>Save Changes</Button>
   ),
 });
 ```
