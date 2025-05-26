@@ -40,36 +40,36 @@ interface ModalContentProps {
 // Memoized modal content that prevents unnecessary re-renders
 const ModalContent = memo(
   ({
-    modalId,
     state,
     onChange,
     render,
     resolve,
     reject,
-  }: ModalContentProps) => {
-    // Store the initial render function in a ref
+  }: Omit<ModalContentProps, 'modalId'>) => {
+    // Store the initial render function in a ref to prevent recreation on parent re-renders
     const renderRef = useRef(render);
 
-    // Update the render function ref only on mount
+    // Only update the render function on mount to prevent parent re-renders from affecting us
     useEffect(() => {
       renderRef.current = render;
     }, []); // Empty deps - only run once on mount
 
-    // Create content using the stable render function, but only once
-    const content = useMemo(() => {
-      return renderRef.current({
-        state,
-        onChange,
-        resolve,
-        reject,
-      });
-    }, [modalId]); // Only recreate if modalId changes (different modal)
-
-    return <>{content}</>;
+    // Render the content with current state - this will re-render when state changes
+    return (
+      <>
+        {renderRef.current({
+          state,
+          onChange,
+          resolve,
+          reject,
+        })}
+      </>
+    );
   },
-  // Never re-render once mounted (except for different modal)
+  // Custom comparison function - only re-render when state actually changes
   (prevProps, nextProps) => {
-    return prevProps.modalId === nextProps.modalId;
+    // Only re-render if state changed
+    return prevProps.state === nextProps.state;
   }
 );
 
@@ -236,7 +236,6 @@ export const BottomSheetModalWrapper = memo(
             ]}
           >
             <ModalContent
-              modalId={modal.id}
               state={modal.state}
               onChange={handleChange}
               render={modal.render}
@@ -247,7 +246,6 @@ export const BottomSheetModalWrapper = memo(
         </Container>
       );
     }, [
-      modal.id,
       modal.state,
       modal.props.containerType,
       modal.render,

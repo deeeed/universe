@@ -140,6 +140,53 @@ export const Bug = () => {
       >
         Test Long Scroll
       </Button>
+
+      <Button
+        mode="contained"
+        onPress={async () => {
+          console.log("[TEST] Opening EditableInfoCard test drawer...");
+
+          // Simulate a recording object
+          const recording = {
+            title: "jfk.wavdfdfdfaaatttteee",
+            description: "Test recording description",
+            duration: 120,
+            createdAt: new Date().toISOString(),
+          };
+
+          const result = await openDrawer({
+            initialData: recording,
+            title: "Edit Recording",
+            footerType: "confirm_cancel",
+            render: ({ state, onChange }) => {
+              console.log(
+                "[DRAWER] Recording edit form render, state:",
+                state.data,
+              );
+              return (
+                <RecordingEditForm
+                  recording={state.data}
+                  updateRecording={async (params) => {
+                    console.log("[FORM] updateRecording called with:", params);
+                    const newRecording = { ...state.data, ...params.data };
+                    console.log(
+                      "[FORM] Calling onChange with new recording:",
+                      newRecording,
+                    );
+                    onChange(newRecording);
+                    return newRecording;
+                  }}
+                />
+              );
+            },
+          });
+
+          console.log("[TEST] Drawer closed with result:", result);
+        }}
+        style={{ marginTop: 10 }}
+      >
+        Test EditableInfoCard Bug (Recording Edit)
+      </Button>
     </View>
   );
 };
@@ -371,6 +418,111 @@ const LongScrollContent = ({ footerHeight }: LongScrollContentProps) => {
           <Text>Footer height: {footerHeight}</Text>
         </View>
       ))}
+    </View>
+  );
+};
+
+interface RecordingData {
+  title: string;
+  description: string;
+  duration: number;
+  createdAt: string;
+}
+
+interface RecordingEditFormProps {
+  recording: RecordingData;
+  updateRecording: (params: {
+    data: Partial<RecordingData>;
+  }) => Promise<RecordingData>;
+}
+
+const RecordingEditForm = ({
+  recording,
+  updateRecording,
+}: RecordingEditFormProps) => {
+  const { theme } = useThemePreferences();
+  const [localTitle, setLocalTitle] = useState(recording.title);
+
+  console.log("[RecordingEditForm] Rendered with recording:", recording);
+
+  return (
+    <View style={{ padding: 16 }}>
+      <Text variant="titleMedium" style={{ marginBottom: 16 }}>
+        Edit Recording Details
+      </Text>
+
+      <EditableInfoCard
+        label="Title"
+        value={recording.title}
+        containerStyle={{
+          backgroundColor: theme.colors.surface,
+          marginBottom: 12,
+        }}
+        editable
+        inlineEditable
+        onInlineEdit={async (newValue) => {
+          console.log("[EditableInfoCard] onInlineEdit called with:", newValue);
+          const stringValue = String(newValue || "");
+          setLocalTitle(stringValue);
+          await updateRecording({ data: { title: stringValue } });
+          console.log("[EditableInfoCard] updateRecording completed");
+        }}
+      />
+
+      <EditableInfoCard
+        label="Description"
+        value={recording.description}
+        containerStyle={{
+          backgroundColor: theme.colors.surface,
+          marginBottom: 12,
+        }}
+        editable
+        inlineEditable
+        multiline
+        numberOfLines={3}
+        onInlineEdit={async (newValue) => {
+          console.log(
+            "[EditableInfoCard] Description onInlineEdit called with:",
+            newValue,
+          );
+          const stringValue = String(newValue || "");
+          await updateRecording({ data: { description: stringValue } });
+        }}
+      />
+
+      <EditableInfoCard
+        label="Duration"
+        value={`${recording.duration} seconds`}
+        containerStyle={{
+          backgroundColor: theme.colors.surface,
+          marginBottom: 12,
+        }}
+        editable={false}
+      />
+
+      <EditableInfoCard
+        label="Created At"
+        value={new Date(recording.createdAt).toLocaleString()}
+        containerStyle={{
+          backgroundColor: theme.colors.surface,
+          marginBottom: 12,
+        }}
+        editable={false}
+      />
+
+      <View
+        style={{
+          padding: 10,
+          backgroundColor: theme.colors.surfaceVariant,
+          borderRadius: 8,
+          marginTop: 16,
+        }}
+      >
+        <Text variant="bodySmall">Current State:</Text>
+        <Text variant="bodySmall">Title: {recording.title}</Text>
+        <Text variant="bodySmall">Local Title: {localTitle}</Text>
+        <Text variant="bodySmall">Description: {recording.description}</Text>
+      </View>
     </View>
   );
 };

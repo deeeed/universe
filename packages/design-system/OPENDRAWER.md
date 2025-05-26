@@ -34,9 +34,9 @@ Every time the parent component re-rendered (due to state changes, prop updates,
 3. **Context Updates**: Updates from context providers above the parent
 4. **Prop Changes**: New props passed to the parent component
 
-## The Solution
+## The Solution ✅ FIXED
 
-We fixed this at the design-system level by ensuring modal content is only rendered once when the modal opens, not on every parent re-render.
+We fixed this at the design-system level by ensuring modal content is only rendered once when the modal opens, not on every parent re-render, while still allowing the modal to re-render when its internal state changes.
 
 ### Implementation
 
@@ -44,16 +44,22 @@ The fix uses a combination of memoization and refs to maintain a stable referenc
 
 ```tsx
 const ModalContent = memo(
-  ({ state, onChange, render, resolve, reject }: ModalContentProps) => {
-    // Store the initial render function in a ref to prevent re-creation
+  ({
+    state,
+    onChange,
+    render,
+    resolve,
+    reject,
+  }: Omit<ModalContentProps, "modalId">) => {
+    // Store the initial render function in a ref to prevent recreation on parent re-renders
     const renderRef = useRef(render);
 
-    // Only update the ref on mount
+    // Only update the render function on mount to prevent parent re-renders from affecting us
     useEffect(() => {
       renderRef.current = render;
-    }, []); // Empty deps - only run once
+    }, []); // Empty deps - only run once on mount
 
-    // Render using the stable reference
+    // Render the content with current state - this will re-render when state changes
     return (
       <>
         {renderRef.current({
@@ -65,18 +71,19 @@ const ModalContent = memo(
       </>
     );
   },
-  // Custom comparison to prevent unnecessary re-renders
+  // Custom comparison function - only re-render when state actually changes
   (prevProps, nextProps) => {
-    return (
-      prevProps.modalId === nextProps.modalId &&
-      prevProps.state === nextProps.state &&
-      prevProps.onChange === nextProps.onChange &&
-      prevProps.resolve === nextProps.resolve &&
-      prevProps.reject === nextProps.reject
-    );
+    // Only re-render if state changed
+    return prevProps.state === nextProps.state;
   },
 );
 ```
+
+### Key Improvements
+
+1. **Stable Render Function**: The render function is stored in a ref and only updated on mount, preventing parent re-renders from creating new function instances
+2. **State-Aware Re-rendering**: The component re-renders when modal state changes via `onChange`, ensuring UI updates properly
+3. **Optimized Comparison**: Custom memo comparison only checks state changes, ignoring other prop changes that don't affect the UI
 
 ## How It Works
 
@@ -84,13 +91,36 @@ const ModalContent = memo(
 
 ```
 Parent Re-render → render() called → New Component Instance → All Hooks Re-initialized
+Modal State Change → render() NOT called → ❌ STALE CONTENT → User sees old data
 ```
 
 ### After the Fix
 
 ```
 Parent Re-render → render() NOT called → Same Component Instance → Hooks Maintain State
+Modal State Change → render() called → ✅ UPDATED CONTENT → User sees new data
 ```
+
+## Testing the Fix
+
+To validate the fix works correctly, use the test page at `examples/designdemo/src/app/(tabs)/bug.tsx`:
+
+1. **Test Parent Re-renders**: Type in the parent input field - modal content should NOT re-render
+2. **Test Modal State Updates**: Click "Test EditableInfoCard Bug (Recording Edit)" button
+   - Edit the title or description using inline edit
+   - Changes should persist immediately without reverting
+   - The UI should update to reflect the new values
+
+### Expected Behavior
+
+When editing an EditableInfoCard within a modal:
+
+1. Click the pencil icon to enter edit mode
+2. Type new value
+3. Click the checkmark to save
+4. ✅ The new value should persist and display immediately
+5. ✅ The modal's internal state should update
+6. ✅ No reverting to old values
 
 ## API Compatibility
 
@@ -125,6 +155,8 @@ const result = await openDrawer({
 2. **Predictable Behavior**: Hooks and effects work as expected without surprises
 3. **Better User Experience**: No flickering or state loss during interactions
 4. **Reduced Resource Usage**: Expensive operations aren't repeated unnecessarily
+5. **✅ Proper State Updates**: Modal content updates when state changes via `onChange`
+6. **✅ EditableInfoCard Support**: Inline editing works correctly without reverting values
 
 ## Technical Details
 
