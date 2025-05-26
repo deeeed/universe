@@ -27,15 +27,48 @@ interface ModalContentProps {
   modalId: number;
   state: ModalState<unknown>;
   onChange: (newValue: unknown) => void;
-  renderContent: (props: {
+  render: (props: {
     state: ModalState<unknown>;
     onChange: (newValue: unknown) => void;
+    resolve: (value: unknown) => void;
+    reject: (error: Error) => void;
   }) => React.ReactNode;
+  resolve: (value: unknown) => void;
+  reject: (error: Error) => void;
 }
 
+// Memoized modal content that prevents unnecessary re-renders
 const ModalContent = memo(
-  ({ state, onChange, renderContent }: ModalContentProps) => {
-    return <>{renderContent({ state, onChange })}</>;
+  ({ state, onChange, render, resolve, reject }: ModalContentProps) => {
+    // Store the initial render function in a ref to prevent re-creation
+    const renderRef = useRef(render);
+    
+    // Only update the ref if this is truly a different modal (not just a re-render)
+    useEffect(() => {
+      renderRef.current = render;
+    }, []); // Empty deps - only run once on mount
+    
+    // Render the content using the stable render function
+    return (
+      <>
+        {renderRef.current({
+          state,
+          onChange,
+          resolve,
+          reject,
+        })}
+      </>
+    );
+  },
+  // Custom comparison to prevent re-renders unless state actually changes
+  (prevProps, nextProps) => {
+    return (
+      prevProps.modalId === nextProps.modalId &&
+      prevProps.state === nextProps.state &&
+      prevProps.onChange === nextProps.onChange &&
+      prevProps.resolve === nextProps.resolve &&
+      prevProps.reject === nextProps.reject
+    );
   }
 );
 
@@ -96,7 +129,7 @@ export const BottomSheetModalWrapper = memo(
     const { top: topInset, bottom: bottomInset } = useSafeAreaInsets();
     const lastFooterHeight = useRef(modal.state.footerHeight);
     const hasPresentedRef = useRef(false);
-
+    
     const handleChange = useCallback(
       (newValue: unknown) => {
         updateModalState({
@@ -195,20 +228,20 @@ export const BottomSheetModalWrapper = memo(
               modalId={modal.id}
               state={modal.state}
               onChange={handleChange}
-              renderContent={() =>
-                modal.render({
-                  state: modal.state,
-                  resolve: modal.resolve,
-                  onChange: handleChange,
-                  reject: modal.reject,
-                })
-              }
+              render={modal.render}
+              resolve={modal.resolve}
+              reject={modal.reject}
             />
           </View>
         </Container>
       );
     }, [
-      modal,
+      modal.id,
+      modal.state,
+      modal.props.containerType,
+      modal.render,
+      modal.resolve,
+      modal.reject,
       handleChange,
       theme.colors,
       bottomInset,
@@ -255,7 +288,7 @@ export const BottomSheetModalWrapper = memo(
           />
         );
       },
-      [modal, handleChange]
+      [modal, handleChange, theme.colors]
     );
 
     useEffect(() => {
@@ -267,7 +300,7 @@ export const BottomSheetModalWrapper = memo(
         modal.bottomSheetRef.current.present();
         hasPresentedRef.current = true;
       }
-    }, [modal.bottomSheetRef.current]);
+    }, [modal.bottomSheetRef]);
 
     return (
       <View testID={testID}>

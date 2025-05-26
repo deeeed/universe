@@ -116,7 +116,14 @@ export const BottomSheetProvider = memo(
         </BottomSheetContext.Provider>
       );
     }
-  )
+  ),
+  (prevProps, nextProps) => {
+    return (
+      prevProps.children === nextProps.children &&
+      prevProps.defaultPortalName === nextProps.defaultPortalName &&
+      prevProps.sharedIdCounter === nextProps.sharedIdCounter
+    );
+  }
 );
 
 BottomSheetProvider.displayName = 'BottomSheetProvider';
