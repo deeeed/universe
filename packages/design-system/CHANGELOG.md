@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.50.1] - 2025-05-26
+### Changed
+- fix(BottomSheetModalWrapper): optimize modal content rendering by using memoization and stable references for callbacks ([8cefd55](https://github.com/deeeed/universe/commit/8cefd5500de0b82cfdb07a7eb70ab16f1321ae80))
+- chore(@siteed/design-system): release 0.50.0 ([19e2544](https://github.com/deeeed/universe/commit/19e2544ab5ee1f193586206e6458a17fb0703cfe))
 ## [0.50.0] - 2025-05-26
 ### Changed
 - fix(design-system): prevent modal content recreation on parent re-renders in openDrawer ([ba65d32](https://github.com/deeeed/universe/commit/ba65d329b72404a1df99b77239f8a187cbefb70a))
@@ -122,7 +126,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.1...HEAD
+[0.50.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.0...@siteed/design-system@0.50.1
 [0.50.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.49.0...@siteed/design-system@0.50.0
 [0.49.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.48.0...@siteed/design-system@0.49.0
 [0.48.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.47.0...@siteed/design-system@0.48.0
