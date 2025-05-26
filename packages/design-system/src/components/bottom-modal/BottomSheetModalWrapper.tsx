@@ -39,36 +39,37 @@ interface ModalContentProps {
 
 // Memoized modal content that prevents unnecessary re-renders
 const ModalContent = memo(
-  ({ state, onChange, render, resolve, reject }: ModalContentProps) => {
-    // Store the initial render function in a ref to prevent re-creation
+  ({
+    modalId,
+    state,
+    onChange,
+    render,
+    resolve,
+    reject,
+  }: ModalContentProps) => {
+    // Store the initial render function in a ref
     const renderRef = useRef(render);
-    
-    // Only update the ref if this is truly a different modal (not just a re-render)
+
+    // Update the render function ref only on mount
     useEffect(() => {
       renderRef.current = render;
     }, []); // Empty deps - only run once on mount
-    
-    // Render the content using the stable render function
-    return (
-      <>
-        {renderRef.current({
-          state,
-          onChange,
-          resolve,
-          reject,
-        })}
-      </>
-    );
+
+    // Create content using the stable render function, but only once
+    const content = useMemo(() => {
+      return renderRef.current({
+        state,
+        onChange,
+        resolve,
+        reject,
+      });
+    }, [modalId]); // Only recreate if modalId changes (different modal)
+
+    return <>{content}</>;
   },
-  // Custom comparison to prevent re-renders unless state actually changes
+  // Never re-render once mounted (except for different modal)
   (prevProps, nextProps) => {
-    return (
-      prevProps.modalId === nextProps.modalId &&
-      prevProps.state === nextProps.state &&
-      prevProps.onChange === nextProps.onChange &&
-      prevProps.resolve === nextProps.resolve &&
-      prevProps.reject === nextProps.reject
-    );
+    return prevProps.modalId === nextProps.modalId;
   }
 );
 
@@ -129,7 +130,17 @@ export const BottomSheetModalWrapper = memo(
     const { top: topInset, bottom: bottomInset } = useSafeAreaInsets();
     const lastFooterHeight = useRef(modal.state.footerHeight);
     const hasPresentedRef = useRef(false);
-    
+
+    // Create stable references for the modal callbacks
+    const stableResolve = useRef(modal.resolve);
+    const stableReject = useRef(modal.reject);
+
+    // Update refs when modal changes, but keep same reference
+    useEffect(() => {
+      stableResolve.current = modal.resolve;
+      stableReject.current = modal.reject;
+    }, [modal.resolve, modal.reject]);
+
     const handleChange = useCallback(
       (newValue: unknown) => {
         updateModalState({
@@ -229,8 +240,8 @@ export const BottomSheetModalWrapper = memo(
               state={modal.state}
               onChange={handleChange}
               render={modal.render}
-              resolve={modal.resolve}
-              reject={modal.reject}
+              resolve={stableResolve.current}
+              reject={stableReject.current}
             />
           </View>
         </Container>
