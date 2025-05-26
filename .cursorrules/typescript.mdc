@@ -1,0 +1,184 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# TypeScript Best Practices
+
+## Type System
+
+- Use `interface` over `types` when possible for better extensibility
+- **Never use enums** - always use const objects instead:
+
+  ```typescript
+  // ❌ Avoid enums
+  enum DeviceType {
+    BUILTIN = 'builtin_mic',
+    BLUETOOTH = 'bluetooth'
+  }
+  
+  // ✅ Use const objects 
+  const DeviceType = {
+    BUILTIN: 'builtin_mic',
+    BLUETOOTH: 'bluetooth'
+  } as const;
+  
+  type DeviceTypeValue = typeof DeviceType[keyof typeof DeviceType];
+  ```
+
+- Prefer object parameters for functions with multiple parameters
+- Use strict type checking
+- Never use `any`, prefer types `object` or use `unknown`
+- Do not create useless index.ts files that only re-export interfaces; import directly from source
+
+## Architecture Patterns
+
+- Apply platform abstraction for cross-platform code
+- Create consistent APIs across different implementations
+- Use clear error typing for better error handling
+
+## Monorepo TypeScript Configuration
+
+### Package-Level Type Checking
+
+After making TypeScript changes, always run type checking in the affected package:
+
+```bash
+cd packages/[package-name]
+yarn typecheck  # or npm run typecheck
+```
+
+### Cross-Package Type Dependencies
+
+- Use workspace protocols for internal package dependencies
+- Ensure type exports are properly configured in package.json
+- Use project references in tsconfig.json for better build performance
+
+### Type Safety Guidelines
+
+1. **Strict Configuration**: All packages should use strict TypeScript settings
+2. **No Implicit Any**: Avoid implicit any types
+3. **Null Checks**: Enable strict null checks
+4. **Unused Locals**: Enable detection of unused variables and parameters
+5. **Return Types**: Explicitly define return types for public APIs
+
+## Code Style and Structure
+
+- Write concise, technical TypeScript code with accurate examples
+- Use functional and declarative programming patterns; avoid classes
+- Prefer iteration and modularization over code duplication
+- Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError)
+- Structure files: exported component, subcomponents, helpers, static content, types
+
+## TypeScript Usage Patterns
+
+- Use TypeScript for all code; prefer interfaces over types
+- Prefer object parameters over multiple parameters
+- Use functional components with TypeScript interfaces
+- Use strict mode in TypeScript for better type safety
+
+## Error Handling with Types
+
+```typescript
+// ✅ Use discriminated unions for error handling
+type Result<T, E = Error> = 
+  | { success: true; data: T }
+  | { success: false; error: E };
+
+// ✅ Use branded types for validation
+type UserId = string & { readonly brand: unique symbol };
+type Email = string & { readonly brand: unique symbol };
+```
+
+## Agentic TypeScript Workflows
+
+### After TypeScript Changes
+
+1. **Immediate validation**:
+   ```bash
+   yarn typecheck
+   ```
+
+2. **Fix type errors systematically**:
+   - Read the full error message
+   - Understand the type mismatch
+   - Fix at the source, not with type assertions
+
+3. **Validate related packages**:
+   - Check if changes affect dependent packages
+   - Run type checking in dependent packages
+
+### Type Definition Best Practices
+
+- **Export types from dedicated files** when shared across components
+- **Use generic constraints** to make types more specific
+- **Leverage utility types** like `Pick`, `Omit`, `Partial` for type transformations
+- **Create branded types** for domain-specific values
+
+### Performance Considerations
+
+- Use `const assertions` for immutable data
+- Prefer `readonly` arrays and objects when data shouldn't be mutated
+- Use `satisfies` operator for better type inference
+- Avoid deep nesting in type definitions
+
+## Common Patterns
+
+### Component Props
+
+```typescript
+interface ComponentProps {
+  // Required props first
+  title: string;
+  onPress: () => void;
+  
+  // Optional props with defaults
+  variant?: 'primary' | 'secondary';
+  disabled?: boolean;
+  
+  // Style props
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
+}
+```
+
+### API Response Types
+
+```typescript
+interface ApiResponse<T> {
+  data: T;
+  status: number;
+  message?: string;
+}
+
+interface PaginatedResponse<T> extends ApiResponse<T[]> {
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+}
+```
+
+### Hook Return Types
+
+```typescript
+interface UseApiHookReturn<T> {
+  data: T | null;
+  loading: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
+}
+```
+
+## Validation and Runtime Checks
+
+- Use Zod for runtime validation and error handling
+- Create TypeScript types from Zod schemas when possible
+- Validate external data at boundaries (API responses, user input)
+
+## Testing with TypeScript
+
+- Use typed test utilities
+- Create type-safe mocks
+- Test type definitions with `expectTypeOf` or similar utilities

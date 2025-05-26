@@ -1,0 +1,262 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Monorepo Workflow Guide
+
+This document outlines the specific workflows for working with this Yarn 4 monorepo.
+
+## Package Structure Overview
+
+```
+universe/
+├── packages/
+│   ├── design-system/     # UI component library
+│   ├── react-native-logger/ # Logging utilities
+│   ├── utils/             # Shared utilities
+│   ├── publisher/         # Publishing tools
+│   ├── gitguard/          # Git security tools
+│   └── testingui/         # Testing utilities
+└── examples/
+    ├── designdemo/        # Design system demo app
+    └── loggerdemo/        # Logger demo app
+```
+
+## Essential Commands by Package
+
+### Design System (`packages/design-system/`)
+
+```bash
+cd packages/design-system
+
+# Development
+yarn dev          # Start Storybook
+yarn build        # Build the package
+yarn lint:fix     # Fix linting issues
+yarn typecheck    # Check TypeScript types
+yarn test         # Run tests
+
+# Publishing
+./publish.sh      # Automated publishing script
+```
+
+### React Native Logger (`packages/react-native-logger/`)
+
+```bash
+cd packages/react-native-logger
+
+# Development
+yarn build        # Build the package
+yarn lint:fix     # Fix linting issues
+yarn typecheck    # Check TypeScript types
+yarn test         # Run tests
+```
+
+### Example Applications
+
+```bash
+cd examples/designdemo
+
+# Development
+yarn start        # Start Expo dev server
+yarn ios          # Run on iOS simulator
+yarn android      # Run on Android emulator
+yarn web          # Run on web browser
+
+# Maintenance
+yarn lint:fix     # Fix linting issues
+yarn typecheck    # Check TypeScript types
+```
+
+## Agentic Workflow Automation
+
+### After Making Code Changes
+
+**Always follow this sequence:**
+
+1. **Navigate to the affected package**:
+   ```bash
+   cd packages/[package-name]
+   ```
+
+2. **Run linting and formatting**:
+   ```bash
+   yarn lint:fix
+   # or
+   npm run lint:fix
+   ```
+
+3. **Check TypeScript types** (if available):
+   ```bash
+   yarn typecheck
+   # or
+   npm run typecheck
+   ```
+
+4. **Run tests** (if available):
+   ```bash
+   yarn test
+   # or
+   npm run test
+   ```
+
+5. **Build the package** (if needed):
+   ```bash
+   yarn build
+   # or
+   npm run build
+   ```
+
+### Cross-Package Impact Analysis
+
+When making changes, consider these dependency relationships:
+
+- **design-system** → Used by example apps and other packages
+- **utils** → Used by multiple packages
+- **react-native-logger** → Used by example apps
+
+### Validation Checklist
+
+Before considering a task complete:
+
+- [ ] Linting passes without errors
+- [ ] TypeScript compilation succeeds
+- [ ] Tests pass (if applicable)
+- [ ] Build succeeds (if applicable)
+- [ ] Dependent packages still work (if applicable)
+
+## Package-Specific Workflows
+
+### Design System Development
+
+1. **Component Development**:
+   ```bash
+   cd packages/design-system
+   yarn dev  # Start Storybook
+   ```
+
+2. **After component changes**:
+   ```bash
+   yarn lint:fix
+   yarn typecheck
+   yarn build
+   ```
+
+3. **Test in example app**:
+   ```bash
+   cd ../../examples/designdemo
+   yarn start
+   ```
+
+### Publishing Workflow
+
+1. **Prepare for publishing**:
+   ```bash
+   cd packages/design-system
+   yarn lint:fix
+   yarn typecheck
+   yarn build
+   ```
+
+2. **Run publishing script**:
+   ```bash
+   ./publish.sh
+   ```
+
+### Example App Development
+
+1. **Start development**:
+   ```bash
+   cd examples/designdemo
+   yarn start
+   ```
+
+2. **Test across platforms**:
+   ```bash
+   yarn ios     # iOS simulator
+   yarn android # Android emulator
+   yarn web     # Web browser
+   ```
+
+## Error Resolution Strategies
+
+### Common Issues and Solutions
+
+1. **TypeScript Errors**:
+   - Run `yarn typecheck` to see all errors
+   - Fix type issues at the source
+   - Avoid using `any` or type assertions
+
+2. **Linting Errors**:
+   - Run `yarn lint:fix` to auto-fix
+   - Manually fix remaining issues
+   - Follow the established code style
+
+3. **Build Errors**:
+   - Check for missing dependencies
+   - Ensure all imports are correct
+   - Verify TypeScript configuration
+
+4. **Cross-Package Issues**:
+   - Check workspace dependencies
+   - Ensure proper version constraints
+   - Rebuild dependent packages
+
+## Workspace Management
+
+### Adding New Dependencies
+
+```bash
+# Add to specific package
+cd packages/[package-name]
+yarn add [dependency]
+
+# Add to workspace root
+cd ../../
+yarn add -W [dependency]
+```
+
+### Updating Dependencies
+
+```bash
+# Update specific package
+cd packages/[package-name]
+yarn upgrade [dependency]
+
+# Update all packages
+yarn upgrade-interactive
+```
+
+### Workspace Commands
+
+```bash
+# Run command in all packages
+yarn workspaces foreach run [command]
+
+# Run command in specific package
+yarn workspace @siteed/[package-name] run [command]
+```
+
+## Best Practices for Agentic Development
+
+1. **Always validate changes** with the appropriate commands
+2. **Follow the package-specific workflows** outlined above
+3. **Check cross-package impacts** when making changes
+4. **Use the automated scripts** when available (like `publish.sh`)
+5. **Test in example applications** when changing core packages
+6. **Maintain consistent code quality** across all packages
+
+## Debugging Workflow
+
+1. **Identify the affected package(s)**
+2. **Navigate to the package directory**
+3. **Run diagnostic commands**:
+   ```bash
+   yarn lint
+   yarn typecheck
+   yarn test
+   ```
+4. **Fix issues systematically**
+5. **Validate the fix** with the same commands
+6. **Test in dependent packages** if needed

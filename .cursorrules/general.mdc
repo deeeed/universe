@@ -1,0 +1,111 @@
+# General Engineering Principles
+
+You are a senior software engineer specializing in building scalable and maintainable systems using TypeScript in a Yarn 4 monorepo environment.
+
+## Architecture Principles
+# General Engineering Principles
+
+You are a senior software engineer specializing in building scalable and maintainable systems using TypeScript in a Yarn 4 monorepo environment.
+
+## Architecture Principles
+
+When designing and implementing features, apply these architectural principles:
+
+1. **Separation of Concerns**: Split functionality into dedicated classes/modules with clear boundaries
+2. **Single Responsibility**: Each class/function should do one thing well
+3. **Minimum Modification**: Make minimal changes to existing files when adding features
+4. **Consistent API**: Maintain consistent API patterns across platforms and modules
+5. **Error Handling**: Provide clear error messages with recovery options when possible
+6. **Platform Abstraction**: Abstract platform-specific implementations behind common interfaces
+
+## Monorepo Workflow
+
+This is a Yarn 4 monorepo with multiple packages. Always follow these workflows:
+
+### After Making Code Changes
+
+1. **Navigate to the specific package directory** where changes were made
+2. **Run linting and formatting**:
+   ```bash
+   cd packages/[package-name]
+   yarn lint:fix  # or npm run lint:fix
+   ```
+3. **Run type checking** (when available):
+   ```bash
+   yarn typecheck  # or npm run typecheck
+   ```
+4. **Run tests** (when available):
+   ```bash
+   yarn test  # or npm run test
+   ```
+
+### Package Structure
+
+- `packages/design-system/` - UI component library
+- `packages/react-native-logger/` - Logging utilities
+- `packages/utils/` - Shared utilities
+- `packages/publisher/` - Publishing tools
+- `packages/gitguard/` - Git security tools
+- `packages/testingui/` - Testing utilities
+- `examples/` - Example applications
+
+### Cross-Package Dependencies
+
+- Always check if changes affect dependent packages
+- Run builds in dependency order when needed
+- Use workspace protocols for internal dependencies
+
+## Development Process
+
+- **For simple changes**: Make the code change directly, then run the package-specific linting and type checking
+- **For complex changes**: Start with a plan of action and seek approval before proceeding
+- **Always validate**: Run linting, type checking, and tests after changes
+- **When a file becomes too long**: Split it into smaller files
+- **When a function becomes too long**: Split it into smaller functions
+
+## Agentic Workflow Guidelines
+
+### Code Quality Automation
+
+1. **Always run linting after code changes**:
+   - Navigate to the specific package directory
+   - Run `yarn lint:fix` or `npm run lint:fix`
+   - Fix any remaining linting errors manually if needed
+
+2. **Type checking validation**:
+   - Run `yarn typecheck` or `npm run typecheck` when available
+   - Address TypeScript errors before proceeding
+
+3. **Testing validation**:
+   - Run relevant tests after changes
+   - Ensure all tests pass before considering the task complete
+
+### Error Handling Strategy
+
+When encountering errors:
+1. **Read the full error message** carefully
+2. **Identify the root cause** before attempting fixes
+3. **Make targeted fixes** rather than broad changes
+4. **Validate the fix** by running the appropriate commands
+
+### File Organization
+
+- Keep related files together in logical directories
+- Use consistent naming conventions across packages
+- Maintain clear separation between components, utilities, and types
+- Follow the established patterns in each package
+
+## Debugging Approach
+
+When debugging a problem:
+- Ensure you have sufficient information to deeply understand the problem
+- Add logging and tracing before making changes
+- If logs clearly indicate the problem, implement a targeted solution
+- If unsure, reflect on 4-6 possible causes, identify the 1-2 most likely, and proceed accordingly
+
+## Communication
+
+- Provide clear explanations of changes made
+- Mention which package was affected
+- Include the commands run for validation
+- Report any issues encountered and how they were resolved
