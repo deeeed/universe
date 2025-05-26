@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.50.0] - 2025-05-26
+### Changed
+- fix(design-system): prevent modal content recreation on parent re-renders in openDrawer ([ba65d32](https://github.com/deeeed/universe/commit/ba65d329b72404a1df99b77239f8a187cbefb70a))
+- chore(@siteed/design-system): release 0.49.0 ([a9f9493](https://github.com/deeeed/universe/commit/a9f949379da3fa60ba4c795b940a82f3e418553e))
 ## [0.49.0] - 2025-05-23
 ### Changed
 - refactor: optimize theme and preferences hooks by memoizing callbacks and values to enhance performance and reduce unnecessary re-renders ([1b2f898](https://github.com/deeeed/universe/commit/1b2f8985f10a7964c017c7dea6871e905e6ffa89))
@@ -118,7 +122,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.49.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.0...HEAD
+[0.50.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.49.0...@siteed/design-system@0.50.0
 [0.49.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.48.0...@siteed/design-system@0.49.0
 [0.48.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.47.0...@siteed/design-system@0.48.0
 [0.47.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.46.2...@siteed/design-system@0.47.0
