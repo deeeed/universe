@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.51.1] - 2025-05-26
+### Changed
+- feat(Bug): add EditableInfoCard editing functionality in modal with state management and inline editing support ([669a148](https://github.com/deeeed/universe/commit/669a1487ed21dddc07c4928078a45e1a1b09c503))
+- chore(@siteed/design-system): release 0.51.0 ([06dee47](https://github.com/deeeed/universe/commit/06dee47edfd43fe94e3a0f8e02e983218a3e15f1))
 ## [0.51.0] - 2025-05-26
 ### Changed
 - refactor(EditableInfoCard): enhance inline editing functionality with improved validation, processing state management, and callback handling ([ee67421](https://github.com/deeeed/universe/commit/ee674217d5046f3ded8c25f7d2727a2a31ba63fd))
@@ -131,7 +135,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.1...HEAD
+[0.51.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.0...@siteed/design-system@0.51.1
 [0.51.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.1...@siteed/design-system@0.51.0
 [0.50.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.0...@siteed/design-system@0.50.1
 [0.50.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.49.0...@siteed/design-system@0.50.0
