@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.51.0] - 2025-05-26
+### Changed
+- refactor(EditableInfoCard): enhance inline editing functionality with improved validation, processing state management, and callback handling ([ee67421](https://github.com/deeeed/universe/commit/ee674217d5046f3ded8c25f7d2727a2a31ba63fd))
+- fix(OPENDRAWER): optimize modal content rendering by consolidating component instances and maintaining hook state across parent re-renders ([1ca6469](https://github.com/deeeed/universe/commit/1ca64699edebba94d3e52823cff12c9a1d56e3c0))
+- chore(@siteed/design-system): release 0.50.1 ([0e0cdae](https://github.com/deeeed/universe/commit/0e0cdae2eb5b0e0c042a3cedb12db6702151f79e))
 ## [0.50.1] - 2025-05-26
 ### Changed
 - fix(BottomSheetModalWrapper): optimize modal content rendering by using memoization and stable references for callbacks ([8cefd55](https://github.com/deeeed/universe/commit/8cefd5500de0b82cfdb07a7eb70ab16f1321ae80))
@@ -126,7 +131,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.1...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.0...HEAD
+[0.51.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.1...@siteed/design-system@0.51.0
 [0.50.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.0...@siteed/design-system@0.50.1
 [0.50.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.49.0...@siteed/design-system@0.50.0
 [0.49.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.48.0...@siteed/design-system@0.49.0
