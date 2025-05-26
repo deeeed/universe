@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   NativeSyntheticEvent,
   Platform,
@@ -25,7 +25,7 @@ export interface EditableInfoCardProps {
   inlineEditable?: boolean; // if the item is inline editable
   disabled?: boolean; // Add disabled prop
   onEdit?: () => void; // Callback function when edit icon is pressed
-  onInlineEdit?: (newValue?: unknown) => void; // Callback function when inline edit is pressed
+  onInlineEdit?: (newValue?: unknown) => void | Promise<void>; // Callback function when inline edit is pressed
   labelStyle?: StyleProp<TextStyle>;
   containerStyle?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
@@ -123,7 +123,7 @@ export function EditableInfoCard({
   placeholder,
   multiline,
   numberOfLines,
-  isSaving,
+  isSaving: _isSaving,
   testID,
 }: EditableInfoCardProps): React.ReactNode {
   const theme = useTheme();
@@ -131,57 +131,99 @@ export function EditableInfoCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editedValue, setEditedValue] = useState(value as string);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     setEditedValue(value as string);
   }, [value]);
 
-  const handleEdit = () => {
-    if (disabled) return;
+  const handleEdit = useCallback(() => {
+    if (disabled || isProcessing) return;
 
     if (inlineEditable) {
       setIsEditing(true);
+      setValidationError(null); // Clear any previous validation errors
     } else if (editable && onEdit) {
       onEdit();
     }
-  };
+  }, [disabled, isProcessing, inlineEditable, editable, onEdit]);
 
-  const handleInlineEditComplete = () => {
-    if (disabled) return;
+  const handleInlineEditComplete = useCallback(async () => {
+    if (disabled || isProcessing) return;
 
+    // Validate input if validator is provided
     if (validate) {
       const validationResult = validate(editedValue);
       if (typeof validationResult === 'string') {
         setValidationError(validationResult);
         return;
       }
-      if (!validationResult) {
+      if (validationResult === false) {
         setValidationError(errorMessage || 'Invalid input');
         return;
       }
     }
     setValidationError(null);
-    setIsEditing(false);
-    if (onInlineEdit && editedValue !== value) {
-      onInlineEdit(editedValue);
-    }
-  };
 
-  const handleInlineEditCancel = () => {
+    // Only call onInlineEdit if value actually changed
+    if (onInlineEdit && editedValue !== value) {
+      try {
+        setIsProcessing(true);
+        await onInlineEdit(editedValue);
+        // Only exit editing mode after successful completion
+        setIsEditing(false);
+      } catch (error) {
+        // If the callback fails, stay in editing mode and show error
+        console.error('EditableInfoCard: onInlineEdit failed:', error);
+        setValidationError(
+          error instanceof Error ? error.message : 'Failed to save changes'
+        );
+      } finally {
+        setIsProcessing(false);
+      }
+    } else {
+      // No changes made, just exit editing mode
+      setIsEditing(false);
+    }
+  }, [
+    disabled,
+    isProcessing,
+    validate,
+    editedValue,
+    errorMessage,
+    onInlineEdit,
+    value,
+  ]);
+
+  const handleInlineEditCancel = useCallback(() => {
+    if (isProcessing) return; // Prevent canceling during save
+
     setIsEditing(false);
     setEditedValue(value as string);
-  };
+    setValidationError(null);
+  }, [isProcessing, value]);
 
-  const handleKeyPress = (
-    e: NativeSyntheticEvent<TextInputKeyPressEventData>
-  ) => {
-    if (e.nativeEvent.key === 'Escape') {
-      handleInlineEditCancel();
+  const handleKeyPress = useCallback(
+    (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      if (e.nativeEvent.key === 'Escape') {
+        handleInlineEditCancel();
+      }
+    },
+    [handleInlineEditCancel]
+  );
+
+  const handlePress = useCallback(() => {
+    if (inlineEditable || editable) {
+      handleEdit();
+    } else if (onRightActionPress) {
+      onRightActionPress();
     }
-  };
+  }, [inlineEditable, editable, handleEdit, onRightActionPress]);
 
-  const defaultRightAction =
-    editable || inlineEditable ? (
+  const defaultRightAction = useMemo(() => {
+    if (!(editable || inlineEditable)) return null;
+
+    return (
       <>
         {isEditing ? (
           <>
@@ -191,9 +233,9 @@ export function EditableInfoCard({
               style={styles.icon}
               onPress={handleInlineEditComplete}
               accessibilityLabel="Confirm edit"
-              disabled={isSaving || disabled}
+              disabled={isProcessing || disabled}
             />
-            {isSaving ? (
+            {isProcessing ? (
               <ActivityIndicator size={20} style={styles.icon} />
             ) : (
               <IconButton
@@ -213,33 +255,42 @@ export function EditableInfoCard({
             style={styles.icon}
             onPress={handleEdit}
             accessibilityLabel="Edit value"
-            disabled={disabled}
+            disabled={disabled || processing}
           />
         )}
       </>
-    ) : null;
+    );
+  }, [
+    editable,
+    inlineEditable,
+    isEditing,
+    styles.icon,
+    handleInlineEditComplete,
+    isProcessing,
+    disabled,
+    handleInlineEditCancel,
+    handleEdit,
+    processing,
+  ]);
 
   const rightActionComponent = rightAction ?? defaultRightAction;
 
-  const handlePress = () => {
-    if (inlineEditable || editable) {
-      handleEdit();
-    } else if (onRightActionPress) {
-      onRightActionPress();
-    }
-  };
+  // Show validation error or external error
+  const displayError = validationError || (error && errorMessage);
 
   return (
     <Pressable
       onPress={handlePress}
       disabled={
-        (!editable && !inlineEditable && !onRightActionPress) || disabled
+        (!editable && !inlineEditable && !onRightActionPress) ||
+        disabled ||
+        isProcessing
       }
       style={({ pressed }) => [
         styles.container,
         containerStyle,
-        disabled && { opacity: 0.5 },
-        pressed && !disabled && { opacity: 0.7 },
+        (disabled || isProcessing) && { opacity: 0.5 },
+        pressed && !disabled && !isProcessing && { opacity: 0.7 },
       ]}
       testID={testID}
     >
@@ -256,7 +307,7 @@ export function EditableInfoCard({
           style={[styles.content, contentStyle]}
           testID={`${testID}-content`}
         >
-          {processing ? (
+          {processing || isProcessing ? (
             <ActivityIndicator
               size="small"
               testID={`${testID}-activity-indicator`}
@@ -275,6 +326,7 @@ export function EditableInfoCard({
               multiline={multiline}
               numberOfLines={numberOfLines}
               testID={`${testID}-text-input`}
+              editable={!isProcessing}
             />
           ) : renderValue ? (
             renderValue(value)
@@ -294,9 +346,9 @@ export function EditableInfoCard({
             </Text>
           )}
         </View>
-        {validationError && (
+        {displayError && (
           <Text style={styles.errorText} testID={`${testID}-error-text`}>
-            {validationError}
+            {displayError}
           </Text>
         )}
       </View>
