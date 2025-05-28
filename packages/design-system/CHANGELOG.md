@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.51.2] - 2025-05-28
+### Changed
+- feat(BottomSheet): introduce DrawerRenderProps type for improved modal rendering and refactor render props in BottomSheetModalWrapper ([6d2be49](https://github.com/deeeed/universe/commit/6d2be495fbc0c6bb2114b25ef3f6603a3fd0bcf6))
+- chore(@siteed/design-system): release 0.51.1 ([5f49081](https://github.com/deeeed/universe/commit/5f4908116e89caa4172fa5833f54d3d76e434ab1))
 ## [0.51.1] - 2025-05-26
 ### Changed
 - feat(Bug): add EditableInfoCard editing functionality in modal with state management and inline editing support ([669a148](https://github.com/deeeed/universe/commit/669a1487ed21dddc07c4928078a45e1a1b09c503))
@@ -135,7 +139,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.1...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.2...HEAD
+[0.51.2]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.1...@siteed/design-system@0.51.2
 [0.51.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.0...@siteed/design-system@0.51.1
 [0.51.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.1...@siteed/design-system@0.51.0
 [0.50.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.0...@siteed/design-system@0.50.1
