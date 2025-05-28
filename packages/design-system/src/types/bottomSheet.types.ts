@@ -26,27 +26,12 @@ export interface OpenDrawerProps<T = unknown> {
   portalName?: string;
   containerType?: 'view' | 'scrollview' | 'none';
   bottomSheetProps?: Partial<CustomBottomSheetProps>;
-  render: (props: {
-    state: ModalState<T>;
-    resolve: (value: T | undefined) => void;
-    onChange: (value: T) => void;
-    reject: (error: Error) => void;
-  }) => ReactNode;
+  render: (props: DrawerRenderProps<T>) => ReactNode;
   renderHandler?: (
-    props: {
-      state: ModalState<T>;
-      resolve: (value: T | undefined) => void;
-      onChange: (value: T) => void;
-      reject: (error: Error) => void;
-    } & BottomSheetHandleProps
+    props: DrawerRenderProps<T> & BottomSheetHandleProps
   ) => ReactNode;
   renderFooter?: (
-    props: {
-      state: ModalState<T>;
-      resolve: (value: T | undefined) => void;
-      onChange: (value: T) => void;
-      reject: (error: Error) => void;
-    } & BottomSheetFooterProps
+    props: DrawerRenderProps<T> & BottomSheetFooterProps
   ) => ReactNode;
 }
 
@@ -61,3 +46,18 @@ export interface BottomSheetStackItem<T = unknown> {
   resolved: boolean;
   rejected: boolean;
 }
+
+export interface DrawerRenderProps<T = unknown> {
+  state: ModalState<T>;
+  resolve: (value: T | undefined) => void;
+  onChange: (value: T) => void;
+  reject: (error: Error) => void;
+}
+
+// Type utilities for DrawerRenderProps
+export type ExtractDrawerData<T> =
+  T extends DrawerRenderProps<infer U> ? U : never;
+export type DrawerHandlerProps<T = unknown> = DrawerRenderProps<T> &
+  BottomSheetHandleProps;
+export type DrawerFooterProps<T = unknown> = DrawerRenderProps<T> &
+  BottomSheetFooterProps;

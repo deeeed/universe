@@ -19,6 +19,7 @@ import { useTheme } from '../../providers/ThemeProvider';
 import type {
   BottomSheetStackItem,
   ModalState,
+  DrawerRenderProps,
 } from '../../types/bottomSheet.types';
 import { ConfirmCancelFooter } from './footers/ConfirmCancelFooter';
 import { LabelHandler } from './handlers/LabelHandler';
@@ -27,12 +28,7 @@ interface ModalContentProps {
   modalId: number;
   state: ModalState<unknown>;
   onChange: (newValue: unknown) => void;
-  render: (props: {
-    state: ModalState<unknown>;
-    onChange: (newValue: unknown) => void;
-    resolve: (value: unknown) => void;
-    reject: (error: Error) => void;
-  }) => React.ReactNode;
+  render: (props: DrawerRenderProps<unknown>) => React.ReactNode;
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
 }
@@ -178,6 +174,13 @@ export const BottomSheetModalWrapper = memo(
         const { renderFooter, footerType } = modal.props;
         if (!renderFooter && !footerType) return null;
 
+        const drawerRenderProps: DrawerRenderProps<unknown> = {
+          state: modal.state,
+          resolve: modal.resolve,
+          onChange: handleChange,
+          reject: modal.reject,
+        };
+
         return (
           <BottomSheetFooter {...footerProps}>
             <View
@@ -195,10 +198,7 @@ export const BottomSheetModalWrapper = memo(
               )}
               {renderFooter &&
                 renderFooter({
-                  state: modal.state,
-                  resolve: modal.resolve,
-                  onChange: handleChange,
-                  reject: modal.reject,
+                  ...drawerRenderProps,
                   animatedFooterPosition: footerProps.animatedFooterPosition,
                 })}
             </View>
@@ -270,12 +270,16 @@ export const BottomSheetModalWrapper = memo(
     const handlerComponent = useCallback(
       (handlerProps: BottomSheetHandleProps) => {
         if (modal.props.renderHandler) {
-          return modal.props.renderHandler({
-            ...handlerProps,
+          const drawerRenderProps: DrawerRenderProps<unknown> = {
             state: modal.state,
             resolve: modal.resolve,
             reject: modal.reject,
             onChange: handleChange,
+          };
+
+          return modal.props.renderHandler({
+            ...drawerRenderProps,
+            ...handlerProps,
           });
         }
 

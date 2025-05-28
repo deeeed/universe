@@ -58,3 +58,6 @@ export * from './providers/ThemeProvider';
 export * from './providers/UIProvider';
 export * from './providers/ConfirmProvider';
 export * from './providers/ToastProvider';
+
+// Export types
+export * from './types/bottomSheet.types';
