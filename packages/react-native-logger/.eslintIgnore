@@ -1,3 +1,6 @@
 node_modules/
 lib/
 dist/
+coverage/
+publisher.config.ts
+jest.config.js

@@ -42,7 +42,7 @@ export const coerceToString = (param: unknown): string => {
 
   try {
     return JSON.stringify(param);
-  } catch (e) {
+  } catch {
     return safeStringify(param);
   }
 };
