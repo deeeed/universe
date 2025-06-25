@@ -12,21 +12,25 @@ import {
   setLoggerConfig,
   setNamespaces,
 } from './logger.core';
+import { DEFAULT_MAX_LOGS, DEFAULT_NAMESPACES, getState } from './logger.state';
 import { coerceToString, safeStringify } from './logger.utils';
 
 export const mockGetItem = jest.fn();
 export const mockSetItem = jest.fn();
 export const mockRemoveItem = jest.fn();
 
-Object.defineProperty(window, 'localStorage', {
-  value: {
-    getItem: mockGetItem,
-    setItem: mockSetItem,
-    removeItem: mockRemoveItem,
-    clear: jest.fn(),
-  },
-  writable: true,
-});
+// Create localStorage mock only if window exists
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'localStorage', {
+    value: {
+      getItem: mockGetItem,
+      setItem: mockSetItem,
+      removeItem: mockRemoveItem,
+      clear: jest.fn(),
+    },
+    writable: true,
+  });
+}
 
 export const mockProcessEnv = (key: string, value: string) => {
   process.env[key] = value;
@@ -36,11 +40,36 @@ export const mockProcessEnv = (key: string, value: string) => {
 const initializeLogger = () => {
   clearLogs();
   setLoggerConfig({ namespaces: '' });
+  // Ensure we're not in a browser environment for most tests
+  // @ts-ignore
+  delete global.window;
 };
 
 const resetLoggerAndMocks = () => {
   reset();
   mockGetItem.mockClear();
+  // Ensure we're not in a browser environment for most tests
+  // @ts-ignore
+  delete global.window;
+};
+
+// Reset without initializing for lazy initialization tests
+const resetWithoutInit = (instanceId?: string) => {
+  const currentState = getState(instanceId);
+  clearLogs(instanceId);
+  currentState.loggersMap.clear();
+  currentState.enabledNamespaces = [];
+  currentState.namespaceRegex = null;
+  currentState.initialized = false;
+  currentState.config = {
+    maxLogs: DEFAULT_MAX_LOGS,
+    namespaces: DEFAULT_NAMESPACES,
+    disableExtraParamsInConsole: false,
+  };
+  // Don't call initializeDebugSettings
+  // Ensure we're not in a browser environment for most tests
+  // @ts-ignore
+  delete global.window;
 };
 
 // Higher-level describe block for all logger tests
@@ -313,7 +342,11 @@ describe('Logger Tests', () => {
   });
 
   describe('Logger Configuration', () => {
-    beforeEach(resetLoggerAndMocks);
+    beforeEach(() => {
+      resetLoggerAndMocks();
+      // Restore window for localStorage tests
+      global.window = { localStorage: { getItem: mockGetItem, setItem: mockSetItem, removeItem: mockRemoveItem, clear: jest.fn() } } as any;
+    });
 
     it('should load settings from localStorage', () => {
       mockGetItem.mockReturnValue('testNamespace');
@@ -374,6 +407,8 @@ describe('Logger Tests', () => {
 
     it('should initialize debug settings from localStorage', () => {
       delete process.env.DEBUG;
+      // Restore window for localStorage test
+      global.window = { localStorage: { getItem: mockGetItem } } as any;
       mockGetItem.mockReturnValue('test:local');
       initializeDebugSettings();
       expect(enabled('test:local')).toBe(true);
@@ -501,6 +536,397 @@ describe('Logger Tests', () => {
         expect(lastLog.message).toContain('{"key":"value"}');
         expect(lastLog.message).toContain('[1,2,3]');
       }
+    });
+  });
+
+  describe('Instance Isolation', () => {
+    beforeEach(() => {
+      resetLoggerAndMocks();
+      // Reset all instances for clean test isolation
+      reset('instance1');
+      reset('instance2');
+      reset('testInstance');
+    });
+
+    it('should maintain separate state for different instances', () => {
+      // Configure instance1
+      setLoggerConfig({ namespaces: 'app:*' }, 'instance1');
+      const logger1 = getLogger('app:test', 'instance1');
+      logger1.info('Instance 1 message');
+
+      // Configure instance2
+      setLoggerConfig({ namespaces: 'lib:*' }, 'instance2');
+      const logger2 = getLogger('lib:test', 'instance2');
+      logger2.info('Instance 2 message');
+
+      // Check logs are isolated
+      const logs1 = getLogs('instance1');
+      const logs2 = getLogs('instance2');
+
+      expect(logs1.length).toBe(1);
+      expect(logs2.length).toBe(1);
+      expect(logs1[0]?.message).toContain('Instance 1 message');
+      expect(logs2[0]?.message).toContain('Instance 2 message');
+    });
+
+    it('should use default instance when instanceId is not provided', () => {
+      setLoggerConfig({ namespaces: 'test' });
+      const logger = getLogger('test');
+      logger.info('Default instance message');
+
+      const defaultLogs = getLogs();
+      const explicitDefaultLogs = getLogs('default');
+
+      expect(defaultLogs).toEqual(explicitDefaultLogs);
+      expect(defaultLogs.length).toBe(1);
+      expect(defaultLogs[0]?.message).toContain('Default instance message');
+    });
+
+    it('should cache loggers with composite keys for instances', () => {
+      const logger1a = getLogger('test:namespace', 'instance1');
+      const logger1b = getLogger('test:namespace', 'instance1');
+      const logger2 = getLogger('test:namespace', 'instance2');
+      const loggerDefault = getLogger('test:namespace');
+
+      // Same instance should return same logger
+      expect(logger1a).toBe(logger1b);
+      // Different instances should return different loggers
+      expect(logger1a).not.toBe(logger2);
+      expect(logger1a).not.toBe(loggerDefault);
+    });
+
+    it('should isolate configuration between instances', () => {
+      setLoggerConfig({ maxLogs: 5, namespaces: 'app:*' }, 'instance1');
+      setLoggerConfig({ maxLogs: 10, namespaces: 'lib:*' }, 'instance2');
+
+      const config1 = getLoggerConfig('instance1');
+      const config2 = getLoggerConfig('instance2');
+
+      expect(config1.maxLogs).toBe(5);
+      expect(config1.namespaces).toBe('app:*');
+      expect(config2.maxLogs).toBe(10);
+      expect(config2.namespaces).toBe('lib:*');
+    });
+
+    it('should clear logs only for specified instance', () => {
+      setLoggerConfig({ namespaces: '*' }, 'instance1');
+      setLoggerConfig({ namespaces: '*' }, 'instance2');
+
+      addLog(
+        { namespace: 'test', level: 'info', params: ['Message 1'] },
+        'instance1'
+      );
+      addLog(
+        { namespace: 'test', level: 'info', params: ['Message 2'] },
+        'instance2'
+      );
+
+      clearLogs('instance1');
+
+      expect(getLogs('instance1').length).toBe(0);
+      expect(getLogs('instance2').length).toBe(1);
+    });
+
+    it('should reset only specified instance', () => {
+      // Clear localStorage to ensure clean test
+      mockGetItem.mockReturnValue(null);
+
+      setLoggerConfig({ namespaces: 'test', maxLogs: 50 }, 'instance1');
+      setLoggerConfig({ namespaces: 'other', maxLogs: 75 }, 'instance2');
+
+      reset('instance1');
+
+      const config1 = getLoggerConfig('instance1');
+      const config2 = getLoggerConfig('instance2');
+
+      expect(config1.maxLogs).toBe(DEFAULT_MAX_LOGS);
+      expect(config1.namespaces).toBe(DEFAULT_NAMESPACES);
+      expect(config2.maxLogs).toBe(75);
+      expect(config2.namespaces).toBe('other');
+    });
+  });
+
+  describe('Lazy Initialization', () => {
+    beforeEach(() => {
+      // Use resetWithoutInit to avoid auto-initialization
+      resetWithoutInit();
+      resetWithoutInit('testInstance');
+      delete process.env.DEBUG;
+      mockGetItem.mockClear();
+      mockGetItem.mockReturnValue(null);
+    });
+
+    it('should initialize debug settings on first getLogger call', () => {
+      // Set DEBUG after import but before getLogger
+      process.env.DEBUG = 'lazy:*';
+
+      const logger = getLogger('lazy:test');
+      logger.info('Lazy loaded message');
+
+      const logs = getLogs();
+      expect(logs.length).toBe(1);
+      expect(logs[0]?.message).toContain('Lazy loaded message');
+    });
+
+    it('should initialize debug settings on first enabled call', () => {
+      // Set DEBUG after import but before enabled check
+      process.env.DEBUG = 'lazy:*';
+
+      expect(enabled('lazy:test')).toBe(true);
+      expect(enabled('other:test')).toBe(false);
+    });
+
+    it('should only initialize once per instance', () => {
+      jest.spyOn(console, 'log').mockImplementation();
+
+      process.env.DEBUG = 'init:*';
+
+      // First call should initialize
+      const logger1 = getLogger('init:test', 'testInstance');
+      // Second call should not re-initialize
+      const logger2 = getLogger('init:another', 'testInstance');
+
+      // Change DEBUG - should not affect already initialized instance
+      process.env.DEBUG = 'different:*';
+      const logger3 = getLogger('init:third', 'testInstance');
+
+      logger1.info('Message 1');
+      logger2.info('Message 2');
+      logger3.info('Message 3');
+
+      const logs = getLogs('testInstance');
+      expect(logs.length).toBe(3); // All messages logged because init:* was set during initialization
+
+      (console.log as jest.Mock).mockRestore();
+    });
+
+    it('should support localStorage for lazy initialization', () => {
+      delete process.env.DEBUG;
+      // Restore window for localStorage test
+      global.window = { localStorage: { getItem: mockGetItem } } as any;
+      mockGetItem.mockReturnValue('localStorage:*');
+
+      const logger = getLogger('localStorage:test');
+      logger.info('LocalStorage message');
+
+      const logs = getLogs();
+      expect(logs.length).toBe(1);
+      expect(logs[0]?.message).toContain('LocalStorage message');
+    });
+  });
+
+  describe('Regex Namespace Optimization', () => {
+    beforeEach(resetLoggerAndMocks);
+
+    it('should compile namespace patterns into regex', () => {
+      setNamespaces('app:*, lib:specific, test:prefix*');
+
+      expect(enabled('app:anything')).toBe(true);
+      expect(enabled('app:nested:deep')).toBe(true);
+      expect(enabled('lib:specific')).toBe(true);
+      expect(enabled('lib:other')).toBe(false);
+      expect(enabled('test:prefix')).toBe(true);
+      expect(enabled('test:prefixed')).toBe(true);
+      expect(enabled('test:other')).toBe(false);
+    });
+
+    it('should handle special regex characters in namespaces', () => {
+      setNamespaces('app[test], app.test, app+test, app?test');
+
+      expect(enabled('app[test]')).toBe(true);
+      expect(enabled('app.test')).toBe(true);
+      expect(enabled('app+test')).toBe(true);
+      expect(enabled('app?test')).toBe(true);
+      expect(enabled('apptest')).toBe(false); // . should not match any character
+    });
+
+    it('should handle empty namespace configuration', () => {
+      setNamespaces('');
+      expect(enabled('anything')).toBe(false);
+    });
+
+    it('should update regex when namespaces change', () => {
+      setNamespaces('first:*');
+      expect(enabled('first:test')).toBe(true);
+      expect(enabled('second:test')).toBe(false);
+
+      setNamespaces('second:*');
+      expect(enabled('first:test')).toBe(false);
+      expect(enabled('second:test')).toBe(true);
+    });
+
+    it('should handle complex namespace patterns efficiently', () => {
+      const complexPattern = Array.from(
+        { length: 50 },
+        (_, i) => `namespace${i}:*`
+      ).join(',');
+      setNamespaces(complexPattern);
+
+      // Test that pattern matching works
+      expect(enabled('namespace25:test')).toBe(true);
+      expect(enabled('namespace49:deep:nested')).toBe(true);
+      expect(enabled('namespace50:test')).toBe(false);
+      expect(enabled('other:test')).toBe(false);
+    });
+  });
+
+  describe('Colorization', () => {
+    let originalEnv: string | undefined;
+    let originalTTY: boolean | undefined;
+    let originalWindow: any;
+
+    beforeEach(() => {
+      resetLoggerAndMocks();
+      originalEnv = process.env.NODE_ENV;
+      originalTTY = process.stdout?.isTTY;
+      originalWindow = global.window;
+      jest.spyOn(console, 'log').mockImplementation();
+      jest.spyOn(console, 'info').mockImplementation();
+      jest.spyOn(console, 'debug').mockImplementation();
+      jest.spyOn(console, 'warn').mockImplementation();
+      jest.spyOn(console, 'error').mockImplementation();
+    });
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalEnv;
+      if (process.stdout) {
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: originalTTY,
+          writable: true,
+          configurable: true,
+        });
+      }
+      global.window = originalWindow;
+      (console.log as jest.Mock).mockRestore();
+      (console.info as jest.Mock).mockRestore();
+      (console.debug as jest.Mock).mockRestore();
+      (console.warn as jest.Mock).mockRestore();
+      (console.error as jest.Mock).mockRestore();
+    });
+
+    it('should apply ANSI colors in development with TTY', () => {
+      process.env.NODE_ENV = 'development';
+      if (process.stdout) {
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: true,
+          writable: true,
+          configurable: true,
+        });
+      }
+      // Ensure window is not defined for terminal test
+      // @ts-ignore
+      delete global.window;
+
+      setLoggerConfig({ namespaces: 'color:*' });
+      const logger = getLogger('color:test');
+      logger.log('Colored message');
+
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringMatching(
+          // eslint-disable-next-line no-control-regex
+          /\x1b\[3[0-9]m\[color:test\] Colored message\x1b\[0m/
+        )
+      );
+    });
+
+    it('should apply CSS colors in browser development', () => {
+      process.env.NODE_ENV = 'development';
+      if (process.stdout) {
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: false,
+          writable: true,
+          configurable: true,
+        });
+      }
+      // Mock browser environment
+      // @ts-ignore
+      global.window = { console };
+
+      setLoggerConfig({ namespaces: 'color:*' });
+      const logger = getLogger('color:test');
+      logger.info('Browser colored message');
+
+      expect(console.info).toHaveBeenCalledWith(
+        '%c[color:test] Browser colored message',
+        expect.stringMatching(/color: #[0-9a-f]{6}; font-weight: bold;/)
+      );
+    });
+
+    it('should not apply colors in production', () => {
+      process.env.NODE_ENV = 'production';
+      if (process.stdout) {
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: true,
+          writable: true,
+          configurable: true,
+        });
+      }
+
+      setLoggerConfig({ namespaces: 'color:*' });
+      const logger = getLogger('color:test');
+      logger.log('No color message');
+
+      expect(console.log).toHaveBeenCalledWith('[color:test] No color message');
+    });
+
+    it('should not apply colors without TTY or browser', () => {
+      process.env.NODE_ENV = 'development';
+      if (process.stdout) {
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: false,
+          writable: true,
+          configurable: true,
+        });
+      }
+      // @ts-ignore
+      delete global.window;
+
+      setLoggerConfig({ namespaces: 'color:*' });
+      const logger = getLogger('color:test');
+      logger.log('No TTY message');
+
+      expect(console.log).toHaveBeenCalledWith('[color:test] No TTY message');
+    });
+
+    it('should use consistent colors for same namespace', () => {
+      process.env.NODE_ENV = 'development';
+      if (process.stdout) {
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: true,
+          writable: true,
+          configurable: true,
+        });
+      }
+
+      setLoggerConfig({ namespaces: 'consistent:*' });
+      const logger = getLogger('consistent:test');
+
+      logger.log('Message 1');
+      logger.log('Message 2');
+
+      const calls = (console.log as jest.Mock).mock.calls;
+      expect(calls[0][0]).toEqual(
+        calls[1][0].replace('Message 2', 'Message 1')
+      );
+    });
+
+    it('should not include colors in stored log messages', () => {
+      process.env.NODE_ENV = 'development';
+      if (process.stdout) {
+        Object.defineProperty(process.stdout, 'isTTY', {
+          value: true,
+          writable: true,
+          configurable: true,
+        });
+      }
+
+      setLoggerConfig({ namespaces: 'stored:*' });
+      const logger = getLogger('stored:test');
+      logger.log('Stored message');
+
+      const logs = getLogs();
+      expect(logs[0]?.message).not.toMatch(/\\x1b/);
+      expect(logs[0]?.message).toContain('[stored:test] Stored message');
     });
   });
 });
