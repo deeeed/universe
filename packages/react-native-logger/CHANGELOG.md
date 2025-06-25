@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.1.0] - 2025-06-25
+
 
 ## [1.0.0] - 2024-10-28
 
@@ -17,6 +19,5 @@
 - initial publisher config
 
 [unreleased]: https://github.com/deeeed/universe/compare/@siteed/react-native-logger@@siteed/react-native-logger@1.0.1...HEAD
-[1.0.1]: https://github.com/deeeed/universe/compare/@siteed/react-native-logger@@siteed/react-native-logger@1.0.0...@siteed/react-native-logger@@siteed/react-native-logger@1.0.1
-[1.0.0]: https://github.com/deeeed/universe/releases/tag/react-native-logger-v1.0.0
-[1.0.0]: https://github.com/deeeed/universe/releases/tag/react-native-logger-v1.0.0
+[unreleased]: https://github.com/deeeed/universe/compare/react-native-logger-v1.1.0...HEAD
+[1.1.0]: https://github.com/deeeed/universe/compare/react-native-logger-v1.0.1...react-native-logger-v1.1.0
