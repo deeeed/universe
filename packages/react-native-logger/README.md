@@ -21,6 +21,10 @@ yarn add @siteed/react-native-logger
 - **Production Debugging**: Facilitates debugging in production by allowing logs to be reviewed directly from a device.
 - **Configurable Maximum Logs**: Set the maximum number of logs kept in memory to prevent overflow.
 - **Namespace-Based Logging**: Enable or disable logging for specific namespaces based on environment variables or local storage settings.
+- **Instance Isolation**: Create multiple isolated logger instances with independent configurations (v1.1.0+).
+- **Lazy Initialization**: Set DEBUG environment variable after import for flexible runtime configuration (v1.1.0+).
+- **Colorization**: Beautiful colored output in terminals (ANSI) and web browsers (CSS) for better readability (v1.1.0+).
+- **Optimized Performance**: Pre-compiled regex patterns for efficient namespace matching (v1.1.0+).
 
 <div align="center">
   <h2>Try it out</h2>
@@ -72,6 +76,64 @@ const App = () => {
 };
 export default App;
 ```
+
+### Instance Isolation (v1.1.0+)
+
+Create multiple isolated logger instances with independent configurations. This is useful for libraries that need their own logging without affecting the host application.
+
+```tsx
+import { getLogger, setLoggerConfig, getLogs } from '@siteed/react-native-logger';
+
+// Configure and use instance 1
+setLoggerConfig({ namespaces: 'app:*' }, 'instance1');
+const appLogger = getLogger('app:main', 'instance1');
+
+// Configure and use instance 2 
+setLoggerConfig({ namespaces: 'lib:*' }, 'instance2');
+const libLogger = getLogger('lib:core', 'instance2');
+
+// Logs are isolated
+appLogger.info('App message'); // Only in instance1
+libLogger.info('Lib message'); // Only in instance2
+
+// Get logs from specific instance
+const appLogs = getLogs('instance1');
+const libLogs = getLogs('instance2');
+```
+
+### Lazy Initialization (v1.1.0+)
+
+The logger now supports setting the DEBUG environment variable after import, enabling flexible runtime configuration.
+
+```tsx
+import { getLogger } from '@siteed/react-native-logger';
+
+// Set DEBUG after import
+process.env.DEBUG = 'app:*';
+
+// Logger will pick up the configuration on first use
+const logger = getLogger('app:main');
+logger.info('This will be logged');
+```
+
+### Colorization (v1.1.0+)
+
+The logger now provides beautiful colored output for better readability:
+
+- **Terminal**: ANSI colors for TTY terminals in development
+- **Web Browser**: CSS-styled console output with `%c` formatting
+
+```tsx
+const logger = getLogger('app:auth');
+logger.info('User logged in'); // Will appear in color based on namespace
+
+// Colors are automatically assigned based on namespace hash
+// Each namespace gets a consistent color across sessions
+```
+
+To see colors:
+- **In Web Browser**: Open Developer Console (F12)
+- **In Terminal**: Colors appear automatically if TTY supports ANSI
 
 ### Activating logs with `debug` compatibility
 
