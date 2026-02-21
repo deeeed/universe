@@ -1,4 +1,5 @@
 import { useThemePreferences } from "@siteed/design-system";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
 
@@ -16,13 +17,34 @@ export default function TabLayout() {
         tabBarInactiveTintColor: theme.colors.onSurface,
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Theme", href: "/" }} />
-      <Tabs.Screen name="try" options={{ href: "/try" }} />
-      <Tabs.Screen name="bug" options={{ href: "/bug" }} />
-      <Tabs.Screen name="modals" options={{ href: "/modals" }} />
       <Tabs.Screen
-        name="keyboard-test"
-        options={{ title: "Keyboard Test", href: "/keyboard-test" }}
+        name="index"
+        options={{
+          title: "Theme",
+          href: "/",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="palette" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="try"
+        options={{
+          href: "/try",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="test-tube" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="bottom-sheet"
+        options={{
+          title: "BottomSheet",
+          href: "/bottom-sheet",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="layers" color={color} size={size} />
+          ),
+        }}
       />
     </Tabs>
   );

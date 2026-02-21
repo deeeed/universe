@@ -2,7 +2,7 @@
 /* eslint-env node */
 const escape = require("escape-string-regexp");
 const { getDefaultConfig } = require("expo/metro-config");
-const exclusionList = require("metro-config/src/defaults/exclusionList");
+
 const path = require("path");
 
 const pak = require("../../packages/design-system/package.json");
@@ -31,13 +31,11 @@ const extraNodeModules = modules.reduce((acc, name) => {
 }, {});
 
 // Prevent metro from resolving duplicate packages
-const blacklistRE = exclusionList(
-  modules.map(
-    (m) =>
-      new RegExp(
-        `^${escape(path.join(designSystem, "node_modules", m))}\\/.*$`,
-      ),
-  ),
+const blacklistRE = modules.map(
+  (m) =>
+    new RegExp(
+      `^${escape(path.join(designSystem, "node_modules", m))}\\/.*$`,
+    ),
 );
 
 /** @type {import('expo/metro-config').MetroConfig} */
@@ -55,7 +53,7 @@ config.resolver.nodeModulesPaths = [
 config.resolver = {
   ...config.resolver,
   extraNodeModules,
-  blacklistRE,
+  blockList: blacklistRE,
   resolveRequest: (context, moduleName, platform) => {
     if (moduleName.startsWith("@siteed/design-system")) {
       // Logic to resolve the module name to a file path...

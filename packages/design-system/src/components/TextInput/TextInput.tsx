@@ -34,7 +34,7 @@ export interface InputRefMethods {
 const useSafeBottomSheetInternal = () => {
   try {
     return useBottomSheetInternal();
-  } catch (e) {
+  } catch {
     return null;
   }
 };
@@ -65,8 +65,13 @@ export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
 
     const handleOnFocus = useCallback(
       (event: NativeSyntheticEvent<TextInputFocusEventData>) => {
-        if (bottomSheetInternal) {
-          bottomSheetInternal.shouldHandleKeyboardEvents.value = true;
+        if (bottomSheetInternal && !isWeb) {
+          const target = event.nativeEvent.target;
+          bottomSheetInternal.textInputNodesRef.current.add(target);
+          bottomSheetInternal.animatedKeyboardState.set((state) => ({
+            ...state,
+            target,
+          }));
         }
         onFocus?.(event);
       },
@@ -75,8 +80,16 @@ export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
 
     const handleOnBlur = useCallback(
       (event: NativeSyntheticEvent<TextInputFocusEventData>) => {
-        if (bottomSheetInternal) {
-          bottomSheetInternal.shouldHandleKeyboardEvents.value = false;
+        if (bottomSheetInternal && !isWeb) {
+          const target = event.nativeEvent.target;
+          bottomSheetInternal.textInputNodesRef.current.delete(target);
+          const keyboardState = bottomSheetInternal.animatedKeyboardState.get();
+          if (keyboardState.target === target) {
+            bottomSheetInternal.animatedKeyboardState.set((state) => ({
+              ...state,
+              target: undefined,
+            }));
+          }
         }
         onBlur?.(event);
       },
@@ -96,9 +109,17 @@ export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
     }, [autoFocus]);
 
     useEffect(() => {
+      if (isWeb || !bottomSheetInternal) return;
       return () => {
-        if (bottomSheetInternal) {
-          bottomSheetInternal.shouldHandleKeyboardEvents.value = false;
+        const keyboardState = bottomSheetInternal.animatedKeyboardState.get();
+        if (keyboardState.target != null) {
+          bottomSheetInternal.textInputNodesRef.current.delete(
+            keyboardState.target
+          );
+          bottomSheetInternal.animatedKeyboardState.set((state) => ({
+            ...state,
+            target: undefined,
+          }));
         }
       };
     }, [bottomSheetInternal]);

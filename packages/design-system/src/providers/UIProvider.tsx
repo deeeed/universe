@@ -1,5 +1,5 @@
 // packages/design-system/src/providers/UIProvider.tsx
-import { PortalHost, PortalProvider } from '@gorhom/portal';
+import { PortalProvider } from '@gorhom/portal';
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -185,10 +185,7 @@ const UIProviderWithLanguageReady = ({
           <ToastProvider {...toastProviderProps}>
             <PortalProvider>
               <ModalControllerProvider>
-                <>
-                  {children}
-                  <PortalHost name={portalName} />
-                </>
+                {children}
               </ModalControllerProvider>
             </PortalProvider>
           </ToastProvider>

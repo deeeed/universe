@@ -57,30 +57,59 @@ export const addLog = (
     : toLogParams;
 
   // Apply colorization in dev mode
-  const isDev = typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
+  const isDev =
+    typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
   const isTerminal = typeof process !== 'undefined' && process.stdout?.isTTY;
-  const isBrowser = typeof window !== 'undefined' && typeof window.console !== 'undefined';
-  
+  const isBrowser =
+    typeof window !== 'undefined' && typeof window.console !== 'undefined';
+
   // Calculate color based on namespace hash
   const hash = namespace
     .split('')
     .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  
+
   // Get the appropriate console method
-  const consoleMethod = level === 'debug' ? console.debug :
-                       level === 'info' ? console.info :
-                       level === 'warn' ? console.warn :
-                       level === 'error' ? console.error :
-                       console.log;
+  const consoleMethod =
+    level === 'debug'
+      ? console.debug
+      : level === 'info'
+        ? console.info
+        : level === 'warn'
+          ? console.warn
+          : level === 'error'
+            ? console.error
+            : console.log;
 
   if (isDev && isBrowser && !isTerminal) {
     // Browser console with CSS styling
-    const colors = ['#e74c3c', '#27ae60', '#f39c12', '#3498db', '#9b59b6', '#1abc9c', '#95a5a6', '#34495e'];
+    const colors = [
+      '#e74c3c',
+      '#27ae60',
+      '#f39c12',
+      '#3498db',
+      '#9b59b6',
+      '#1abc9c',
+      '#95a5a6',
+      '#34495e',
+    ];
     const colorIndex = hash % colors.length;
-    consoleMethod(`%c${messageWithNamespace}`, `color: ${colors[colorIndex]}; font-weight: bold;`, ...consoleParams);
+    consoleMethod(
+      `%c${messageWithNamespace}`,
+      `color: ${colors[colorIndex]}; font-weight: bold;`,
+      ...consoleParams
+    );
   } else if (isDev && isTerminal) {
     // Terminal with ANSI colors
-    const colors = ['\x1b[31m', '\x1b[32m', '\x1b[33m', '\x1b[34m', '\x1b[35m', '\x1b[36m', '\x1b[37m', '\x1b[90m'];
+    const colors = [
+      '\x1b[31m',
+      '\x1b[32m',
+      '\x1b[33m',
+      '\x1b[34m',
+      '\x1b[35m',
+      '\x1b[36m',
+      '\x1b[37m',
+      '\x1b[90m',
+    ];
     const colorIndex = hash % colors.length;
     const coloredMessage = `${colors[colorIndex]}${messageWithNamespace}\x1b[0m`;
     consoleMethod(coloredMessage, ...consoleParams);
@@ -272,7 +301,7 @@ export const initializeDebugSettings = (instanceId?: string) => {
   } else if (typeof window !== 'undefined' && window.localStorage) {
     try {
       debugSetting = window.localStorage.getItem('DEBUG') || '';
-    } catch (e) {
+    } catch {
       // localStorage might not be available in some environments
     }
   }

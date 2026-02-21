@@ -9,7 +9,7 @@ import React, {
   memo,
 } from 'react';
 import { BottomSheetModalWrapper } from '../components/bottom-modal/BottomSheetModalWrapper';
-import { Portal } from '@gorhom/portal';
+import { Portal, PortalHost } from '@gorhom/portal';
 
 import type {
   BottomSheetStackItem,
@@ -111,7 +111,8 @@ export const BottomSheetProvider = memo(
         <BottomSheetContext.Provider value={contextValue}>
           <BottomSheetModalProvider>
             {children}
-            <Portal name={defaultPortalName}>{renderedModals}</Portal>
+            <Portal hostName={defaultPortalName} name={`${defaultPortalName}-portal`}>{renderedModals}</Portal>
+            <PortalHost name={defaultPortalName} />
           </BottomSheetModalProvider>
         </BottomSheetContext.Provider>
       );

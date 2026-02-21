@@ -41,7 +41,7 @@ const initializeLogger = () => {
   clearLogs();
   setLoggerConfig({ namespaces: '' });
   // Ensure we're not in a browser environment for most tests
-  // @ts-ignore
+  // @ts-expect-error - deleting global.window for test isolation
   delete global.window;
 };
 
@@ -49,7 +49,7 @@ const resetLoggerAndMocks = () => {
   reset();
   mockGetItem.mockClear();
   // Ensure we're not in a browser environment for most tests
-  // @ts-ignore
+  // @ts-expect-error - deleting global.window for test isolation
   delete global.window;
 };
 
@@ -68,7 +68,7 @@ const resetWithoutInit = (instanceId?: string) => {
   };
   // Don't call initializeDebugSettings
   // Ensure we're not in a browser environment for most tests
-  // @ts-ignore
+  // @ts-expect-error - deleting global.window for test isolation
   delete global.window;
 };
 
@@ -345,7 +345,15 @@ describe('Logger Tests', () => {
     beforeEach(() => {
       resetLoggerAndMocks();
       // Restore window for localStorage tests
-      global.window = { localStorage: { getItem: mockGetItem, setItem: mockSetItem, removeItem: mockRemoveItem, clear: jest.fn() } } as any;
+      global.window = {
+        localStorage: {
+          getItem: mockGetItem,
+          setItem: mockSetItem,
+          removeItem: mockRemoveItem,
+          clear: jest.fn(),
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
     });
 
     it('should load settings from localStorage', () => {
@@ -408,10 +416,24 @@ describe('Logger Tests', () => {
     it('should initialize debug settings from localStorage', () => {
       delete process.env.DEBUG;
       // Restore window for localStorage test
-      global.window = { localStorage: { getItem: mockGetItem } } as any;
+      global.window = {
+        localStorage: { getItem: mockGetItem },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
       mockGetItem.mockReturnValue('test:local');
       initializeDebugSettings();
       expect(enabled('test:local')).toBe(true);
+    });
+
+    it('should handle null return from localStorage getItem', () => {
+      delete process.env.DEBUG;
+      global.window = {
+        localStorage: { getItem: mockGetItem },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+      mockGetItem.mockReturnValue(null);
+      initializeDebugSettings();
+      expect(enabled('any:namespace')).toBe(false);
     });
   });
 
@@ -703,7 +725,10 @@ describe('Logger Tests', () => {
     it('should support localStorage for lazy initialization', () => {
       delete process.env.DEBUG;
       // Restore window for localStorage test
-      global.window = { localStorage: { getItem: mockGetItem } } as any;
+      global.window = {
+        localStorage: { getItem: mockGetItem },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
       mockGetItem.mockReturnValue('localStorage:*');
 
       const logger = getLogger('localStorage:test');
@@ -773,6 +798,7 @@ describe('Logger Tests', () => {
   describe('Colorization', () => {
     let originalEnv: string | undefined;
     let originalTTY: boolean | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let originalWindow: any;
 
     beforeEach(() => {
@@ -796,7 +822,9 @@ describe('Logger Tests', () => {
           configurable: true,
         });
       }
-      global.window = originalWindow;
+      if (originalWindow !== undefined) {
+        global.window = originalWindow;
+      }
       (console.log as jest.Mock).mockRestore();
       (console.info as jest.Mock).mockRestore();
       (console.debug as jest.Mock).mockRestore();
@@ -814,7 +842,7 @@ describe('Logger Tests', () => {
         });
       }
       // Ensure window is not defined for terminal test
-      // @ts-ignore
+      // @ts-expect-error - deleting global.window for test isolation
       delete global.window;
 
       setLoggerConfig({ namespaces: 'color:*' });
@@ -839,7 +867,7 @@ describe('Logger Tests', () => {
         });
       }
       // Mock browser environment
-      // @ts-ignore
+      // @ts-expect-error - setting global.window for browser environment simulation
       global.window = { console };
 
       setLoggerConfig({ namespaces: 'color:*' });
@@ -878,7 +906,7 @@ describe('Logger Tests', () => {
           configurable: true,
         });
       }
-      // @ts-ignore
+      // @ts-expect-error - deleting global.window for test isolation
       delete global.window;
 
       setLoggerConfig({ namespaces: 'color:*' });
