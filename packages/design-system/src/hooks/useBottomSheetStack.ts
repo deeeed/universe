@@ -7,7 +7,6 @@ import type {
   ModalState,
 } from '../types/bottomSheet.types';
 import { baseLogger } from '../utils/logger';
-import { Platform } from 'react-native';
 
 const logger = baseLogger.extend('useBottomSheetStack');
 
@@ -171,25 +170,6 @@ export function useBottomSheetStack({
           BottomSheetStackItem<unknown>
         >;
         setModalStack(modalStackRef.current);
-
-        const presentationDelay = Platform.OS === 'web' ? 100 : 0;
-
-        setTimeout(() => {
-          logger.debug('Presenting modal:', {
-            modalId,
-            hasRef: !!bottomSheetRef.current,
-            snapPoints: props.bottomSheetProps?.snapPoints,
-          });
-
-          if (bottomSheetRef.current) {
-            bottomSheetRef.current.present();
-            if (props.bottomSheetProps?.snapPoints) {
-              bottomSheetRef.current.snapToIndex(
-                props.bottomSheetProps.index || 0
-              );
-            }
-          }
-        }, presentationDelay);
       });
     },
     [defaultPortalName, wrapResolve, wrapReject]

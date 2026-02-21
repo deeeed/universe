@@ -131,3 +131,42 @@ Uses @siteed/publisher for release management:
 6. **Publishing**: Packages are published to NPM with public access. Use the publisher tool for releases.
 
 7. **Instance Isolation**: When working with react-native-logger, the new instance isolation feature allows multiple isolated logger configurations via the optional `instanceId` parameter on all public APIs.
+
+## @gorhom/portal + @gorhom/bottom-sheet Integration
+
+### Critical: Portal `name` vs `hostName` props
+
+`@gorhom/portal`'s `<Portal>` component has **two distinct props**:
+- `name` — the portal's own identifier (which portal this is within a host)
+- `hostName` — which `<PortalHost>` receives the content (defaults to `'root'` if omitted)
+
+**Always pass `hostName` explicitly** when you want content delivered to a specific named `PortalHost`:
+```tsx
+// WRONG — sends to the 'root' host despite name="modal"
+<Portal name="modal">{content}</Portal>
+
+// CORRECT — sends to the 'modal' PortalHost
+<Portal hostName="modal" name="modal-portal">{content}</Portal>
+```
+
+### BottomSheetModal context requirement
+
+`BottomSheetModal` (from `@gorhom/bottom-sheet`) internally calls `useBottomSheetModalInternal()` which reads from `BottomSheetModalInternalContext`. This context is provided **only** by `<BottomSheetModalProvider>`.
+
+If `BottomSheetModal` renders outside the `BottomSheetModalProvider` subtree (e.g. via a misrouted portal), it silently fails — `present()` does nothing, `onDismiss` never fires, and the modal stack accumulates without resolving.
+
+### Correct provider tree for BottomSheetProvider
+
+The `<PortalHost>` where modals render **must live inside** `<BottomSheetModalProvider>`:
+
+```tsx
+<BottomSheetModalProvider>
+  {children}
+  <Portal hostName={portalName} name={`${portalName}-portal`}>{renderedModals}</Portal>
+  <PortalHost name={portalName} />   {/* ← inside BottomSheetModalProvider ✓ */}
+</BottomSheetModalProvider>
+```
+
+`PortalProvider` (from `@gorhom/portal`) adds a `'root'` PortalHost automatically at the level it's placed. Do **not** rely on that root host for bottom sheet modals — it sits outside `BottomSheetModalProvider`.
+
+Files: `packages/design-system/src/providers/BottomSheetProvider.tsx`, `packages/design-system/src/providers/UIProvider.tsx`

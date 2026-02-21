@@ -23,6 +23,9 @@ import type {
 } from '../../types/bottomSheet.types';
 import { ConfirmCancelFooter } from './footers/ConfirmCancelFooter';
 import { LabelHandler } from './handlers/LabelHandler';
+import { baseLogger } from '../../utils/logger';
+
+const logger = baseLogger.extend('BottomSheetModalWrapper');
 
 interface ModalContentProps {
   modalId: number;
@@ -305,15 +308,26 @@ export const BottomSheetModalWrapper = memo(
     );
 
     useEffect(() => {
-      if (
-        Platform.OS === 'android' &&
-        modal.bottomSheetRef.current &&
-        !hasPresentedRef.current
-      ) {
-        modal.bottomSheetRef.current.present();
+      logger.debug('BottomSheetModalWrapper mount', {
+        modalId: modal.id,
+        hasRef: !!modal.bottomSheetRef.current,
+        hasPresentedRef: hasPresentedRef.current,
+      });
+      if (modal.bottomSheetRef.current && !hasPresentedRef.current) {
         hasPresentedRef.current = true;
+        modal.bottomSheetRef.current.present();
+        const snapPoints = modal.props.bottomSheetProps?.snapPoints;
+        if (Array.isArray(snapPoints) && snapPoints.length) {
+          modal.bottomSheetRef.current.snapToIndex(
+            modal.props.bottomSheetProps?.index ?? 0
+          );
+        }
+      } else if (!modal.bottomSheetRef.current) {
+        logger.warn('BottomSheetModalWrapper: ref is null on mount', {
+          modalId: modal.id,
+        });
       }
-    }, [modal.bottomSheetRef]);
+    }, []);
 
     return (
       <View testID={testID}>
