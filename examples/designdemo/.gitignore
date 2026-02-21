@@ -77,3 +77,6 @@ yarn-error.*
 *.tsbuildinfo
 
 # @end expo-cli
+
+# Agentic bridge runtime artifacts
+.agent/
