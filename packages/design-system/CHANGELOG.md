@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.51.3] - 2026-02-21
+### Changed
+- fix(design-system): pass portalName down to ModalControllerProvider in UIProvider ([3227d37](https://github.com/deeeed/universe/commit/3227d3760330ea300d286496696a8d5922b0d633))
+- chore: upgrade dependencies and minor fixes (expo 54, RN 0.81, reanimated 4) ([628f5c4](https://github.com/deeeed/universe/commit/628f5c45870e92f28e530a24f13e93b2d33fda7e))
+- fix(design-system): fix BottomSheetModal silently failing due to wrong portal context ([58b0e51](https://github.com/deeeed/universe/commit/58b0e51b1e81a707214b035171fcb77a9fddd29a))
+- chore(@siteed/design-system): release 0.51.2 ([e3ec127](https://github.com/deeeed/universe/commit/e3ec1278d2439bc7b52696b30b37addefd334230))
 ## [0.51.2] - 2025-05-28
 ### Changed
 - feat(BottomSheet): introduce DrawerRenderProps type for improved modal rendering and refactor render props in BottomSheetModalWrapper ([6d2be49](https://github.com/deeeed/universe/commit/6d2be495fbc0c6bb2114b25ef3f6603a3fd0bcf6))
@@ -139,7 +145,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.2...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.3...HEAD
+[0.51.3]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.2...@siteed/design-system@0.51.3
 [0.51.2]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.1...@siteed/design-system@0.51.2
 [0.51.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.0...@siteed/design-system@0.51.1
 [0.51.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.50.1...@siteed/design-system@0.51.0
