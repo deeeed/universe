@@ -184,7 +184,7 @@ const UIProviderWithLanguageReady = ({
         <ConfirmProvider {...confirmProviderProps}>
           <ToastProvider {...toastProviderProps}>
             <PortalProvider>
-              <ModalControllerProvider>
+              <ModalControllerProvider portalName={portalName}>
                 {children}
               </ModalControllerProvider>
             </PortalProvider>
