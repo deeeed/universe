@@ -101,10 +101,13 @@ export const RefreshControl = React.forwardRef<unknown, RefreshControlProps>(
       enabled = true,
       progressBackgroundColor,
       progressViewOffset: _progressViewOffset = CONSTANTS.refreshThreshold,
-      size = CONSTANTS.defaultIndicatorSize,
+      size: _size,
       onRefresh,
       children,
     } = rcProps;
+
+    const size: number =
+      typeof _size === 'number' ? _size : CONSTANTS.defaultIndicatorSize;
 
     const translateY = useSharedValue(0);
     const cursorOpacity = useSharedValue(0);

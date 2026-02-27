@@ -10,10 +10,10 @@ import React, {
   useState,
 } from 'react';
 import {
-  NativeSyntheticEvent,
+  type BlurEvent,
+  type FocusEvent,
   Platform,
   TextInput as RNTextInput,
-  TextInputFocusEventData,
 } from 'react-native';
 import {
   TextInput as PTextInput,
@@ -64,7 +64,7 @@ export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
     };
 
     const handleOnFocus = useCallback(
-      (event: NativeSyntheticEvent<TextInputFocusEventData>) => {
+      (event: FocusEvent) => {
         if (bottomSheetInternal && !isWeb) {
           const target = event.nativeEvent.target;
           bottomSheetInternal.textInputNodesRef.current.add(target);
@@ -79,7 +79,7 @@ export const TextInput = forwardRef<InputRefMethods, TextInputProps>(
     );
 
     const handleOnBlur = useCallback(
-      (event: NativeSyntheticEvent<TextInputFocusEventData>) => {
+      (event: BlurEvent) => {
         if (bottomSheetInternal && !isWeb) {
           const target = event.nativeEvent.target;
           bottomSheetInternal.textInputNodesRef.current.delete(target);

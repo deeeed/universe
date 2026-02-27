@@ -486,7 +486,7 @@ export const BottomSheetScreen = () => {
           mode="outlined"
           onPress={async () => {
             const result = await editProp({
-              data: { key: "value", count: 42 },
+              data: JSON.stringify({ key: "value", count: 42 }),
               inputType: "text",
               modalType: "drawer",
               autoFocus: true,
