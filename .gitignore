@@ -28,3 +28,4 @@ node_modules/
 
 *storybook.log
 .env.test
+.task.md
