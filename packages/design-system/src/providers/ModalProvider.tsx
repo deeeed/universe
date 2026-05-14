@@ -45,7 +45,7 @@ export interface OpenModalProps<T = unknown> {
 
 export interface ModalProviderProps {
   openModal: <T>(props: OpenModalProps<T>) => Promise<T | undefined>;
-  dismiss: () => Promise<boolean>;
+  dismiss: (modalId?: number) => Promise<boolean>;
   dismissAll: () => void;
   modalStack: ModalStackItem[];
 }
@@ -55,6 +55,7 @@ export const ModalContext = createContext<ModalProviderProps | undefined>(
 );
 
 const logger = baseLogger.extend('ModalProvider');
+const MODAL_BASE_Z_INDEX = 10000;
 
 export interface ModalStackItem<T = unknown> {
   id: number;
@@ -76,18 +77,26 @@ export const ModalProvider = forwardRef<
   const theme = useTheme();
   const [modalStack, setModalStack] = useState<ModalStackItem[]>([]);
 
-  const handleModalDismiss = useCallback(() => {
-    if (modalStack.length > 0) {
-      const currentModal = modalStack[modalStack.length - 1];
-      if (!currentModal) {
-        logger.debug('No current modal to dismiss');
-        return;
+  const handleModalDismiss = useCallback(
+    (modalId?: number) => {
+      if (modalStack.length > 0) {
+        const currentModal =
+          modalId !== undefined
+            ? modalStack.find((modal) => modal.id === modalId)
+            : modalStack[modalStack.length - 1];
+        if (!currentModal) {
+          logger.debug('No current modal to dismiss');
+          return;
+        }
+        logger.debug('Dismissing modal', currentModal.id);
+        currentModal.resolve(currentModal.initialData);
+        setModalStack((prevStack) =>
+          prevStack.filter((modal) => modal.id !== currentModal.id)
+        );
       }
-      logger.debug('Dismissing modal', currentModal.id);
-      currentModal.resolve(currentModal.initialData);
-      setModalStack((prevStack) => prevStack.slice(0, -1));
-    }
-  }, [modalStack]);
+    },
+    [modalStack]
+  );
 
   const openModal = useCallback(
     async <T,>({
@@ -149,19 +158,27 @@ export const ModalProvider = forwardRef<
     []
   );
 
-  const dismiss = useCallback(() => {
-    return new Promise<boolean>((resolvePromise) => {
-      if (modalStack.length === 0) {
-        logger.debug('No modals to dismiss');
-        resolvePromise(false);
-        return;
-      }
+  const dismiss = useCallback(
+    (modalId?: number) => {
+      return new Promise<boolean>((resolvePromise) => {
+        const currentModal =
+          modalId !== undefined
+            ? modalStack.find((modal) => modal.id === modalId)
+            : modalStack[modalStack.length - 1];
 
-      logger.debug('Dismissing top modal');
-      handleModalDismiss();
-      resolvePromise(true);
-    });
-  }, [handleModalDismiss, modalStack.length]);
+        if (!currentModal) {
+          logger.debug('No modals to dismiss');
+          resolvePromise(false);
+          return;
+        }
+
+        logger.debug('Dismissing modal', currentModal.id);
+        handleModalDismiss(currentModal.id);
+        resolvePromise(true);
+      });
+    },
+    [handleModalDismiss, modalStack]
+  );
 
   const dismissAll = useCallback(() => {
     logger.debug('Dismissing all modals', modalStack.length);
@@ -211,62 +228,70 @@ export const ModalProvider = forwardRef<
   return (
     <ModalContext.Provider value={contextValue}>
       {children}
-      <Portal hostName={portalName}>
-        {modalStack.map((modal, index) => {
-          const showBackdrop = modal.props.modalProps?.showBackdrop ?? true;
-          const showCloseButton = modal.props.modalProps?.showCloseButton;
-          const closeButtonPosition =
-            modal.props.modalProps?.closeButtonPosition ?? 'top-right';
-          const customStyles = modal.props.modalProps?.styles ?? {};
+      {modalStack.map((modal) => (
+        <Portal
+          key={modal.id}
+          hostName={portalName}
+          name={`${portalName}-modal-${modal.id}`}
+        >
+          {(() => {
+            const showBackdrop = modal.props.modalProps?.showBackdrop ?? true;
+            const showCloseButton = modal.props.modalProps?.showCloseButton;
+            const closeButtonPosition =
+              modal.props.modalProps?.closeButtonPosition ?? 'top-right';
+            const customStyles = modal.props.modalProps?.styles ?? {};
 
-          return (
-            <TouchableWithoutFeedback
-              key={modal.id}
-              onPress={handleOutsideTouch}
-            >
-              <View
-                style={[
-                  StyleSheet.absoluteFillObject,
-                  styles.modalContainer,
-                  showBackdrop && [
-                    {
-                      backgroundColor: theme.dark
-                        ? 'rgba(55, 55, 70, 0.8)'
-                        : 'rgba(0, 0, 0, 0.5)',
-                    },
-                    customStyles.backdrop,
-                  ],
-                  { zIndex: 9999 + index },
-                  customStyles.modalContainer,
-                ]}
-              >
+            return (
+              <TouchableWithoutFeedback onPress={handleOutsideTouch}>
                 <View
                   style={[
-                    styles.modalContent,
-                    { backgroundColor: theme.colors.surface },
-                    customStyles.modalContent,
+                    StyleSheet.absoluteFillObject,
+                    styles.modalContainer,
+                    showBackdrop && [
+                      {
+                        backgroundColor: theme.dark
+                          ? 'rgba(55, 55, 70, 0.8)'
+                          : 'rgba(0, 0, 0, 0.5)',
+                      },
+                      customStyles.backdrop,
+                    ],
+                    {
+                      zIndex: MODAL_BASE_Z_INDEX + modal.id,
+                      elevation: MODAL_BASE_Z_INDEX + modal.id,
+                    },
+                    customStyles.modalContainer,
                   ]}
                 >
-                  {showCloseButton && (
-                    <TouchableWithoutFeedback onPress={handleModalDismiss}>
-                      <View
-                        style={[
-                          styles.closeButton,
-                          styles[closeButtonPosition],
-                          customStyles.closeButton,
-                        ]}
+                  <View
+                    style={[
+                      styles.modalContent,
+                      { backgroundColor: theme.colors.surface },
+                      customStyles.modalContent,
+                    ]}
+                  >
+                    {showCloseButton && (
+                      <TouchableWithoutFeedback
+                        onPress={() => handleModalDismiss(modal.id)}
                       >
-                        <Text style={styles.closeButtonText}>✕</Text>
-                      </View>
-                    </TouchableWithoutFeedback>
-                  )}
-                  <ToastProvider>{modal.content}</ToastProvider>
+                        <View
+                          style={[
+                            styles.closeButton,
+                            styles[closeButtonPosition],
+                            customStyles.closeButton,
+                          ]}
+                        >
+                          <Text style={styles.closeButtonText}>✕</Text>
+                        </View>
+                      </TouchableWithoutFeedback>
+                    )}
+                    <ToastProvider>{modal.content}</ToastProvider>
+                  </View>
                 </View>
-              </View>
-            </TouchableWithoutFeedback>
-          );
-        })}
-      </Portal>
+              </TouchableWithoutFeedback>
+            );
+          })()}
+        </Portal>
+      ))}
     </ModalContext.Provider>
   );
 });

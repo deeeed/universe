@@ -39,11 +39,12 @@ export const useModalController = () => {
 interface ModalControllerProviderProps {
   children: React.ReactNode;
   portalName?: string;
+  renderPortalHost?: boolean;
 }
 
 export const ModalControllerProvider: React.FC<
   ModalControllerProviderProps
-> = ({ children, portalName = 'modal' }) => {
+> = ({ children, portalName = 'modal', renderPortalHost = true }) => {
   const modalProviderRef = useRef<ModalProviderProps>(null);
   const bottomSheetProviderRef = useRef<BottomSheetContextValue>(null);
   const sharedIdCounter = useRef(0);
@@ -66,22 +67,25 @@ export const ModalControllerProvider: React.FC<
     const dismiss = async () => {
       if (modalProviderRef.current && bottomSheetProviderRef.current) {
         const combinedStack = [
-          ...(modalProviderRef.current.modalStack || []),
-          ...(bottomSheetProviderRef.current.modalStack || []),
-        ];
+          ...(modalProviderRef.current.modalStack || []).map((item) => ({
+            item,
+            type: 'modal' as const,
+          })),
+          ...(bottomSheetProviderRef.current.modalStack || []).map((item) => ({
+            item,
+            type: 'drawer' as const,
+          })),
+        ].sort((a, b) => (a.item.id || 0) - (b.item.id || 0));
 
         if (combinedStack.length === 0) {
           return false;
         }
 
         const topItem = combinedStack[combinedStack.length - 1];
-        if (topItem && 'props' in topItem) {
-          // It's a drawer
-          return bottomSheetProviderRef.current.dismiss();
-        } else {
-          // It's a modal
-          return modalProviderRef.current.dismiss();
-        }
+        if (!topItem) return false;
+        return topItem.type === 'drawer'
+          ? bottomSheetProviderRef.current.dismiss(topItem.item.id)
+          : modalProviderRef.current.dismiss(topItem.item.id);
       }
       throw new Error('Modal and BottomSheet providers not initialized');
     };
@@ -107,6 +111,7 @@ export const ModalControllerProvider: React.FC<
     <ModalControllerContext.Provider value={contextValue}>
       <BottomSheetProvider
         defaultPortalName={portalName}
+        renderPortalHost={renderPortalHost}
         ref={bottomSheetProviderRef as React.Ref<BottomSheetContextValue>}
         sharedIdCounter={sharedIdCounter}
       >

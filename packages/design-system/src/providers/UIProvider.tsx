@@ -100,6 +100,7 @@ export interface UIProviderProps {
   lightTheme?: AppTheme;
   darkTheme?: AppTheme;
   portalName?: string;
+  renderPortalHost?: boolean;
   preferences?: SavedUserPreferences;
   actions?: Partial<ThemeActions>;
   safeAreaProviderProps?: SafeAreaProviderProps;
@@ -122,6 +123,7 @@ const UIProviderWithLanguageReady = ({
   toastProviderProps,
   confirmProviderProps,
   portalName = 'modal',
+  renderPortalHost = true,
   children,
 }: Omit<UIProviderProps, 'locale'>) => {
   const { i18n } = useTranslation();
@@ -184,7 +186,10 @@ const UIProviderWithLanguageReady = ({
         <ConfirmProvider {...confirmProviderProps}>
           <ToastProvider {...toastProviderProps}>
             <PortalProvider>
-              <ModalControllerProvider portalName={portalName}>
+              <ModalControllerProvider
+                portalName={portalName}
+                renderPortalHost={renderPortalHost}
+              >
                 {children}
               </ModalControllerProvider>
             </PortalProvider>

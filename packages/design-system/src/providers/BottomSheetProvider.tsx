@@ -21,6 +21,7 @@ import { baseLogger } from '../utils/logger';
 export interface BottomSheetProviderProps {
   children: React.ReactNode;
   defaultPortalName?: string;
+  renderPortalHost?: boolean;
   sharedIdCounter: React.MutableRefObject<number>;
 }
 
@@ -39,7 +40,15 @@ const logger = baseLogger.extend('BottomSheetProvider');
 
 export const BottomSheetProvider = memo(
   forwardRef<BottomSheetContextValue, BottomSheetProviderProps>(
-    ({ children, defaultPortalName = 'modal', sharedIdCounter }, ref) => {
+    (
+      {
+        children,
+        defaultPortalName = 'modal',
+        renderPortalHost = true,
+        sharedIdCounter,
+      },
+      ref
+    ) => {
       const {
         modalStack,
         modalStackRef,
@@ -94,15 +103,26 @@ export const BottomSheetProvider = memo(
       const renderedModals = useMemo(
         () =>
           modalStack.map((modal) => (
-            <BottomSheetModalWrapper
+            <Portal
               key={modal.id}
-              modal={modal}
-              onSheetChanges={handleSheetChanges}
-              onDismiss={handleDismiss}
-              updateModalState={updateModalState}
-            />
+              hostName={modal.props.portalName ?? defaultPortalName}
+              name={`${modal.props.portalName ?? defaultPortalName}-drawer-${modal.id}`}
+            >
+              <BottomSheetModalWrapper
+                modal={modal}
+                onSheetChanges={handleSheetChanges}
+                onDismiss={handleDismiss}
+                updateModalState={updateModalState}
+              />
+            </Portal>
           )),
-        [modalStack, handleSheetChanges, handleDismiss, updateModalState]
+        [
+          modalStack,
+          defaultPortalName,
+          handleSheetChanges,
+          handleDismiss,
+          updateModalState,
+        ]
       );
 
       useImperativeHandle(ref, () => contextValue, [contextValue]);
@@ -111,8 +131,8 @@ export const BottomSheetProvider = memo(
         <BottomSheetContext.Provider value={contextValue}>
           <BottomSheetModalProvider>
             {children}
-            <Portal hostName={defaultPortalName} name={`${defaultPortalName}-portal`}>{renderedModals}</Portal>
-            <PortalHost name={defaultPortalName} />
+            {renderedModals}
+            {renderPortalHost && <PortalHost name={defaultPortalName} />}
           </BottomSheetModalProvider>
         </BottomSheetContext.Provider>
       );
@@ -122,6 +142,7 @@ export const BottomSheetProvider = memo(
     return (
       prevProps.children === nextProps.children &&
       prevProps.defaultPortalName === nextProps.defaultPortalName &&
+      prevProps.renderPortalHost === nextProps.renderPortalHost &&
       prevProps.sharedIdCounter === nextProps.sharedIdCounter
     );
   }

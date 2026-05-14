@@ -136,11 +136,9 @@ export function useBottomSheetStack({
           hasInitialData: !!initialData,
         });
 
-        const previousModal =
-          modalStackRef.current[modalStackRef.current.length - 1];
         const initialState: ModalState<T> = {
           data: initialData as T,
-          footerHeight: previousModal?.state.footerHeight || 0,
+          footerHeight: 0,
         };
 
         modalStatesRef.current.set(modalId, initialState);

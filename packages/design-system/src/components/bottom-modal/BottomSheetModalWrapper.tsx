@@ -26,6 +26,7 @@ import { LabelHandler } from './handlers/LabelHandler';
 import { baseLogger } from '../../utils/logger';
 
 const logger = baseLogger.extend('BottomSheetModalWrapper');
+const MODAL_BASE_Z_INDEX = 10000;
 
 interface ModalContentProps {
   modalId: number;
@@ -171,6 +172,9 @@ export const BottomSheetModalWrapper = memo(
       modal.props.bottomSheetProps?.contentContainerStyle;
     const userFooterContainerStyle =
       modal.props.bottomSheetProps?.footerContainerStyle;
+    const hasFooter = Boolean(
+      modal.props.renderFooter || modal.props.footerType
+    );
 
     const renderFooter = useCallback(
       (footerProps: BottomSheetFooterProps) => {
@@ -226,15 +230,23 @@ export const BottomSheetModalWrapper = memo(
           : containerType === 'scrollview'
             ? BottomSheetScrollView
             : React.Fragment;
+      const containerProps =
+        containerType === 'scrollview'
+          ? {
+              keyboardShouldPersistTaps: 'handled' as const,
+              keyboardDismissMode: 'interactive' as const,
+            }
+          : {};
 
       return (
-        <Container>
+        <Container {...containerProps}>
           <View
             style={[
               { backgroundColor: theme.colors.surface },
-              !disableSafeAreaPadding && {
-                paddingBottom: modal.state.footerHeight + bottomInset,
-              },
+              hasFooter &&
+                !disableSafeAreaPadding && {
+                  paddingBottom: modal.state.footerHeight + bottomInset,
+                },
               userContentContainerStyle,
             ]}
           >
@@ -258,6 +270,7 @@ export const BottomSheetModalWrapper = memo(
       theme.colors,
       bottomInset,
       disableSafeAreaPadding,
+      hasFooter,
       userContentContainerStyle,
     ]);
 
@@ -266,8 +279,15 @@ export const BottomSheetModalWrapper = memo(
         topInset,
         ...defaultBottomSheetModalProps,
         ...modal.props.bottomSheetProps,
+        containerStyle: [
+          modal.props.bottomSheetProps?.containerStyle,
+          {
+            zIndex: MODAL_BASE_Z_INDEX + modal.id,
+            elevation: MODAL_BASE_Z_INDEX + modal.id,
+          },
+        ],
       }),
-      [modal.props.bottomSheetProps, topInset]
+      [modal.id, modal.props.bottomSheetProps, topInset]
     );
 
     const handlerComponent = useCallback(
