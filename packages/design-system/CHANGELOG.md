@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.52.0] - 2026-05-14
+### Changed
+- feat(design-system): model perf improvement ([f93eb30](https://github.com/deeeed/universe/commit/f93eb3066a820e378b6c5ef5169b7ae772706e35))
+- chore: upgrade monorepo to Expo SDK 55 ([de9bb09](https://github.com/deeeed/universe/commit/de9bb09a0cfcbc70d7a35bd7ad8d832112d4c628))
+- chore: upgrade react-native-paper to 5.15.0 and react-native-paper-dates to 0.23.4 ([dee39ad](https://github.com/deeeed/universe/commit/dee39adf4a4e67c09f0d6c7898c3c3aed5b2c658))
+- chore(@siteed/design-system): release 0.51.3 ([6ca9ebb](https://github.com/deeeed/universe/commit/6ca9ebb7e6a97fbc4311053fc25c4d92d88992a2))
 ## [0.51.3] - 2026-02-21
 ### Changed
 - fix(design-system): pass portalName down to ModalControllerProvider in UIProvider ([3227d37](https://github.com/deeeed/universe/commit/3227d3760330ea300d286496696a8d5922b0d633))
@@ -145,7 +151,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.3...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.52.0...HEAD
+[0.52.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.3...@siteed/design-system@0.52.0
 [0.51.3]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.2...@siteed/design-system@0.51.3
 [0.51.2]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.1...@siteed/design-system@0.51.2
 [0.51.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.0...@siteed/design-system@0.51.1
