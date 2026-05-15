@@ -13,7 +13,7 @@ import {
   SNAP_POINT_TYPE,
 } from '@gorhom/bottom-sheet';
 import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react';
-import { LayoutChangeEvent, Platform, View } from 'react-native';
+import { Keyboard, LayoutChangeEvent, Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../providers/ThemeProvider';
 import type {
@@ -82,7 +82,7 @@ const defaultBottomSheetModalProps: Partial<BottomSheetModalProps> = {
   android_keyboardInputMode:
     Platform.OS === 'android' ? 'adjustPan' : 'adjustResize',
   keyboardBehavior: 'interactive',
-  keyboardBlurBehavior: 'restore',
+  keyboardBlurBehavior: 'none',
   enablePanDownToClose: true,
   enableDismissOnClose: true,
   stackBehavior: 'push',
@@ -369,7 +369,10 @@ export const BottomSheetModalWrapper = memo(
               type,
             })
           }
-          onDismiss={() => onDismiss({ modalId: modal.id })}
+          onDismiss={() => {
+            Keyboard.dismiss();
+            onDismiss({ modalId: modal.id });
+          }}
         >
           {renderContent()}
         </BottomSheetModal>

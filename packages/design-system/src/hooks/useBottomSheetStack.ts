@@ -1,5 +1,6 @@
 // packages/design-system/src/hooks/useBottomSheetStack.ts
 import { useCallback, useRef, useState } from 'react';
+import { Keyboard } from 'react-native';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import type {
   BottomSheetStackItem,
@@ -9,6 +10,10 @@ import type {
 import { baseLogger } from '../utils/logger';
 
 const logger = baseLogger.extend('useBottomSheetStack');
+
+const dismissKeyboard = () => {
+  Keyboard.dismiss();
+};
 
 interface UseBottomSheetStackProps {
   defaultPortalName: string;
@@ -70,6 +75,7 @@ export function useBottomSheetStack({
       }
 
       currentModal.resolved = true;
+      dismissKeyboard();
       resolve(value);
 
       const updatedStack = modalStackRef.current.filter(
@@ -102,6 +108,8 @@ export function useBottomSheetStack({
         logger.debug('Modal already resolved or rejected');
         return;
       }
+
+      dismissKeyboard();
 
       if (currentModal?.bottomSheetRef?.current) {
         currentModal.bottomSheetRef.current.dismiss();
@@ -192,6 +200,7 @@ export function useBottomSheetStack({
       }
 
       logger.debug(`dismiss: modalId: ${currentModal.id}`);
+      dismissKeyboard();
       currentModal.bottomSheetRef.current?.dismiss();
 
       currentModal.resolved = true;
@@ -204,6 +213,8 @@ export function useBottomSheetStack({
   }, []);
 
   const dismissAll = useCallback(() => {
+    dismissKeyboard();
+
     modalStackRef.current.forEach((modal) => {
       modal.bottomSheetRef.current?.dismiss();
       modal.resolve(undefined);
