@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 
+## [0.52.1] - 2026-05-15
+### Changed
+- feat(design-system): dismiss keyboard when leaving modal ([a816336](https://github.com/deeeed/universe/commit/a816336fecb17ff7a897afae00952f982374cefd))
+- chore(@siteed/design-system): release 0.52.0 ([5c36dd7](https://github.com/deeeed/universe/commit/5c36dd79abcce6b2cdacfd91e14a76e32720f523))
 ## [0.52.0] - 2026-05-14
 ### Changed
 - feat(design-system): model perf improvement ([f93eb30](https://github.com/deeeed/universe/commit/f93eb3066a820e378b6c5ef5169b7ae772706e35))
@@ -151,7 +155,8 @@ All notable changes to this project will be documented in this file.
 - TypeScript support
 - Storybook deployment workflow
 
-[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.52.0...HEAD
+[unreleased]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.52.1...HEAD
+[0.52.1]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.52.0...@siteed/design-system@0.52.1
 [0.52.0]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.3...@siteed/design-system@0.52.0
 [0.51.3]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.2...@siteed/design-system@0.51.3
 [0.51.2]: https://github.com/deeeed/universe/compare/@siteed/design-system@0.51.1...@siteed/design-system@0.51.2
